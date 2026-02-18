@@ -1,0 +1,4041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automated Session Prompts: raiveFlier (Complete Build)</title>
+  <style>
+    :root {
+      --bg-primary: #0a0a0c;
+      --bg-secondary: #14141a;
+      --bg-card: #1e1e24;
+      --bg-code: #0a0a0c;
+      --text-primary: #d8d5cd;
+      --text-secondary: #9a9a9e;
+      --text-muted: #7a7a80;
+      --accent: #6a4a8a;
+      --accent-hover: #8a6aaa;
+      --accent-green: #4a8a60;
+      --accent-red: #8a4050;
+      --accent-blue: #4a6a9a;
+      --accent-amber: #9a7a4a;
+      --accent-brass: #c4a67a;
+      --border-color: #2a2a30;
+      --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 2rem;
+    }
+
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat; background-size: 256px 256px; mix-blend-mode: overlay;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    h1 em { font-style: normal; color: var(--accent); }
+
+    h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin: 2.5rem 0 1rem;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 500;
+      margin: 1.5rem 0 0.75rem;
+      color: var(--accent);
+    }
+
+    p { margin: 0.75rem 0; color: var(--text-secondary); font-size: 0.9rem; }
+
+    .intro {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .intro strong { color: var(--accent); }
+
+    .session {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+
+    .session-header {
+      background: var(--bg-card);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .session-header h3 { margin: 0; font-size: 1.05rem; }
+
+    .session-badge {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.6rem;
+      border: 1px solid;
+    }
+
+    .badge-blocker { border-color: rgba(138,64,80,0.5); color: #c06070; background: rgba(138,64,80,0.12); }
+    .badge-critical { border-color: rgba(154,122,74,0.5); color: var(--accent-amber); background: rgba(154,122,74,0.1); }
+    .badge-important { border-color: rgba(74,106,154,0.5); color: var(--accent-blue); background: rgba(74,106,154,0.1); }
+    .badge-nice { border-color: rgba(74,138,96,0.4); color: var(--accent-green); background: rgba(74,138,96,0.08); }
+
+    .session-content { padding: 1.5rem; }
+
+    .prompt-block {
+      background: var(--bg-code);
+      border: 1px solid var(--border-color);
+      margin: 1rem 0;
+      overflow: hidden;
+    }
+
+    .prompt-header {
+      background: var(--bg-card);
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .prompt-header span { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em; }
+
+    .copy-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover { background: var(--accent-hover); }
+    .copy-btn.copied { background: var(--accent-green); color: white; }
+
+    .prompt-content {
+      padding: 1rem;
+      overflow-x: auto;
+      max-height: 700px;
+      overflow-y: auto;
+    }
+
+    .prompt-content pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text-primary);
+      line-height: 1.55;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      background: var(--bg-card);
+      padding: 0.15rem 0.35rem;
+      color: var(--accent);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border-color);
+    }
+
+    th { background: var(--bg-card); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 400; color: var(--text-muted); }
+    td { background: var(--bg-secondary); color: var(--text-secondary); }
+
+    ul, ol { margin: 0.75rem 0; padding-left: 1.5rem; color: var(--text-secondary); font-size: 0.88rem; }
+    li { margin: 0.35rem 0; }
+
+    .toc {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .toc h3 { margin-top: 0; color: var(--text-primary); }
+    .toc ul { list-style: none; padding-left: 0; }
+    .toc a { color: var(--accent-blue); text-decoration: none; display: block; padding: 0.25rem 0; font-size: 0.88rem; }
+    .toc a:hover { text-decoration: underline; color: var(--accent); }
+    .toc .indent { padding-left: 1.25rem; }
+
+    hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }
+
+    .deliverables {
+      background: rgba(74, 138, 96, 0.08);
+      border: 1px solid rgba(74, 138, 96, 0.25);
+      padding: 0.75rem 1rem;
+      margin: 0.75rem 0;
+    }
+
+    .deliverables h4 { color: var(--accent-green); margin-top: 0; font-family: var(--font-display); font-size: 0.9rem; }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      margin-top: 3rem;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 1rem; }
+      .session-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Automated Session Prompts: <em>raiveFlier</em></h1>
+    <p style="font-size: 1rem; color: var(--text-secondary);">Rave Flier Research Engine &mdash; All 24 Sessions Across 8 Phases</p>
+
+    <div class="intro">
+      <p>This document contains <strong>complete, copy-paste-ready prompts</strong> for every session in the raiveFlier build plan. Each prompt is designed to be run as a <strong>standalone Claude Code CLI session</strong> with full autonomy.</p>
+      <p style="margin-top: 0.75rem;"><strong>Project Path:</strong> <code>/Users/aaandy/_andy_ai_projects_2026/raiveFlier</code></p>
+      <p style="margin-top: 0.5rem;"><strong>Total Sessions:</strong> 29 | <strong>Phases:</strong> 9</p>
+      <p style="margin-top: 0.5rem;"><strong>Stack:</strong> Python 3.12 / FastAPI / Pydantic v2 / ChromaDB / vanilla JS / structlog</p>
+      <p style="margin-top: 0.5rem;"><strong>Minimum Viable Demo:</strong> Phases A through E (17 sessions)</p>
+      <p style="margin-top: 0.5rem;"><strong>Complete Build (no RAG):</strong> Phases A through H (24 sessions)</p>
+      <p style="margin-top: 0.5rem;"><strong>Full Build with RAG:</strong> All 9 phases (29 sessions)</p>
+    </div>
+
+    <div class="toc">
+      <h3>Table of Contents</h3>
+      <ul>
+        <li><a href="#pre-session">Pre-Session Context Setup</a></li>
+        <li><a href="#phaseA">Phase A: Foundation &mdash; 4 sessions (CRITICAL)</a></li>
+        <li class="indent"><a href="#sA1">A1: Project Scaffolding</a></li>
+        <li class="indent"><a href="#sA2">A2: Data Models</a></li>
+        <li class="indent"><a href="#sA3">A3: Service Interfaces (ABCs)</a></li>
+        <li class="indent"><a href="#sA4">A4: Config, Logging, Utilities</a></li>
+        <li><a href="#phaseB">Phase B: OCR Pipeline &mdash; 3 sessions (CRITICAL)</a></li>
+        <li class="indent"><a href="#sB1">B1: Image Preprocessor + Traditional OCR Providers</a></li>
+        <li class="indent"><a href="#sB2">B2: LLM Vision OCR + OCR Service Fallback Chain</a></li>
+        <li class="indent"><a href="#sB3">B3: Entity Extractor (LLM-Based)</a></li>
+        <li><a href="#phaseC">Phase C: Research Providers &mdash; 3 sessions (CRITICAL)</a></li>
+        <li class="indent"><a href="#sC1">C1: Discogs API + Scrape Fallback</a></li>
+        <li class="indent"><a href="#sC2">C2: MusicBrainz + DuckDuckGo Search</a></li>
+        <li class="indent"><a href="#sC3">C3: Article Scraper + Wayback + Text Normalizer</a></li>
+        <li><a href="#phaseD">Phase D: Research Services &mdash; 3 sessions (HIGH)</a></li>
+        <li class="indent"><a href="#sD1">D1: Artist Researcher Service</a></li>
+        <li class="indent"><a href="#sD2">D2: Venue, Promoter, Date Context Researchers</a></li>
+        <li class="indent"><a href="#sD3">D3: Research Orchestrator + Citation Service</a></li>
+        <li><a href="#phaseE">Phase E: Pipeline + API &mdash; 3 sessions (HIGH)</a></li>
+        <li class="indent"><a href="#sE1">E1: Pipeline Orchestrator + Confirmation Gate</a></li>
+        <li class="indent"><a href="#sE2">E2: FastAPI Routes + Schemas + WebSocket</a></li>
+        <li class="indent"><a href="#sE3">E3: FastAPI Main + Middleware + Static Serving</a></li>
+        <li><a href="#phaseF">Phase F: LLM Synthesis &mdash; 2 sessions (HIGH)</a></li>
+        <li class="indent"><a href="#sF1">F1: Interconnection Service</a></li>
+        <li class="indent"><a href="#sF2">F2: Citation Verification + Output Formatting</a></li>
+        <li><a href="#phaseG">Phase G: Frontend &mdash; 3 sessions (IMPORTANT)</a></li>
+        <li class="indent"><a href="#sG1">G1: HTML Shell + CSS + Upload UI</a></li>
+        <li class="indent"><a href="#sG2">G2: Confirmation UI + Progress Tracking</a></li>
+        <li class="indent"><a href="#sG3">G3: Results Display + Interconnection Visualization</a></li>
+        <li><a href="#phaseH">Phase H: Testing + Documentation &mdash; 3 sessions (IMPORTANT)</a></li>
+        <li class="indent"><a href="#sH1">H1: Unit Tests</a></li>
+        <li class="indent"><a href="#sH2">H2: Integration Tests</a></li>
+        <li class="indent"><a href="#sH3">H3: Documentation (NAVIGATION.md, README.html)</a></li>
+        <li><a href="#phaseI">Phase I: RAG Pipeline &mdash; 5 sessions (ENHANCEMENT)</a></li>
+        <li class="indent"><a href="#sI1">I1: RAG Models + Interfaces</a></li>
+        <li class="indent"><a href="#sI2">I2: Embedding + Vector Store Providers</a></li>
+        <li class="indent"><a href="#sI3">I3: Ingestion Pipeline</a></li>
+        <li class="indent"><a href="#sI4">I4: Ingestion CLI + Researcher RAG Integration</a></li>
+        <li class="indent"><a href="#sI5">I5: RAG Integration Tests</a></li>
+        <li><a href="#dep-graph">Session Dependency Graph</a></li>
+      </ul>
+    </div>
+
+    <hr>
+
+    <!-- ================================================================
+         PRE-SESSION CONTEXT
+         ================================================================ -->
+    <section id="pre-session">
+      <h2>Pre-Session Context Setup</h2>
+      <p>This context block is included at the start of every session prompt. You do not need to run it separately &mdash; it is embedded in each prompt below.</p>
+
+      <div class="prompt-block">
+        <div class="prompt-header">
+          <span>Context Setup (embedded in all prompts)</span>
+          <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+        </div>
+        <div class="prompt-content">
+          <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read the project conventions:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (workspace conventions — Sections 0, 5, 17, 18, 19 apply)
+
+This is a greenfield Python web app. The tech stack:
+- Python 3.12 with FastAPI (async web framework)
+- Pydantic v2 for all data validation and models
+- Adapter pattern: ALL external services behind ABC interfaces (Section 6 of CLAUDE.md)
+- OCR: LLM Vision (primary), EasyOCR (fallback), Tesseract (last resort)
+- LLM: Provider-agnostic — OpenAI, Anthropic, Ollama adapters behind ILLMProvider ABC
+- Music databases: Discogs API (primary) + scrape fallback, MusicBrainz (complementary)
+- Web search: DuckDuckGo (free, primary), Serper (free tier, secondary)
+- Article scraping: trafilatura + Wayback Machine
+- Frontend: Vanilla JS SPA served by FastAPI static files (no build step)
+- Logging: structlog (JSON format)
+- Testing: pytest + pytest-asyncio + pytest-cov
+- Linting: Black (formatter) + Ruff (linter)
+
+Architecture layers (bottom to top):
+  models/ → interfaces/ → providers/ → services/ → pipeline/ → api/
+
+Design reference for styling:
+  /Users/aaandy/_andy_ai_projects_2026/design_reference/templates/foundation.css
+  /Users/aaandy/_andy_ai_projects_2026/design_reference/color/palettes.html
+
+OOP principles enforced: private fields by default, @property accessors, no public mutable state.
+All code must pass: black --check, ruff check, mypy (where applicable), pytest.</pre>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE A: FOUNDATION
+         ================================================================ -->
+    <section id="phaseA">
+      <h2>Phase A: Foundation <span class="session-badge badge-blocker">CRITICAL &bull; BUILD FIRST</span></h2>
+
+      <!-- Session A1 -->
+      <div class="session" id="sA1">
+        <div class="session-header">
+          <h3>Session A1: Project Scaffolding</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the complete project skeleton — all directories, configuration files, dependency definitions, and tooling setup. No application code yet.</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Sections 0, 5, 17, 18, 19)
+
+TASK: Create the complete project scaffolding for raiveFlier — a Python/FastAPI web app that analyzes rave flier images to research the people, places, and history behind underground music events.
+
+PART 1 — DIRECTORY STRUCTURE:
+Create all directories (with __init__.py where needed):
+
+src/
+src/config/
+src/models/
+src/interfaces/
+src/providers/
+src/providers/ocr/
+src/providers/llm/
+src/providers/music_db/
+src/providers/search/
+src/providers/article/
+src/providers/cache/
+src/services/
+src/pipeline/
+src/api/
+src/utils/
+frontend/
+frontend/css/
+frontend/js/
+config/
+tests/
+tests/unit/
+tests/integration/
+tests/e2e/
+tests/fixtures/
+tests/fixtures/sample_fliers/
+tests/fixtures/mock_responses/
+
+PART 2 — PYTHON VERSION + PYPROJECT.TOML:
+1. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.python-version with content: 3.12.3
+
+2. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/pyproject.toml with:
+   - Project metadata (name="raiveflier", version="0.1.0", description, python_requires=">=3.12")
+   - [tool.black] config: line-length=100, target-version=["py312"]
+   - [tool.ruff] config: line-length=100, select=["E","F","W","I","N","UP","B","A","C4","SIM"], target-version="py312"
+   - [tool.ruff.isort] known-first-party=["src"]
+   - [tool.mypy] config: python_version="3.12", strict=true, warn_return_any=true
+   - [tool.pytest.ini_options] asyncio_mode="auto", testpaths=["tests"], pythonpath=[".", "src"]
+
+PART 3 — REQUIREMENTS FILES:
+3. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/requirements.txt:
+fastapi>=0.109.0,<1.0
+uvicorn[standard]>=0.27.0,<1.0
+python-multipart>=0.0.6,<1.0
+websockets>=12.0,<13.0
+pydantic>=2.5.0,<3.0
+pydantic-settings>=2.1.0,<3.0
+openai>=1.12.0,<2.0
+anthropic>=0.18.0,<1.0
+pytesseract>=0.3.10,<1.0
+easyocr>=1.7.0,<2.0
+Pillow>=10.2.0,<11.0
+python3-discogs-client>=2.5.0,<3.0
+musicbrainzngs>=0.7.1,<1.0
+duckduckgo_search>=4.1.0,<5.0
+trafilatura>=1.6.0,<2.0
+httpx>=0.26.0,<1.0
+rapidfuzz>=3.5.0,<4.0
+pyyaml>=6.0.1,<7.0
+python-dotenv>=1.0.0,<2.0
+structlog>=24.1.0,<25.0
+opencv-python-headless>=4.9.0,<5.0
+numpy>=1.26.0,<2.0
+cachetools>=5.3.0,<6.0
+beautifulsoup4>=4.12.0,<5.0
+
+4. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/requirements-dev.txt:
+-r requirements.txt
+pytest>=8.0.0,<9.0
+pytest-asyncio>=0.23.0,<1.0
+pytest-cov>=4.1.0,<5.0
+vcrpy>=6.0.0,<7.0
+black>=24.1.0,<25.0
+ruff>=0.2.0,<1.0
+mypy>=1.8.0,<2.0
+pre-commit>=3.6.0,<4.0
+
+PART 4 — ENVIRONMENT + GITIGNORE:
+5. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.env.example:
+# === LLM Providers ===
+# At least one LLM provider must be configured
+OPENAI_API_KEY=your-openai-key-here
+ANTHROPIC_API_KEY=your-anthropic-key-here
+# Leave blank to skip Ollama
+OLLAMA_BASE_URL=http://localhost:11434
+
+# === Music Databases ===
+DISCOGS_CONSUMER_KEY=your-discogs-consumer-key
+DISCOGS_CONSUMER_SECRET=your-discogs-consumer-secret
+# MusicBrainz requires no key — uses User-Agent identification
+MUSICBRAINZ_APP_NAME=raiveFlier
+MUSICBRAINZ_APP_VERSION=0.1.0
+MUSICBRAINZ_CONTACT=your-email@example.com
+
+# === Web Search ===
+# DuckDuckGo requires no key
+# Serper (optional, 2500 free/month)
+SERPER_API_KEY=
+
+# === App Config ===
+APP_HOST=0.0.0.0
+APP_PORT=8000
+APP_ENV=development
+LOG_LEVEL=INFO
+
+6. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.gitignore with standard Python ignores:
+   __pycache__/, *.pyc, *.pyo, .env, .venv/, venv/, dist/, build/, *.egg-info/,
+   .pytest_cache/, .mypy_cache/, .ruff_cache/, .coverage, htmlcov/,
+   *.so, *.dylib, .DS_Store, uploads/
+
+PART 5 — CONFIG FILES:
+7. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/config.yaml:
+   - app section (name, version, host, port)
+   - ocr section (provider_priority: [llm_vision, easyocr, tesseract], min_confidence: 0.5)
+   - llm section (default_provider: openai, temperature: 0.3, max_tokens: 4000)
+   - music_db section (primary: discogs_api, fallback: discogs_scrape, complementary: musicbrainz)
+   - search section (primary: duckduckgo, secondary: serper)
+   - rate_limits section (discogs: 60/min, musicbrainz: 1/sec, duckduckgo: 20/min)
+   - cache section (enabled: true, ttl: 3600)
+
+8. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/logging.yaml:
+   - structlog configuration with JSON renderer for production, console renderer for dev
+   - Log levels configurable via APP_ENV
+
+PART 6 — TEST CONFTEST:
+9. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/conftest.py with:
+   - Basic pytest fixtures (tmp_path usage, mock config)
+   - An async event loop fixture for pytest-asyncio
+
+PART 7 — PRE-COMMIT CONFIG:
+10. Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.pre-commit-config.yaml with hooks for:
+    - black (formatting)
+    - ruff (linting)
+    - detect-secrets (secret scanning)
+
+VERIFICATION:
+11. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; python3 -m venv .venv &amp;&amp; source .venv/bin/activate &amp;&amp; pip install -r requirements-dev.txt
+12. Run: black --check src/ tests/
+13. Run: ruff check src/ tests/
+14. Verify all directories exist with __init__.py files
+
+After completing, commit to the current branch with message:
+"feat: initialize raiveFlier project scaffolding with full directory structure and tooling"
+
+SESSION COMPLETE: A1 (Project Scaffolding)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li>Complete directory tree with <code>__init__.py</code> files</li>
+              <li><code>.python-version</code>, <code>pyproject.toml</code></li>
+              <li><code>requirements.txt</code>, <code>requirements-dev.txt</code></li>
+              <li><code>.env.example</code>, <code>.gitignore</code></li>
+              <li><code>config/config.yaml</code>, <code>config/logging.yaml</code></li>
+              <li><code>.pre-commit-config.yaml</code>, <code>tests/conftest.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session A2 -->
+      <div class="session" id="sA2">
+        <div class="session-header">
+          <h3>Session A2: Data Models</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create all Pydantic data models that define the domain. Every other module depends on these.</p>
+          <p><strong>Depends on:</strong> A1</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Sections 5, 28 — OOP and data encapsulation)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/pyproject.toml
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/config.yaml
+
+TASK: Create all Pydantic v2 data models for raiveFlier. These define the domain layer and every other module depends on them.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py:
+Core domain entities. All fields private by default with @property accessors per Section 28 of CLAUDE.md.
+
+Define these classes (all extending BaseModel):
+
+- EntityType(str, Enum): ARTIST, VENUE, PROMOTER, DATE, GENRE, LABEL
+- ConfidenceLevel(str, Enum): HIGH (>=0.8), MEDIUM (>=0.5), LOW (>=0.3), UNCERTAIN (&lt;0.3)
+
+- Artist: name (str), aliases (List[str]), discogs_id (Optional[int]), musicbrainz_id (Optional[str]),
+  confidence (float, 0.0-1.0), releases (List[Release]), labels (List[Label]),
+  appearances (List[EventAppearance]), articles (List[ArticleReference]), profile_summary (Optional[str]).
+  Include a confidence_level property that returns the ConfidenceLevel enum based on the float value.
+
+- Venue: name, location (Optional[str]), city (Optional[str]), country (Optional[str]),
+  confidence (float), history (Optional[str]), notable_events (List[str]),
+  cultural_significance (Optional[str]), articles (List[ArticleReference])
+
+- Promoter: name, confidence (float), event_history (List[str]), affiliated_artists (List[str]),
+  affiliated_venues (List[str]), articles (List[ArticleReference])
+
+- Release: title (str), label (str), catalog_number (Optional[str]), year (Optional[int]),
+  format (Optional[str] — vinyl/CD/digital), discogs_url (Optional[str]),
+  genres (List[str]), styles (List[str])
+
+- Label: name (str), discogs_id (Optional[int]), discogs_url (Optional[str])
+
+- EventAppearance: event_name (Optional[str]), venue (Optional[str]),
+  date (Optional[date]), source (Optional[str]), source_url (Optional[str])
+
+- ArticleReference: title (str), source (str — publication name), url (Optional[str]),
+  date (Optional[date]), article_type (str — "article"/"interview"/"review"/"forum_post"),
+  snippet (Optional[str]), citation_tier (int, 1-6, where 1=book, 6=forum)
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py:
+Flier image and OCR extraction models.
+
+- FlierImage: id (str — UUID), filename (str), content_type (str), file_size (int),
+  image_hash (str — SHA-256), upload_timestamp (datetime).
+  Private field _image_data (Optional[bytes]) excluded from serialization.
+
+- TextRegion: text (str), confidence (float), x (int), y (int), width (int), height (int)
+
+- OCRResult: raw_text (str), confidence (float), provider_used (str),
+  processing_time (float), bounding_boxes (List[TextRegion])
+
+- ExtractedEntity: text (str), entity_type (EntityType), confidence (float),
+  source_region (Optional[TextRegion])
+
+- ExtractedEntities: artists (List[ExtractedEntity]), venue (Optional[ExtractedEntity]),
+  date (Optional[ExtractedEntity]), promoter (Optional[ExtractedEntity]),
+  genre_tags (List[str]), ticket_price (Optional[str]),
+  supporting_text (List[str]), raw_ocr (OCRResult)
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/research.py:
+Research result models.
+
+- DateContext: event_date (date), scene_context (Optional[str]),
+  city_context (Optional[str]), cultural_context (Optional[str]),
+  nearby_events (List[str]), sources (List[ArticleReference])
+
+- ResearchResult: entity_type (EntityType), entity_name (str),
+  artist (Optional[Artist]), venue (Optional[Venue]), promoter (Optional[Promoter]),
+  date_context (Optional[DateContext]), sources_consulted (List[str]),
+  confidence (float), warnings (List[str])
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/analysis.py:
+Interconnection analysis models.
+
+- Citation: text (str — the claim), source_type (str), source_name (str),
+  source_url (Optional[str]), source_date (Optional[date]),
+  tier (int, 1-6), page_number (Optional[str])
+
+- EntityNode: entity_type (EntityType), name (str), properties (Dict[str, Any])
+
+- RelationshipEdge: source (str), target (str), relationship_type (str),
+  details (Optional[str]), citations (List[Citation]), confidence (float)
+
+- PatternInsight: pattern_type (str), description (str),
+  involved_entities (List[str]), citations (List[Citation])
+
+- InterconnectionMap: nodes (List[EntityNode]), edges (List[RelationshipEdge]),
+  patterns (List[PatternInsight]), narrative (Optional[str]), citations (List[Citation])
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/pipeline.py:
+Pipeline state management models.
+
+- PipelinePhase(str, Enum): UPLOAD, OCR, ENTITY_EXTRACTION, USER_CONFIRMATION,
+  RESEARCH, INTERCONNECTION, OUTPUT
+
+- PipelineError: phase (PipelinePhase), message (str), timestamp (datetime),
+  recoverable (bool)
+
+- PipelineState: session_id (str), current_phase (PipelinePhase),
+  ocr_result (Optional[OCRResult]), extracted_entities (Optional[ExtractedEntities]),
+  confirmed_entities (Optional[ExtractedEntities]),
+  research_results (List[ResearchResult]),
+  interconnection_map (Optional[InterconnectionMap]),
+  started_at (datetime), completed_at (Optional[datetime]),
+  errors (List[PipelineError]), progress_percent (float, 0.0-100.0)
+
+FILE 6 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/__init__.py:
+Re-export all public model classes for clean imports.
+
+REQUIREMENTS:
+- Use Pydantic v2 syntax (model_config, Field with default_factory, etc.)
+- Use from __future__ import annotations at the top of each file
+- All mutable collection fields use Field(default_factory=list) or Field(default_factory=dict)
+- Validate ranges: confidence fields use Field(ge=0.0, le=1.0), tier uses Field(ge=1, le=6)
+- Forward references resolved properly (Artist references Release which is defined later — use model_rebuild if needed, or define in dependency order)
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.models import *; print('All models imported successfully')"
+3. Run: python -c "from src.models.entities import Artist, Release; r = Release(title='Test', label='Test Label'); a = Artist(name='Test DJ', confidence=0.9, releases=[r]); print(a.model_dump_json(indent=2))"
+4. Run: black --check src/models/
+5. Run: ruff check src/models/
+6. Run: pytest tests/ -v (should pass with no tests collected, no import errors)
+
+After completing, commit with message:
+"feat(models): implement all Pydantic v2 domain models for flier analysis pipeline"
+
+SESSION COMPLETE: A2 (Data Models)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/models/entities.py</code> — 8 domain entity classes</li>
+              <li><code>src/models/flier.py</code> — 5 OCR/flier classes</li>
+              <li><code>src/models/research.py</code> — 2 research result classes</li>
+              <li><code>src/models/analysis.py</code> — 5 interconnection/citation classes</li>
+              <li><code>src/models/pipeline.py</code> — 3 pipeline state classes</li>
+              <li><code>src/models/__init__.py</code> — clean re-exports</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session A3 -->
+      <div class="session" id="sA3">
+        <div class="session-header">
+          <h3>Session A3: Service Interfaces (ABCs)</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Define all abstract base classes for external service providers. This is the adapter pattern — every external dependency gets an interface.</p>
+          <p><strong>Depends on:</strong> A2 (models must exist for type hints)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Sections 5, 6, 28)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/research.py
+
+TASK: Create all abstract base class (ABC) interfaces for external service providers. The adapter pattern is enforced — every external API/service is accessed only through these interfaces.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/ocr_provider.py:
+class IOCRProvider(ABC):
+    Methods:
+    - async extract_text(self, image: FlierImage) -> OCRResult
+    - get_provider_name(self) -> str
+    - is_available(self) -> bool
+    - supports_stylized_text(self) -> bool (whether this provider handles distorted rave flier fonts)
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py:
+class ILLMProvider(ABC):
+    Methods:
+    - async complete(self, system_prompt: str, user_prompt: str, temperature: float = 0.3, max_tokens: int = 4000) -> str
+    - async vision_extract(self, image_bytes: bytes, prompt: str) -> str (analyze image using vision)
+    - supports_vision(self) -> bool
+    - get_provider_name(self) -> str
+    - is_available(self) -> bool
+    - async validate_credentials(self) -> bool
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/music_db_provider.py:
+class IMusicDatabaseProvider(ABC):
+    Methods:
+    - async search_artist(self, name: str) -> List[ArtistSearchResult]
+    - async get_artist_releases(self, artist_id: str, before_date: Optional[date] = None) -> List[Release]
+    - async get_artist_labels(self, artist_id: str) -> List[Label]
+    - async get_release_details(self, release_id: str) -> Optional[Release]
+    - get_provider_name(self) -> str
+    - is_available(self) -> bool
+
+    Also define a helper dataclass ArtistSearchResult: id (str), name (str), disambiguation (Optional[str]), confidence (float)
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/web_search_provider.py:
+class IWebSearchProvider(ABC):
+    Methods:
+    - async search(self, query: str, num_results: int = 10, before_date: Optional[date] = None) -> List[SearchResult]
+    - get_provider_name(self) -> str
+    - is_available(self) -> bool
+
+    Also define SearchResult dataclass: title (str), url (str), snippet (Optional[str]), date (Optional[date])
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/article_provider.py:
+class IArticleProvider(ABC):
+    Methods:
+    - async extract_content(self, url: str) -> Optional[ArticleContent]
+    - async check_availability(self, url: str) -> bool
+    - get_provider_name(self) -> str
+    - is_available(self) -> bool
+
+    Also define ArticleContent dataclass: title (str), text (str), author (Optional[str]), date (Optional[date]), url (str)
+
+FILE 6 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/cache_provider.py:
+class ICacheProvider(ABC):
+    Methods:
+    - async get(self, key: str) -> Optional[Any]
+    - async set(self, key: str, value: Any, ttl: Optional[int] = None) -> None
+    - async delete(self, key: str) -> None
+    - async exists(self, key: str) -> bool
+
+FILE 7 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/__init__.py:
+Re-export all interfaces and supporting dataclasses.
+
+REQUIREMENTS:
+- Use abc.ABC and abc.abstractmethod
+- from __future__ import annotations at top of each file
+- All method signatures use types from src.models — import them
+- Include clear docstrings on each ABC class and each abstract method explaining the contract
+- Helper dataclasses (ArtistSearchResult, SearchResult, ArticleContent) defined in the same file as the interface that returns them
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.interfaces import *; print('All interfaces imported successfully')"
+3. Run: black --check src/interfaces/
+4. Run: ruff check src/interfaces/
+
+After completing, commit with message:
+"feat(interfaces): define ABC interfaces for all external service providers"
+
+SESSION COMPLETE: A3 (Service Interfaces)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/interfaces/ocr_provider.py</code> — IOCRProvider ABC</li>
+              <li><code>src/interfaces/llm_provider.py</code> — ILLMProvider ABC</li>
+              <li><code>src/interfaces/music_db_provider.py</code> — IMusicDatabaseProvider ABC</li>
+              <li><code>src/interfaces/web_search_provider.py</code> — IWebSearchProvider ABC</li>
+              <li><code>src/interfaces/article_provider.py</code> — IArticleProvider ABC</li>
+              <li><code>src/interfaces/cache_provider.py</code> — ICacheProvider ABC</li>
+              <li><code>src/interfaces/__init__.py</code> — clean re-exports</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session A4 -->
+      <div class="session" id="sA4">
+        <div class="session-header">
+          <h3>Session A4: Config, Logging, Utilities</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the configuration loader, structured logging, custom exceptions, and utility modules that all other layers depend on.</p>
+          <p><strong>Depends on:</strong> A1</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Sections 5, 23 — structured logging)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/config.yaml
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/logging.yaml
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.env.example
+
+TASK: Create the configuration, logging, error handling, and utility modules.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py:
+Use pydantic-settings to load environment variables.
+class Settings(BaseSettings):
+  Fields for every variable in .env.example with appropriate types and defaults.
+  model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+  Group fields with comments: LLM Providers, Music Databases, Web Search, App Config.
+  Add a method get_available_llm_providers() -> List[str] that returns providers with non-empty keys.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/loader.py:
+YAML config loader.
+- load_config(path: str = "config/config.yaml") -> dict function
+- Merges YAML config with Settings (env vars override YAML)
+- Returns a fully resolved config dict
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/__init__.py:
+Export Settings and load_config. Create a module-level `settings` singleton.
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/errors.py:
+Custom exception hierarchy:
+- RaiveFlierError(Exception) — base
+- OCRExtractionError(RaiveFlierError) — OCR failures
+- EntityExtractionError(RaiveFlierError) — entity parsing failures
+- ProviderUnavailableError(RaiveFlierError) — external service down
+- ResearchError(RaiveFlierError) — research phase failures
+- PipelineError(RaiveFlierError) — pipeline orchestration failures
+- ConfigurationError(RaiveFlierError) — bad config
+- RateLimitError(RaiveFlierError) — rate limit exceeded
+Each exception includes a provider_name (Optional[str]) field and a user-friendly message.
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/logging.py:
+Structured logging setup using structlog.
+- configure_logging(log_level: str = "INFO", json_output: bool = False) function
+- In development (APP_ENV=development): colorful console output
+- In production: JSON format
+- Returns a configured structlog logger
+- get_logger(name: str) -> structlog.BoundLogger convenience function
+
+FILE 6 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/confidence.py:
+Confidence scoring utilities:
+- calculate_confidence(scores: List[float], weights: Optional[List[float]] = None) -> float (weighted average)
+- confidence_to_level(score: float) -> ConfidenceLevel (maps float to enum)
+- merge_confidence(existing: float, new: float, new_weight: float = 0.5) -> float (Bayesian-style update)
+
+FILE 7 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/text_normalizer.py:
+Text normalization for DJ/artist names:
+- normalize_artist_name(name: str) -> str (strip "DJ ", "Dj ", case normalize, strip whitespace)
+- fuzzy_match(query: str, candidates: List[str], threshold: float = 0.8) -> Optional[Tuple[str, float]]
+  Uses rapidfuzz for fuzzy string matching, returns (best_match, score) or None.
+- split_artist_names(raw: str) -> List[str]
+  Handles separators: " b2b ", " B2B ", " vs ", " VS ", " &amp; ", " feat. ", " ft. ", " featuring ", ", "
+
+FILE 8 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/image_preprocessor.py:
+Image preprocessing for OCR:
+- class ImagePreprocessor with methods:
+  - prepare_for_ocr(image_bytes: bytes) -> bytes (full preprocessing pipeline)
+  - enhance_contrast(image: PIL.Image) -> PIL.Image
+  - binarize(image: PIL.Image, threshold: int = 128) -> PIL.Image
+  - deskew(image: PIL.Image) -> PIL.Image
+  - separate_color_channels(image: PIL.Image) -> List[PIL.Image] (for extracting neon text from dark backgrounds)
+  - resize_for_ocr(image: PIL.Image, max_dim: int = 2000) -> PIL.Image
+  Uses Pillow and opencv-python-headless.
+
+FILE 9 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/__init__.py:
+Re-export key utilities.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.config import settings; print(f'App env: {settings.app_env}')"
+3. Run: python -c "from src.utils.logging import get_logger; log = get_logger('test'); log.info('test message')"
+4. Run: python -c "from src.utils.text_normalizer import normalize_artist_name, split_artist_names; print(normalize_artist_name('DJ Shadow')); print(split_artist_names('Carl Cox b2b Adam Beyer'))"
+5. Run: black --check src/config/ src/utils/
+6. Run: ruff check src/config/ src/utils/
+
+After completing, commit with message:
+"feat(core): implement config loader, structured logging, error hierarchy, and utility modules"
+
+SESSION COMPLETE: A4 (Config, Logging, Utilities)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/config/settings.py</code>, <code>src/config/loader.py</code>, <code>src/config/__init__.py</code></li>
+              <li><code>src/utils/errors.py</code> — 7 custom exception classes</li>
+              <li><code>src/utils/logging.py</code> — structlog setup</li>
+              <li><code>src/utils/confidence.py</code> — confidence scoring</li>
+              <li><code>src/utils/text_normalizer.py</code> — name normalization + fuzzy matching</li>
+              <li><code>src/utils/image_preprocessor.py</code> — OCR image preprocessing</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE B: OCR PIPELINE
+         ================================================================ -->
+    <section id="phaseB">
+      <h2>Phase B: OCR Pipeline <span class="session-badge badge-blocker">CRITICAL</span></h2>
+
+      <!-- Session B1 -->
+      <div class="session" id="sB1">
+        <div class="session-header">
+          <h3>Session B1: Image Preprocessor + Traditional OCR Providers</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the Tesseract and EasyOCR providers as fallback OCR options with image preprocessing optimized for rave flier aesthetics.</p>
+          <p><strong>Depends on:</strong> A2 (models), A3 (interfaces), A4 (utilities)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Section 5)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/ocr_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/image_preprocessor.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/errors.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/logging.py
+
+TASK: Implement the two traditional OCR providers (Tesseract, EasyOCR) that serve as fallbacks when LLM Vision is unavailable.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/tesseract_provider.py:
+class TesseractOCRProvider(IOCRProvider):
+- __init__: accepts an ImagePreprocessor instance (dependency injection)
+- extract_text: preprocesses image, runs pytesseract.image_to_data() for bounding boxes and confidence,
+  also runs pytesseract.image_to_string() for raw text. Try multiple preprocessing passes:
+  1. Standard contrast-enhanced binarized image
+  2. Inverted image (for light text on dark background — common on rave fliers)
+  3. Individual color channels (from separate_color_channels)
+  Pick the result with highest average confidence across all passes.
+  Return OCRResult with raw_text, confidence (average word confidence), provider_used="tesseract",
+  processing_time (measured), and bounding_boxes.
+- supports_stylized_text: returns False
+- is_available: checks pytesseract is installed and tesseract binary exists
+- get_provider_name: returns "tesseract"
+- Use structlog logger throughout. Catch and log errors gracefully.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/easyocr_provider.py:
+class EasyOCRProvider(IOCRProvider):
+- __init__: accepts ImagePreprocessor, initializes EasyOCR reader lazily (first call)
+  with languages=['en']. Store reader as private field.
+- extract_text: preprocesses image, runs reader.readtext() which returns
+  [(bbox, text, confidence), ...]. Convert to OCRResult with TextRegion bounding boxes.
+  Like Tesseract, try standard + inverted + channel-separated passes.
+  EasyOCR handles more font styles than Tesseract so may perform better on stylized text.
+- supports_stylized_text: returns True (partial support)
+- is_available: try importing easyocr, return True/False
+- get_provider_name: returns "easyocr"
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/__init__.py:
+Export both provider classes.
+
+REQUIREMENTS:
+- Both providers must implement IOCRProvider exactly
+- All timing measured with time.perf_counter()
+- All exceptions caught and wrapped in OCRExtractionError
+- Use get_logger(__name__) for structured logging
+- Image bytes conversion: PIL.Image.open(io.BytesIO(image_bytes))
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.providers.ocr import TesseractOCRProvider, EasyOCRProvider; print('OCR providers imported')"
+3. Run: python -c "from src.providers.ocr.tesseract_provider import TesseractOCRProvider; from src.utils.image_preprocessor import ImagePreprocessor; p = TesseractOCRProvider(ImagePreprocessor()); print(f'Available: {p.is_available()}')"
+4. Run: black --check src/providers/ocr/
+5. Run: ruff check src/providers/ocr/
+
+After completing, commit with message:
+"feat(ocr): implement Tesseract and EasyOCR providers with multi-pass preprocessing"
+
+SESSION COMPLETE: B1 (Traditional OCR Providers)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/providers/ocr/tesseract_provider.py</code></li>
+              <li><code>src/providers/ocr/easyocr_provider.py</code></li>
+              <li><code>src/providers/ocr/__init__.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session B2 -->
+      <div class="session" id="sB2">
+        <div class="session-header">
+          <h3>Session B2: LLM Vision OCR + OCR Service Fallback Chain</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the primary OCR provider (LLM Vision — best for stylized rave flier text) and the OCR service that orchestrates providers with fallback.</p>
+          <p><strong>Depends on:</strong> A3 (interfaces), B1 (traditional providers)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/ocr_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/tesseract_provider.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/easyocr_provider.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/errors.py
+
+TASK: Implement the LLM Vision OCR provider (primary, best for stylized text) and the OCR service that orchestrates all providers with a fallback chain.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/llm_vision_provider.py:
+class LLMVisionOCRProvider(IOCRProvider):
+- __init__: accepts an ILLMProvider instance (the vision-capable LLM)
+- extract_text: Uses llm_provider.vision_extract() with a carefully crafted prompt:
+  PROMPT (include this verbatim in the code):
+  """You are analyzing a rave/electronic music event flier image.
+  Extract ALL readable text from this flier. The text may be heavily stylized,
+  distorted, use unconventional fonts, or be layered over graphics.
+
+  Focus on identifying:
+  1. Artist/DJ names (usually the largest text, often at top)
+  2. Event date and time
+  3. Venue/location name and address
+  4. Promoter or organization name (often smaller text)
+  5. Ticket price or cover charge
+  6. Genre tags or event series name
+  7. Any other readable text
+
+  Return your findings as structured text, one item per line, in this format:
+  ARTIST: [name]
+  DATE: [date as written on flier]
+  VENUE: [venue name]
+  LOCATION: [address or city]
+  PROMOTER: [promoter/org name]
+  PRICE: [price if visible]
+  GENRE: [genre tags]
+  OTHER: [any other text]
+
+  If text is partially illegible, include your best guess with [?] suffix.
+  If you cannot read certain text at all, note: UNREADABLE: [description of where/what]"""
+
+  Parse the LLM response into an OCRResult. Set confidence based on how many [?] markers appear.
+  Convert structured fields to bounding_boxes as TextRegion objects (without x/y since LLM doesn't provide position).
+- supports_stylized_text: returns True
+- is_available: returns self._llm_provider.is_available() and self._llm_provider.supports_vision()
+- get_provider_name: returns "llm_vision"
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ocr_service.py:
+class OCRService:
+- __init__: accepts providers (List[IOCRProvider]) ordered by priority, and ImagePreprocessor
+- async extract_text(self, flier: FlierImage) -> OCRResult:
+  Try providers in priority order. For each:
+  1. Check is_available()
+  2. Try extract_text()
+  3. If confidence >= 0.7, return immediately
+  4. If confidence < 0.7 but better than previous best, store as fallback
+  5. On exception, log warning and continue to next provider
+  After all providers tried, return best result or raise OCRExtractionError("All OCR providers failed")
+- get_available_providers(self) -> List[str]: returns names of available providers
+
+Default provider order: [llm_vision, easyocr, tesseract]
+
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/__init__.py to export LLMVisionOCRProvider.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.providers.ocr import LLMVisionOCRProvider; from src.services.ocr_service import OCRService; print('LLM Vision OCR + OCR Service imported')"
+3. Run: black --check src/providers/ocr/ src/services/
+4. Run: ruff check src/providers/ocr/ src/services/
+
+After completing, commit with message:
+"feat(ocr): implement LLM Vision OCR provider and multi-provider fallback OCR service"
+
+SESSION COMPLETE: B2 (LLM Vision OCR + OCR Service)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/providers/ocr/llm_vision_provider.py</code></li>
+              <li><code>src/services/ocr_service.py</code></li>
+              <li>Updated <code>src/providers/ocr/__init__.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session B3 -->
+      <div class="session" id="sB3">
+        <div class="session-header">
+          <h3>Session B3: Entity Extractor (LLM-Based)</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the entity extractor that takes raw OCR text and uses an LLM to identify structured entities (artists, venue, date, promoter).</p>
+          <p><strong>Depends on:</strong> A2, A3, A4, B2</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py (ExtractedEntities, ExtractedEntity)
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py (EntityType)
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/text_normalizer.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/confidence.py
+
+TASK: Implement the EntityExtractor service that parses raw OCR text into structured entities using an LLM.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/entity_extractor.py:
+class EntityExtractor:
+- __init__: accepts ILLMProvider and TextNormalizer (injected)
+- async extract(self, ocr_result: OCRResult, image: Optional[FlierImage] = None) -> ExtractedEntities:
+
+  Strategy:
+  1. Send the raw OCR text to the LLM with a structured extraction prompt.
+  2. The prompt should explain rave flier conventions:
+     - Headliner names are typically the largest text
+     - Supporting DJs listed below headliners, often smaller
+     - Date is often near top or bottom
+     - Venue name and address near bottom
+     - Promoter name often small, at top or bottom
+     - "b2b", "vs", "&amp;" indicate multiple artists on one line
+     - Date formats vary: "Saturday March 15th", "03.15.97", "15/03/1997"
+  3. Ask LLM to return a JSON object with:
+     - artists: [{name: str, confidence: float}]
+     - venue: {name: str, confidence: float} | null
+     - date: {text: str, confidence: float} | null
+     - promoter: {name: str, confidence: float} | null
+     - genre_tags: [str]
+     - ticket_price: str | null
+  4. Parse the JSON response (handle markdown code fences in LLM output).
+  5. Post-process: use TextNormalizer.split_artist_names() on each artist name
+     to handle "Artist1 b2b Artist2" entries.
+  6. Assign EntityType to each entity and build ExtractedEntities.
+
+- _build_extraction_prompt(self, ocr_text: str) -> str: builds the LLM prompt
+- _parse_llm_response(self, response: str) -> dict: extracts JSON from LLM response
+  (handles ```json fences, validates structure)
+
+Error handling: If LLM returns invalid JSON, retry once with a simpler prompt.
+If still fails, raise EntityExtractionError.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.entity_extractor import EntityExtractor; print('EntityExtractor imported')"
+3. Run: black --check src/services/
+4. Run: ruff check src/services/
+
+After completing, commit with message:
+"feat(extraction): implement LLM-based entity extractor for rave flier text parsing"
+
+SESSION COMPLETE: B3 (Entity Extractor)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/services/entity_extractor.py</code> — LLM-based structured extraction</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE C: RESEARCH PROVIDERS
+         ================================================================ -->
+    <section id="phaseC">
+      <h2>Phase C: Research Providers <span class="session-badge badge-blocker">CRITICAL</span></h2>
+
+      <!-- Session C1 -->
+      <div class="session" id="sC1">
+        <div class="session-header">
+          <h3>Session C1: Discogs API + Scrape Fallback</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the primary music database provider (Discogs API) and a scraping fallback for when the API rate limit is hit or data is incomplete.</p>
+          <p><strong>Depends on:</strong> A2, A3, A4</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/music_db_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py (Release, Label, Artist)
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py (DISCOGS_CONSUMER_KEY, DISCOGS_CONSUMER_SECRET)
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/errors.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/logging.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/text_normalizer.py
+
+TASK: Implement Discogs API provider (primary music database) and Discogs web scraping fallback.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/discogs_api_provider.py:
+class DiscogsAPIProvider(IMusicDatabaseProvider):
+- __init__: accepts Settings (for API keys). Initialize python3-discogs-client lazily.
+  Configure user agent as "raiveFlier/0.1.0".
+- search_artist: Use discogs_client.search(name, type='artist'). Map results to List[ArtistSearchResult].
+  Use text_normalizer fuzzy matching to score confidence of each result vs query.
+- get_artist_releases: Fetch artist.releases from Discogs API. Filter to before_date if provided.
+  Map to List[Release] with title, label, catalog_number, year, format, discogs_url, genres, styles.
+  Respect rate limit (60 req/min) — implement simple async sleep-based throttle.
+- get_artist_labels: Extract unique labels from the artist's release list.
+- get_release_details: Fetch a single release by ID, return Release model.
+- is_available: Check if consumer key/secret are configured and non-empty.
+- get_provider_name: "discogs_api"
+
+Rate limiting: Track last request time. If less than 1 second since last request, asyncio.sleep the difference.
+The Discogs API returns X-Discogs-Ratelimit-Remaining header — respect it.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/discogs_scrape_provider.py:
+class DiscogsScrapeProvider(IMusicDatabaseProvider):
+- __init__: accepts httpx.AsyncClient (injected for testability)
+- search_artist: Scrape https://www.discogs.com/search/?q={name}&amp;type=artist using httpx + BeautifulSoup.
+  Parse search results page for artist names, IDs, and URLs.
+- get_artist_releases: Scrape the artist's discography page.
+  Parse the HTML table of releases into Release models.
+  Filter to before_date if provided.
+- get_artist_labels: Extract labels from scraped releases.
+- get_release_details: Scrape individual release page.
+- is_available: always True (no API key needed)
+- get_provider_name: "discogs_scrape"
+
+IMPORTANT: Add respectful delays (2 seconds between requests). Set a proper User-Agent header.
+Handle HTTP errors gracefully (403, 429, 500) — return empty results, don't crash.
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/__init__.py:
+Export both providers.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.providers.music_db import DiscogsAPIProvider, DiscogsScrapeProvider; print('Discogs providers imported')"
+3. Run: black --check src/providers/music_db/
+4. Run: ruff check src/providers/music_db/
+
+After completing, commit with message:
+"feat(providers): implement Discogs API and scraping fallback music database providers"
+
+SESSION COMPLETE: C1 (Discogs Providers)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/providers/music_db/discogs_api_provider.py</code></li>
+              <li><code>src/providers/music_db/discogs_scrape_provider.py</code></li>
+              <li><code>src/providers/music_db/__init__.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session C2 -->
+      <div class="session" id="sC2">
+        <div class="session-header">
+          <h3>Session C2: MusicBrainz + DuckDuckGo Search</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the MusicBrainz complementary music database and DuckDuckGo free web search provider.</p>
+          <p><strong>Depends on:</strong> A2, A3, A4</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/music_db_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/web_search_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py
+
+TASK: Implement MusicBrainz provider and DuckDuckGo web search provider.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/musicbrainz_provider.py:
+class MusicBrainzProvider(IMusicDatabaseProvider):
+- __init__: accepts Settings. Call musicbrainzngs.set_useragent() with app name/version/contact from settings.
+- search_artist: Use musicbrainzngs.search_artists(query=name). Map results to ArtistSearchResult.
+  MusicBrainz returns disambiguation strings — include them.
+- get_artist_releases: Use musicbrainzngs.browse_releases(artist=artist_id) with pagination.
+  MusicBrainz rate limit: 1 req/sec — enforce with asyncio.sleep.
+  Filter to before_date. Map to Release models.
+  Note: MusicBrainz IDs are UUIDs (strings), not integers.
+- get_artist_labels: Extract labels from release data (label-info field).
+- get_release_details: Use musicbrainzngs.get_release_by_id() with includes=['labels','recordings'].
+- is_available: always True (no key required)
+- get_provider_name: "musicbrainz"
+
+Rate limiting: Enforce 1 request per second minimum. Track via asyncio.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/search/duckduckgo_provider.py:
+class DuckDuckGoSearchProvider(IWebSearchProvider):
+- __init__: no config needed (fully free, no key)
+- search: Use duckduckgo_search.AsyncDDGS().atext(query, max_results=num_results).
+  If before_date provided, append "before:{YYYY-MM-DD}" to the query string.
+  Map results to SearchResult objects (title, url/href, snippet/body, date).
+  Handle exceptions: DuckDuckGo may rate limit — catch and return empty results with warning log.
+- is_available: always True
+- get_provider_name: "duckduckgo"
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/search/__init__.py:
+Export DuckDuckGoSearchProvider.
+
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/__init__.py to also export MusicBrainzProvider.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.providers.music_db import MusicBrainzProvider; from src.providers.search import DuckDuckGoSearchProvider; print('MusicBrainz + DuckDuckGo imported')"
+3. Run: black --check src/providers/music_db/ src/providers/search/
+4. Run: ruff check src/providers/music_db/ src/providers/search/
+
+After completing, commit with message:
+"feat(providers): implement MusicBrainz and DuckDuckGo search providers"
+
+SESSION COMPLETE: C2 (MusicBrainz + DuckDuckGo)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/providers/music_db/musicbrainz_provider.py</code></li>
+              <li><code>src/providers/search/duckduckgo_provider.py</code></li>
+              <li><code>src/providers/search/__init__.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session C3 -->
+      <div class="session" id="sC3">
+        <div class="session-header">
+          <h3>Session C3: Article Scraper + Wayback + Text Normalizer</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement article content extraction (trafilatura), Internet Archive Wayback Machine provider, and the LLM provider adapters.</p>
+          <p><strong>Depends on:</strong> A2, A3, A4</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/article_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py
+
+TASK: Implement article scraping providers, Wayback Machine provider, and all LLM provider adapters.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/article/web_scraper_provider.py:
+class WebScraperProvider(IArticleProvider):
+- __init__: accepts httpx.AsyncClient (optional, creates default if not provided)
+- extract_content: Fetch URL with httpx, then use trafilatura.extract() to get clean article text.
+  Map to ArticleContent (title from trafilatura metadata, text, author, date, url).
+  Handle timeouts (10 second limit), HTTP errors, and extraction failures gracefully.
+- check_availability: HEAD request to URL, return True if 200.
+- is_available: always True
+- get_provider_name: "web_scraper"
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/article/wayback_provider.py:
+class WaybackProvider(IArticleProvider):
+- __init__: accepts httpx.AsyncClient
+- extract_content: First check Wayback Machine availability API:
+  GET https://archive.org/wayback/available?url={url}
+  If snapshot exists, fetch the archived version and extract with trafilatura.
+  Return ArticleContent with the Wayback URL as source.
+- check_availability: Query Wayback API, return True if snapshot exists.
+- is_available: always True
+- get_provider_name: "wayback"
+Useful for finding articles that have been taken down — critical for underground music history.
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/article/__init__.py
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/openai_provider.py:
+class OpenAILLMProvider(ILLMProvider):
+- __init__: accepts Settings. Initialize openai.AsyncOpenAI client with api_key from settings.
+  Default model: "gpt-4o" for vision, "gpt-4o-mini" for text.
+- complete: Use client.chat.completions.create() with system + user messages.
+- vision_extract: Use chat.completions.create() with image content (base64 encoded).
+  Image passed as {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+- supports_vision: True
+- is_available: Check OPENAI_API_KEY is set and non-empty.
+- validate_credentials: Try a minimal API call (list models or small completion).
+- get_provider_name: "openai"
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/anthropic_provider.py:
+class AnthropicLLMProvider(ILLMProvider):
+- __init__: accepts Settings. Initialize anthropic.AsyncAnthropic client.
+  Default model: "claude-sonnet-4-20250514".
+- complete: Use client.messages.create() with system param and user message.
+- vision_extract: Use messages.create() with image content block
+  (type="image", source={"type":"base64", "media_type":"image/jpeg", "data": b64}).
+- supports_vision: True
+- is_available: Check ANTHROPIC_API_KEY is set.
+- validate_credentials: Try a minimal completion.
+- get_provider_name: "anthropic"
+
+FILE 6 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/ollama_provider.py:
+class OllamaLLMProvider(ILLMProvider):
+- __init__: accepts Settings. Uses openai.AsyncOpenAI with base_url=OLLAMA_BASE_URL + "/v1".
+  Default model: "llava" for vision, "llama3.1" for text.
+- complete: Same as OpenAI (Ollama exposes OpenAI-compatible API).
+- vision_extract: Same as OpenAI vision format (Ollama supports it for llava).
+- supports_vision: True (assumes llava or similar is available)
+- is_available: Check OLLAMA_BASE_URL is set, try to connect.
+- validate_credentials: Try listing models from Ollama.
+- get_provider_name: "ollama"
+
+FILE 7 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/__init__.py
+
+FILE 8 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/cache/memory_cache.py:
+class MemoryCacheProvider(ICacheProvider):
+- Simple in-memory cache using cachetools.TTLCache.
+- __init__: accepts max_size (int=1000), ttl (int=3600)
+- Implement all ICacheProvider methods.
+
+FILE 9 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/cache/__init__.py
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.providers.article import WebScraperProvider, WaybackProvider; from src.providers.llm import OpenAILLMProvider, AnthropicLLMProvider, OllamaLLMProvider; from src.providers.cache import MemoryCacheProvider; print('All providers imported')"
+3. Run: black --check src/providers/
+4. Run: ruff check src/providers/
+
+After completing, commit with message:
+"feat(providers): implement article scrapers, LLM adapters (OpenAI/Anthropic/Ollama), and memory cache"
+
+SESSION COMPLETE: C3 (Article Scrapers + LLM Adapters + Cache)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/providers/article/web_scraper_provider.py</code></li>
+              <li><code>src/providers/article/wayback_provider.py</code></li>
+              <li><code>src/providers/llm/openai_provider.py</code></li>
+              <li><code>src/providers/llm/anthropic_provider.py</code></li>
+              <li><code>src/providers/llm/ollama_provider.py</code></li>
+              <li><code>src/providers/cache/memory_cache.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE D: RESEARCH SERVICES
+         ================================================================ -->
+    <section id="phaseD">
+      <h2>Phase D: Research Services <span class="session-badge badge-critical">HIGH PRIORITY</span></h2>
+
+      <!-- Session D1 -->
+      <div class="session" id="sD1">
+        <div class="session-header">
+          <h3>Session D1: Artist Researcher Service</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the most complex researcher — the artist researcher that pulls discography, gig history, labels, and press from multiple providers. This establishes the pattern for all other researchers.</p>
+          <p><strong>Depends on:</strong> A2, A3, A4, C1, C2, C3</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/music_db_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/web_search_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/article_provider.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/research.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/text_normalizer.py
+7. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/confidence.py
+
+TASK: Implement the ArtistResearcher service that performs deep research on a single artist/DJ.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/artist_researcher.py:
+class ArtistResearcher:
+- __init__: Accepts (all dependency-injected):
+  - music_dbs: List[IMusicDatabaseProvider] (ordered: discogs_api, musicbrainz)
+  - web_search: IWebSearchProvider
+  - article_scraper: IArticleProvider
+  - llm: ILLMProvider
+  - text_normalizer: TextNormalizer
+  - cache: Optional[ICacheProvider]
+
+- async research(self, artist_name: str, before_date: Optional[date] = None) -> ResearchResult:
+  The main research pipeline for a single artist:
+
+  Step 1 — IDENTIFY: Search all music databases for the artist.
+    - Normalize name with text_normalizer
+    - Search each music_db provider
+    - Use fuzzy matching to find best match across results
+    - Cross-reference: if Discogs AND MusicBrainz both find a match, confidence increases
+    - If no match found in any DB, set warning "Artist not found in music databases"
+
+  Step 2 — DISCOGRAPHY: Fetch all releases from matched database entries.
+    - Fetch from primary provider (Discogs)
+    - Filter to releases before before_date if provided
+    - Extract unique labels from releases
+    - If Discogs API fails/rate-limited, try scrape fallback
+    - Merge data from MusicBrainz if available (fill gaps)
+
+  Step 3 — GIG HISTORY: Search for past appearances.
+    - Web search: "{artist_name} DJ set" OR "{artist_name} live" OR "{artist_name} event"
+    - If before_date: add date range filter
+    - Parse search results for event appearances (venue names, dates)
+    - Build List[EventAppearance]
+
+  Step 4 — PRESS: Find articles/interviews mentioning the artist.
+    - Web search: "{artist_name} interview" OR "{artist_name} DJ Mag" OR "{artist_name} Resident Advisor" OR "{artist_name} Mixmag"
+    - If before_date: add date filter
+    - For top 10 results: extract article content with article_scraper
+    - Extract relevant snippets
+    - Build List[ArticleReference] with citation_tier assigned
+
+  Step 5 — COMPILE: Build the final ResearchResult.
+    - Create Artist model with all collected data
+    - Calculate overall confidence from sub-scores
+    - Add warnings for any data gaps
+
+  Private helper methods:
+  - _search_music_databases(name) -> Tuple[Optional[str], Optional[str]]  # (discogs_id, musicbrainz_id)
+  - _fetch_discography(artist_id, provider, before_date) -> List[Release]
+  - _search_gig_history(name, before_date) -> List[EventAppearance]
+  - _search_press(name, before_date) -> List[ArticleReference]
+  - _assign_citation_tier(source_url: str) -> int  # URL pattern matching for tier
+
+  Cache strategy: Cache Discogs/MusicBrainz results by artist name (TTL 1 hour).
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.artist_researcher import ArtistResearcher; print('ArtistResearcher imported')"
+3. Run: black --check src/services/
+4. Run: ruff check src/services/
+
+After completing, commit with message:
+"feat(research): implement deep artist researcher with multi-source discography and press lookup"
+
+SESSION COMPLETE: D1 (Artist Researcher)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/services/artist_researcher.py</code> — deep artist research with 5-step pipeline</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session D2 -->
+      <div class="session" id="sD2">
+        <div class="session-header">
+          <h3>Session D2: Venue, Promoter, Date Context Researchers</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the remaining three researcher services, following the pattern established by ArtistResearcher in D1.</p>
+          <p><strong>Depends on:</strong> D1 (for pattern reference), C2, C3</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/artist_researcher.py (PATTERN TO FOLLOW)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py (Venue, Promoter)
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/research.py (DateContext, ResearchResult)
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/web_search_provider.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py
+
+TASK: Implement VenueResearcher, PromoterResearcher, and DateContextResearcher — following the same DI and async pattern as ArtistResearcher.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/venue_researcher.py:
+class VenueResearcher:
+- __init__: web_search (IWebSearchProvider), article_scraper (IArticleProvider), llm (ILLMProvider)
+- async research(self, venue_name: str, city: Optional[str] = None) -> ResearchResult:
+  Step 1: Web search for venue history ("{venue_name} venue history", "{venue_name} {city} nightclub")
+  Step 2: Scrape top results for historical context
+  Step 3: Use LLM to synthesize venue history, notable events, cultural significance
+  Step 4: Search for articles mentioning the venue
+  Step 5: Build Venue model and ResearchResult
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/promoter_researcher.py:
+class PromoterResearcher:
+- __init__: web_search, article_scraper, llm
+- async research(self, promoter_name: str) -> ResearchResult:
+  Step 1: Web search for promoter ("{promoter_name} promoter events", "{promoter_name} rave")
+  Step 2: Scrape results for event history
+  Step 3: Use LLM to identify affiliated artists and venues from scraped content
+  Step 4: Build Promoter model and ResearchResult
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/date_context_researcher.py:
+class DateContextResearcher:
+- __init__: web_search, article_scraper, llm
+- async research(self, event_date: date, city: Optional[str] = None) -> ResearchResult:
+  Step 1: Web search for what was happening in the scene around that date:
+    - "{city} rave scene {year}" or "electronic music scene {month} {year}"
+    - "rave culture {year}" for broader context
+  Step 2: Search for cultural/historical context of the date
+    - What was happening in music generally
+    - Any relevant legislation (Criminal Justice Act, etc.)
+    - Notable events around that time
+  Step 3: Use LLM to synthesize a DateContext with scene_context, city_context, cultural_context
+  Step 4: Build ResearchResult
+
+All three researchers must:
+- Use structured logging (get_logger)
+- Handle errors gracefully (return ResearchResult with warnings, don't crash)
+- Assign citation_tier to all ArticleReference objects
+- Cache results where appropriate
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.venue_researcher import VenueResearcher; from src.services.promoter_researcher import PromoterResearcher; from src.services.date_context_researcher import DateContextResearcher; print('All researchers imported')"
+3. Run: black --check src/services/
+4. Run: ruff check src/services/
+
+After completing, commit with message:
+"feat(research): implement venue, promoter, and date context researcher services"
+
+SESSION COMPLETE: D2 (Venue, Promoter, Date Researchers)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/services/venue_researcher.py</code></li>
+              <li><code>src/services/promoter_researcher.py</code></li>
+              <li><code>src/services/date_context_researcher.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session D3 -->
+      <div class="session" id="sD3">
+        <div class="session-header">
+          <h3>Session D3: Research Orchestrator + Citation Service</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the research orchestrator that runs all entity researchers in parallel, and the citation service that ranks and verifies sources.</p>
+          <p><strong>Depends on:</strong> D1, D2</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/artist_researcher.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/venue_researcher.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/promoter_researcher.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/date_context_researcher.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py (ExtractedEntities)
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/analysis.py (Citation)
+
+TASK: Implement the ResearchService orchestrator and CitationService.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/research_service.py:
+class ResearchService:
+- __init__: Accepts all four researchers (artist, venue, promoter, date_context) via DI.
+- async research_all(self, entities: ExtractedEntities, event_date: Optional[date] = None) -> List[ResearchResult]:
+  Run ALL entity research in parallel using asyncio.gather:
+  1. Create a task for each artist in entities.artists → artist_researcher.research(name, before_date=event_date)
+  2. Create a task for venue → venue_researcher.research(name, city)
+  3. Create a task for promoter → promoter_researcher.research(name)
+  4. Create a task for date → date_context_researcher.research(event_date, city)
+  5. Gather all tasks with return_exceptions=True
+  6. For tasks that raised exceptions: create a ResearchResult with warnings and confidence=0
+  7. For successful tasks: collect results
+  8. Return all results
+
+  Key: asyncio.gather runs all research CONCURRENTLY. A flier with 5 artists + venue + promoter + date = 8 parallel research jobs.
+
+- async _parse_event_date(self, date_entity: Optional[ExtractedEntity]) -> Optional[date]:
+  Parse date text from OCR into a Python date object.
+  Handle many formats: "Saturday March 15th 1997", "03/15/97", "15.03.1997", "March 15, 1997".
+  Use dateutil.parser if available, else manual parsing.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/citation_service.py:
+class CitationService:
+  Citation tier hierarchy (class constant):
+  TIER_MAP = {
+    "book": 1,       # Published books, first-hand accounts
+    "press": 2,      # Contemporary press/magazine articles
+    "flier": 3,      # Original fliers/event postings
+    "database": 4,   # Discogs, MusicBrainz records
+    "web": 5,        # Web articles/interviews
+    "forum": 6,      # Community archives/forums
+  }
+
+  URL_TIER_PATTERNS = {
+    # Tier 2 — established music press
+    r"djmag\.com": 2,
+    r"residentadvisor\.net": 2,
+    r"mixmag\.net": 2,
+    r"xlr8r\.com": 2,
+    r"thequietus\.com": 2,
+    r"pitchfork\.com": 2,
+    r"factmag\.com": 2,
+    # Tier 3 — event/flier archives
+    r"19hz\.info": 3,
+    r"flyerarchive": 3,
+    # Tier 4 — databases
+    r"discogs\.com": 4,
+    r"musicbrainz\.org": 4,
+    # Tier 5 — general web
+    r"wikipedia\.org": 5,
+    # Tier 6 — forums
+    r"reddit\.com": 6,
+    r"discogs\.com/forum": 6,
+  }
+
+- rank_citations(self, citations: List[Citation]) -> List[Citation]:
+  Sort by tier (ascending), then by date (newer first within same tier).
+- assign_tier_from_url(self, url: str) -> int:
+  Match URL against URL_TIER_PATTERNS. Default to tier 5.
+- async verify_citation(self, citation: Citation) -> bool:
+  Check if URL is still accessible (HEAD request). Return True/False.
+- async verify_all(self, citations: List[Citation]) -> List[Tuple[Citation, bool]]:
+  Verify all citations in parallel. Return list of (citation, is_accessible).
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.research_service import ResearchService; from src.services.citation_service import CitationService; print('Research orchestrator + citation service imported')"
+3. Run: python -c "from src.services.citation_service import CitationService; cs = CitationService(); print(cs.assign_tier_from_url('https://www.residentadvisor.net/features/1234'))"
+4. Run: black --check src/services/
+5. Run: ruff check src/services/
+
+After completing, commit with message:
+"feat(research): implement parallel research orchestrator and citation ranking service"
+
+SESSION COMPLETE: D3 (Research Orchestrator + Citation Service)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/services/research_service.py</code> — parallel research orchestrator</li>
+              <li><code>src/services/citation_service.py</code> — 6-tier citation ranking + URL verification</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE E: PIPELINE + API
+         ================================================================ -->
+    <section id="phaseE">
+      <h2>Phase E: Pipeline + API <span class="session-badge badge-critical">HIGH PRIORITY</span></h2>
+
+      <!-- Session E1 -->
+      <div class="session" id="sE1">
+        <div class="session-header">
+          <h3>Session E1: Pipeline Orchestrator + Confirmation Gate</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the central five-phase pipeline orchestrator and the confirmation gate that pauses for user review after OCR extraction.</p>
+          <p><strong>Depends on:</strong> B2 (OCR service), B3 (entity extractor), D3 (research service)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/pipeline.py (PipelineState, PipelinePhase)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ocr_service.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/entity_extractor.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/research_service.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py
+
+TASK: Implement the pipeline orchestrator, confirmation gate, and progress tracker.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py:
+class FlierAnalysisPipeline:
+  """Central orchestrator for the five-phase flier analysis pipeline."""
+
+- __init__: Accepts (all DI):
+  - ocr_service: OCRService
+  - entity_extractor: EntityExtractor
+  - research_service: ResearchService
+  - interconnection_service: InterconnectionService (will be None until Phase F — handle gracefully)
+  - citation_service: CitationService
+  - progress_tracker: ProgressTracker
+
+- async run_phase_1(self, state: PipelineState) -> PipelineState:
+  """Phase 1: OCR + Entity Extraction. Returns state paused at USER_CONFIRMATION phase."""
+  1. Set current_phase = OCR, progress = 10%
+  2. Run ocr_service.extract_text(state.flier) → store in state.ocr_result
+  3. Set current_phase = ENTITY_EXTRACTION, progress = 30%
+  4. Run entity_extractor.extract(state.ocr_result) → store in state.extracted_entities
+  5. Set current_phase = USER_CONFIRMATION, progress = 40%
+  6. Return state — pipeline PAUSES here until user confirms
+
+- async run_phases_2_through_5(self, state: PipelineState) -> PipelineState:
+  """Runs after user confirmation. Research → Interconnection → Output."""
+  1. Validate state.confirmed_entities exists (user confirmed)
+  2. Parse event_date from confirmed date entity
+  3. Set current_phase = RESEARCH, progress = 45%
+  4. Run research_service.research_all(state.confirmed_entities, event_date)
+     Update progress incrementally as results come in (45% → 75%)
+  5. Store results in state.research_results
+  6. Set current_phase = INTERCONNECTION, progress = 80%
+  7. If interconnection_service available:
+     Run interconnection_service.analyze(state.research_results, state.confirmed_entities)
+     Store in state.interconnection_map
+  8. Set current_phase = OUTPUT, progress = 95%
+  9. Verify/rank all citations via citation_service
+  10. Set completed_at = now, progress = 100%
+  11. Return state
+
+- Error handling: Catch all exceptions per phase, store in state.errors as PipelineError,
+  set recoverable=True for non-fatal errors (e.g., one artist research failed),
+  continue pipeline if possible. Only raise if entire phase fails.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/confirmation_gate.py:
+class ConfirmationGate:
+  """Manages pipeline pause at Phase 3 for user review."""
+  Private _pending_sessions: Dict[str, PipelineState]
+
+- async submit_for_review(self, state: PipelineState) -> str:
+  Store state by session_id. Return session_id.
+- async get_pending(self, session_id: str) -> Optional[PipelineState]:
+  Return stored state for user review.
+- async confirm(self, session_id: str, confirmed_entities: ExtractedEntities) -> PipelineState:
+  Pop state from pending, set confirmed_entities, return state ready for phases 2-5.
+- async cancel(self, session_id: str) -> bool:
+  Remove from pending sessions.
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/progress_tracker.py:
+class ProgressTracker:
+  """Tracks and broadcasts pipeline progress via callbacks."""
+  Private _listeners: Dict[str, List[Callable]]
+
+- async update(self, session_id: str, phase: PipelinePhase, progress: float, message: str):
+  Store current state. Notify all registered listeners.
+- register_listener(self, session_id: str, callback: Callable): add listener
+- unregister_listener(self, session_id: str, callback: Callable): remove listener
+- get_status(self, session_id: str) -> dict: return current phase + progress
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/__init__.py
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.pipeline.orchestrator import FlierAnalysisPipeline; from src.pipeline.confirmation_gate import ConfirmationGate; from src.pipeline.progress_tracker import ProgressTracker; print('Pipeline components imported')"
+3. Run: black --check src/pipeline/
+4. Run: ruff check src/pipeline/
+
+After completing, commit with message:
+"feat(pipeline): implement five-phase orchestrator with confirmation gate and progress tracking"
+
+SESSION COMPLETE: E1 (Pipeline Orchestrator)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/pipeline/orchestrator.py</code></li>
+              <li><code>src/pipeline/confirmation_gate.py</code></li>
+              <li><code>src/pipeline/progress_tracker.py</code></li>
+              <li><code>src/pipeline/__init__.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session E2 -->
+      <div class="session" id="sE2">
+        <div class="session-header">
+          <h3>Session E2: FastAPI Routes + Schemas + WebSocket</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement all API endpoints, request/response schemas, and WebSocket for real-time progress updates.</p>
+          <p><strong>Depends on:</strong> E1 (pipeline must exist)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/confirmation_gate.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/progress_tracker.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/flier.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/pipeline.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/analysis.py
+
+TASK: Create the FastAPI API layer — routes, Pydantic schemas, and WebSocket handler.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/schemas.py:
+Pydantic request/response schemas for the API:
+
+- FlierUploadResponse: session_id (str), extracted_entities (ExtractedEntities),
+  ocr_confidence (float), provider_used (str)
+
+- ConfirmEntitiesRequest: artists (List[dict] with name + entity_type),
+  venue (Optional[dict]), date (Optional[dict]), promoter (Optional[dict]),
+  genre_tags (List[str]), ticket_price (Optional[str])
+
+- ConfirmResponse: session_id (str), status (str = "research_started"),
+  message (str)
+
+- PipelineStatusResponse: session_id (str), phase (str), progress (float),
+  message (Optional[str]), errors (List[dict])
+
+- FlierAnalysisResponse: session_id (str), status (str),
+  extracted_entities (Optional[ExtractedEntities]),
+  research_results (Optional[List[dict]]),
+  interconnection_map (Optional[dict]),
+  completed_at (Optional[datetime])
+
+- HealthResponse: status (str), version (str), providers (dict)
+- ProvidersResponse: providers (List[dict] — name, type, available, details)
+- ErrorResponse: error (str), detail (Optional[str])
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/routes.py:
+FastAPI APIRouter with prefix="/api/v1".
+
+POST /fliers/upload:
+  - Accept UploadFile (image/jpeg, image/png, image/webp)
+  - Validate file type and size (max 10MB)
+  - Create FlierImage from upload (generate UUID, compute SHA-256 hash)
+  - Create PipelineState
+  - Run pipeline.run_phase_1(state) in background task
+  - Submit to confirmation_gate
+  - Return FlierUploadResponse
+
+POST /fliers/{session_id}/confirm:
+  - Accept ConfirmEntitiesRequest body
+  - Convert to ExtractedEntities
+  - Call confirmation_gate.confirm(session_id, entities)
+  - Run pipeline.run_phases_2_through_5(state) as background task
+  - Return ConfirmResponse
+
+GET /fliers/{session_id}/status:
+  - Get progress from progress_tracker
+  - Return PipelineStatusResponse
+
+GET /fliers/{session_id}/results:
+  - Get completed PipelineState
+  - Return FlierAnalysisResponse with full results
+  - If not complete, return status with current progress
+
+GET /health:
+  - Return app version, status, available providers
+
+GET /providers:
+  - List all configured providers, their types, and availability status
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/websocket.py:
+WebSocket endpoint at /ws/progress/{session_id}:
+- On connect: register a listener with progress_tracker
+- On progress update: send JSON message with phase, progress %, message
+- On disconnect: unregister listener
+- Handle connection errors gracefully
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/middleware.py:
+- CORS middleware (allow all origins in development, configurable for production)
+- Request logging middleware (log method, path, status, duration via structlog)
+- Error handling middleware (catch RaiveFlierError subclasses, return ErrorResponse)
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/__init__.py
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.api.routes import router; from src.api.schemas import FlierUploadResponse; print('API layer imported')"
+3. Run: black --check src/api/
+4. Run: ruff check src/api/
+
+After completing, commit with message:
+"feat(api): implement FastAPI routes, schemas, WebSocket progress, and middleware"
+
+SESSION COMPLETE: E2 (FastAPI Routes + WebSocket)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/api/schemas.py</code> — all request/response models</li>
+              <li><code>src/api/routes.py</code> — 6 API endpoints</li>
+              <li><code>src/api/websocket.py</code> — real-time progress</li>
+              <li><code>src/api/middleware.py</code> — CORS, logging, error handling</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session E3 -->
+      <div class="session" id="sE3">
+        <div class="session-header">
+          <h3>Session E3: FastAPI Main + Middleware + Static Serving</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the FastAPI application entry point that wires everything together — dependency injection, route registration, static file serving, and startup/shutdown events.</p>
+          <p><strong>Depends on:</strong> E1, E2, and all provider sessions (C1-C3)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/routes.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/middleware.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/loader.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/__init__.py
+7. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/__init__.py
+8. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/__init__.py
+
+TASK: Create the main FastAPI app that wires together all providers, services, and routes via dependency injection.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/main.py:
+This is the application entry point.
+
+1. Load settings from .env via Settings
+2. Load config from config/config.yaml via loader
+3. Configure structured logging based on APP_ENV
+
+4. DEPENDENCY INJECTION — Create provider instances based on available config:
+   LLM Providers:
+   - Check which API keys are configured
+   - Create available LLM providers (OpenAI, Anthropic, Ollama)
+   - Select primary LLM based on config priority
+
+   OCR Providers (ordered by priority):
+   - LLMVisionOCRProvider(primary_llm) if primary LLM supports vision
+   - EasyOCRProvider(ImagePreprocessor())
+   - TesseractOCRProvider(ImagePreprocessor())
+
+   Music DB Providers:
+   - DiscogsAPIProvider(settings) if Discogs keys configured
+   - DiscogsScrapeProvider(httpx.AsyncClient())
+   - MusicBrainzProvider(settings)
+
+   Search Providers:
+   - DuckDuckGoSearchProvider()
+   - (SerperProvider if SERPER_API_KEY configured — future)
+
+   Article Providers:
+   - WebScraperProvider()
+   - WaybackProvider()
+
+   Cache:
+   - MemoryCacheProvider()
+
+5. Create service instances:
+   - OCRService(ocr_providers, ImagePreprocessor())
+   - EntityExtractor(primary_llm, TextNormalizer())
+   - ArtistResearcher(music_dbs, primary_search, primary_article_scraper, primary_llm, TextNormalizer(), cache)
+   - VenueResearcher(primary_search, primary_article_scraper, primary_llm)
+   - PromoterResearcher(primary_search, primary_article_scraper, primary_llm)
+   - DateContextResearcher(primary_search, primary_article_scraper, primary_llm)
+   - ResearchService(artist_researcher, venue_researcher, promoter_researcher, date_researcher)
+   - CitationService()
+   - ProgressTracker()
+   - ConfirmationGate()
+   - FlierAnalysisPipeline(ocr_service, entity_extractor, research_service, None, citation_service, progress_tracker)
+
+6. Store all services on app.state for access by route handlers.
+
+7. Create FastAPI app:
+   - Title: "raiveFlier API"
+   - Version: "0.1.0"
+   - Description from project purpose
+   - Include router from routes.py
+   - Add middleware from middleware.py
+   - Mount /static for frontend/css and frontend/js
+   - Mount / for frontend/index.html (serve SPA)
+
+8. Startup event: log available providers
+9. Shutdown event: close httpx clients
+
+10. Add __main__ block:
+    if __name__ == "__main__":
+        uvicorn.run("src.main:app", host=settings.app_host, port=settings.app_port, reload=(settings.app_env == "development"))
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Create a minimal frontend/index.html with just: &lt;html&gt;&lt;body&gt;&lt;h1&gt;raiveFlier&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;
+3. Run: python -c "from src.main import app; print(f'App created: {app.title}')"
+4. Run: timeout 5 uvicorn src.main:app --host 0.0.0.0 --port 8000 || true
+   (Should start without import errors — will timeout after 5 seconds, that's expected)
+5. Run: black --check src/
+6. Run: ruff check src/
+
+After completing, commit with message:
+"feat(app): wire FastAPI application with dependency injection and static file serving"
+
+SESSION COMPLETE: E3 (FastAPI Main)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/main.py</code> — FastAPI app with full DI wiring</li>
+              <li>Minimal <code>frontend/index.html</code> placeholder</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE F: LLM SYNTHESIS
+         ================================================================ -->
+    <section id="phaseF">
+      <h2>Phase F: LLM Synthesis <span class="session-badge badge-critical">HIGH PRIORITY</span></h2>
+
+      <!-- Session F1 -->
+      <div class="session" id="sF1">
+        <div class="session-header">
+          <h3>Session F1: Interconnection Service</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the LLM-driven interconnection analysis that traces relationships between all researched entities — the intellectual core of the application.</p>
+          <p><strong>Depends on:</strong> D3 (research results), A2 (analysis models)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/analysis.py (InterconnectionMap, RelationshipEdge, PatternInsight, Citation)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/research.py (ResearchResult)
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/citation_service.py
+
+TASK: Implement the InterconnectionService — the LLM-powered analysis engine that traces all links between entities.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/interconnection_service.py:
+class InterconnectionService:
+- __init__: accepts ILLMProvider, CitationService
+
+- async analyze(self, research_results: List[ResearchResult], entities: ExtractedEntities) -> InterconnectionMap:
+
+  Step 1 — BUILD CONTEXT: Compile all research results into a structured text summary.
+  For each entity, summarize: name, type, key data points, sources.
+  This becomes the context for the LLM.
+
+  Step 2 — LLM ANALYSIS: Send context to LLM with a detailed synthesis prompt:
+  PROMPT (include verbatim):
+  """You are an expert music historian specializing in underground electronic music culture.
+
+  You have been given detailed research on all entities connected to a single rave/electronic music event flier. Your task is to trace ALL interconnections, relationships, and historical threads linking these entities.
+
+  RESEARCH DATA:
+  {compiled_context}
+
+  ANALYSIS REQUIREMENTS:
+  1. SHARED LABELS: Identify any record labels that multiple artists on this flier have released on.
+  2. SHARED LINEUPS: Identify previous events where two or more of these artists appeared together.
+  3. PROMOTER-ARTIST LINKS: Trace how the promoter connects to each artist (past bookings, shared scenes, geographic ties).
+  4. VENUE-SCENE CONNECTIONS: How does this venue fit into the broader scene? What kind of events is it known for?
+  5. GEOGRAPHIC PATTERNS: Are these artists from the same city/region? Is there a geographic cluster?
+  6. TEMPORAL PATTERNS: How does this event fit into the timeline of these artists' careers?
+  7. SCENE CONTEXT: What movement or subgenre does this event represent? Who are the key figures?
+
+  CRITICAL RULES:
+  - EVERY claim must cite a specific source from the research data provided
+  - If you cannot find a source for a claim, DO NOT include it
+  - Distinguish between confirmed facts and reasonable inferences
+  - Flag uncertain connections with [UNCERTAIN]
+  - Prioritize first-hand sources (books, contemporary press) over later retrospectives
+
+  Return your analysis as JSON:
+  {
+    "relationships": [
+      {"source": "entity1", "target": "entity2", "type": "relationship_type", "details": "explanation", "source_citation": "where this fact comes from", "confidence": 0.0-1.0}
+    ],
+    "patterns": [
+      {"type": "pattern_type", "description": "what the pattern is", "entities": ["entity1", "entity2"], "source_citation": "source"}
+    ],
+    "narrative": "A 2-3 paragraph narrative summary of how all these entities connect, written in an engaging style suitable for a music history reader."
+  }"""
+
+  Step 3 — PARSE + VALIDATE: Parse LLM JSON response.
+  - Validate each relationship has a source_citation that maps to actual research data
+  - Discard relationships with no valid citation
+  - Build RelationshipEdge objects with proper Citation objects (tier assigned via CitationService)
+  - Build PatternInsight objects
+  - Build InterconnectionMap
+
+  Step 4 — ENRICH: For relationships the LLM identified as [UNCERTAIN], lower confidence score.
+
+Private helpers:
+- _compile_research_context(results: List[ResearchResult]) -> str
+- _parse_analysis_response(response: str) -> dict
+- _validate_citations(relationships: list, research_data: List[ResearchResult]) -> list
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.interconnection_service import InterconnectionService; print('InterconnectionService imported')"
+3. Run: black --check src/services/
+4. Run: ruff check src/services/
+
+After completing:
+- Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/main.py to inject InterconnectionService into the pipeline (replace None).
+- Commit with message:
+"feat(synthesis): implement LLM-driven interconnection analysis with citation validation"
+
+SESSION COMPLETE: F1 (Interconnection Service)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/services/interconnection_service.py</code></li>
+              <li>Updated <code>src/main.py</code> — InterconnectionService wired into pipeline</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session F2 -->
+      <div class="session" id="sF2">
+        <div class="session-header">
+          <h3>Session F2: Citation Verification + Output Formatting</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Add citation URL verification and create a structured output formatter that prepares analysis results for the frontend.</p>
+          <p><strong>Depends on:</strong> D3 (citation service), F1 (interconnection service)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/citation_service.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/interconnection_service.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/analysis.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/research.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py
+
+TASK: Enhance the citation service with URL verification and create an output formatter.
+
+PART 1 — Enhance CitationService:
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/citation_service.py:
+
+Add these methods:
+- async verify_citation(self, citation: Citation) -> Tuple[Citation, bool]:
+  HEAD request to citation.source_url (if present). 5-second timeout.
+  Return (citation, is_accessible). If URL is down, try Wayback Machine.
+- async verify_batch(self, citations: List[Citation], max_concurrent: int = 10) -> List[Tuple[Citation, bool]]:
+  Verify all citations concurrently with semaphore limiting.
+- format_citation(self, citation: Citation) -> str:
+  Format as human-readable citation string:
+  Tier 1 (book): "Author, Title, Publisher, Year, p.XX"
+  Tier 2 (press): "Title — Publication, Date. URL"
+  Tier 4 (database): "Discogs: Artist — Release. URL"
+  Tier 5-6 (web/forum): "Title, Source. URL"
+
+PART 2 — Output Formatter:
+Create /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/output_formatter.py:
+class OutputFormatter:
+- format_full_analysis(self, state: PipelineState) -> dict:
+  Transform PipelineState into a clean JSON structure optimized for the frontend:
+  {
+    "session_id": str,
+    "flier": { filename, upload_time },
+    "ocr": { raw_text, confidence, provider },
+    "entities": {
+      "artists": [{ name, confidence, confidence_level }],
+      "venue": { name, confidence } | null,
+      "date": { text, parsed_date } | null,
+      "promoter": { name, confidence } | null
+    },
+    "research": {
+      "artists": [{
+        name, discogs_url, releases_count, labels: [str],
+        appearances: [{ event, venue, date }],
+        articles: [{ title, source, url, tier }],
+        confidence
+      }],
+      "venue": { name, history, notable_events, articles },
+      "promoter": { name, event_history, articles },
+      "date_context": { scene, city, cultural }
+    },
+    "interconnections": {
+      "relationships": [{ source, target, type, details, citation, confidence }],
+      "patterns": [{ type, description, entities }],
+      "narrative": str
+    },
+    "citations": [{ text, source, url, tier, accessible }],
+    "warnings": [str],
+    "completed_at": str
+  }
+
+- format_summary(self, state: PipelineState) -> dict:
+  Abbreviated version with just key findings (for status endpoint).
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.output_formatter import OutputFormatter; from src.services.citation_service import CitationService; print('Output formatter + citation verification imported')"
+3. Run: black --check src/services/
+4. Run: ruff check src/services/
+
+After completing, commit with message:
+"feat(output): implement citation verification, formatting, and structured output formatter"
+
+SESSION COMPLETE: F2 (Citation Verification + Output Formatting)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li>Enhanced <code>src/services/citation_service.py</code> — URL verification + formatting</li>
+              <li><code>src/services/output_formatter.py</code> — full + summary output formatting</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE G: FRONTEND
+         ================================================================ -->
+    <section id="phaseG">
+      <h2>Phase G: Frontend <span class="session-badge badge-important">IMPORTANT</span></h2>
+
+      <!-- Session G1 -->
+      <div class="session" id="sG1">
+        <div class="session-header">
+          <h3>Session G1: HTML Shell + CSS + Upload UI</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the frontend HTML shell, CSS design system (Bunker palette with amethyst accent), and the flier image upload UI with drag-and-drop.</p>
+          <p><strong>Depends on:</strong> E2 (API routes must exist for fetch calls)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read these design references:
+1. /Users/aaandy/_andy_ai_projects_2026/design_reference/templates/foundation.css (design tokens)
+2. /Users/aaandy/_andy_ai_projects_2026/design_reference/color/palettes.html (Bunker palette, Jewel accents)
+3. /Users/aaandy/_andy_ai_projects_2026/design_reference/typography/type-systems.html
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/routes.py (API endpoints)
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/schemas.py (response shapes)
+
+TASK: Create the frontend — HTML shell, CSS design system, and upload UI. This is a vanilla JS SPA served by FastAPI. No build step.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/index.html:
+Single-page application shell. Structure:
+
+&lt;!DOCTYPE html&gt; with proper meta tags, viewport, charset.
+Google Fonts link for Space Grotesk, Inter, IBM Plex Mono.
+Link to css/style.css.
+
+Body structure:
+- &lt;header&gt; with app title "raiveFlier" in Space Grotesk
+- &lt;main id="app"&gt; — the SPA container, managed by JS
+- Four view containers (only one visible at a time):
+  1. #upload-view — drag-and-drop upload area
+  2. #confirm-view — entity review/edit (populated by G2)
+  3. #progress-view — pipeline progress (populated by G2)
+  4. #results-view — full results display (populated by G3)
+
+Upload view (#upload-view):
+- Large drop zone with dashed border, centered text "Drop rave flier here"
+- Accepted formats: JPEG, PNG, WEBP. Max 10MB.
+- Also a traditional file input button as fallback
+- On drop/select: show image preview thumbnail
+- "Analyze Flier" submit button
+- On submit: POST to /api/v1/fliers/upload with FormData
+- Show loading spinner during OCR processing
+
+Script tags at bottom: app.js, upload.js (from G1), confirmation.js (G2), results.js (G3), websocket.js (G2)
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/css/style.css:
+raiveFlier-specific design system. UNIQUE to this project per CLAUDE.md Section 7.
+
+Theme: Dark underground rave aesthetic.
+Base: Bunker palette from foundation.css (--bunker-900 through --bunker-100)
+Accent: Amethyst (#6a4a8a primary, #8a6aaa hover, #2a1e3a muted surface)
+Secondary accent: Verdigris (#3a7a60) for success/confirmation states
+Error: Garnet (#8a4050)
+Warning: Amber (#9a7a4a)
+
+CSS custom properties:
+  --color-bg: #0a0a0c
+  --color-surface: #14141a
+  --color-surface-raised: #1e1e24
+  --color-border: #2a2a30
+  --color-text-primary: #d8d5cd
+  --color-text-secondary: #9a9a9e
+  --color-text-muted: #6a6a70
+  --color-accent: #6a4a8a
+  --color-accent-hover: #8a6aaa
+  --color-accent-muted: #2a1e3a
+  --color-success: #3a7a60
+  --color-error: #8a4050
+  --color-warning: #9a7a4a
+
+Typography:
+  --font-display: 'Space Grotesk', sans-serif
+  --font-body: 'Inter', sans-serif
+  --font-mono: 'IBM Plex Mono', monospace
+
+Include:
+- Base reset
+- Layout (max-width 1000px centered container)
+- Header styles (uppercase, letter-spacing, subtle border-bottom)
+- Drop zone styles (dashed border, hover glow effect with amethyst, transition on drag-over)
+- Button styles (.btn-primary with amethyst bg, .btn-secondary outline variant)
+- Card styles (.entity-card for confirmation view)
+- Loading spinner (CSS-only amethyst ring animation)
+- Confidence badges (.confidence-high green, .confidence-medium amber, .confidence-low red)
+- Responsive: works at 320px width minimum
+- Film grain overlay (same SVG pattern from reference templates)
+- WCAG 2.1 AA: 4.5:1 contrast on all text, visible focus indicators, keyboard-accessible
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/app.js:
+Main SPA controller:
+- State management: currentView ("upload", "confirm", "progress", "results")
+- showView(viewName): hide all views, show selected
+- sessionId: stored after upload
+- initApp(): show upload view, attach event listeners
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/upload.js:
+Upload handling:
+- initUpload(): set up drag-and-drop listeners + file input
+- handleDragOver, handleDragLeave, handleDrop events (visual feedback)
+- handleFileSelect(file): validate type/size, show preview, enable submit button
+- submitFlier(file): POST to /api/v1/fliers/upload with FormData
+  On success: store sessionId, populate confirm view, switch to confirm view
+  On error: show error message in upload area
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Open frontend/index.html directly in browser — verify styling, layout, and drop zone appear correctly
+3. Run: timeout 5 uvicorn src.main:app --host 0.0.0.0 --port 8000 || true
+4. If server starts: curl http://localhost:8000/ should return the HTML
+
+After completing, commit with message:
+"feat(frontend): create HTML shell, Bunker+amethyst CSS design system, and drag-and-drop upload UI"
+
+SESSION COMPLETE: G1 (HTML + CSS + Upload)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>frontend/index.html</code> — SPA shell with four view containers</li>
+              <li><code>frontend/css/style.css</code> — full design system (Bunker + amethyst)</li>
+              <li><code>frontend/js/app.js</code> — SPA view controller</li>
+              <li><code>frontend/js/upload.js</code> — drag-and-drop upload</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session G2 -->
+      <div class="session" id="sG2">
+        <div class="session-header">
+          <h3>Session G2: Confirmation UI + Progress Tracking</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the entity confirmation/editing UI (Phase 3 gate) and real-time pipeline progress tracking via WebSocket.</p>
+          <p><strong>Depends on:</strong> G1, E2 (WebSocket endpoint)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/index.html
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/css/style.css
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/app.js
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/schemas.py (FlierUploadResponse, ConfirmEntitiesRequest)
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/websocket.py
+
+TASK: Implement the confirmation UI and WebSocket-based progress tracking.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/confirmation.js:
+Entity review and editing UI for the Phase 3 gate.
+
+- populateConfirmView(uploadResponse):
+  Receives the FlierUploadResponse JSON. Renders editable entity cards in #confirm-view:
+
+  For each artist:
+    - Editable text input with the artist name
+    - Confidence badge (color-coded: green/amber/red based on confidence score)
+    - "Remove" button (X icon)
+
+  For venue, date, promoter:
+    - Editable text input
+    - Confidence badge
+
+  Additional controls:
+    - "Add Artist" button — adds an empty text input for manual artist entry
+    - Genre tags displayed as removable chips
+    - Ticket price (editable if detected)
+    - OCR confidence summary at top ("OCR Confidence: 85% via llm_vision")
+    - The original flier image shown alongside for reference
+
+  "Confirm &amp; Start Research" button at bottom.
+
+- handleConfirm():
+  Collect all current entity values from inputs.
+  Build ConfirmEntitiesRequest JSON body.
+  POST to /api/v1/fliers/{sessionId}/confirm.
+  On success: switch to progress view, open WebSocket.
+
+- addArtistInput(): dynamically add a new artist text input
+- removeEntity(element): remove an entity card from the DOM
+
+All inputs must be keyboard-accessible with visible focus states.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/websocket.js:
+Real-time progress tracking via WebSocket.
+
+- connectProgress(sessionId):
+  Open WebSocket to ws://host/ws/progress/{sessionId}
+  On message: update progress UI
+
+- updateProgressUI(data):
+  data = { phase: str, progress: float, message: str }
+
+  Render in #progress-view:
+  - Phase indicator: visual pipeline showing all 5 phases with current phase highlighted in amethyst
+  - Progress bar: animated bar showing 0-100% with percentage text
+  - Status message: current operation (e.g., "Researching artist: Carl Cox via Discogs API...")
+  - Phase descriptions:
+    OCR → "Extracting text from flier"
+    ENTITY_EXTRACTION → "Identifying artists, venue, date..."
+    RESEARCH → "Researching entities..." (show which entity is being researched)
+    INTERCONNECTION → "Analyzing connections between entities..."
+    OUTPUT → "Compiling results with citations..."
+
+  - On progress = 100%: close WebSocket, fetch results, switch to results view
+
+- handleWebSocketError(): show reconnection message, retry 3 times then show manual refresh button
+- disconnectProgress(): clean close of WebSocket
+
+FILE 3 — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/index.html:
+Add the HTML structure for:
+- #confirm-view: container for entity cards, add button, confirm button
+- #progress-view: phase pipeline visualization, progress bar, status text
+
+VERIFICATION:
+1. Open frontend/index.html in browser — confirm that confirm-view and progress-view have proper structure
+2. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+3. Check no JavaScript syntax errors: node --check frontend/js/confirmation.js &amp;&amp; node --check frontend/js/websocket.js (or just open browser console)
+
+After completing, commit with message:
+"feat(frontend): implement entity confirmation UI and WebSocket progress tracking"
+
+SESSION COMPLETE: G2 (Confirmation + Progress UI)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>frontend/js/confirmation.js</code> — editable entity cards + confirm action</li>
+              <li><code>frontend/js/websocket.js</code> — WebSocket progress updates</li>
+              <li>Updated <code>frontend/index.html</code> — confirm + progress view HTML</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session G3 -->
+      <div class="session" id="sG3">
+        <div class="session-header">
+          <h3>Session G3: Results Display + Interconnection Visualization</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement the full results display with artist cards, research data, interconnection map, and cited sources.</p>
+          <p><strong>Depends on:</strong> G1, G2, F2 (output format)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/index.html
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/css/style.css
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/app.js
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/output_formatter.py (JSON output shape)
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/schemas.py (FlierAnalysisResponse)
+
+TASK: Build the results display — the main output view showing all research, interconnections, and citations.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/results.js:
+
+- fetchAndDisplayResults(sessionId):
+  GET /api/v1/fliers/{sessionId}/results
+  Parse response, call renderResults(data)
+
+- renderResults(data):
+  Populate #results-view with these sections:
+
+  SECTION 1 — EVENT SUMMARY HEADER:
+  - Flier image thumbnail (small)
+  - Event date (if parsed), venue name, promoter
+  - Number of artists researched
+  - Total citations found
+
+  SECTION 2 — ARTIST CARDS:
+  For each researched artist, render an expandable card:
+  - Artist name (large), confidence badge
+  - Discogs link (if available)
+  - "Releases" subsection: count + expandable list showing title, label, year, format
+  - "Labels" subsection: list of labels with Discogs links
+  - "Past Appearances" subsection: expandable list of gigs before the flier date
+  - "Press &amp; Articles" subsection: linked list of articles with tier badges
+    (Tier 1 gold border, Tier 2 silver, Tier 3-6 plain)
+  - Each card starts collapsed, click to expand
+
+  SECTION 3 — VENUE &amp; PROMOTER:
+  - Venue card: name, history summary, notable events, cultural significance
+  - Promoter card: name, event history, affiliated artists/venues
+  - Both with article links
+
+  SECTION 4 — DATE CONTEXT:
+  - Scene context, city context, cultural context panels
+  - Nearby events listed
+
+  SECTION 5 — INTERCONNECTIONS:
+  - Narrative summary (from LLM) displayed as styled prose
+  - Relationship list: each edge shown as "Artist A —[released on]→ Label X —[also released]→ Artist B"
+    with confidence indicators and citation links
+  - Pattern insights: highlighted cards for each discovered pattern
+  - Simple SVG/CSS visualization:
+    Render entities as nodes (circles with names), relationships as lines between them.
+    Use CSS positioning or simple SVG. No heavy library needed.
+    Color nodes by type (amethyst for artists, verdigris for venues, amber for promoters)
+
+  SECTION 6 — ALL CITATIONS:
+  - Ranked list of all citations, grouped by tier
+  - Tier headers: "Published Books", "Press &amp; Magazines", "Event Postings", "Database Records", "Web Articles", "Community Archives"
+  - Each citation: formatted text, clickable URL (opens new tab), accessibility status icon (green check / red X)
+  - "Export JSON" button: downloads the full analysis as a JSON file
+
+- renderRelationshipGraph(relationships, entities):
+  Simple force-directed-style layout using pure CSS/SVG:
+  - Place entity nodes in a circle layout
+  - Draw lines between connected nodes
+  - Line thickness based on confidence
+  - Hover on node: highlight all its connections
+  No D3.js or heavy libraries — keep it lightweight.
+
+FILE 2 — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/index.html:
+Add #results-view HTML container structure.
+
+FILE 3 — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/css/style.css:
+Add styles for:
+- .artist-card (expandable, amethyst left border)
+- .venue-card, .promoter-card (verdigris left border)
+- .citation-list and .citation-item (tier-colored left border)
+- .citation-tier-badge (1-6, gold through grey)
+- .relationship-graph (SVG container)
+- .graph-node, .graph-edge
+- .expandable (collapsed/expanded states with CSS transition)
+- .narrative-prose (styled body text for LLM narrative)
+- Print styles (@media print) for clean printout
+
+VERIFICATION:
+1. Open frontend/index.html in browser
+2. In browser console, test with mock data:
+   renderResults({ session_id: "test", research: { artists: [{ name: "Test DJ", confidence: 0.9, releases_count: 5, labels: ["Test Label"], appearances: [], articles: [] }] }, interconnections: { relationships: [], patterns: [], narrative: "Test narrative" }, citations: [] })
+3. Verify expandable cards work, citation links open, export button functions
+
+After completing, commit with message:
+"feat(frontend): implement full results display with artist cards, interconnection graph, and citations"
+
+SESSION COMPLETE: G3 (Results Display)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>frontend/js/results.js</code> — full results rendering + SVG graph</li>
+              <li>Updated <code>frontend/index.html</code> — results view HTML</li>
+              <li>Updated <code>frontend/css/style.css</code> — results + graph + print styles</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE H: TESTING + DOCUMENTATION
+         ================================================================ -->
+    <section id="phaseH">
+      <h2>Phase H: Testing + Documentation <span class="session-badge badge-important">IMPORTANT</span></h2>
+
+      <!-- Session H1 -->
+      <div class="session" id="sH1">
+        <div class="session-header">
+          <h3>Session H1: Unit Tests</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Write unit tests for all core modules — models, entity extractor, text normalizer, confidence utilities, and citation service. Target 90% coverage on tested modules.</p>
+          <p><strong>Depends on:</strong> All Phases A-F complete</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Section 22 — Testing Standards)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/ (all files)
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/text_normalizer.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/confidence.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/entity_extractor.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/citation_service.py
+7. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/conftest.py
+
+TASK: Write comprehensive unit tests. Target 90% line coverage on tested modules.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_models.py:
+Test all Pydantic models:
+- Test Artist creation with valid data, confidence_level property at each threshold (0.9, 0.6, 0.4, 0.1)
+- Test Release, Label, EventAppearance creation
+- Test ArticleReference with all citation tiers (1-6)
+- Test FlierImage with SHA-256 hash
+- Test OCRResult, TextRegion, ExtractedEntities
+- Test PipelineState phase transitions
+- Test InterconnectionMap with nodes, edges, patterns
+- Test Citation with tier validation (reject tier 0, tier 7)
+- Test model_dump_json() produces valid JSON for all models
+- Test Field validators (confidence 0.0-1.0, tier 1-6)
+- Test default_factory fields (empty lists, not shared references)
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_text_normalizer.py:
+Test text normalization:
+- normalize_artist_name: "DJ Shadow" → "shadow", "Dj SHADOW" → "shadow", "  DJ  Shadow  " → "shadow"
+- split_artist_names: "Carl Cox b2b Adam Beyer" → ["Carl Cox", "Adam Beyer"]
+- split_artist_names: "A vs B" → ["A", "B"]
+- split_artist_names: "Artist feat. Singer" → ["Artist", "Singer"]
+- split_artist_names: "Artist &amp; Artist2, Artist3" → ["Artist", "Artist2", "Artist3"]
+- fuzzy_match: exact match returns (match, 1.0)
+- fuzzy_match: close match "Carl Cox" vs ["Karl Cox", "Carl Fox"] returns best with score
+- fuzzy_match: no match above threshold returns None
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_confidence.py:
+Test confidence utilities:
+- calculate_confidence with equal weights
+- calculate_confidence with custom weights
+- calculate_confidence with empty list
+- confidence_to_level at each boundary (0.8, 0.5, 0.3, 0.0)
+- merge_confidence with various weights
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_entity_extractor.py:
+Test entity extraction (mock the LLM provider):
+- Mock ILLMProvider.complete() to return known JSON responses
+- Test successful extraction of artists, venue, date, promoter from mock response
+- Test handling of ```json fenced LLM response
+- Test handling of invalid JSON from LLM (retry behavior)
+- Test split of "Artist1 b2b Artist2" into separate entities
+- Test confidence scoring based on [?] markers
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_citation_service.py:
+Test citation service:
+- assign_tier_from_url: residentadvisor.net → 2, discogs.com → 4, reddit.com → 6, unknown.com → 5
+- rank_citations: verify tier 1 before tier 6, same tier sorted by date
+- format_citation: verify output for each tier type
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: pytest tests/unit/ -v --cov=src --cov-report=term-missing
+3. Verify all tests pass
+4. Check coverage percentage on tested modules
+
+After completing, commit with message:
+"test(unit): add comprehensive unit tests for models, normalizer, confidence, extraction, and citations"
+
+SESSION COMPLETE: H1 (Unit Tests)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>tests/unit/test_models.py</code></li>
+              <li><code>tests/unit/test_text_normalizer.py</code></li>
+              <li><code>tests/unit/test_confidence.py</code></li>
+              <li><code>tests/unit/test_entity_extractor.py</code></li>
+              <li><code>tests/unit/test_citation_service.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session H2 -->
+      <div class="session" id="sH2">
+        <div class="session-header">
+          <h3>Session H2: Integration Tests</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Write integration tests for the OCR service, research service, and full pipeline flow with mocked external APIs.</p>
+          <p><strong>Depends on:</strong> H1, all Phases A-F</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Section 22)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ocr_service.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/research_service.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/routes.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/conftest.py
+
+TASK: Write integration tests with mocked external providers. These test multi-component interactions.
+
+FIXTURES — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/conftest.py:
+Add shared fixtures:
+- mock_llm_provider: Mock ILLMProvider that returns configurable responses
+- mock_music_db_provider: Mock IMusicDatabaseProvider with sample Discogs-like data
+- mock_search_provider: Mock IWebSearchProvider with sample results
+- mock_article_provider: Mock IArticleProvider returning sample article content
+- sample_flier_image: Create a simple test image (PIL Image with text drawn on it)
+- sample_ocr_result: Pre-built OCRResult with sample rave flier text
+- sample_extracted_entities: Pre-built ExtractedEntities with 3 artists + venue + date
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_ocr_service.py:
+- test_ocr_fallback_chain: Configure first provider to fail, verify second provider used
+- test_ocr_high_confidence_short_circuits: First provider returns 0.9 confidence, verify second not called
+- test_ocr_best_of_low_confidence: Both providers return &lt;0.7, verify highest confidence result returned
+- test_all_providers_fail: All providers raise exceptions, verify OCRExtractionError raised
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_research_service.py:
+- test_parallel_research: Provide 3 artists + venue + promoter + date, verify all researched concurrently
+  (use asyncio timing to confirm parallel execution)
+- test_partial_failure: One artist research fails, verify others succeed and failure is captured as warning
+- test_date_parsing: Various date formats ("March 15, 1997", "15/03/97", "03.15.1997") correctly parsed
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_pipeline.py:
+- test_phase_1_flow: Upload image → OCR → entity extraction → state paused at USER_CONFIRMATION
+- test_confirmation_gate: Submit state, retrieve pending, confirm with edited entities
+- test_full_pipeline: Phase 1 → confirm → Phase 2-5 → results contain research + interconnections + citations
+- test_pipeline_error_recovery: Inject failure in research phase, verify pipeline continues with warnings
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_api.py:
+- Use FastAPI TestClient (httpx-based)
+- test_upload_endpoint: POST file → 200 with session_id and extracted entities
+- test_confirm_endpoint: POST confirm → 200 with research_started status
+- test_status_endpoint: GET status → returns current phase and progress
+- test_results_endpoint: GET results → full analysis data
+- test_health_endpoint: GET health → 200 with version and providers
+- test_upload_invalid_file: POST non-image → 400 error
+- test_upload_too_large: POST &gt;10MB file → 400 error
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: pytest tests/integration/ -v --cov=src --cov-report=term-missing
+3. Run: pytest tests/ -v --cov=src --cov-report=term-missing (full suite)
+4. Verify coverage is progressing toward 90%
+
+After completing, commit with message:
+"test(integration): add integration tests for OCR service, research pipeline, and API endpoints"
+
+SESSION COMPLETE: H2 (Integration Tests)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li>Updated <code>tests/conftest.py</code> — shared mock fixtures</li>
+              <li><code>tests/integration/test_ocr_service.py</code></li>
+              <li><code>tests/integration/test_research_service.py</code></li>
+              <li><code>tests/integration/test_pipeline.py</code></li>
+              <li><code>tests/integration/test_api.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session H3 -->
+      <div class="session" id="sH3">
+        <div class="session-header">
+          <h3>Session H3: Documentation (NAVIGATION.md, README.html)</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create project documentation — NAVIGATION.md, README.html, and dir_index.html files per CLAUDE.md conventions.</p>
+          <p><strong>Depends on:</strong> All prior sessions complete</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Sections 13, 21, 26 — dir_index, README, NAVIGATION.md)
+2. Browse the full directory tree: ls -R /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/config.yaml
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.env.example
+
+TASK: Create all project documentation per CLAUDE.md conventions.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/NAVIGATION.md:
+Follow the exact format from CLAUDE.md Section 26:
+- Project description (one sentence)
+- Architecture overview (layered with adapter pattern)
+- Directory map table (all significant directories with layer/role/description)
+- Key entry points (main.py, routes.py, config.yaml)
+- Module relationships (models → interfaces → providers → services → pipeline → api)
+- External dependencies table with swappable status
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/README.html:
+Stylishly formatted HTML README (per Section 21) containing:
+1. Project description — what raiveFlier does and who it's for
+2. Quick Start — prerequisites (Python 3.12, pip), setup steps, how to run
+   - python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+   - pip install -r requirements.txt
+   - cp .env.example .env (edit with your API keys)
+   - uvicorn src.main:app --reload
+   - Open http://localhost:8000
+3. Architecture overview — the 5-phase pipeline diagram
+4. API reference — table of all endpoints
+5. Configuration — explain config.yaml and .env variables
+6. Provider matrix — which providers are available, which need keys, free tier limits
+7. Testing — how to run tests
+8. License — MIT (free/open source)
+Style the HTML using the Bunker palette (match the app's amethyst theme).
+
+FILE 3 — dir_index.html files:
+Create dir_index.html in every directory that contains files, per Section 13.
+Each must list all files and subdirectories in that folder.
+Directories needing dir_index.html:
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/ (root)
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/ocr/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/music_db/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/search/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/article/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/cache/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/api/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/utils/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/css/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/frontend/js/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/config/
+- /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/
+
+Each dir_index.html should be simple but styled (dark theme, monospace file list).
+
+VERIFICATION:
+1. Open README.html in browser — verify all sections render correctly
+2. Open NAVIGATION.md — verify directory map matches actual project structure
+3. Spot-check 3-4 dir_index.html files — verify they list correct contents
+
+After completing, commit with message:
+"docs: add NAVIGATION.md, README.html, and dir_index.html files for all directories"
+
+SESSION COMPLETE: H3 (Documentation)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>NAVIGATION.md</code></li>
+              <li><code>README.html</code></li>
+              <li><code>dir_index.html</code> in ~20 directories</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         PHASE I: RAG PIPELINE
+         ================================================================ -->
+    <section id="phaseI">
+      <h2>Phase I: RAG Pipeline <span class="session-badge badge-nice">ENHANCEMENT &bull; ADDITIVE ONLY</span></h2>
+      <p>All RAG sessions are <strong>purely additive</strong> — new files plus optional parameters on existing services. Every modification is guarded by <code>if self._vector_store and self._vector_store.is_available()</code>, so the app works identically with or without RAG configured. No existing tests break.</p>
+
+      <!-- Session I1 -->
+      <div class="session" id="sI1">
+        <div class="session-header">
+          <h3>Session I1: RAG Models + Interfaces</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the data models and abstract interfaces for the RAG layer — document chunks, retrieved chunks, vector store provider, and embedding provider.</p>
+          <p><strong>Depends on:</strong> A2 (models), A3 (interfaces)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Sections 5, 6, 28)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/entities.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/analysis.py (Citation model)
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/cache_provider.py (pattern reference)
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/RAG_PIPELINE_PLAN.md
+
+TASK: Create the RAG layer data models and abstract interfaces. These are entirely new files — no existing code is modified.
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/rag.py:
+Pydantic v2 models for the RAG pipeline:
+
+- DocumentChunk(BaseModel):
+  chunk_id (str — UUID), text (str), source_id (str),
+  source_title (str), source_type (str — "book"/"article"/"interview"/"flier"/"analysis"),
+  author (Optional[str]), publication_date (Optional[date]),
+  citation_tier (int, 1-6), page_number (Optional[str]),
+  entity_tags (List[str] — artist/venue/label names mentioned in this chunk),
+  geographic_tags (List[str] — cities, countries, regions),
+  genre_tags (List[str])
+
+- RetrievedChunk(BaseModel):
+  chunk (DocumentChunk), similarity_score (float, 0.0-1.0),
+  formatted_citation (str — human-readable citation string)
+
+- IngestionResult(BaseModel):
+  source_id (str), source_title (str), chunks_created (int),
+  total_tokens (int), ingestion_time (float)
+
+- CorpusStats(BaseModel):
+  total_chunks (int), total_sources (int),
+  sources_by_type (Dict[str, int]),
+  entity_tag_count (int), geographic_tag_count (int)
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/vector_store_provider.py:
+class IVectorStoreProvider(ABC):
+  Methods:
+  - async query(self, query_text: str, top_k: int = 20, filters: Optional[Dict[str, Any]] = None) -> List[RetrievedChunk]
+    Semantic search against the vector store.
+    Filters support: {"date": {"$lte": "YYYY-MM-DD"}}, {"entity_tags": {"$contains": "name"}},
+    {"source_type": {"$in": ["book", "press"]}}, {"geographic_tags": {"$contains": "city"}}
+  - async add_chunks(self, chunks: List[DocumentChunk], embeddings: List[List[float]]) -> int
+    Add pre-embedded chunks. Returns count added.
+  - async delete_by_source(self, source_id: str) -> int
+    Delete all chunks from a specific source. Returns count deleted.
+  - async get_stats(self) -> CorpusStats
+    Return corpus statistics.
+  - get_provider_name(self) -> str
+  - is_available(self) -> bool
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/embedding_provider.py:
+class IEmbeddingProvider(ABC):
+  Methods:
+  - async embed(self, texts: List[str]) -> List[List[float]]
+    Generate embeddings for a batch of texts.
+  - async embed_single(self, text: str) -> List[float]
+    Convenience method for single text.
+  - get_dimension(self) -> int
+    Return embedding vector dimension (e.g., 1536 for OpenAI, 768 for nomic).
+  - get_provider_name(self) -> str
+  - is_available(self) -> bool
+
+FILE 4 — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/__init__.py:
+Add imports for DocumentChunk, RetrievedChunk, IngestionResult, CorpusStats.
+
+FILE 5 — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/__init__.py:
+Add imports for IVectorStoreProvider, IEmbeddingProvider.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.models.rag import DocumentChunk, RetrievedChunk; from src.interfaces.vector_store_provider import IVectorStoreProvider; from src.interfaces.embedding_provider import IEmbeddingProvider; print('RAG models + interfaces imported')"
+3. Run: python -c "from src.models.rag import DocumentChunk; c = DocumentChunk(chunk_id='test', text='Test chunk', source_id='s1', source_title='Energy Flash', source_type='book', citation_tier=1); print(c.model_dump_json(indent=2))"
+4. Run: pytest tests/ -v (all existing tests must still pass)
+5. Run: black --check src/models/ src/interfaces/
+6. Run: ruff check src/models/ src/interfaces/
+
+After completing, commit with message:
+"feat(rag): add RAG data models and vector store / embedding provider interfaces"
+
+SESSION COMPLETE: I1 (RAG Models + Interfaces)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/models/rag.py</code> — 4 RAG data models</li>
+              <li><code>src/interfaces/vector_store_provider.py</code> — IVectorStoreProvider ABC</li>
+              <li><code>src/interfaces/embedding_provider.py</code> — IEmbeddingProvider ABC</li>
+              <li>Updated <code>src/models/__init__.py</code>, <code>src/interfaces/__init__.py</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session I2 -->
+      <div class="session" id="sI2">
+        <div class="session-header">
+          <h3>Session I2: Embedding + Vector Store Providers</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Implement concrete embedding providers (OpenAI, Nomic/Ollama) and vector store providers (ChromaDB). All behind the interfaces from I1.</p>
+          <p><strong>Depends on:</strong> I1, C3 (LLM providers for pattern reference)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/embedding_provider.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/vector_store_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/rag.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/llm/openai_provider.py (pattern reference)
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/RAG_PIPELINE_PLAN.md
+
+TASK: Implement embedding and vector store providers. Also add new dependencies.
+
+PART 0 — ADD DEPENDENCIES:
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/requirements.txt — append:
+chromadb>=0.4.22,<1.0
+tokenizers>=0.15.0,<1.0
+
+Run: pip install chromadb tokenizers
+
+PART 1 — EMBEDDING PROVIDERS:
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/embedding/openai_embedding_provider.py:
+class OpenAIEmbeddingProvider(IEmbeddingProvider):
+- __init__: accepts Settings. Initialize openai.AsyncOpenAI client. Model: "text-embedding-3-small".
+- embed: Use client.embeddings.create(input=texts, model=self._model).
+  Return list of embedding vectors. Handle batching — OpenAI accepts up to 2048 texts per call.
+  If len(texts) > 2048, split into batches and concatenate results.
+- embed_single: Call embed([text])[0]
+- get_dimension: return 1536 (text-embedding-3-small dimension)
+- is_available: Check OPENAI_API_KEY is set.
+- get_provider_name: "openai_embedding"
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/embedding/nomic_embedding_provider.py:
+class NomicEmbeddingProvider(IEmbeddingProvider):
+- __init__: accepts Settings. Uses openai.AsyncOpenAI with base_url=OLLAMA_BASE_URL + "/v1".
+  Model: "nomic-embed-text" (served by Ollama locally, fully free).
+- embed: Same OpenAI-compatible API format via Ollama.
+  Batch size limit: 512 texts per call for Ollama.
+- embed_single: Call embed([text])[0]
+- get_dimension: return 768 (nomic-embed-text dimension)
+- is_available: Check OLLAMA_BASE_URL is set, try to connect.
+- get_provider_name: "nomic_embedding"
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/embedding/__init__.py
+
+PART 2 — VECTOR STORE PROVIDER:
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/vector_store/chromadb_provider.py:
+class ChromaDBProvider(IVectorStoreProvider):
+- __init__: accepts persist_directory (str, default="./data/chromadb"), collection_name (str, default="raiveflier_corpus").
+  Initialize chromadb.PersistentClient(path=persist_directory).
+  Get or create collection with cosine distance metric.
+
+- query:
+  Use collection.query(query_embeddings=[query_embedding], n_results=top_k, where=filters_dict).
+  NOTE: ChromaDB requires the query to be pre-embedded. This provider needs an IEmbeddingProvider
+  injected at init time to embed the query_text before passing to ChromaDB.
+  Convert ChromaDB results to List[RetrievedChunk]:
+    - documents → chunk text
+    - metadatas → DocumentChunk metadata fields
+    - distances → similarity_score (convert distance to similarity: 1 - distance for cosine)
+  Apply filter translation:
+    - {"date": {"$lte": "YYYY-MM-DD"}} → ChromaDB where clause on publication_date metadata
+    - {"entity_tags": {"$contains": "name"}} → ChromaDB where clause with $contains on entity_tags string
+    - {"source_type": {"$in": [...]}} → ChromaDB where clause with $in
+
+- add_chunks:
+  Use collection.add(
+    ids=[c.chunk_id for c in chunks],
+    embeddings=embeddings,
+    documents=[c.text for c in chunks],
+    metadatas=[chunk_to_metadata_dict(c) for c in chunks]
+  )
+  Handle duplicates: upsert mode. Return count added.
+
+- delete_by_source:
+  Use collection.delete(where={"source_id": source_id}).
+  Return count deleted.
+
+- get_stats:
+  Use collection.count() for total chunks.
+  Query metadata for source counts. Build CorpusStats.
+
+- is_available: Try to access the collection, return True/False.
+- get_provider_name: "chromadb"
+
+Private helpers:
+- _chunk_to_metadata(chunk: DocumentChunk) -> dict: Convert chunk to ChromaDB metadata dict.
+  ChromaDB metadata values must be str, int, float, or bool — serialize lists as comma-separated strings.
+  entity_tags: List[str] → "carl cox,adam beyer" (comma-joined for $contains search)
+  geographic_tags: same
+  genre_tags: same
+  publication_date: date → ISO string
+
+- _metadata_to_chunk(meta: dict, text: str) -> DocumentChunk: Reverse conversion.
+  Split comma-separated strings back into lists.
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/vector_store/__init__.py
+
+PART 3 — SETTINGS UPDATE:
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py — add fields:
+  # RAG Configuration
+  chromadb_persist_dir: str = "./data/chromadb"
+  chromadb_collection: str = "raiveflier_corpus"
+  rag_enabled: bool = False  # Must be explicitly enabled
+  rag_top_k: int = 20
+  rag_max_tokens: int = 30000  # Token budget for RAG context
+
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.env.example — append:
+# === RAG Configuration ===
+RAG_ENABLED=false
+CHROMADB_PERSIST_DIR=./data/chromadb
+CHROMADB_COLLECTION=raiveflier_corpus
+RAG_TOP_K=20
+RAG_MAX_TOKENS=30000
+
+Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/.gitignore — append:
+data/chromadb/
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate &amp;&amp; pip install -r requirements.txt
+2. Run: python -c "from src.providers.embedding import OpenAIEmbeddingProvider, NomicEmbeddingProvider; from src.providers.vector_store import ChromaDBProvider; print('RAG providers imported')"
+3. Run: python -c "
+from src.providers.vector_store.chromadb_provider import ChromaDBProvider
+from src.providers.embedding.openai_embedding_provider import OpenAIEmbeddingProvider
+from src.config import settings
+# Test ChromaDB initialization (creates local DB)
+import tempfile, os
+tmp = tempfile.mkdtemp()
+# Just verify import and class instantiation doesn't crash
+print('ChromaDB provider class ready')
+"
+4. Run: pytest tests/ -v (all existing tests must still pass)
+5. Run: black --check src/providers/embedding/ src/providers/vector_store/
+6. Run: ruff check src/providers/embedding/ src/providers/vector_store/
+
+After completing, commit with message:
+"feat(rag): implement ChromaDB vector store and OpenAI/Nomic embedding providers"
+
+SESSION COMPLETE: I2 (Embedding + Vector Store Providers)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/providers/embedding/openai_embedding_provider.py</code></li>
+              <li><code>src/providers/embedding/nomic_embedding_provider.py</code></li>
+              <li><code>src/providers/vector_store/chromadb_provider.py</code></li>
+              <li>Updated <code>requirements.txt</code> — chromadb, tokenizers</li>
+              <li>Updated <code>src/config/settings.py</code> — RAG config fields</li>
+              <li>Updated <code>.env.example</code>, <code>.gitignore</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session I3 -->
+      <div class="session" id="sI3">
+        <div class="session-header">
+          <h3>Session I3: Ingestion Pipeline</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the document ingestion pipeline — text chunking, metadata extraction, and source processors for books, articles, and prior analyses.</p>
+          <p><strong>Depends on:</strong> I1, I2</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/models/rag.py (DocumentChunk, IngestionResult)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/vector_store_provider.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/embedding_provider.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/interfaces/llm_provider.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/citation_service.py (tier assignment)
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/RAG_PIPELINE_PLAN.md
+
+TASK: Build the ingestion pipeline that processes source documents into embedded chunks stored in the vector store.
+
+Create the directory structure:
+src/services/ingestion/
+src/services/ingestion/source_processors/
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/chunker.py:
+class TextChunker:
+  """Splits text into overlapping chunks preserving paragraph boundaries."""
+
+- __init__: accepts chunk_size (int = 500 tokens), overlap (int = 100 tokens)
+- chunk(self, text: str, source_metadata: dict) -> List[DocumentChunk]:
+  1. Split text into paragraphs (double newline)
+  2. Accumulate paragraphs into chunks until chunk_size reached
+  3. When a chunk is full, start next chunk with overlap from end of previous
+  4. PRESERVE paragraph boundaries — never split mid-paragraph unless a single
+     paragraph exceeds chunk_size (in that case, split at sentence boundaries)
+  5. Generate UUID for each chunk_id
+  6. Copy source_metadata into each chunk (source_id, source_title, source_type, etc.)
+  7. Return list of DocumentChunk objects
+
+- _count_tokens(self, text: str) -> int:
+  Use tokenizers library for accurate token counting.
+  Fallback: approximate as len(text) // 4 if tokenizers unavailable.
+
+- _split_sentences(self, text: str) -> List[str]:
+  Split on sentence boundaries (. ! ? followed by space or newline).
+  Handle common abbreviations (Dr., Mr., etc.) to avoid false splits.
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/metadata_extractor.py:
+class MetadataExtractor:
+  """Extracts entity, geographic, and genre tags from chunk text using LLM."""
+
+- __init__: accepts ILLMProvider
+- async extract_tags(self, chunk_text: str) -> dict:
+  Use LLM with a short prompt to extract:
+  - entity_tags: artist names, venue names, label names, promoter names mentioned
+  - geographic_tags: cities, countries, regions mentioned
+  - genre_tags: music genres/subgenres mentioned
+
+  LLM prompt:
+  """Extract structured tags from this text about electronic/dance music.
+  Return JSON: {"entities": [...], "places": [...], "genres": [...]}
+  Only include items explicitly mentioned in the text. Be precise."""
+
+  Parse JSON response. Return {"entity_tags": [...], "geographic_tags": [...], "genre_tags": [...]}.
+  On LLM failure: return empty tags (don't block ingestion).
+
+- async extract_batch(self, chunks: List[DocumentChunk]) -> List[DocumentChunk]:
+  Run extract_tags for each chunk, update chunk's tag fields.
+  Use asyncio.gather with semaphore (max 5 concurrent LLM calls) to avoid rate limits.
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/source_processors/book_processor.py:
+class BookProcessor:
+  """Processes plain text book files into DocumentChunks."""
+
+- process(self, file_path: str, title: str, author: str, year: int) -> List[DocumentChunk]:
+  1. Read the file (UTF-8 plain text)
+  2. Detect chapter boundaries (lines starting with "Chapter", all-caps lines, numbered sections)
+  3. Set source_type = "book", citation_tier = 1
+  4. Set source_id = SHA-256 of file content
+  5. For each chapter, track page_number if page markers present (e.g., "[p.142]")
+  6. Return raw text split into logical sections (chapters) — chunking happens later in IngestionService
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/source_processors/article_processor.py:
+class ArticleProcessor:
+  """Processes web articles (fetched via URL or local HTML/text) into DocumentChunks."""
+
+- async process_url(self, url: str, article_scraper: IArticleProvider) -> List[DocumentChunk]:
+  1. Fetch article content via article_scraper
+  2. Set source_type based on URL patterns (use CitationService.assign_tier_from_url logic):
+     residentadvisor.net → "press" (tier 2), reddit.com → "forum" (tier 6), etc.
+  3. Set source_id from URL hash
+  4. Return article text as document chunks
+
+- process_file(self, file_path: str, source_type: str = "article", tier: int = 5) -> List[DocumentChunk]:
+  Read local file, create chunks with provided metadata.
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/source_processors/analysis_processor.py:
+class AnalysisProcessor:
+  """Converts completed raiveFlier analysis results into DocumentChunks for feedback loop."""
+
+- process(self, pipeline_state: PipelineState) -> List[DocumentChunk]:
+  1. For each researched artist: create chunk with discography summary, appearances, articles found
+  2. For venue/promoter/date: create summary chunks
+  3. For interconnection narrative: create chunk with the full narrative
+  4. Set source_type = "analysis", citation_tier = 5
+  5. Tag with all entity names from the analysis
+  6. This enables the feedback loop: future analyses benefit from past ones
+
+FILE 6 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/source_processors/__init__.py
+
+FILE 7 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/ingestion_service.py:
+class IngestionService:
+  """Orchestrates the full ingestion pipeline: process → chunk → tag → embed → store."""
+
+- __init__: accepts TextChunker, MetadataExtractor, IEmbeddingProvider, IVectorStoreProvider
+- async ingest_book(self, file_path: str, title: str, author: str, year: int) -> IngestionResult:
+  1. BookProcessor.process() → raw sections
+  2. TextChunker.chunk() → DocumentChunks
+  3. MetadataExtractor.extract_batch() → tagged chunks
+  4. IEmbeddingProvider.embed() → embeddings for all chunks
+  5. IVectorStoreProvider.add_chunks() → stored
+  6. Return IngestionResult with stats
+
+- async ingest_article(self, url: str) -> IngestionResult:
+  Same pipeline with ArticleProcessor.
+
+- async ingest_analysis(self, pipeline_state: PipelineState) -> IngestionResult:
+  Same pipeline with AnalysisProcessor. Called automatically after Phase 5 completes (if RAG enabled).
+
+- async ingest_directory(self, dir_path: str, source_type: str) -> List[IngestionResult]:
+  Process all .txt/.html files in a directory. Return results for each.
+
+- async get_corpus_stats(self) -> CorpusStats:
+  Delegate to vector store provider.
+
+FILE 8 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/__init__.py
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: python -c "from src.services.ingestion import IngestionService; from src.services.ingestion.chunker import TextChunker; from src.services.ingestion.metadata_extractor import MetadataExtractor; print('Ingestion pipeline imported')"
+3. Run: python -c "
+from src.services.ingestion.chunker import TextChunker
+chunker = TextChunker(chunk_size=500, overlap=100)
+# Test with sample text
+sample = 'First paragraph about Carl Cox and his career.\n\nSecond paragraph about Berghain in Berlin.\n\nThird paragraph about acid house in Chicago.'
+chunks = chunker.chunk(sample, {'source_id': 'test', 'source_title': 'Test', 'source_type': 'book', 'citation_tier': 1})
+print(f'Created {len(chunks)} chunks')
+for c in chunks:
+    print(f'  - {c.chunk_id[:8]}... ({len(c.text)} chars)')
+"
+4. Run: pytest tests/ -v (all existing tests must still pass)
+5. Run: black --check src/services/ingestion/
+6. Run: ruff check src/services/ingestion/
+
+After completing, commit with message:
+"feat(rag): implement document ingestion pipeline with chunking, metadata extraction, and source processors"
+
+SESSION COMPLETE: I3 (Ingestion Pipeline)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/services/ingestion/chunker.py</code> — paragraph-aware text chunking</li>
+              <li><code>src/services/ingestion/metadata_extractor.py</code> — LLM-based tag extraction</li>
+              <li><code>src/services/ingestion/source_processors/book_processor.py</code></li>
+              <li><code>src/services/ingestion/source_processors/article_processor.py</code></li>
+              <li><code>src/services/ingestion/source_processors/analysis_processor.py</code></li>
+              <li><code>src/services/ingestion/ingestion_service.py</code> — orchestrator</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session I4 -->
+      <div class="session" id="sI4">
+        <div class="session-header">
+          <h3>Session I4: Ingestion CLI + Researcher RAG Integration</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Create the ingestion CLI tool and modify existing researcher services to optionally use the vector store. All modifications are backward-compatible — existing behavior unchanged when RAG is disabled.</p>
+          <p><strong>Depends on:</strong> I3, D1 (artist researcher), F1 (interconnection service), E3 (main.py)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/ingestion_service.py
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/artist_researcher.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/venue_researcher.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/promoter_researcher.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/interconnection_service.py
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py
+7. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/main.py
+8. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/config/settings.py (RAG_ENABLED field)
+9. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/RAG_PIPELINE_PLAN.md
+
+TASK: Create the ingestion CLI and integrate RAG into existing researcher services. CRITICAL: All modifications must be backward-compatible. When RAG_ENABLED=false (default), the app behaves exactly as before.
+
+PART 1 — INGESTION CLI:
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/cli/__init__.py
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/cli/ingest.py:
+Standalone CLI using argparse (no extra dependencies).
+
+Usage:
+  python -m src.cli.ingest book --file /path/to/book.txt --title "Energy Flash" --author "Simon Reynolds" --year 1998
+  python -m src.cli.ingest article --url https://example.com/article
+  python -m src.cli.ingest directory --path /path/to/articles/ --type article
+  python -m src.cli.ingest stats
+
+Implementation:
+- Parse arguments with argparse
+- Load Settings from .env
+- Initialize embedding provider (prefer OpenAI if key available, else Nomic/Ollama)
+- Initialize ChromaDB vector store provider
+- Initialize LLM provider (for metadata extraction)
+- Initialize IngestionService with all providers
+- Execute the appropriate ingest method
+- Print results (chunks created, total tokens, time taken)
+
+For "book" command: call ingest_book()
+For "article" command: call ingest_article()
+For "directory" command: call ingest_directory()
+For "stats" command: call get_corpus_stats() and display formatted table
+
+Error handling: If no embedding provider is available, print clear error message explaining
+which env vars to set (OPENAI_API_KEY or OLLAMA_BASE_URL).
+
+PART 2 — MODIFY EXISTING RESEARCHERS (backward-compatible):
+
+All modifications follow this pattern:
+1. Add optional vector_store parameter to __init__ (default None)
+2. Add a new private method _retrieve_from_corpus()
+3. Call it during research() only if vector_store is available
+4. Merge retrieved chunks into results as ArticleReference objects with proper citations
+
+MODIFY /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/artist_researcher.py:
+- Add to __init__: vector_store: Optional[IVectorStoreProvider] = None
+- Add method:
+  async _retrieve_from_corpus(self, artist_name: str, before_date: Optional[date]) -> List[ArticleReference]:
+    if not self._vector_store or not self._vector_store.is_available():
+        return []
+    query = f"{artist_name} DJ electronic music history career"
+    filters = {}
+    if before_date:
+        filters["date"] = {"$lte": before_date.isoformat()}
+    chunks = await self._vector_store.query(query_text=query, top_k=15, filters=filters)
+    # Convert RetrievedChunk to ArticleReference
+    return [
+        ArticleReference(
+            title=chunk.chunk.source_title,
+            source=chunk.chunk.source_type,
+            url=None,
+            date=chunk.chunk.publication_date,
+            article_type="book" if chunk.chunk.source_type == "book" else "article",
+            snippet=chunk.chunk.text[:200] + "...",
+            citation_tier=chunk.chunk.citation_tier,
+        )
+        for chunk in chunks
+        if chunk.similarity_score >= 0.7
+    ]
+- In research() method: after existing Step 4 (PRESS), add Step 4.5:
+    corpus_refs = await self._retrieve_from_corpus(artist_name, before_date)
+    # Merge corpus_refs into the article list, deduplicate by title similarity
+
+MODIFY /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/venue_researcher.py:
+- Same pattern: add optional vector_store, add _retrieve_from_corpus for venue history.
+  Query: "{venue_name} venue nightclub history"
+
+MODIFY /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/promoter_researcher.py:
+- Same pattern: add optional vector_store.
+  Query: "{promoter_name} promoter events rave"
+
+MODIFY /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/interconnection_service.py:
+- Add optional vector_store to __init__
+- Before LLM synthesis, if vector_store available:
+  Build a cross-entity query from all entity names
+  Retrieve chunks that mention multiple entities (connection context)
+  Add these chunks to the augmented context (within RAG_MAX_TOKENS budget)
+  This surfaces book passages and prior analyses about relationships between the entities
+
+PART 3 — MODIFY PIPELINE + MAIN.PY:
+
+MODIFY /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/pipeline/orchestrator.py:
+- Add optional ingestion_service to __init__
+- After Phase 5 (OUTPUT) completes, if RAG enabled and ingestion_service available:
+  Call ingestion_service.ingest_analysis(state) to feed results back into the corpus
+  Log: "Analysis results ingested into RAG corpus ({N} chunks)"
+
+MODIFY /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/main.py:
+- If settings.rag_enabled:
+  1. Select embedding provider (OpenAI if key available, else Nomic/Ollama)
+  2. Create ChromaDBProvider(settings.chromadb_persist_dir, settings.chromadb_collection, embedding_provider)
+  3. Create IngestionService with chunker, metadata_extractor, embedding_provider, vector_store
+  4. Pass vector_store to all researcher services
+  5. Pass vector_store to InterconnectionService
+  6. Pass ingestion_service to FlierAnalysisPipeline
+- If settings.rag_enabled is False (default):
+  All of the above is skipped. vector_store = None everywhere. Zero behavior change.
+
+- Add API endpoint to routes:
+  GET /api/v1/corpus/stats → return corpus statistics (if RAG enabled, else 404)
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run with RAG DISABLED (default): pytest tests/ -v (ALL existing tests must pass unchanged)
+3. Run: python -c "from src.cli.ingest import main; print('Ingestion CLI imported')"
+4. Run: python -m src.cli.ingest stats (should print "RAG not configured" or empty stats)
+5. Run: black --check src/
+6. Run: ruff check src/
+
+After completing, commit with message:
+"feat(rag): add ingestion CLI and integrate RAG retrieval into researcher services (backward-compatible)"
+
+SESSION COMPLETE: I4 (CLI + RAG Integration)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>src/cli/ingest.py</code> — standalone ingestion CLI</li>
+              <li>Modified <code>src/services/artist_researcher.py</code> — optional vector_store retrieval</li>
+              <li>Modified <code>src/services/venue_researcher.py</code> — optional vector_store retrieval</li>
+              <li>Modified <code>src/services/promoter_researcher.py</code> — optional vector_store retrieval</li>
+              <li>Modified <code>src/services/interconnection_service.py</code> — cross-entity RAG context</li>
+              <li>Modified <code>src/pipeline/orchestrator.py</code> — analysis feedback loop</li>
+              <li>Modified <code>src/main.py</code> — conditional RAG wiring</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session I5 -->
+      <div class="session" id="sI5">
+        <div class="session-header">
+          <h3>Session I5: RAG Integration Tests</h3>
+        </div>
+        <div class="session-content">
+          <p><strong>Goal:</strong> Write tests verifying RAG integration works correctly and that disabling RAG leaves all existing behavior unchanged.</p>
+          <p><strong>Depends on:</strong> I4, H1 (unit test fixtures)</p>
+
+          <div class="prompt-block">
+            <div class="prompt-header">
+              <span>Full Prompt</span>
+              <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+            </div>
+            <div class="prompt-content">
+              <pre>PROJECT: /Users/aaandy/_andy_ai_projects_2026/raiveFlier
+
+Before starting, read:
+1. /Users/aaandy/_andy_ai_projects_2026/CLAUDE.md (Section 22)
+2. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/conftest.py
+3. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/ingestion/ingestion_service.py
+4. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/providers/vector_store/chromadb_provider.py
+5. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/artist_researcher.py (after RAG modifications)
+6. /Users/aaandy/_andy_ai_projects_2026/raiveFlier/src/services/interconnection_service.py (after RAG modifications)
+
+TASK: Write tests for the RAG pipeline — chunking, ingestion, retrieval, and backward compatibility.
+
+FIXTURES — Update /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/conftest.py:
+Add:
+- mock_embedding_provider: Mock IEmbeddingProvider that returns deterministic vectors
+  (e.g., hash-based: embed text by hashing and normalizing to a fixed-length vector)
+- mock_vector_store: Mock IVectorStoreProvider backed by a simple in-memory dict
+  (stores chunks, returns all on query sorted by simulated similarity)
+- sample_book_text: Multi-paragraph text about electronic music for chunker tests
+- tmp_chromadb: Create a temporary ChromaDB instance using tmp_path fixture
+
+FILE 1 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_chunker.py:
+- test_basic_chunking: Sample text → expected number of chunks
+- test_paragraph_preservation: No chunk splits mid-paragraph (unless paragraph exceeds chunk_size)
+- test_overlap: Last N tokens of chunk[i] appear at start of chunk[i+1]
+- test_metadata_propagation: Source metadata copied to all chunks
+- test_single_paragraph: One paragraph text → one chunk
+- test_empty_text: Empty string → empty list, no error
+- test_very_long_paragraph: Single paragraph exceeding chunk_size splits at sentence boundaries
+
+FILE 2 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/unit/test_rag_models.py:
+- test_document_chunk_creation: All fields, validate tier range
+- test_retrieved_chunk_with_score: Validate similarity_score 0.0-1.0
+- test_ingestion_result: Validate all stats fields
+- test_corpus_stats: Validate sources_by_type dict
+
+FILE 3 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_ingestion.py:
+- test_book_ingestion_e2e: Create temp text file → ingest via IngestionService → verify chunks in vector store
+  Use mock embedding + mock vector store to avoid real API calls.
+- test_article_ingestion: Mock article scraper → ingest URL → verify chunks stored
+- test_analysis_feedback: Create mock PipelineState with research results → ingest → verify chunks
+- test_corpus_stats: Ingest 3 sources → get_stats() → verify counts
+
+FILE 4 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_rag_retrieval.py:
+- test_artist_researcher_with_rag: Create ArtistResearcher with mock vector store pre-loaded with
+  book chunks mentioning "Carl Cox". Mock music DBs and web search.
+  Verify research result includes ArticleReferences from the vector store with tier=1.
+- test_artist_researcher_without_rag: Same test but vector_store=None.
+  Verify result has no corpus-sourced ArticleReferences. Behavior identical to pre-RAG.
+- test_interconnection_with_rag: Pre-load vector store with chunks mentioning two artists.
+  Run interconnection analysis. Verify cross-entity context is included.
+- test_interconnection_without_rag: vector_store=None. Behavior identical to pre-RAG.
+
+FILE 5 — /Users/aaandy/_andy_ai_projects_2026/raiveFlier/tests/integration/test_backward_compatibility.py:
+CRITICAL: These tests prove RAG does not break existing functionality.
+- test_full_pipeline_rag_disabled: Run the entire pipeline with RAG_ENABLED=false.
+  Verify identical output to a baseline run (compare structure, not exact content).
+- test_all_researchers_accept_none_vector_store: Instantiate every researcher with vector_store=None.
+  Call research(). No errors, no vector store calls.
+- test_main_app_starts_without_rag: Import app with RAG_ENABLED=false. Verify startup succeeds.
+  Verify /api/v1/corpus/stats returns 404.
+- test_main_app_starts_with_rag: Set RAG_ENABLED=true with mock providers. Verify startup succeeds.
+  Verify /api/v1/corpus/stats returns 200.
+
+VERIFICATION:
+1. Run: cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier &amp;&amp; source .venv/bin/activate
+2. Run: pytest tests/ -v --cov=src --cov-report=term-missing
+3. Verify ALL tests pass (both RAG and non-RAG)
+4. Check coverage is at or above 90% across all modules
+5. Run: black --check tests/
+6. Run: ruff check tests/
+
+After completing, commit with message:
+"test(rag): add RAG pipeline tests and backward-compatibility verification"
+
+SESSION COMPLETE: I5 (RAG Integration Tests)
+PROMPT FILE: /Users/aaandy/_andy_ai_projects_2026/raiveFlier/AUTOMATED_PROMPTS_RAIVEFLIER.html</pre>
+            </div>
+          </div>
+
+          <div class="deliverables">
+            <h4>Deliverables</h4>
+            <ul>
+              <li><code>tests/unit/test_chunker.py</code></li>
+              <li><code>tests/unit/test_rag_models.py</code></li>
+              <li><code>tests/integration/test_ingestion.py</code></li>
+              <li><code>tests/integration/test_rag_retrieval.py</code></li>
+              <li><code>tests/integration/test_backward_compatibility.py</code></li>
+              <li>Updated <code>tests/conftest.py</code> — RAG mock fixtures</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ================================================================
+         DEPENDENCY GRAPH
+         ================================================================ -->
+    <section id="dep-graph">
+      <h2>Session Dependency Graph</h2>
+      <p>Sessions can be run in parallel where dependencies allow. Independent sessions within the same phase can run simultaneously.</p>
+
+      <div class="prompt-block">
+        <div class="prompt-header">
+          <span>Dependency Graph</span>
+          <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+        </div>
+        <div class="prompt-content">
+          <pre>PHASE A: FOUNDATION (run first, sequential)
+  A1 (scaffolding) ──→ A2 (models) ──→ A3 (interfaces)
+  A1 ──→ A4 (config/utils)    [A4 parallel with A2/A3]
+
+PHASE B: OCR PIPELINE (requires A2, A3, A4)
+  B1 (traditional OCR) ──→ B2 (LLM vision + OCR service)
+  B2 ──→ B3 (entity extractor)
+
+PHASE C: RESEARCH PROVIDERS (requires A2, A3, A4)
+  C1 (Discogs) ─────────── independent
+  C2 (MusicBrainz + DDG) ── independent     [C1, C2, C3 can run in PARALLEL]
+  C3 (articles + LLM) ───── independent
+
+PHASE D: RESEARCH SERVICES (requires Phase C)
+  D1 (artist researcher) ──→ D2 (other researchers)
+  D1 + D2 ──→ D3 (orchestrator + citations)
+
+PHASE E: PIPELINE + API (requires B2, B3, D3)
+  E1 (orchestrator) ──→ E2 (routes) ──→ E3 (main.py)
+
+PHASE F: LLM SYNTHESIS (requires D3)
+  F1 (interconnection) ──→ F2 (citation verify + output)
+  [F1 can start as soon as D3 is done, parallel with Phase E]
+
+PHASE G: FRONTEND (requires E2 for API endpoints)
+  G1 (HTML + CSS + upload) ──→ G2 (confirm + progress)
+  G1 + G2 ──→ G3 (results display)
+  [G1 can start as soon as E2 is done]
+
+PHASE H: TESTING + DOCS (requires all prior phases A-G)
+  H1 (unit tests) ──→ H2 (integration tests)
+  H3 (documentation) ── independent of H1/H2
+
+PHASE I: RAG PIPELINE (requires A2, A3 for models/interfaces; D1, F1, E3 for integration)
+  I1 (RAG models + interfaces) ──→ I2 (embedding + vector store providers)
+  I2 ──→ I3 (ingestion pipeline)
+  I3 ──→ I4 (CLI + researcher integration)
+  I4 ──→ I5 (RAG tests)
+  [I1 can start as soon as A3 is done — parallel with Phases B-H]
+  [I4 requires D1, F1, E3 to be complete for the modification step]
+
+══════════════════════════════════════════════════════════
+
+OPTIMAL PARALLEL EXECUTION (all 29 sessions):
+
+  Round 1:  A1
+  Round 2:  A2 + A4
+  Round 3:  A3
+  Round 4:  B1 + C1 + C2 + C3 + I1  (5 parallel!)
+  Round 5:  B2 + D1 + I2
+  Round 6:  B3 + D2 + I3
+  Round 7:  D3 + F1
+  Round 8:  E1 + F2
+  Round 9:  E2
+  Round 10: E3 + G1
+  Round 11: G2 + I4
+  Round 12: G3 + H1 + H3
+  Round 13: H2 + I5
+
+  Minimum rounds with parallelism: 13 (vs 29 sequential)
+
+══════════════════════════════════════════════════════════
+
+WITHOUT RAG (Phases A-H only, 24 sessions):
+
+  Round 1:  A1
+  Round 2:  A2 + A4
+  Round 3:  A3
+  Round 4:  B1 + C1 + C2 + C3  (4 parallel)
+  Round 5:  B2 + D1
+  Round 6:  B3 + D2
+  Round 7:  D3 + F1
+  Round 8:  E1 + F2
+  Round 9:  E2
+  Round 10: E3 + G1
+  Round 11: G2
+  Round 12: G3 + H1 + H3
+  Round 13: H2
+
+  Minimum rounds without RAG: 13 (vs 24 sequential)</pre>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>raiveFlier &mdash; Automated Build Prompts</p>
+      <p>Generated February 18, 2026 &mdash; 29 Sessions, 9 Phases (includes RAG pipeline)</p>
+      <p style="margin-top:0.5rem; color: var(--text-muted)">&lozenge; &mdash; &lozenge; &mdash; &lozenge;</p>
+    </footer>
+  </div>
+
+  <script>
+    function copyPrompt(button) {
+      const promptContent = button.closest('.prompt-block').querySelector('.prompt-content pre');
+      const text = promptContent.textContent;
+
+      navigator.clipboard.writeText(text).then(() => {
+        button.textContent = 'COPIED';
+        button.classList.add('copied');
+
+        setTimeout(() => {
+          button.textContent = 'COPY';
+          button.classList.remove('copied');
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        button.textContent = 'FAILED';
+      });
+    }
+  </script>
+</body>
+</html>

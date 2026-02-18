@@ -1,0 +1,35 @@
+app:
+  name: raiveFlier
+  version: 0.1.0
+  host: 0.0.0.0
+  port: 8000
+
+ocr:
+  provider_priority:
+    - llm_vision
+    - easyocr
+    - tesseract
+  min_confidence: 0.5
+
+llm:
+  default_provider: openai
+  temperature: 0.3
+  max_tokens: 4000
+
+music_db:
+  primary: discogs_api
+  fallback: discogs_scrape
+  complementary: musicbrainz
+
+search:
+  primary: duckduckgo
+  secondary: serper
+
+rate_limits:
+  discogs: 60       # requests per minute
+  musicbrainz: 1    # requests per second
+  duckduckgo: 20    # requests per minute
+
+cache:
+  enabled: true
+  ttl: 3600          # seconds (1 hour)
