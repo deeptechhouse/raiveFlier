@@ -23,7 +23,6 @@ from src.models.entities import EntityType, Label, Release
 from src.models.flier import ExtractedEntities, ExtractedEntity, FlierImage, OCRResult
 from src.models.rag import CorpusStats, DocumentChunk, RetrievedChunk
 
-
 # ---------------------------------------------------------------------------
 # Existing fixtures
 # ---------------------------------------------------------------------------
@@ -134,7 +133,7 @@ def mock_music_db_provider() -> IMusicDatabaseProvider:
                 label="React",
                 catalog_number="REACT-001",
                 year=1995,
-                format="12\"",
+                format='12"',
                 discogs_url="https://www.discogs.com/release/1",
                 genres=["Electronic"],
                 styles=["Techno"],
@@ -144,7 +143,7 @@ def mock_music_db_provider() -> IMusicDatabaseProvider:
                 label="Intec",
                 catalog_number="INTEC-002",
                 year=1996,
-                format="12\"",
+                format='12"',
                 discogs_url="https://www.discogs.com/release/2",
                 genres=["Electronic"],
                 styles=["Techno", "Tech House"],
@@ -223,7 +222,7 @@ def sample_flier_image() -> tuple[FlierImage, bytes]:
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
         font_small = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-    except (OSError, IOError):
+    except OSError:
         font = ImageFont.load_default()
         font_small = font
 
@@ -404,9 +403,7 @@ class MockVectorStore(IVectorStoreProvider):
         return len(chunks)
 
     async def delete_by_source(self, source_id: str) -> int:
-        to_delete = [
-            cid for cid, (chunk, _) in self._store.items() if chunk.source_id == source_id
-        ]
+        to_delete = [cid for cid, (chunk, _) in self._store.items() if chunk.source_id == source_id]
         for cid in to_delete:
             del self._store[cid]
         return len(to_delete)
