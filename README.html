@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raiveFlier — README</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bunker-900: #0a0a0c;
+      --bunker-800: #14141a;
+      --bunker-700: #1e1e24;
+      --bunker-600: #2a2a30;
+      --bunker-500: #3a3a40;
+      --bunker-400: #6a6a70;
+      --bunker-300: #9a9a9e;
+      --bunker-100: #d8d5cd;
+      --accent: #6a4a8a;
+      --accent-hover: #8a6aaa;
+      --accent-text: #a080c0;
+      --accent-muted: #2a1e3a;
+      --accent-glow: rgba(106, 74, 138, 0.25);
+      --success: #3a7a60;
+      --success-text: #5aaa80;
+      --error-text: #c87080;
+      --warning-text: #c0a060;
+      --info: #7a9cc4;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      scroll-behavior: smooth;
+      color-scheme: dark;
+    }
+
+    body {
+      background: var(--bunker-900);
+      color: var(--bunker-100);
+      font-family: var(--font-body);
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .hero {
+      text-align: center;
+      padding: 3rem 0 2rem;
+      border-bottom: 1px solid var(--bunker-600);
+      margin-bottom: 3rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--accent-text);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero .tagline {
+      font-size: 1.15rem;
+      color: var(--bunker-300);
+      font-weight: 300;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+
+    .badge--version { background: var(--accent-muted); color: var(--accent-text); border: 1px solid var(--accent); }
+    .badge--python { background: #1a2a1a; color: var(--success-text); border: 1px solid var(--success); }
+    .badge--license { background: #1a1a2a; color: var(--info); border: 1px solid #4a6a8a; }
+    .badge--status { background: #2a1a1a; color: var(--warning-text); border: 1px solid #9a7a4a; }
+
+    /* Sections */
+    section {
+      margin-bottom: 3rem;
+    }
+
+    h2 {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--accent-text);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--bunker-700);
+    }
+
+    h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: var(--bunker-100);
+      margin: 1.5rem 0 0.75rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--bunker-300);
+    }
+
+    p strong {
+      color: var(--bunker-100);
+    }
+
+    a {
+      color: var(--accent-text);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    a:hover { border-bottom-color: var(--accent-text); }
+
+    /* Code */
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--bunker-700);
+      padding: 0.15em 0.4em;
+      border-radius: 3px;
+      color: var(--accent-text);
+    }
+
+    pre {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      margin: 1rem 0 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--bunker-100);
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+      color: inherit;
+    }
+
+    .comment { color: var(--bunker-400); }
+    .cmd { color: var(--accent-text); }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    th {
+      text-align: left;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent-text);
+      padding: 0.75rem 1rem;
+      background: var(--bunker-800);
+      border-bottom: 2px solid var(--accent);
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--bunker-700);
+      color: var(--bunker-300);
+      vertical-align: top;
+    }
+
+    tr:hover td {
+      background: var(--bunker-800);
+    }
+
+    td code {
+      font-size: 0.82em;
+    }
+
+    /* Lists */
+    ul, ol {
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+      color: var(--bunker-300);
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+    }
+
+    li::marker {
+      color: var(--accent);
+    }
+
+    /* Pipeline diagram */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin: 1.5rem 0 2rem;
+      flex-wrap: wrap;
+    }
+
+    .phase {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      min-width: 120px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .phase:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .phase-num {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--accent-text);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.25rem;
+    }
+
+    .phase-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--bunker-100);
+    }
+
+    .arrow {
+      color: var(--bunker-400);
+      font-size: 1.5rem;
+      padding: 0 0.3rem;
+      user-select: none;
+    }
+
+    .gate {
+      border-color: var(--accent);
+      background: var(--accent-muted);
+    }
+
+    /* Info boxes */
+    .info-box {
+      background: var(--bunker-800);
+      border-left: 3px solid var(--accent);
+      padding: 1rem 1.25rem;
+      border-radius: 0 6px 6px 0;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .info-box p { margin-bottom: 0.5rem; color: var(--bunker-300); }
+    .info-box p:last-child { margin-bottom: 0; }
+
+    /* Status indicators */
+    .status-free { color: var(--success-text); }
+    .status-key { color: var(--warning-text); }
+    .status-paid { color: var(--error-text); }
+
+    /* Footer */
+    footer {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--bunker-700);
+      text-align: center;
+      color: var(--bunker-400);
+      font-size: 0.85rem;
+    }
+
+    footer p { color: var(--bunker-400); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2rem; }
+      h2 { font-size: 1.3rem; }
+      pre { font-size: 0.78rem; padding: 1rem; }
+      .pipeline { gap: 0.25rem; }
+      .phase { min-width: 90px; padding: 0.5rem 0.6rem; }
+      .phase-name { font-size: 0.8rem; }
+      .arrow { font-size: 1rem; }
+      table { font-size: 0.8rem; }
+      th, td { padding: 0.5rem 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Hero -->
+  <header class="hero">
+    <h1>raiveFlier</h1>
+    <p class="tagline">Upload a rave flier. Get the full story behind every artist, venue, and promoter &mdash; with citations.</p>
+    <div class="badges">
+      <span class="badge badge--version">v0.1.0</span>
+      <span class="badge badge--python">Python 3.12+</span>
+      <span class="badge badge--license">MIT License</span>
+      <span class="badge badge--status">Alpha</span>
+    </div>
+  </header>
+
+  <!-- 1. Project Description -->
+  <section>
+    <h2>What is raiveFlier?</h2>
+    <p>
+      <strong>raiveFlier</strong> is an AI-powered research tool that transforms rave and concert flier images into
+      deep, citation-backed profiles of every entity on the flier. Upload a photo of a flier, and raiveFlier will:
+    </p>
+    <ol>
+      <li>Extract text via multi-engine OCR (LLM Vision, EasyOCR, Tesseract)</li>
+      <li>Identify artists, venues, promoters, dates, genres, and ticket prices using LLM analysis</li>
+      <li>Let you confirm or edit extracted entities before research begins</li>
+      <li>Deep-research every entity using music databases (Discogs, MusicBrainz), web search, and article scraping</li>
+      <li>Map interconnections between entities and present the results with full citations</li>
+    </ol>
+    <p>
+      <strong>Who is it for?</strong> Music historians, journalists, DJs, collectors, archivists, and anyone
+      curious about the people and places behind underground music events.
+    </p>
+  </section>
+
+  <!-- 2. Quick Start -->
+  <section>
+    <h2>Quick Start</h2>
+
+    <h3>Prerequisites</h3>
+    <ul>
+      <li><strong>Python 3.12+</strong></li>
+      <li><strong>pip</strong> (package manager)</li>
+      <li>At least one LLM provider: OpenAI API key, Anthropic API key, or <a href="https://ollama.ai">Ollama</a> running locally (free)</li>
+      <li><em>Optional:</em> Tesseract OCR installed locally (<code>brew install tesseract</code> on macOS)</li>
+    </ul>
+
+    <h3>Setup</h3>
+    <pre><code><span class="comment"># 1. Create and activate a virtual environment</span>
+<span class="cmd">python3 -m venv .venv && source .venv/bin/activate</span>
+
+<span class="comment"># 2. Install dependencies</span>
+<span class="cmd">pip install -r requirements.txt</span>
+
+<span class="comment"># 3. Configure environment variables</span>
+<span class="cmd">cp .env.example .env</span>
+<span class="comment"># Edit .env with your API keys (at minimum, one LLM provider)</span>
+
+<span class="comment"># 4. Start the server</span>
+<span class="cmd">uvicorn src.main:app --reload</span>
+
+<span class="comment"># 5. Open in browser</span>
+<span class="comment"># http://localhost:8000</span></code></pre>
+
+    <div class="info-box">
+      <p><strong>Zero-cost mode:</strong> raiveFlier works with zero paid APIs. Use <a href="https://ollama.ai">Ollama</a> for LLM (free, local), DuckDuckGo for search (free, no key), and MusicBrainz for music data (free, no key). Only Discogs API, Serper, and OpenAI/Anthropic require API keys.</p>
+    </div>
+  </section>
+
+  <!-- 3. Architecture Overview -->
+  <section>
+    <h2>Architecture Overview</h2>
+    <p>
+      raiveFlier uses a <strong>layered architecture with adapter pattern</strong>. All external services are
+      abstracted behind interfaces, making every provider swappable without changing business logic.
+      The analysis runs through a 5-phase pipeline with a human-in-the-loop confirmation gate between
+      Phase 1 and Phase 2.
+    </p>
+
+    <h3>5-Phase Pipeline</h3>
+    <div class="pipeline">
+      <div class="phase">
+        <div class="phase-num">Phase 1</div>
+        <div class="phase-name">OCR</div>
+      </div>
+      <span class="arrow">&rarr;</span>
+      <div class="phase">
+        <div class="phase-num">Phase 1b</div>
+        <div class="phase-name">Entity Extraction</div>
+      </div>
+      <span class="arrow">&rarr;</span>
+      <div class="phase gate">
+        <div class="phase-num">Gate</div>
+        <div class="phase-name">User Confirm</div>
+      </div>
+      <span class="arrow">&rarr;</span>
+      <div class="phase">
+        <div class="phase-num">Phase 2</div>
+        <div class="phase-name">Research</div>
+      </div>
+      <span class="arrow">&rarr;</span>
+      <div class="phase">
+        <div class="phase-num">Phase 3</div>
+        <div class="phase-name">Interconnection</div>
+      </div>
+      <span class="arrow">&rarr;</span>
+      <div class="phase">
+        <div class="phase-num">Phase 4</div>
+        <div class="phase-name">Output</div>
+      </div>
+    </div>
+
+    <h3>Layer Diagram</h3>
+    <pre><code>  Frontend (HTML/CSS/JS)
+       &darr; REST + WebSocket
+  API Layer (FastAPI routes, middleware, schemas)
+       &darr;
+  Pipeline (orchestrator, confirmation gate, progress tracker)
+       &darr;
+  Services (artist/venue/promoter/date researchers, OCR, entity extractor)
+       &darr;
+  Interfaces (abstract base classes for each provider type)
+       &darr;
+  Providers (concrete implementations: OpenAI, Discogs, DuckDuckGo, etc.)
+       &darr;
+  Models (Pydantic data models shared across all layers)</code></pre>
+  </section>
+
+  <!-- 4. API Reference -->
+  <section>
+    <h2>API Reference</h2>
+    <p>All API endpoints are prefixed with <code>/api/v1</code>. Interactive docs available at <code>/docs</code> (Swagger UI) when the server is running.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Endpoint</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/v1/fliers/upload</code></td>
+          <td>Upload a flier image (JPEG/PNG/WebP, max 10MB). Returns extracted entities for review.</td>
+        </tr>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/v1/fliers/{session_id}/confirm</code></td>
+          <td>Confirm (or edit) extracted entities. Kicks off background research pipeline.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/v1/fliers/{session_id}/status</code></td>
+          <td>Poll current pipeline phase, progress percentage, and errors.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/v1/fliers/{session_id}/results</code></td>
+          <td>Retrieve full analysis results (research profiles, interconnection map, citations).</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/v1/health</code></td>
+          <td>Health check &mdash; returns app version and provider availability.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/v1/providers</code></td>
+          <td>List all configured providers with type and availability status.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/v1/corpus/stats</code></td>
+          <td>RAG corpus statistics (requires <code>RAG_ENABLED=true</code>).</td>
+        </tr>
+        <tr>
+          <td><code>WS</code></td>
+          <td><code>/ws/progress/{session_id}</code></td>
+          <td>WebSocket for real-time pipeline progress updates.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 5. Configuration -->
+  <section>
+    <h2>Configuration</h2>
+
+    <h3><code>config/config.yaml</code> &mdash; Application Settings</h3>
+    <table>
+      <thead>
+        <tr><th>Section</th><th>Key</th><th>Description</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>ocr</code></td><td><code>provider_priority</code></td><td>Ordered list of OCR providers to try</td><td><code>[llm_vision, easyocr, tesseract]</code></td></tr>
+        <tr><td><code>ocr</code></td><td><code>min_confidence</code></td><td>Minimum OCR confidence threshold</td><td><code>0.5</code></td></tr>
+        <tr><td><code>llm</code></td><td><code>default_provider</code></td><td>Preferred LLM provider</td><td><code>openai</code></td></tr>
+        <tr><td><code>llm</code></td><td><code>temperature</code></td><td>LLM temperature for analysis</td><td><code>0.3</code></td></tr>
+        <tr><td><code>llm</code></td><td><code>max_tokens</code></td><td>Max response tokens</td><td><code>4000</code></td></tr>
+        <tr><td><code>music_db</code></td><td><code>primary / fallback / complementary</code></td><td>Music DB priority chain</td><td><code>discogs_api &rarr; discogs_scrape &rarr; musicbrainz</code></td></tr>
+        <tr><td><code>search</code></td><td><code>primary / secondary</code></td><td>Search engine priority</td><td><code>duckduckgo &rarr; serper</code></td></tr>
+        <tr><td><code>rate_limits</code></td><td><code>discogs / musicbrainz / duckduckgo</code></td><td>Rate limit caps per provider</td><td><code>60/min, 1/sec, 20/min</code></td></tr>
+        <tr><td><code>cache</code></td><td><code>enabled / ttl</code></td><td>In-memory cache toggle and TTL</td><td><code>true / 3600s</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3><code>.env</code> &mdash; Environment Variables</h3>
+    <table>
+      <thead>
+        <tr><th>Variable</th><th>Required?</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>OPENAI_API_KEY</code></td><td>One LLM required</td><td>OpenAI API key for GPT + Vision + Embeddings</td></tr>
+        <tr><td><code>ANTHROPIC_API_KEY</code></td><td>One LLM required</td><td>Anthropic API key for Claude + Vision</td></tr>
+        <tr><td><code>OLLAMA_BASE_URL</code></td><td>Optional</td><td>Ollama server URL (default: <code>http://localhost:11434</code>)</td></tr>
+        <tr><td><code>DISCOGS_CONSUMER_KEY</code></td><td>Optional</td><td>Discogs API consumer key</td></tr>
+        <tr><td><code>DISCOGS_CONSUMER_SECRET</code></td><td>Optional</td><td>Discogs API consumer secret</td></tr>
+        <tr><td><code>MUSICBRAINZ_CONTACT</code></td><td>Recommended</td><td>Contact email for MusicBrainz User-Agent</td></tr>
+        <tr><td><code>SERPER_API_KEY</code></td><td>Optional</td><td>Serper API key for Google search results</td></tr>
+        <tr><td><code>RAG_ENABLED</code></td><td>Optional</td><td>Enable RAG retrieval-augmented generation (<code>true</code>/<code>false</code>)</td></tr>
+        <tr><td><code>CHROMADB_PERSIST_DIR</code></td><td>If RAG</td><td>ChromaDB storage directory</td></tr>
+        <tr><td><code>APP_ENV</code></td><td>Optional</td><td><code>development</code> / <code>production</code></td></tr>
+        <tr><td><code>LOG_LEVEL</code></td><td>Optional</td><td>Logging level (<code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, etc.)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 6. Provider Matrix -->
+  <section>
+    <h2>Provider Matrix</h2>
+    <p>All providers implement swappable interfaces. Configure priorities in <code>config/config.yaml</code>.</p>
+
+    <table>
+      <thead>
+        <tr><th>Provider</th><th>Type</th><th>API Key?</th><th>Free Tier</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Ollama</td>
+          <td>LLM / Embeddings</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">Unlimited (local)</span></td>
+          <td>Run any open model locally. Requires Ollama installed.</td>
+        </tr>
+        <tr>
+          <td>OpenAI</td>
+          <td>LLM / Vision / Embeddings</td>
+          <td><span class="status-key">Yes</span></td>
+          <td><span class="status-paid">Pay-per-use</span></td>
+          <td>GPT-4o for analysis + vision OCR. ~$0.01/flier.</td>
+        </tr>
+        <tr>
+          <td>Anthropic</td>
+          <td>LLM / Vision</td>
+          <td><span class="status-key">Yes</span></td>
+          <td><span class="status-paid">Pay-per-use</span></td>
+          <td>Claude for analysis + vision OCR.</td>
+        </tr>
+        <tr>
+          <td>EasyOCR</td>
+          <td>OCR</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">Unlimited (local)</span></td>
+          <td>ML-based OCR. Good for stylized text. Bundled.</td>
+        </tr>
+        <tr>
+          <td>Tesseract</td>
+          <td>OCR</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">Unlimited (local)</span></td>
+          <td>Classic OCR engine. Requires system install.</td>
+        </tr>
+        <tr>
+          <td>DuckDuckGo</td>
+          <td>Web Search</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">~20 req/min</span></td>
+          <td>Default search provider. No API key needed.</td>
+        </tr>
+        <tr>
+          <td>Serper</td>
+          <td>Web Search</td>
+          <td><span class="status-key">Yes</span></td>
+          <td><span class="status-free">2,500 queries/month free</span></td>
+          <td>Google search results. Optional secondary.</td>
+        </tr>
+        <tr>
+          <td>Discogs API</td>
+          <td>Music Database</td>
+          <td><span class="status-key">Yes</span></td>
+          <td><span class="status-free">60 req/min</span></td>
+          <td>Official Discogs API. Rich artist/label data.</td>
+        </tr>
+        <tr>
+          <td>Discogs (Scrape)</td>
+          <td>Music Database</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">Fallback</span></td>
+          <td>Web scraping fallback when API key unavailable.</td>
+        </tr>
+        <tr>
+          <td>MusicBrainz</td>
+          <td>Music Database</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">1 req/sec</span></td>
+          <td>Open music encyclopedia. Requires User-Agent only.</td>
+        </tr>
+        <tr>
+          <td>ChromaDB</td>
+          <td>Vector Store (RAG)</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">Unlimited (local)</span></td>
+          <td>Local vector database for RAG retrieval.</td>
+        </tr>
+        <tr>
+          <td>Wayback Machine</td>
+          <td>Article Archive</td>
+          <td><span class="status-free">No</span></td>
+          <td><span class="status-free">Unlimited</span></td>
+          <td>Internet Archive article retrieval.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 7. Testing -->
+  <section>
+    <h2>Testing</h2>
+    <pre><code><span class="comment"># Install dev dependencies</span>
+<span class="cmd">pip install -r requirements-dev.txt</span>
+
+<span class="comment"># Run full test suite</span>
+<span class="cmd">pytest</span>
+
+<span class="comment"># Run with coverage</span>
+<span class="cmd">pytest --cov=src --cov-report=term-missing</span>
+
+<span class="comment"># Run specific test categories</span>
+<span class="cmd">pytest tests/unit/</span>
+<span class="cmd">pytest tests/integration/</span>
+<span class="cmd">pytest tests/e2e/</span>
+
+<span class="comment"># Lint and type-check</span>
+<span class="cmd">ruff check src/</span>
+<span class="cmd">mypy src/</span>
+<span class="cmd">black --check src/</span></code></pre>
+  </section>
+
+  <!-- 8. CLI: RAG Ingestion -->
+  <section>
+    <h2>CLI: RAG Ingestion</h2>
+    <p>Ingest articles, books, and analysis documents into the RAG corpus for enriched research results.</p>
+    <pre><code><span class="comment"># Ingest a single article by URL</span>
+<span class="cmd">python -m src.cli.ingest --type article --url "https://example.com/article"</span>
+
+<span class="comment"># Ingest a local text file</span>
+<span class="cmd">python -m src.cli.ingest --type book --file path/to/book.txt</span></code></pre>
+    <div class="info-box">
+      <p>RAG is optional. Set <code>RAG_ENABLED=true</code> in <code>.env</code> and ensure an embedding provider (OpenAI or Ollama with Nomic) is available.</p>
+    </div>
+  </section>
+
+  <!-- 9. License -->
+  <section>
+    <h2>License</h2>
+    <p>
+      <strong>MIT License</strong> &mdash; free and open source. See <code>LICENSE</code> for full text.
+    </p>
+  </section>
+
+  <footer>
+    <p>raiveFlier v0.1.0 &mdash; Built with FastAPI, structlog, and Pydantic</p>
+    <p>Documentation generated 2026-02-19</p>
+  </footer>
+
+</div>
+
+</body>
+</html>
