@@ -32,6 +32,12 @@ from src.models.pipeline import (
     PipelinePhase,
     PipelineState,
 )
+from src.models.rag import (
+    CorpusStats,
+    DocumentChunk,
+    IngestionResult,
+    RetrievedChunk,
+)
 from src.models.research import (
     DateContext,
     ResearchResult,
@@ -67,4 +73,9 @@ __all__ = [
     "PipelineError",
     "PipelinePhase",
     "PipelineState",
+    # rag
+    "CorpusStats",
+    "DocumentChunk",
+    "IngestionResult",
+    "RetrievedChunk",
 ]
