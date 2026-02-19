@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="raiveFlier — Upload a rave flier, get deep research on every artist, venue, and promoter.">
+  <meta name="theme-color" content="#0a0a0c">
+  <title>raiveFlier</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Film grain overlay -->
+  <div class="grain-overlay" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">raiveFlier</h1>
+      <p class="site-subtitle">Upload a rave flier. Get the full story.</p>
+    </div>
+  </header>
+
+  <main id="app" class="container">
+
+    <!-- View 1: Upload -->
+    <section id="upload-view" class="view" aria-label="Upload flier">
+      <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Drop a rave flier image here or click to browse">
+        <div class="drop-zone__content">
+          <svg class="drop-zone__icon" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M24 4L24 32M24 4L16 12M24 4L32 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 28V40C8 41.1 8.9 42 10 42H38C39.1 42 40 41.1 40 40V28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="drop-zone__label">Drop rave flier here</p>
+          <p class="drop-zone__hint">JPEG, PNG, or WEBP &middot; Max 10 MB</p>
+        </div>
+        <div class="drop-zone__preview" id="preview-area" hidden>
+          <img id="preview-image" alt="Flier preview" class="drop-zone__preview-img">
+          <button type="button" class="btn-clear" id="clear-btn" aria-label="Remove selected file">&times;</button>
+        </div>
+      </div>
+
+      <input type="file" id="file-input" class="sr-only" accept="image/jpeg,image/png,image/webp" aria-label="Choose a flier image">
+      <label for="file-input" class="btn-secondary btn-browse">Or browse files</label>
+
+      <div class="upload-actions">
+        <button type="button" class="btn-primary" id="submit-btn" disabled>Analyze Flier</button>
+      </div>
+
+      <div class="upload-error" id="upload-error" role="alert" hidden></div>
+
+      <div class="loading-overlay" id="loading-overlay" hidden>
+        <div class="spinner" aria-label="Processing"></div>
+        <p class="loading-text">Running OCR&hellip;</p>
+      </div>
+    </section>
+
+    <!-- View 2: Confirm entities (populated by G2) -->
+    <section id="confirm-view" class="view" aria-label="Confirm extracted entities" hidden></section>
+
+    <!-- View 3: Pipeline progress (populated by G2) -->
+    <section id="progress-view" class="view" aria-label="Pipeline progress" hidden></section>
+
+    <!-- View 4: Results (populated by G3) -->
+    <section id="results-view" class="view" aria-label="Analysis results" hidden></section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="text-caption">&copy; 2026 raiveFlier</p>
+    </div>
+  </footer>
+
+  <!-- Application scripts -->
+  <script src="js/app.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>
