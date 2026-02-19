@@ -100,3 +100,27 @@ class ErrorResponse(BaseModel):
 
     error: str
     detail: str | None = None
+
+
+class AskQuestionRequest(BaseModel):
+    """User question about analysis results."""
+
+    question: str = Field(..., min_length=1, max_length=1000)
+    entity_type: str | None = None
+    entity_name: str | None = None
+
+
+class SuggestedQuestion(BaseModel):
+    """A suggested follow-up question."""
+
+    text: str
+    entity_type: str | None = None
+    entity_name: str | None = None
+
+
+class AskQuestionResponse(BaseModel):
+    """Response to a user question with answer, citations, and suggestions."""
+
+    answer: str
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    suggested_questions: list[SuggestedQuestion] = Field(default_factory=list)

@@ -16,6 +16,8 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 
 from src.api.schemas import (
+    AskQuestionRequest,
+    AskQuestionResponse,
     ConfirmEntitiesRequest,
     ConfirmResponse,
     CorpusStatsResponse,
@@ -25,6 +27,7 @@ from src.api.schemas import (
     HealthResponse,
     PipelineStatusResponse,
     ProvidersResponse,
+    SuggestedQuestion,
 )
 from src.models.entities import EntityType
 from src.models.flier import ExtractedEntities, ExtractedEntity, FlierImage, OCRResult
@@ -72,6 +75,14 @@ PipelineDep = Annotated[FlierAnalysisPipeline, Depends(_get_pipeline)]
 GateDep = Annotated[ConfirmationGate, Depends(_get_confirmation_gate)]
 TrackerDep = Annotated[ProgressTracker, Depends(_get_progress_tracker)]
 SessionStatesDep = Annotated[dict[str, PipelineState], Depends(_get_session_states)]
+
+
+def _get_qa_service(request: Request) -> Any:
+    """Return the Q&A service from application state, or ``None``."""
+    return getattr(request.app.state, "qa_service", None)
+
+
+QAServiceDep = Annotated[Any, Depends(_get_qa_service)]
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +247,57 @@ async def confirm_entities(
         session_id=session_id,
         status="research_started",
         message="Entities confirmed. Research pipeline started.",
+    )
+
+
+@router.post(
+    "/fliers/{session_id}/ask",
+    response_model=AskQuestionResponse,
+    responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    summary="Ask a question about analysis results",
+)
+async def ask_question(
+    session_id: str,
+    body: AskQuestionRequest,
+    session_states: SessionStatesDep,
+    qa_service: QAServiceDep,
+) -> AskQuestionResponse:
+    """Ask a follow-up question about the analysis results, answered via RAG + LLM."""
+    if qa_service is None:
+        raise HTTPException(status_code=503, detail="Q&A service not available")
+
+    state = session_states.get(session_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+    # Build session context dict from PipelineState
+    session_context: dict[str, Any] = {
+        "session_id": session_id,
+        "extracted_entities": state.confirmed_entities or state.extracted_entities,
+        "research_results": state.research_results,
+        "interconnection_map": state.interconnection_map,
+    }
+
+    result = await qa_service.ask(
+        question=body.question,
+        session_context=session_context,
+        entity_type=body.entity_type,
+        entity_name=body.entity_name,
+    )
+
+    suggestions = [
+        SuggestedQuestion(
+            text=s.get("text", s) if isinstance(s, dict) else str(s),
+            entity_type=s.get("entity_type") if isinstance(s, dict) else None,
+            entity_name=s.get("entity_name") if isinstance(s, dict) else None,
+        )
+        for s in result.suggested_questions
+    ]
+
+    return AskQuestionResponse(
+        answer=result.answer,
+        citations=result.citations,
+        suggested_questions=suggestions,
     )
 
 

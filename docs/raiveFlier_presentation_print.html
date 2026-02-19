@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Technical Overview (Print)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --text-primary: #1a1a1a;
+    --text-secondary: #444;
+    --text-muted: #777;
+    --accent-violet: #7c3aed;
+    --accent-cyan: #0891b2;
+    --accent-amber: #b45309;
+    --accent-green: #047857;
+    --accent-rose: #be123c;
+    --accent-blue: #1d4ed8;
+    --border: #d1d5db;
+    --bg-code: #f3f4f6;
+    --bg-card: #f9fafb;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #fff;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 10pt;
+    line-height: 1.5;
+    max-width: 8.5in;
+    margin: 0 auto;
+    padding: 0.5in 0.6in;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media print {
+    body { padding: 0; max-width: none; }
+    .page-break { page-break-before: always; }
+    @page { margin: 0.6in 0.6in; size: letter; }
+  }
+
+  /* ── Typography ─────────────────────────────────────────── */
+  h1 {
+    font-family: var(--font-display);
+    font-size: 24pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--accent-violet);
+    margin-bottom: 6pt;
+    line-height: 1.15;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-size: 15pt;
+    font-weight: 600;
+    color: var(--accent-violet);
+    margin-top: 18pt;
+    margin-bottom: 6pt;
+    padding-bottom: 3pt;
+    border-bottom: 1.5pt solid var(--accent-violet);
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    margin-top: 12pt;
+    margin-bottom: 4pt;
+  }
+  p { margin-bottom: 6pt; }
+  p.lead { font-size: 11pt; color: var(--text-primary); margin-bottom: 10pt; }
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    color: var(--accent-cyan);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2pt;
+  }
+
+  /* ── Code ───────────────────────────────────────────────── */
+  pre {
+    background: var(--bg-code);
+    border: 0.5pt solid var(--border);
+    border-radius: 4pt;
+    padding: 8pt 10pt;
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    line-height: 1.55;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-bottom: 8pt;
+  }
+  code { font-family: var(--font-mono); font-size: 8.5pt; }
+  .kw  { color: var(--accent-violet); font-weight: 600; }
+  .fn  { color: var(--accent-cyan); }
+  .str { color: var(--accent-green); }
+  .cm  { color: var(--text-muted); font-style: italic; }
+  .num { color: var(--accent-amber); }
+  .typ { color: var(--accent-rose); }
+
+  .file-label {
+    font-family: var(--font-mono);
+    font-size: 7pt;
+    color: var(--text-muted);
+    margin-bottom: 2pt;
+    display: block;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; }
+  .cols-23 { display: grid; grid-template-columns: 2fr 3fr; gap: 14pt; }
+
+  .card {
+    background: var(--bg-card);
+    border: 0.5pt solid var(--border);
+    border-radius: 4pt;
+    padding: 8pt 10pt;
+  }
+  .card h3 { margin-top: 0; }
+  .card p { font-size: 9pt; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8pt;
+    font-size: 8.5pt;
+  }
+  th {
+    text-align: left;
+    padding: 4pt 6pt;
+    background: var(--bg-code);
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1pt solid var(--border);
+  }
+  td {
+    padding: 3pt 6pt;
+    border-bottom: 0.5pt solid #e5e7eb;
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+  td:first-child { color: var(--text-primary); font-family: var(--font-mono); font-size: 8pt; }
+
+  /* ── Flow diagrams ──────────────────────────────────────── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 3pt;
+    flex-wrap: wrap;
+    margin: 8pt 0;
+  }
+  .flow-step {
+    padding: 3pt 8pt;
+    border-radius: 3pt;
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 0.5pt solid var(--border);
+    background: var(--bg-card);
+  }
+  .flow-arrow { color: var(--text-muted); font-size: 10pt; }
+
+  /* ── Highlight box ──────────────────────────────────────── */
+  .highlight-box {
+    background: #f5f3ff;
+    border: 1pt solid #ddd6fe;
+    border-radius: 4pt;
+    padding: 10pt 12pt;
+    margin: 8pt 0;
+  }
+  .highlight-box p { margin-bottom: 4pt; }
+  .highlight-box p:last-child { margin-bottom: 0; }
+
+  ul { padding-left: 14pt; margin-bottom: 6pt; }
+  li { color: var(--text-secondary); margin-bottom: 2pt; font-size: 9pt; }
+  li strong { color: var(--text-primary); }
+
+  /* ── Section divider ────────────────────────────────────── */
+  .section-num {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    color: var(--text-muted);
+    float: right;
+  }
+
+  /* ── Title page ─────────────────────────────────────────── */
+  .title-page {
+    text-align: center;
+    padding-top: 2in;
+    padding-bottom: 1in;
+  }
+  .title-page h1 { font-size: 32pt; margin-bottom: 10pt; }
+  .title-page .tagline { font-size: 12pt; color: var(--text-secondary); max-width: 5in; margin: 0 auto 20pt; }
+  .badge {
+    display: inline-block;
+    padding: 2pt 6pt;
+    border-radius: 3pt;
+    font-family: var(--font-mono);
+    font-size: 7pt;
+    font-weight: 500;
+    border: 0.5pt solid var(--border);
+    margin: 1pt;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- TITLE PAGE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="title-page">
+  <p class="subtitle">Technical Overview</p>
+  <h1>raiveFlier</h1>
+  <p class="tagline">Upload a rave flier image. Get the full story&mdash;every artist, venue, and promoter researched with deep citations from music databases, web archives, and a RAG-augmented knowledge base.</p>
+  <div>
+    <span class="badge">Python 3.10+</span>
+    <span class="badge">FastAPI</span>
+    <span class="badge">ChromaDB</span>
+    <span class="badge">OpenAI / Anthropic / Ollama</span>
+    <span class="badge">EasyOCR + Tesseract</span>
+    <span class="badge">Pydantic v2</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>1. What raiveFlier Does <span class="section-num">Page 2</span></h2>
+
+<p class="lead">A five-phase automated research pipeline that transforms a single rave flier photograph into a comprehensive, citation-backed dossier.</p>
+
+<div class="flow">
+  <span class="flow-step">Upload Image</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">OCR Extraction</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">Entity Parsing</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">Human Confirmation</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">Deep Research</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">Interconnection Map</span>
+</div>
+
+<div class="cols-3">
+  <div class="card">
+    <h3>Artists</h3>
+    <p>Identity resolution via Discogs &amp; MusicBrainz. Full discography, gig history, press/interview aggregation, citation-tiered references.</p>
+  </div>
+  <div class="card">
+    <h3>Venues &amp; Promoters</h3>
+    <p>Venue history, capacity, notable residencies. Promoter track record, associated event series, and scene context.</p>
+  </div>
+  <div class="card">
+    <h3>Interconnections</h3>
+    <p>Maps relationships between entities&mdash;shared labels, overlapping lineups, city-scene connections&mdash;visualized as a network graph.</p>
+  </div>
+</div>
+
+<h2>2. Architecture <span class="section-num">Page 2</span></h2>
+
+<p>raiveFlier follows a <strong>layered architecture with adapter pattern</strong>. Five distinct layers with strict dependency rules. External services are abstracted behind interfaces so providers can be swapped without changing business logic.</p>
+
+<div class="cols-2">
+  <div>
+    <table>
+      <thead><tr><th>Layer</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td>src/models/</td><td>Pydantic v2 frozen data models</td></tr>
+        <tr><td>src/interfaces/</td><td>Abstract base classes (contracts)</td></tr>
+        <tr><td>src/providers/</td><td>Concrete adapters for external services</td></tr>
+        <tr><td>src/services/</td><td>Business logic + research orchestration</td></tr>
+        <tr><td>src/pipeline/</td><td>5-phase pipeline orchestrator</td></tr>
+        <tr><td>src/api/</td><td>FastAPI REST + WebSocket endpoints</td></tr>
+        <tr><td>frontend/</td><td>Vanilla HTML/CSS/JS SPA</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <span class="file-label">src/interfaces/ocr_provider.py</span>
+    <pre><span class="kw">class</span> <span class="typ">IOCRProvider</span>(<span class="typ">ABC</span>):
+    <span class="str">"""Contract for OCR services."""</span>
+
+    <span class="kw">@abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">extract_text</span>(self, image: <span class="typ">FlierImage</span>) -> <span class="typ">OCRResult</span>: ...
+
+    <span class="kw">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">is_available</span>(self) -> <span class="typ">bool</span>: ...
+
+    <span class="kw">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">supports_stylized_text</span>(self) -> <span class="typ">bool</span>: ...</pre>
+    <p style="font-size:8.5pt;">Every external dependency implements an abstract interface. Swap Tesseract for Google Vision by adding one adapter class&mdash;zero changes to services or pipeline.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>3. Tech Stack <span class="section-num">Page 3</span></h2>
+
+<div class="cols-2">
+  <div>
+    <h3>Backend</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Technology</th></tr></thead>
+      <tbody>
+        <tr><td>Language</td><td>Python 3.10+</td></tr>
+        <tr><td>Framework</td><td>FastAPI + Uvicorn</td></tr>
+        <tr><td>Data Models</td><td>Pydantic v2 (frozen/immutable)</td></tr>
+        <tr><td>Config</td><td>pydantic-settings + YAML</td></tr>
+        <tr><td>Logging</td><td>structlog (JSON)</td></tr>
+        <tr><td>Real-time</td><td>WebSockets (native)</td></tr>
+        <tr><td>Testing</td><td>pytest + pytest-asyncio</td></tr>
+        <tr><td>Image Proc</td><td>OpenCV, Pillow, NumPy</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h3>External Services (All Swappable)</h3>
+    <table>
+      <thead><tr><th>Service</th><th>Provider(s)</th></tr></thead>
+      <tbody>
+        <tr><td>LLM</td><td>OpenAI, Anthropic, Ollama, TogetherAI</td></tr>
+        <tr><td>OCR</td><td>LLM Vision, EasyOCR, Tesseract</td></tr>
+        <tr><td>Music DB</td><td>Discogs API/Scrape, MusicBrainz</td></tr>
+        <tr><td>Web Search</td><td>DuckDuckGo (free), Serper</td></tr>
+        <tr><td>Articles</td><td>Web Scraper, Wayback Machine</td></tr>
+        <tr><td>Embeddings</td><td>OpenAI, Nomic/Ollama, TogetherAI</td></tr>
+        <tr><td>Vector Store</td><td>ChromaDB (local, free)</td></tr>
+        <tr><td>Cache</td><td>In-memory (TTLCache)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>4. The 5-Phase Pipeline <span class="section-num">Page 3</span></h2>
+
+<p>The <code>FlierAnalysisPipeline</code> orchestrator coordinates the full workflow. Each phase updates a frozen <code>PipelineState</code> via <code>model_copy</code> and broadcasts progress over WebSocket.</p>
+
+<div class="cols-23">
+  <div>
+    <div class="flow" style="flex-direction:column; align-items:stretch;">
+      <span class="flow-step" style="text-align:center;">Phase 1: OCR Extraction</span>
+      <span class="flow-arrow" style="text-align:center;">&darr;</span>
+      <span class="flow-step" style="text-align:center;">Phase 2: Entity Extraction</span>
+      <span class="flow-arrow" style="text-align:center;">&darr;</span>
+      <span class="flow-step" style="text-align:center;">Phase 3: Human Confirmation</span>
+      <span class="flow-arrow" style="text-align:center;">&darr;</span>
+      <span class="flow-step" style="text-align:center;">Phase 4: Parallel Research</span>
+      <span class="flow-arrow" style="text-align:center;">&darr;</span>
+      <span class="flow-step" style="text-align:center;">Phase 5: Interconnection + Citations</span>
+      <span class="flow-arrow" style="text-align:center;">&darr;</span>
+      <span class="flow-step" style="text-align:center;">Phase 6: RAG Feedback Loop</span>
+    </div>
+  </div>
+  <div>
+    <span class="file-label">src/pipeline/orchestrator.py</span>
+    <pre><span class="kw">class</span> <span class="typ">FlierAnalysisPipeline</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, ocr_service, entity_extractor,
+        research_service, interconnection_service,
+        citation_service, progress_tracker,
+        ingestion_service=<span class="num">None</span>): ...
+
+    <span class="kw">async def</span> <span class="fn">run_phase_1</span>(self, state):
+        <span class="cm"># OCR + Entity Extraction</span>
+        ocr_result = <span class="kw">await</span> self._ocr_service.extract_text(state.flier)
+        entities = <span class="kw">await</span> self._entity_extractor.extract(ocr_result)
+        <span class="kw">return</span> state  <span class="cm"># Pauses at USER_CONFIRMATION (40%)</span>
+
+    <span class="kw">async def</span> <span class="fn">run_phases_2_through_5</span>(self, state):
+        <span class="cm"># Parallel research &rarr; Interconnection &rarr; Citations</span>
+        research = <span class="kw">await</span> self._research_service.research_all(...)
+        interconnections = <span class="kw">await</span> self._interconnection_service.analyze(...)
+        <span class="cm"># RAG feedback: ingest analysis results into corpus</span>
+        <span class="kw">await</span> self._ingestion_service.ingest_analysis(state)</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>5. Multi-Provider OCR with 9-Pass Preprocessing <span class="section-num">Page 4</span></h2>
+
+<p>The OCR engine uses a <strong>priority-ordered fallback chain</strong> (LLM Vision &rarr; EasyOCR &rarr; Tesseract) with cross-pass text merging and rave-specific preprocessing optimized for neon text on dark backgrounds.</p>
+
+<div class="cols-2">
+  <div>
+    <h3>Provider Fallback Chain</h3>
+    <span class="file-label">src/services/ocr_service.py</span>
+    <pre><span class="kw">class</span> <span class="typ">OCRService</span>:
+    <span class="kw">async def</span> <span class="fn">extract_text</span>(self, flier):
+        <span class="kw">for</span> provider <span class="kw">in</span> self._providers:
+            <span class="kw">if not</span> provider.is_available(): <span class="kw">continue</span>
+            result = <span class="kw">await</span> provider.extract_text(flier)
+            <span class="kw">if</span> result.confidence >= self._min_confidence:
+                <span class="kw">return</span> result  <span class="cm"># Short-circuit on high confidence</span>
+        <span class="kw">return</span> best_result  <span class="cm"># Best fallback if none met threshold</span></pre>
+
+    <h3>9 Preprocessing Passes</h3>
+    <table>
+      <thead><tr><th>#</th><th>Pass</th><th>Pipeline</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>standard</td><td>resize &rarr; contrast &rarr; binarize</td></tr>
+        <tr><td>2</td><td>inverted</td><td>resize &rarr; invert &rarr; contrast</td></tr>
+        <tr><td>3-5</td><td>R/G/B</td><td>resize &rarr; channel &rarr; binarize</td></tr>
+        <tr><td>6</td><td>CLAHE</td><td>resize &rarr; CLAHE &rarr; binarize</td></tr>
+        <tr><td>7</td><td>denoised</td><td>resize &rarr; denoise &rarr; binarize</td></tr>
+        <tr><td>8</td><td>saturation</td><td>resize &rarr; HSV saturation &rarr; binarize</td></tr>
+        <tr><td>9</td><td>Otsu</td><td>resize &rarr; Otsu auto-threshold</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h3>Cross-Pass Text Merging</h3>
+    <span class="file-label">src/utils/ocr_helpers.py</span>
+    <pre><span class="kw">def</span> <span class="fn">deduplicate_text_regions</span>(regions, similarity_threshold=<span class="num">0.80</span>):
+    <span class="str">"""Merge near-duplicate TextRegions across passes
+    using rapidfuzz token_sort_ratio."""</span>
+    kept = []
+    <span class="kw">for</span> region <span class="kw">in</span> regions:
+        is_duplicate = <span class="num">False</span>
+        <span class="kw">for</span> idx, existing <span class="kw">in</span> enumerate(kept):
+            ratio = fuzz.token_sort_ratio(
+                region.text, existing.text) / <span class="num">100.0</span>
+            <span class="kw">if</span> ratio >= similarity_threshold:
+                <span class="kw">if</span> region.confidence > existing.confidence:
+                    kept[idx] = region  <span class="cm"># Keep higher confidence</span>
+                is_duplicate = <span class="num">True</span>; <span class="kw">break</span>
+        <span class="kw">if not</span> is_duplicate:
+            kept.append(region)
+    <span class="kw">return</span> kept</pre>
+    <p style="font-size:8.5pt;">Instead of keeping only the single best pass, all pass results are collected, fuzzy-deduplicated, and merged. This captures text that only appears under certain preprocessing conditions (e.g., neon artist names visible only in the HSV saturation pass, small white venue text visible only in the standard pass).</p>
+  </div>
+</div>
+
+<h2>6. Entity Extraction + Human-in-the-Loop <span class="section-num">Page 4</span></h2>
+
+<div class="cols-2">
+  <div>
+    <span class="file-label">src/models/flier.py</span>
+    <pre><span class="kw">class</span> <span class="typ">ExtractedEntities</span>(<span class="typ">BaseModel</span>):
+    model_config = ConfigDict(frozen=<span class="num">True</span>)
+    artists: list[<span class="typ">ExtractedEntity</span>]
+    venue: <span class="typ">ExtractedEntity</span> | <span class="typ">None</span>
+    date: <span class="typ">ExtractedEntity</span> | <span class="typ">None</span>
+    promoter: <span class="typ">ExtractedEntity</span> | <span class="typ">None</span>
+    genre_tags: list[<span class="typ">str</span>]
+    ticket_price: <span class="typ">str</span> | <span class="typ">None</span>
+    raw_ocr: <span class="typ">OCRResult</span></pre>
+    <p style="font-size:8.5pt;">All models are frozen (immutable). After Phase 1 completes, users review, edit, and confirm entities before the expensive research phase begins.</p>
+  </div>
+  <div>
+    <h3>OCR Error Correction (Traditional OCR only)</h3>
+    <span class="file-label">src/utils/text_normalizer.py</span>
+    <pre><span class="cm"># Applied to EasyOCR/Tesseract — NOT LLM Vision</span>
+_OCR_CORRECTIONS = [
+    (r"rn" &rarr; "m"),    <span class="cm"># "Surnrner" &rarr; "Summer"</span>
+    ("0"  &rarr; "O"),     <span class="cm"># "0PEN" &rarr; "OPEN"</span>
+    ("1"  &rarr; "l"),     <span class="cm"># "1ive" &rarr; "live"</span>
+    ("|"  &rarr; "l"),     <span class="cm"># "|ive" &rarr; "live"</span>
+    ("VV" &rarr; "W"),     <span class="cm"># "VVarehouse" &rarr; "Warehouse"</span>
+]</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>7. Parallel Deep Research <span class="section-num">Page 5</span></h2>
+
+<p>The <code>ResearchService</code> fans out concurrent <code>asyncio</code> tasks&mdash;one per artist, plus venue, promoter, and date context. A flier with 5 artists produces 8 simultaneous research jobs.</p>
+
+<div class="cols-2">
+  <div>
+    <span class="file-label">src/services/artist_researcher.py (5-step pipeline)</span>
+    <pre><span class="kw">async def</span> <span class="fn">research</span>(self, artist_name, before_date):
+    <span class="cm"># Step 1: IDENTIFY via music databases</span>
+    discogs_id, mb_id, id_conf = \
+        <span class="kw">await</span> self._search_music_databases(name)
+    <span class="cm"># Cross-reference bonus: +0.15 if both DBs agree</span>
+
+    <span class="cm"># Step 2: DISCOGRAPHY (Discogs &rarr; MusicBrainz)</span>
+    releases, labels = <span class="kw">await</span> self._fetch_discography(
+        name, discogs_id, mb_id, before_date)
+
+    <span class="cm"># Step 3: GIG HISTORY via web search + LLM parsing</span>
+    appearances = <span class="kw">await</span> self._search_gig_history(
+        name, before_date)
+
+    <span class="cm"># Step 4: PRESS via web search + article scraping</span>
+    articles = <span class="kw">await</span> self._search_press(name, before_date)
+
+    <span class="cm"># Step 4.5: RAG CORPUS retrieval</span>
+    corpus_refs = <span class="kw">await</span> self._retrieve_from_corpus(
+        name, before_date)
+
+    <span class="cm"># Step 5: COMPILE with weighted confidence</span>
+    confidence = calculate_confidence(
+        scores=[id_conf, disco_conf, gig_conf, press_conf],
+        weights=[<span class="num">3.0</span>, <span class="num">2.0</span>, <span class="num">1.5</span>, <span class="num">1.5</span>])</pre>
+  </div>
+  <div>
+    <h3>Citation Tier System</h3>
+    <table>
+      <thead><tr><th>Tier</th><th>Source Type</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>RA, DJ Mag, Mixmag</td></tr>
+        <tr><td>2</td><td>XLR8R, Pitchfork, Fact, The Quietus</td></tr>
+        <tr><td>3</td><td>Discogs, MusicBrainz, Bandcamp</td></tr>
+        <tr><td>4</td><td>YouTube, SoundCloud, Wikipedia</td></tr>
+        <tr><td>5</td><td>Reddit, Facebook, Instagram</td></tr>
+        <tr><td>6</td><td>Unknown / uncategorized</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:8.5pt;"><strong>Confidence scoring:</strong> Final confidence is a weighted average: identity resolution (weight 3.0), discography (2.0), gig history (1.5), and press (1.5). Each sub-score scales with the number of results found. The cross-reference bonus (+0.15) fires when both Discogs and MusicBrainz agree on identity.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>8. RAG Pipeline: What is Retrieval-Augmented Generation? <span class="section-num">Page 5</span></h2>
+
+<div class="highlight-box">
+  <p><strong>RAG</strong> (Retrieval-Augmented Generation) enhances AI models by giving them access to a searchable knowledge base of real documents. Instead of relying solely on the LLM's training data, the system <em>retrieves</em> relevant passages from a curated corpus and injects them into the prompt, grounding the AI's responses in verified, citable sources.</p>
+</div>
+
+<div class="cols-3">
+  <div class="card"><h3>1. Ingestion</h3><p>Source documents (books, articles, past analyses) are split into overlapping chunks, enriched with metadata tags, converted to vectors, and stored in a vector database.</p></div>
+  <div class="card"><h3>2. Retrieval</h3><p>The system converts the query to a vector and finds the most semantically similar chunks using cosine distance. Metadata filters narrow results by date, entity, or source type.</p></div>
+  <div class="card"><h3>3. Augmented Generation</h3><p>Retrieved passages are injected alongside the research query, allowing the LLM to cite specific books and articles. This produces grounded, verifiable research.</p></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>9. RAG Ingestion: Process &rarr; Chunk &rarr; Tag &rarr; Embed &rarr; Store <span class="section-num">Page 6</span></h2>
+
+<div class="cols-2">
+  <div>
+    <h3>Text Chunking</h3>
+    <span class="file-label">src/services/ingestion/chunker.py</span>
+    <pre><span class="kw">class</span> <span class="typ">TextChunker</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self,
+        chunk_size: <span class="typ">int</span> = <span class="num">500</span>,   <span class="cm"># tokens per chunk</span>
+        overlap: <span class="typ">int</span> = <span class="num">100</span>,      <span class="cm"># token overlap</span>
+    ):
+        self._tokenizer = Tokenizer.from_pretrained(
+            <span class="str">"bert-base-uncased"</span>)
+
+    <span class="kw">def</span> <span class="fn">chunk</span>(self, text, source_metadata):
+        paragraphs = self._split_paragraphs(text)
+        raw_chunks = self._accumulate_chunks(paragraphs)
+        <span class="kw">return</span> [DocumentChunk(...) <span class="kw">for</span> ...]</pre>
+    <p style="font-size:8.5pt;">Text is split at paragraph boundaries, accumulated into ~500-token windows with 100-token overlap. Long paragraphs split at sentence boundaries (respecting abbreviations).</p>
+
+    <h3>Supported Source Types</h3>
+    <ul>
+      <li><strong>Books:</strong> Plain text, PDF, EPUB</li>
+      <li><strong>Articles:</strong> URLs via web scraper or Wayback Machine</li>
+      <li><strong>Analyses:</strong> Completed pipeline results (feedback loop)</li>
+      <li><strong>Bulk:</strong> Directory of .txt/.html files</li>
+    </ul>
+  </div>
+  <div>
+    <h3>LLM Metadata Tagging</h3>
+    <span class="file-label">src/services/ingestion/metadata_extractor.py</span>
+    <pre><span class="kw">class</span> <span class="typ">MetadataExtractor</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, llm, max_concurrent=<span class="num">5</span>):
+        self._semaphore = asyncio.Semaphore(max_concurrent)
+
+    <span class="kw">async def</span> <span class="fn">extract_tags</span>(self, chunk_text):
+        response = <span class="kw">await</span> self._llm.complete(
+            system_prompt=<span class="str">"You are a metadata extraction
+              assistant specializing in electronic
+              and dance music culture."</span>,
+            user_prompt=_EXTRACTION_USER_PROMPT
+                .format(text=chunk_text[:3000]),
+            temperature=<span class="num">0.1</span>, max_tokens=<span class="num">500</span>)
+        <span class="kw">return</span> {
+            <span class="str">"entity_tags"</span>: [...],
+            <span class="str">"geographic_tags"</span>: [...],
+            <span class="str">"genre_tags"</span>: [...],
+        }</pre>
+
+    <h3>Vector Store + Semantic Search</h3>
+    <span class="file-label">src/providers/vector_store/chromadb_provider.py</span>
+    <pre><span class="kw">async def</span> <span class="fn">query</span>(self, query_text, top_k=<span class="num">20</span>, filters=<span class="num">None</span>):
+    query_embedding = <span class="kw">await</span> self._embedding_provider
+        .embed_single(query_text)
+    results = self._collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k,
+        where=self._translate_filters(filters))
+    similarity = <span class="num">1.0</span> - distance  <span class="cm"># cosine distance to score</span></pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>10. RAG Tunable Parameters <span class="section-num">Page 6</span></h2>
+
+<table>
+  <thead>
+    <tr><th>Parameter</th><th>Default</th><th>Increase Effect</th><th>Decrease Effect</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>chunk_size</td>
+      <td>500 tok</td>
+      <td>More context per chunk; fewer chunks; better for narrative</td>
+      <td>Granular retrieval; better precision for factual queries</td>
+    </tr>
+    <tr>
+      <td>overlap</td>
+      <td>100 tok</td>
+      <td>Less info lost at boundaries; higher storage cost</td>
+      <td>Smaller storage; risk of losing cross-boundary context</td>
+    </tr>
+    <tr>
+      <td>top_k</td>
+      <td>20</td>
+      <td>Higher recall; more LLM context; risk of irrelevant results</td>
+      <td>Higher precision; lower latency; may miss useful passages</td>
+    </tr>
+    <tr>
+      <td>similarity_threshold</td>
+      <td>0.7</td>
+      <td>Stricter relevance; higher precision</td>
+      <td>More passages included; higher recall; more noise</td>
+    </tr>
+    <tr>
+      <td>min_confidence</td>
+      <td>0.5</td>
+      <td>More OCR providers tried; potentially higher quality</td>
+      <td>Faster OCR; may accept lower-quality extraction</td>
+    </tr>
+    <tr>
+      <td>max_concurrent</td>
+      <td>5</td>
+      <td>Faster ingestion; risk of rate limits</td>
+      <td>Slower ingestion; safer for rate-limited APIs</td>
+    </tr>
+    <tr>
+      <td>temperature</td>
+      <td>0.1&ndash;0.3</td>
+      <td>More varied responses; risk of hallucination</td>
+      <td>More deterministic; better for structured extraction</td>
+    </tr>
+    <tr>
+      <td>rag_enabled</td>
+      <td>false</td>
+      <td colspan="2">Toggle: enables vector store retrieval and self-improving feedback loop</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>11. Swappable Provider System <span class="section-num">Page 7</span></h2>
+
+<p>Every external dependency is wrapped behind an abstract interface. Adding a new provider means implementing one class&mdash;zero changes to services, pipeline, or API.</p>
+
+<div class="cols-3">
+  <div class="card"><h3>OCR &mdash; IOCRProvider</h3><p>LLM Vision, EasyOCR (9-pass), Tesseract (9-pass + PSM 11). Could add: Google Vision, AWS Textract.</p></div>
+  <div class="card"><h3>LLM &mdash; ILLMProvider</h3><p>OpenAI, Anthropic, Ollama, OpenAI-compatible (TogetherAI, Anyscale, Fireworks).</p></div>
+  <div class="card"><h3>Music DB &mdash; IMusicDatabaseProvider</h3><p>Discogs API, Discogs Scrape (keyless fallback), MusicBrainz (free).</p></div>
+  <div class="card"><h3>Search &mdash; IWebSearchProvider</h3><p>DuckDuckGo (free), Serper (paid).</p></div>
+  <div class="card"><h3>Embeddings &mdash; IEmbeddingProvider</h3><p>OpenAI, TogetherAI (BAAI/bge), Nomic via Ollama (free, local).</p></div>
+  <div class="card"><h3>Vector Store &mdash; IVectorStoreProvider</h3><p>ChromaDB (local, free). Could add: Qdrant, Pinecone, Weaviate.</p></div>
+</div>
+
+<h2>12. Frontend <span class="section-num">Page 7</span></h2>
+
+<p>Vanilla HTML/CSS/JS SPA with a dark "Bunker + Amethyst" design theme. Four views driven by WebSocket progress updates: Upload &rarr; Confirm &rarr; Progress &rarr; Results (artist cards, interconnection graph, citation list with export).</p>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>13. Interactive Q&amp;A (RAG-Powered) <span class="section-num">Page 7</span></h2>
+
+<p>Users can click "Ask about this" on any entity in the results&mdash;an artist, a venue, a promoter, or date context&mdash;and ask follow-up questions answered directly by the RAG pipeline.</p>
+
+<div class="cols-2">
+  <div>
+    <h3>Architecture</h3>
+    <span class="file-label">src/services/qa_service.py</span>
+    <pre><span class="kw">class</span> <span class="typ">QAService</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, llm: <span class="typ">ILLMProvider</span>,
+        vector_store: <span class="typ">IVectorStoreProvider</span> | <span class="typ">None</span>,
+        cache: <span class="typ">ICacheProvider</span> | <span class="typ">None</span>): ...
+
+    <span class="kw">async def</span> <span class="fn">ask</span>(self, question, session_context,
+        entity_type=<span class="num">None</span>, entity_name=<span class="num">None</span>):
+        <span class="cm"># 1. Check deterministic cache (SHA-256 key)</span>
+        <span class="cm"># 2. Build context from session analysis</span>
+        <span class="cm"># 3. Retrieve RAG passages (top_k=10, &ge;0.6)</span>
+        <span class="cm"># 4. LLM generates answer + 3-4 suggestions</span>
+        <span class="cm"># 5. Parse JSON, merge RAG + LLM citations</span>
+        <span class="kw">return</span> QAResponse(answer, citations,
+            suggested_questions)</pre>
+    <p style="font-size:8.5pt;"><strong>Graceful degradation:</strong> When RAG is disabled (vector_store=None), falls back to LLM-only answers using the session's analysis context.</p>
+  </div>
+  <div>
+    <h3>API Endpoint</h3>
+    <pre><span class="fn">POST</span> /api/v1/fliers/{session_id}/ask
+<span class="cm"># Request:</span>
+{ <span class="str">"question"</span>: <span class="str">"What genre is this artist?"</span>,
+  <span class="str">"entity_type"</span>: <span class="str">"ARTIST"</span>,
+  <span class="str">"entity_name"</span>: <span class="str">"DJ Shadow"</span> }
+<span class="cm"># Response:</span>
+{ <span class="str">"answer"</span>: <span class="str">"..."</span>,
+  <span class="str">"citations"</span>: [...],
+  <span class="str">"suggested_questions"</span>: [
+    {<span class="str">"text"</span>: <span class="str">"What labels has DJ Shadow released on?"</span>},
+    {<span class="str">"text"</span>: <span class="str">"Who are similar artists from this era?"</span>},
+  ] }</pre>
+    <h3>Frontend</h3>
+    <p style="font-size:8.5pt;">A slide-in drawer (380px) with conversational thread, citation badges (tier-colored), and clickable suggestion chips. "Ask about this" buttons appear on all entity sections in the results view.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>14. Advancing the Mission of MWRCA <span class="section-num">Page 8</span></h2>
+
+<p>The <strong>Midwest Rave Culture Archive</strong> (mwrca.org) preserves audio/visual and print ephemera related to rave culture across the Midwest, making digitized collections freely accessible via the Internet Archive.</p>
+
+<div class="highlight-box">
+  <p><strong>raiveFlier could serve as MWRCA's automated research and cataloging engine.</strong> As volunteers digitize and scan fliers from the Midwest rave scene, raiveFlier could process each image to automatically identify every artist, venue, promoter, and date&mdash;enriching the archive's metadata with deep citations from music databases, press archives, and a growing RAG knowledge base built from MWRCA's own reference corpus. Hosted publicly, it could also allow community members and researchers to upload their own flier photographs and instantly access comprehensive, citation-backed histories of the events they attended, transforming ephemeral paper artifacts into interconnected cultural records.</p>
+</div>
+
+<div class="cols-3">
+  <div class="card"><h3>For the Team</h3><p>Automate cataloging of the flier archive. Bulk-process scanned fliers to generate structured metadata (artists, venues, dates) at scale, reducing manual data entry.</p></div>
+  <div class="card"><h3>For the Public</h3><p>Host raiveFlier as a public tool where anyone can upload a flier and get its full story&mdash;connecting them to the cultural history MWRCA preserves.</p></div>
+  <div class="card"><h3>Growing Knowledge Base</h3><p>The RAG feedback loop means every analyzed flier enriches the corpus. Over time, the system accumulates deep institutional knowledge about the Midwest rave scene.</p></div>
+</div>
+
+</body>
+</html>

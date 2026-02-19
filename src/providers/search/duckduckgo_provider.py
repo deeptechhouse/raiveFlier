@@ -1,16 +1,18 @@
 """DuckDuckGo web-search provider implementing IWebSearchProvider.
 
-Uses the duckduckgo_search library (AsyncDDGS) for fully free, keyless
-web searches.  Rate-limit exceptions are caught gracefully and logged as
-warnings, returning empty results rather than propagating errors.
+Uses the duckduckgo_search library for fully free, keyless web searches.
+Supports both legacy AsyncDDGS (v4-v5) and sync DDGS (v8+) APIs.
+Rate-limit exceptions are caught gracefully and logged as warnings,
+returning empty results rather than propagating errors.
 """
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 
 import structlog
-from duckduckgo_search import AsyncDDGS
+from duckduckgo_search import DDGS
 
 from src.interfaces.web_search_provider import IWebSearchProvider, SearchResult
 
@@ -20,8 +22,9 @@ logger = structlog.get_logger(logger_name=__name__)
 class DuckDuckGoSearchProvider(IWebSearchProvider):
     """DuckDuckGo web-search provider.
 
-    DuckDuckGo requires no API key and is entirely free.  Search results
-    are retrieved asynchronously via :class:`AsyncDDGS`.
+    DuckDuckGo requires no API key and is entirely free.  In v8+ of the
+    ``duckduckgo_search`` library, the synchronous ``DDGS`` class is used
+    and wrapped in ``asyncio.to_thread`` for non-blocking execution.
     """
 
     def __init__(self) -> None:
@@ -43,11 +46,9 @@ class DuckDuckGoSearchProvider(IWebSearchProvider):
             effective_query = f"{query} before:{before_date.isoformat()}"
 
         try:
-            async with AsyncDDGS() as ddgs:
-                raw_results = await ddgs.atext(
-                    effective_query,
-                    max_results=num_results,
-                )
+            raw_results = await asyncio.to_thread(
+                self._sync_search, effective_query, num_results
+            )
         except Exception as exc:  # noqa: BLE001 — DDG may rate-limit or fail
             logger.warning(
                 "duckduckgo_search_failed",
@@ -73,6 +74,12 @@ class DuckDuckGoSearchProvider(IWebSearchProvider):
             result_count=len(results),
         )
         return results
+
+    @staticmethod
+    def _sync_search(query: str, max_results: int) -> list[dict]:
+        """Run the synchronous DDGS search (called via to_thread)."""
+        with DDGS() as ddgs:
+            return list(ddgs.text(query, max_results=max_results))
 
     def get_provider_name(self) -> str:
         """Return the provider identifier."""

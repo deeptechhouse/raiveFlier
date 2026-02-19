@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Video Script (~2:00)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Space+Grotesk:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0d10;
+    --bg-card: #15151a;
+    --border: #2a2a32;
+    --text: #e8e8ec;
+    --text-dim: #9898a0;
+    --text-muted: #6a6a72;
+    --violet: #a855f7;
+    --cyan: #22d3ee;
+    --amber: #f59e0b;
+    --green: #34d399;
+    --rose: #fb7185;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 3rem 2rem 4rem;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.3rem;
+    background: linear-gradient(135deg, var(--violet), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--violet);
+    margin-top: 2.2rem;
+    margin-bottom: 0.15rem;
+    letter-spacing: 0.01em;
+  }
+
+  .slide-ref {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .timestamp {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--cyan);
+    background: rgba(34, 211, 238, 0.08);
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    border-radius: 3px;
+    padding: 0.1rem 0.4rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+
+  .script-line {
+    font-size: 1.05rem;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+  }
+
+  .direction {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--border);
+  }
+
+  .feature-callout {
+    background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(251,113,133,0.06));
+    border: 1px solid rgba(168,85,247,0.25);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    margin: 1.5rem 0;
+  }
+
+  .feature-callout h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--rose);
+    margin-bottom: 0.4rem;
+  }
+
+  .notes-section {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .notes-section h2 {
+    color: var(--amber);
+    margin-top: 0;
+    font-size: 1.2rem;
+  }
+
+  .notes-section ul {
+    padding-left: 1.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .notes-section li {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .notes-section li strong {
+    color: var(--text);
+  }
+
+  .word-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--green);
+    background: rgba(52, 211, 153, 0.08);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+    border-radius: 3px;
+    padding: 0.15rem 0.5rem;
+    display: inline-block;
+    margin-top: 0.4rem;
+  }
+
+  @media print {
+    body { background: #fff; color: #111; max-width: 100%; padding: 1.5rem; }
+    h1 { background: none; -webkit-text-fill-color: #333; color: #333; }
+    h2 { color: #555; }
+    .timestamp { background: #eee; color: #333; border-color: #ccc; }
+    .direction { color: #666; border-left-color: #ccc; }
+    .script-line { color: #111; }
+    .slide-ref { color: #888; }
+    .feature-callout { background: #f9f5ff; border-color: #ddd; }
+    .meta { color: #666; border-bottom-color: #ddd; }
+    .notes-section { border-top-color: #ddd; }
+    .notes-section li { color: #444; }
+  }
+</style>
+</head>
+<body>
+
+<h1>raiveFlier &mdash; Video Script</h1>
+<p class="meta">Target runtime: 1:50&ndash;2:00 &nbsp;|&nbsp; Pace: ~170 wpm (fast speaker, deliberately measured) &nbsp;|&nbsp; ~340 words</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Opening Hook</h2>
+<p class="slide-ref">Slides 1&ndash;2 &mdash; Title + What It Does</p>
+<p><span class="timestamp">0:00</span></p>
+<p class="script-line">If you've ever found a rave flier crumpled behind a speaker stack and wondered who half the names on it were &mdash; and whether that venue is now a Walgreens &mdash; raiveFlier was built for you.</p>
+<p class="direction">Show title slide, then transition to pipeline flow diagram.</p>
+
+<p class="script-line">Upload a photograph of any rave flier. The system reads the text &mdash; no small feat when the typography looks like it was designed during a strobe light &mdash; identifies every artist, venue, promoter, and date, then deep-researches each one across music databases, web archives, and a curated knowledge base.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Architecture &amp; Stack</h2>
+<p class="slide-ref">Slides 3&ndash;4 &mdash; Architecture + Tech Stack</p>
+<p><span class="timestamp">0:20</span></p>
+<p class="script-line">Under the hood it's a layered Python and FastAPI application. Every external service &mdash; LLMs, OCR engines, music databases &mdash; sits behind an abstract interface, so swapping providers means writing one adapter class. No vendor lock-in, no hard feelings.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Pipeline &amp; OCR</h2>
+<p class="slide-ref">Slides 5&ndash;6 &mdash; Pipeline Orchestrator + OCR Engine</p>
+<p><span class="timestamp">0:32</span></p>
+<p class="script-line">The pipeline runs five phases. OCR comes first, with a three-provider fallback chain &mdash; LLM vision, EasyOCR, Tesseract &mdash; each running nine preprocessing passes tuned for neon text on dark backgrounds. Results are fuzzy-deduplicated across passes, so text that only surfaces under one filter still makes it through.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Entity Extraction &amp; Human Review</h2>
+<p class="slide-ref">Slide 7 &mdash; Entity Extraction + Human-in-the-Loop</p>
+<p><span class="timestamp">0:48</span></p>
+<p class="script-line">An LLM parses the OCR output into structured entities, then pauses for human confirmation. Users can correct names, add missing artists, and fix dates &mdash; because even the best model occasionally reads "DJ Shadow" as "DJ Shallow."</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Research Engine</h2>
+<p class="slide-ref">Slide 8 &mdash; Parallel Deep Research</p>
+<p><span class="timestamp">0:58</span></p>
+<p class="script-line">Confirmed entities fan out into parallel research jobs &mdash; Discogs, MusicBrainz, web search, article scraping &mdash; each producing citation-tiered references ranked by source reliability.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>RAG Pipeline</h2>
+<p class="slide-ref">Slides 9&ndash;12 &mdash; RAG Overview, Ingestion, Retrieval, Parameters</p>
+<p><span class="timestamp">1:06</span></p>
+<p class="script-line">This is where the RAG pipeline earns its keep. Reference books and articles are chunked into overlapping windows, tagged with metadata by an LLM, embedded as vectors, and stored in ChromaDB. During research, the system retrieves semantically relevant passages &mdash; say, everything about a specific artist in Chicago before 1997 &mdash; and injects them into the prompt. The result is research grounded in real sources, not hallucination. And every completed analysis feeds back into the corpus, so the system gets smarter with each flier it processes.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Frontend &amp; Providers</h2>
+<p class="slide-ref">Slides 13&ndash;14 &mdash; Provider System + Frontend</p>
+<p><span class="timestamp">1:28</span></p>
+<p class="script-line">The frontend is a vanilla JavaScript single-page app &mdash; upload, confirm, watch progress over WebSocket, and explore results with expandable artist cards, a relationship graph, and tiered citations you can export.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Interactive Q&amp;A</h2>
+<p class="slide-ref">Slide 15 &mdash; RAG-Powered Q&amp;A</p>
+<p><span class="timestamp">1:36</span></p>
+<p class="script-line">And here&rsquo;s where it gets conversational. Click &ldquo;Ask about this&rdquo; on any entity in the results &mdash; an artist, a venue, a date &mdash; and a slide-in panel opens where you can ask follow-up questions answered directly by the RAG pipeline. The system also suggests related questions you can click to keep exploring, turning static results into a conversation with the archive.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<h2>Cultural Mission</h2>
+<p class="slide-ref">Slide 16 &mdash; MWRCA</p>
+<p><span class="timestamp">1:49</span></p>
+<p class="script-line">Finally &mdash; raiveFlier is designed to serve organizations like the Midwest Rave Culture Archive, processing scanned fliers at scale to generate structured metadata, and building a knowledge base that turns paper ephemera into interconnected cultural records. Because the history of a scene shouldn't disappear just because the flier did.</p>
+<p class="direction">Hold on MWRCA slide. Fade to title.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+
+<p style="margin-top: 2rem;"><span class="word-count">~340 words &nbsp;|&nbsp; est. runtime 1:53 @ 180 wpm</span></p>
+
+<!-- ═══════════════════════════════════════════════ -->
+
+<div class="notes-section">
+<h2>Production Notes</h2>
+<ul>
+  <li><strong>Pacing:</strong> ~340 words at 170&ndash;180 wpm lands at ~1:53. If delivery runs fast, pause briefly at each section transition (the timestamps) to let visuals register.</li>
+  <li><strong>Slide transitions:</strong> Advance slides at the marked timestamps. Slides 9&ndash;12 (RAG) play as a continuous sequence while the narrator covers the full RAG explanation.</li>
+  <li><strong>Q&amp;A feature segment:</strong> Live demo: show a user clicking "Ask about this" on an artist card, the slide-in drawer opening with suggested questions, typing a follow-up, and receiving a RAG-grounded answer with citation badges. This is now a working feature.</li>
+  <li><strong>Tone calibration:</strong> The humor is dry, not broad &mdash; three light moments (Walgreens, strobe-light typography, DJ Shallow) spaced roughly 30 seconds apart. Delivery should be matter-of-fact; the jokes land better deadpan.</li>
+  <li><strong>Audience layering:</strong> Corporate buyers hear "no vendor lock-in," "swappable providers," and "citation-tiered." Classmates and professors hear the technical architecture. Authors and publishers hear "grounded in real sources" and "citation tiers." Ravers and archivists hear the opening hook, the cultural mission, and "the history of a scene shouldn't disappear."</li>
+  <li><strong>Closing image:</strong> End on the MWRCA slide with a beat of silence before cutting to the title card. Let the last line breathe.</li>
+</ul>
+</div>
+
+</body>
+</html>

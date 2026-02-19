@@ -222,6 +222,15 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
                 msg="RAG_ENABLED=True but no embedding provider available. RAG disabled.",
             )
 
+    # -- Q&A Service --
+    from src.services.qa_service import QAService
+
+    qa_service = QAService(
+        llm=primary_llm,
+        vector_store=vector_store,
+        cache=cache,
+    )
+
     # -- Services --
     ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
     ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
@@ -321,6 +330,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         "primary_llm_name": primary_llm.get_provider_name(),
         "ingestion_service": ingestion_service,
         "rag_enabled": app_settings.rag_enabled and vector_store is not None,
+        "qa_service": qa_service,
     }
 
 

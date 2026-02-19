@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Technical Presentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg-dark: #0a0a0c;
+    --bg-card: #111114;
+    --bg-code: #1a1a1f;
+    --border: #2a2a30;
+    --text-primary: #e8e8ec;
+    --text-secondary: #9898a0;
+    --text-muted: #6a6a72;
+    --accent-violet: #a855f7;
+    --accent-cyan: #22d3ee;
+    --accent-amber: #f59e0b;
+    --accent-green: #34d399;
+    --accent-rose: #fb7185;
+    --accent-blue: #60a5fa;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-snap-type: y mandatory; overflow-y: scroll; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Slide container ────────────────────────────────────── */
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 4rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  .slide-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── Typography ─────────────────────────────────────────── */
+  h1 {
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 1.2rem;
+    color: var(--accent-violet);
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin-bottom: 0.8rem;
+    color: var(--accent-cyan);
+  }
+
+  p { margin-bottom: 1rem; color: var(--text-secondary); font-size: 1.05rem; }
+  p.lead { font-size: 1.25rem; color: var(--text-primary); }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--accent-cyan);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    margin: 0.15rem;
+  }
+  .badge-violet  { background: rgba(168,85,247,0.15); color: var(--accent-violet); border: 1px solid rgba(168,85,247,0.3); }
+  .badge-cyan    { background: rgba(34,211,238,0.12); color: var(--accent-cyan); border: 1px solid rgba(34,211,238,0.25); }
+  .badge-amber   { background: rgba(245,158,11,0.12); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.25); }
+  .badge-green   { background: rgba(52,211,153,0.12); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.25); }
+  .badge-rose    { background: rgba(251,113,133,0.12); color: var(--accent-rose); border: 1px solid rgba(251,113,133,0.25); }
+  .badge-blue    { background: rgba(96,165,250,0.12); color: var(--accent-blue); border: 1px solid rgba(96,165,250,0.25); }
+
+  /* ── Code blocks ────────────────────────────────────────── */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+    margin-bottom: 1.2rem;
+  }
+
+  code { font-family: var(--font-mono); }
+  .kw  { color: var(--accent-violet); }
+  .fn  { color: var(--accent-cyan); }
+  .str { color: var(--accent-green); }
+  .cm  { color: var(--text-muted); font-style: italic; }
+  .num { color: var(--accent-amber); }
+  .typ { color: var(--accent-rose); }
+  .op  { color: var(--text-muted); }
+  .file-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Layouts ────────────────────────────────────────────── */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+  .cols-23 { display: grid; grid-template-columns: 2fr 3fr; gap: 2rem; }
+  .cols-32 { display: grid; grid-template-columns: 3fr 2fr; gap: 2rem; }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+  }
+
+  .card h3 { margin-bottom: 0.6rem; }
+  .card p { font-size: 0.95rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  th {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    background: var(--bg-code);
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid rgba(42,42,48,0.5);
+    color: var(--text-secondary);
+  }
+  td:first-child { color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; }
+
+  /* ── Flow diagrams (CSS-only) ───────────────────────────── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1.2rem 0;
+  }
+  .flow-step {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+  }
+  .fs-violet { background: rgba(168,85,247,0.18); color: var(--accent-violet); border: 1px solid rgba(168,85,247,0.35); }
+  .fs-cyan   { background: rgba(34,211,238,0.14); color: var(--accent-cyan); border: 1px solid rgba(34,211,238,0.3); }
+  .fs-amber  { background: rgba(245,158,11,0.14); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.3); }
+  .fs-green  { background: rgba(52,211,153,0.14); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.3); }
+  .fs-rose   { background: rgba(251,113,133,0.14); color: var(--accent-rose); border: 1px solid rgba(251,113,133,0.3); }
+  .fs-blue   { background: rgba(96,165,250,0.14); color: var(--accent-blue); border: 1px solid rgba(96,165,250,0.3); }
+
+  /* ── Navigation dots ────────────────────────────────────── */
+  .slide-nav {
+    position: fixed;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    z-index: 100;
+  }
+  .slide-nav a {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    display: block;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .slide-nav a:hover { background: var(--accent-violet); transform: scale(1.3); }
+
+  .slide-number {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 3rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Highlight box ──────────────────────────────────────── */
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(34,211,238,0.06));
+    border: 1px solid rgba(168,85,247,0.2);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+  }
+  .highlight-box p { margin-bottom: 0.5rem; }
+  .highlight-box p:last-child { margin-bottom: 0; }
+
+  ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+  li { color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.95rem; }
+  li strong { color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<!-- Navigation dots -->
+<nav class="slide-nav" aria-label="Slide navigation">
+  <a href="#s1" title="Title"></a>
+  <a href="#s2" title="What It Does"></a>
+  <a href="#s3" title="Architecture"></a>
+  <a href="#s4" title="Tech Stack"></a>
+  <a href="#s5" title="Pipeline"></a>
+  <a href="#s6" title="OCR Engine"></a>
+  <a href="#s7" title="Entity Extraction"></a>
+  <a href="#s8" title="Research Engine"></a>
+  <a href="#s9" title="RAG Overview"></a>
+  <a href="#s10" title="RAG Ingestion"></a>
+  <a href="#s11" title="RAG Retrieval"></a>
+  <a href="#s12" title="RAG Parameters"></a>
+  <a href="#s13" title="Provider System"></a>
+  <a href="#s14" title="Frontend"></a>
+  <a href="#s15" title="Interactive Q&A"></a>
+  <a href="#s16" title="MWRCA"></a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — Title -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s1">
+  <div class="slide-inner" style="text-align:center;">
+    <p class="subtitle">Technical Overview</p>
+    <h1 style="font-size:5rem; background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">raiveFlier</h1>
+    <p class="lead" style="max-width:680px; margin:1rem auto;">Upload a rave flier image. Get the full story&mdash;every artist, venue, and promoter researched with deep citations from music databases, web archives, and a RAG-augmented knowledge base.</p>
+    <div style="margin-top:2rem;">
+      <span class="badge badge-violet">Python 3.10+</span>
+      <span class="badge badge-cyan">FastAPI</span>
+      <span class="badge badge-green">ChromaDB</span>
+      <span class="badge badge-amber">OpenAI / Anthropic / Ollama</span>
+      <span class="badge badge-rose">EasyOCR + Tesseract</span>
+      <span class="badge badge-blue">Pydantic v2</span>
+    </div>
+  </div>
+  <span class="slide-number">1 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — What It Does -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s2">
+  <div class="slide-inner">
+    <p class="subtitle">Overview</p>
+    <h2>What raiveFlier Does</h2>
+    <p class="lead">A five-phase automated research pipeline that transforms a single rave flier photograph into a comprehensive, citation-backed dossier.</p>
+
+    <div class="flow">
+      <span class="flow-step fs-violet">Upload Image</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-cyan">OCR Extraction</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-amber">Entity Parsing</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-green">Human Confirmation</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-rose">Deep Research</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-blue">Interconnection Map</span>
+    </div>
+
+    <div class="cols-3" style="margin-top:1.5rem;">
+      <div class="card">
+        <h3>Artists</h3>
+        <p>Identity resolution via Discogs &amp; MusicBrainz. Full discography, gig history, press/interview aggregation, citation-tiered references.</p>
+      </div>
+      <div class="card">
+        <h3>Venues &amp; Promoters</h3>
+        <p>Venue history, capacity, notable residencies. Promoter track record, associated event series, and scene context.</p>
+      </div>
+      <div class="card">
+        <h3>Interconnections</h3>
+        <p>Maps relationships between entities&mdash;shared labels, overlapping event lineups, city-scene connections&mdash;visualized as a network graph.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">2 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — Architecture -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s3">
+  <div class="slide-inner">
+    <p class="subtitle">Architecture</p>
+    <h2>Layered Architecture + Adapter Pattern</h2>
+    <p>Five distinct layers with strict dependency rules. External services are abstracted behind interfaces so providers can be swapped without changing business logic.</p>
+
+    <div class="cols-2" style="margin-top:1.5rem;">
+      <div>
+        <table>
+          <thead><tr><th>Layer</th><th>Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td>src/models/</td><td>Pydantic v2 frozen data models</td></tr>
+            <tr><td>src/interfaces/</td><td>Abstract base classes (contracts)</td></tr>
+            <tr><td>src/providers/</td><td>Concrete adapters for external services</td></tr>
+            <tr><td>src/services/</td><td>Business logic + research orchestration</td></tr>
+            <tr><td>src/pipeline/</td><td>5-phase pipeline orchestrator</td></tr>
+            <tr><td>src/api/</td><td>FastAPI REST + WebSocket endpoints</td></tr>
+            <tr><td>frontend/</td><td>Vanilla HTML/CSS/JS SPA</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <span class="file-label">src/interfaces/ocr_provider.py</span>
+        <pre><span class="kw">class</span> <span class="typ">IOCRProvider</span>(<span class="typ">ABC</span>):
+    <span class="str">"""Contract for OCR services."""</span>
+
+    <span class="kw">@abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">extract_text</span>(
+        <span class="kw">self</span>, image: <span class="typ">FlierImage</span>
+    ) -> <span class="typ">OCRResult</span>: ...
+
+    <span class="kw">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">is_available</span>(<span class="kw">self</span>) -> <span class="typ">bool</span>: ...
+
+    <span class="kw">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">supports_stylized_text</span>(
+        <span class="kw">self</span>
+    ) -> <span class="typ">bool</span>: ...</pre>
+        <p style="font-size:0.85rem;">Every external dependency implements an abstract interface. Swap Tesseract for Google Vision by adding one adapter class&mdash;zero changes to services or pipeline.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">3 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — Tech Stack -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s4">
+  <div class="slide-inner">
+    <p class="subtitle">Tech Stack</p>
+    <h2>Languages, Frameworks &amp; Services</h2>
+
+    <div class="cols-2" style="margin-top:1rem;">
+      <div>
+        <h3>Backend</h3>
+        <table>
+          <thead><tr><th>Component</th><th>Technology</th></tr></thead>
+          <tbody>
+            <tr><td>Language</td><td>Python 3.10+</td></tr>
+            <tr><td>Framework</td><td>FastAPI + Uvicorn</td></tr>
+            <tr><td>Data Models</td><td>Pydantic v2 (frozen/immutable)</td></tr>
+            <tr><td>Config</td><td>pydantic-settings + YAML</td></tr>
+            <tr><td>Logging</td><td>structlog (JSON)</td></tr>
+            <tr><td>Real-time</td><td>WebSockets (native)</td></tr>
+            <tr><td>Testing</td><td>pytest + pytest-asyncio</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:1.5rem;">Frontend</h3>
+        <table>
+          <thead><tr><th>Component</th><th>Technology</th></tr></thead>
+          <tbody>
+            <tr><td>Markup</td><td>Vanilla HTML5 SPA</td></tr>
+            <tr><td>Styling</td><td>Custom CSS (Bunker + Amethyst theme)</td></tr>
+            <tr><td>Scripts</td><td>Vanilla ES6 modules (no framework)</td></tr>
+            <tr><td>Fonts</td><td>Space Grotesk, Inter, IBM Plex Mono</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>External Services (All Swappable)</h3>
+        <table>
+          <thead><tr><th>Service</th><th>Provider(s)</th></tr></thead>
+          <tbody>
+            <tr><td>LLM</td><td>OpenAI, Anthropic, Ollama, TogetherAI</td></tr>
+            <tr><td>OCR</td><td>LLM Vision, EasyOCR, Tesseract</td></tr>
+            <tr><td>Music DB</td><td>Discogs API/Scrape, MusicBrainz</td></tr>
+            <tr><td>Web Search</td><td>DuckDuckGo (free), Serper</td></tr>
+            <tr><td>Articles</td><td>Web Scraper, Wayback Machine</td></tr>
+            <tr><td>Embeddings</td><td>OpenAI, Nomic/Ollama, TogetherAI</td></tr>
+            <tr><td>Vector Store</td><td>ChromaDB (local, free)</td></tr>
+            <tr><td>Cache</td><td>In-memory (TTLCache)</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:1.5rem;">Image Processing</h3>
+        <table>
+          <thead><tr><th>Library</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td>OpenCV</td><td>CLAHE, denoising, Otsu, morphology</td></tr>
+            <tr><td>Pillow</td><td>Image I/O, resizing, color conversion</td></tr>
+            <tr><td>NumPy</td><td>Array operations for preprocessing</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">4 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — Pipeline Orchestrator -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s5">
+  <div class="slide-inner">
+    <p class="subtitle">Core Pipeline</p>
+    <h2>The 5-Phase Orchestrator</h2>
+    <p>The <code>FlierAnalysisPipeline</code> coordinates the full workflow. Each phase updates a frozen <code>PipelineState</code> via <code>model_copy</code> and broadcasts progress over WebSocket.</p>
+
+    <div class="cols-23" style="margin-top:1.5rem;">
+      <div>
+        <div class="flow" style="flex-direction:column; align-items:stretch;">
+          <span class="flow-step fs-violet" style="text-align:center;">Phase 1: OCR Extraction</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-cyan" style="text-align:center;">Phase 2: Entity Extraction</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-amber" style="text-align:center;">Phase 3: Human Confirmation</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-green" style="text-align:center;">Phase 4: Parallel Research</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-rose" style="text-align:center;">Phase 5: Interconnection</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-blue" style="text-align:center;">Phase 6: Citation Ranking + RAG Feedback</span>
+        </div>
+      </div>
+      <div>
+        <span class="file-label">src/pipeline/orchestrator.py</span>
+        <pre><span class="kw">class</span> <span class="typ">FlierAnalysisPipeline</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>,
+        ocr_service: <span class="typ">OCRService</span>,
+        entity_extractor: <span class="typ">EntityExtractor</span>,
+        research_service: <span class="typ">ResearchService</span>,
+        interconnection_service: <span class="typ">InterconnectionService</span>,
+        citation_service: <span class="typ">CitationService</span>,
+        progress_tracker: <span class="typ">ProgressTracker</span>,
+        ingestion_service: <span class="typ">IngestionService</span> | <span class="typ">None</span>,
+    ) -> <span class="typ">None</span>: ...
+
+    <span class="kw">async def</span> <span class="fn">run_phase_1</span>(<span class="kw">self</span>, state):
+        <span class="cm"># OCR + Entity Extraction</span>
+        <span class="cm"># Pauses at USER_CONFIRMATION</span>
+        ocr_result = <span class="kw">await</span> self._ocr_service
+            .extract_text(state.flier)
+        entities = <span class="kw">await</span> self._entity_extractor
+            .extract(ocr_result)
+        <span class="kw">return</span> state  <span class="cm"># at 40% progress</span>
+
+    <span class="kw">async def</span> <span class="fn">run_phases_2_through_5</span>(<span class="kw">self</span>, state):
+        <span class="cm"># Research &rarr; Interconnection &rarr; Output</span>
+        research = <span class="kw">await</span> self._research_service
+            .research_all(confirmed, event_date)
+        interconnections = <span class="kw">await</span> self
+            ._interconnection_service.analyze(...)
+        <span class="cm"># RAG feedback: ingest analysis results</span>
+        <span class="kw">await</span> self._ingestion_service
+            .ingest_analysis(state)</pre>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">5 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — OCR Engine -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s6">
+  <div class="slide-inner">
+    <p class="subtitle">Phase 1</p>
+    <h2>Multi-Provider OCR with 9-Pass Preprocessing</h2>
+    <p>The OCR engine uses a <strong>priority-ordered fallback chain</strong> with cross-pass text merging and rave-specific preprocessing optimized for neon text on dark backgrounds.</p>
+
+    <div class="cols-2" style="margin-top:1.2rem;">
+      <div>
+        <h3>Provider Fallback Chain</h3>
+        <span class="file-label">src/services/ocr_service.py</span>
+        <pre><span class="kw">class</span> <span class="typ">OCRService</span>:
+  <span class="kw">async def</span> <span class="fn">extract_text</span>(<span class="kw">self</span>, flier):
+    <span class="kw">for</span> provider <span class="kw">in</span> self._providers:
+      <span class="kw">if not</span> provider.is_available():
+        <span class="kw">continue</span>
+      result = <span class="kw">await</span> provider.extract_text(flier)
+      <span class="kw">if</span> result.confidence >= self._min_confidence:
+        <span class="kw">return</span> result  <span class="cm"># Short-circuit</span>
+      <span class="cm"># Keep best fallback</span>
+    <span class="kw">return</span> best_result</pre>
+
+        <h3>9 Preprocessing Passes</h3>
+        <table>
+          <thead><tr><th>#</th><th>Pass</th><th>Pipeline</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>standard</td><td>resize &rarr; contrast &rarr; binarize</td></tr>
+            <tr><td>2</td><td>inverted</td><td>resize &rarr; invert &rarr; contrast</td></tr>
+            <tr><td>3-5</td><td>R/G/B</td><td>resize &rarr; channel &rarr; binarize</td></tr>
+            <tr><td>6</td><td>CLAHE</td><td>resize &rarr; CLAHE &rarr; binarize</td></tr>
+            <tr><td>7</td><td>denoised</td><td>resize &rarr; denoise &rarr; binarize</td></tr>
+            <tr><td>8</td><td>saturation</td><td>resize &rarr; HSV sat &rarr; binarize</td></tr>
+            <tr><td>9</td><td>Otsu</td><td>resize &rarr; Otsu threshold</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Cross-Pass Text Merging</h3>
+        <span class="file-label">src/utils/ocr_helpers.py</span>
+        <pre><span class="kw">def</span> <span class="fn">deduplicate_text_regions</span>(
+    regions, similarity_threshold=<span class="num">0.80</span>
+):
+    <span class="str">"""Merge near-duplicate TextRegions
+    across passes using rapidfuzz."""</span>
+    kept = []
+    <span class="kw">for</span> region <span class="kw">in</span> regions:
+        is_duplicate = <span class="num">False</span>
+        <span class="kw">for</span> idx, existing <span class="kw">in</span> enumerate(kept):
+            ratio = fuzz.token_sort_ratio(
+                region.text, existing.text
+            ) / <span class="num">100.0</span>
+            <span class="kw">if</span> ratio >= similarity_threshold:
+                <span class="cm"># Keep higher confidence</span>
+                <span class="kw">if</span> region.confidence > existing.confidence:
+                    kept[idx] = region
+                is_duplicate = <span class="num">True</span>
+                <span class="kw">break</span>
+        <span class="kw">if not</span> is_duplicate:
+            kept.append(region)
+    <span class="kw">return</span> kept</pre>
+        <p style="font-size:0.85rem;">Instead of keeping only the single best pass, all pass results are collected, fuzzy-deduplicated (rapidfuzz token_sort_ratio), and merged. This captures text that only appears under certain preprocessing conditions.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">6 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — Entity Extraction -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s7">
+  <div class="slide-inner">
+    <p class="subtitle">Phase 2 &amp; 3</p>
+    <h2>Entity Extraction + Human-in-the-Loop</h2>
+    <p>LLM-powered parsing identifies artists, venues, dates, and promoters. Users then review, edit, and confirm before research begins.</p>
+
+    <div class="cols-2" style="margin-top:1.2rem;">
+      <div>
+        <h3>Immutable Data Models</h3>
+        <span class="file-label">src/models/flier.py</span>
+        <pre><span class="kw">class</span> <span class="typ">ExtractedEntities</span>(<span class="typ">BaseModel</span>):
+    model_config = ConfigDict(frozen=<span class="num">True</span>)
+
+    artists: list[<span class="typ">ExtractedEntity</span>]
+    venue: <span class="typ">ExtractedEntity</span> | <span class="typ">None</span>
+    date: <span class="typ">ExtractedEntity</span> | <span class="typ">None</span>
+    promoter: <span class="typ">ExtractedEntity</span> | <span class="typ">None</span>
+    genre_tags: list[<span class="typ">str</span>]
+    ticket_price: <span class="typ">str</span> | <span class="typ">None</span>
+    raw_ocr: <span class="typ">OCRResult</span></pre>
+        <p style="font-size:0.85rem;">All models are frozen (immutable). State changes produce new instances via <code>model_copy(update={...})</code>. This prevents accidental mutation across async pipeline phases.</p>
+
+        <h3 style="margin-top:1rem;">OCR Error Correction</h3>
+        <span class="file-label">src/utils/text_normalizer.py</span>
+        <pre><span class="cm"># Applied to EasyOCR/Tesseract only</span>
+_OCR_CORRECTIONS = [
+    (r<span class="str">"rn"</span> &rarr; <span class="str">"m"</span>),    <span class="cm"># "Surnrner" &rarr; "Summer"</span>
+    (<span class="str">"0"</span>  &rarr; <span class="str">"O"</span>),    <span class="cm"># "0PEN" &rarr; "OPEN"</span>
+    (<span class="str">"1"</span>  &rarr; <span class="str">"l"</span>),    <span class="cm"># "1ive" &rarr; "live"</span>
+    (<span class="str">"|"</span>  &rarr; <span class="str">"l"</span>),    <span class="cm"># "|ive" &rarr; "live"</span>
+    (<span class="str">"VV"</span> &rarr; <span class="str">"W"</span>),    <span class="cm"># "VVarehouse" &rarr; "Warehouse"</span>
+]</pre>
+      </div>
+      <div>
+        <h3>Confirmation Gate</h3>
+        <p>After Phase 1 completes, the pipeline pauses at <code>USER_CONFIRMATION</code>. The frontend displays extracted entities in editable form. Users can:</p>
+        <ul>
+          <li><strong>Add</strong> missed artists</li>
+          <li><strong>Remove</strong> false positives</li>
+          <li><strong>Correct</strong> names, dates, venues</li>
+          <li><strong>Add</strong> genre tags and price info</li>
+        </ul>
+        <p>Only after confirmation does the expensive research phase begin.</p>
+
+        <h3 style="margin-top:1rem;">Artist Name Normalization</h3>
+        <span class="file-label">src/utils/text_normalizer.py</span>
+        <pre><span class="kw">def</span> <span class="fn">normalize_artist_name</span>(name: <span class="typ">str</span>) -> <span class="typ">str</span>:
+    <span class="cm"># Strip "DJ" prefix</span>
+    normalized = re.sub(r<span class="str">"^[Dd][Jj]\s+"</span>, <span class="str">""</span>, name)
+    <span class="cm"># Collapse whitespace + title-case</span>
+    <span class="kw">return</span> normalized.title()
+
+<span class="kw">def</span> <span class="fn">split_artist_names</span>(raw: <span class="typ">str</span>):
+    <span class="cm"># Handles: b2b, vs, &amp;, feat., ft.</span>
+    <span class="kw">return</span> _SEPARATOR_PATTERN.split(raw)
+
+<span class="kw">def</span> <span class="fn">fuzzy_match</span>(query, candidates,
+    threshold=<span class="num">0.8</span>):
+    <span class="cm"># rapidfuzz token_sort_ratio</span>
+    <span class="kw">return</span> (best_match, score)</pre>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">7 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — Research Engine -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s8">
+  <div class="slide-inner">
+    <p class="subtitle">Phase 4</p>
+    <h2>Parallel Deep Research</h2>
+    <p>The <code>ResearchService</code> fans out concurrent <code>asyncio</code> tasks&mdash;one per artist, plus venue, promoter, and date context. A flier with 5 artists produces 8 simultaneous research jobs.</p>
+
+    <div class="cols-32" style="margin-top:1.2rem;">
+      <div>
+        <span class="file-label">src/services/artist_researcher.py (5-step pipeline)</span>
+        <pre><span class="kw">async def</span> <span class="fn">research</span>(<span class="kw">self</span>, artist_name, before_date):
+    <span class="cm"># Step 1: IDENTIFY via music databases</span>
+    discogs_id, mb_id, id_conf = \
+        <span class="kw">await</span> self._search_music_databases(name)
+    <span class="cm"># Cross-reference bonus: +0.15 if both DBs agree</span>
+
+    <span class="cm"># Step 2: DISCOGRAPHY (Discogs &rarr; MusicBrainz)</span>
+    releases, labels = \
+        <span class="kw">await</span> self._fetch_discography(
+            name, discogs_id, mb_id, before_date)
+
+    <span class="cm"># Step 3: GIG HISTORY via web search + LLM parsing</span>
+    appearances = \
+        <span class="kw">await</span> self._search_gig_history(name, before_date)
+
+    <span class="cm"># Step 4: PRESS via web search + article scraping</span>
+    articles = \
+        <span class="kw">await</span> self._search_press(name, before_date)
+
+    <span class="cm"># Step 4.5: RAG CORPUS retrieval</span>
+    corpus_refs = \
+        <span class="kw">await</span> self._retrieve_from_corpus(name, before_date)
+
+    <span class="cm"># Step 5: COMPILE with weighted confidence</span>
+    confidence = calculate_confidence(
+        scores=[id_conf, disco_conf, gig_conf, press_conf],
+        weights=[<span class="num">3.0</span>, <span class="num">2.0</span>, <span class="num">1.5</span>, <span class="num">1.5</span>]
+    )</pre>
+      </div>
+      <div>
+        <h3>Citation Tier System</h3>
+        <table>
+          <thead><tr><th>Tier</th><th>Source Type</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--accent-green)">1</td><td>RA, DJ Mag, Mixmag</td></tr>
+            <tr><td style="color:var(--accent-green)">2</td><td>XLR8R, Pitchfork, Fact, The Quietus</td></tr>
+            <tr><td style="color:var(--accent-cyan)">3</td><td>Discogs, MusicBrainz, Bandcamp</td></tr>
+            <tr><td style="color:var(--accent-amber)">4</td><td>YouTube, SoundCloud, Wikipedia</td></tr>
+            <tr><td style="color:var(--accent-rose)">5</td><td>Reddit, Facebook, Instagram</td></tr>
+            <tr><td style="color:var(--text-muted)">6</td><td>Unknown / uncategorized</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:1rem;">Confidence Scoring</h3>
+        <p style="font-size:0.85rem;">Final confidence is a weighted average: identity resolution (weight 3.0), discography (2.0), gig history (1.5), and press (1.5). Each sub-score scales with the number of results found. The cross-reference bonus (+0.15) fires when both Discogs and MusicBrainz agree on identity.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">8 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — RAG Overview -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s9">
+  <div class="slide-inner">
+    <p class="subtitle">RAG Pipeline</p>
+    <h2>What is Retrieval-Augmented Generation?</h2>
+
+    <div class="highlight-box">
+      <p class="lead" style="color:var(--text-primary); margin-bottom:0.8rem;"><strong>RAG</strong> (Retrieval-Augmented Generation) is a technique that enhances AI models by giving them access to a searchable knowledge base of real documents. Instead of relying solely on the LLM's training data, the system <em>retrieves</em> relevant passages from a curated corpus and injects them into the prompt, grounding the AI's responses in verified, citable sources.</p>
+    </div>
+
+    <div class="cols-3" style="margin-top:1.5rem;">
+      <div class="card">
+        <h3>1. Ingestion</h3>
+        <p>Source documents (books, articles, past analyses) are split into overlapping chunks, enriched with metadata tags, converted to numerical vectors (embeddings), and stored in a vector database.</p>
+      </div>
+      <div class="card">
+        <h3>2. Retrieval</h3>
+        <p>When researching an entity, the system converts the query to a vector and finds the most semantically similar chunks using cosine distance. Metadata filters narrow results by date, entity, or source type.</p>
+      </div>
+      <div class="card">
+        <h3>3. Augmented Generation</h3>
+        <p>Retrieved passages are injected alongside the research query, allowing the LLM to cite specific books and articles. This produces grounded, verifiable research instead of hallucinated claims.</p>
+      </div>
+    </div>
+
+    <div class="flow" style="margin-top:1.5rem; justify-content:center;">
+      <span class="flow-step fs-violet">Documents</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-cyan">Chunk + Tag</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-amber">Embed</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-green">Vector Store</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-rose">Semantic Search</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step fs-blue">Augmented Prompt</span>
+    </div>
+  </div>
+  <span class="slide-number">9 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — RAG Ingestion -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s10">
+  <div class="slide-inner">
+    <p class="subtitle">RAG Pipeline &mdash; Ingestion</p>
+    <h2>Process &rarr; Chunk &rarr; Tag &rarr; Embed &rarr; Store</h2>
+
+    <div class="cols-2" style="margin-top:1.2rem;">
+      <div>
+        <h3>Text Chunking</h3>
+        <span class="file-label">src/services/ingestion/chunker.py</span>
+        <pre><span class="kw">class</span> <span class="typ">TextChunker</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>,
+        chunk_size: <span class="typ">int</span> = <span class="num">500</span>,   <span class="cm"># tokens per chunk</span>
+        overlap: <span class="typ">int</span> = <span class="num">100</span>,      <span class="cm"># token overlap</span>
+    ):
+        self._tokenizer = Tokenizer.from_pretrained(
+            <span class="str">"bert-base-uncased"</span>
+        )
+
+    <span class="kw">def</span> <span class="fn">chunk</span>(<span class="kw">self</span>, text, source_metadata):
+        paragraphs = self._split_paragraphs(text)
+        raw_chunks = self._accumulate_chunks(paragraphs)
+        <span class="cm"># Each chunk gets a UUID + source metadata</span>
+        <span class="kw">return</span> [DocumentChunk(...) <span class="kw">for</span> ...]</pre>
+        <p style="font-size:0.85rem;">Text is split at paragraph boundaries first, then accumulated into ~500-token windows with 100-token overlap. Long paragraphs are split at sentence boundaries (respecting abbreviations like "Dr.", "vs.", etc.).</p>
+
+        <h3 style="margin-top:1rem;">Supported Source Types</h3>
+        <ul>
+          <li><strong>Books:</strong> Plain text, PDF, EPUB</li>
+          <li><strong>Articles:</strong> URLs via web scraper or Wayback Machine</li>
+          <li><strong>Analyses:</strong> Completed pipeline results (feedback loop)</li>
+          <li><strong>Bulk:</strong> Directory of .txt/.html files</li>
+        </ul>
+      </div>
+      <div>
+        <h3>LLM Metadata Tagging</h3>
+        <span class="file-label">src/services/ingestion/metadata_extractor.py</span>
+        <pre><span class="kw">class</span> <span class="typ">MetadataExtractor</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, llm, max_concurrent=<span class="num">5</span>):
+        self._semaphore = asyncio.Semaphore(
+            max_concurrent
+        )
+
+    <span class="kw">async def</span> <span class="fn">extract_tags</span>(<span class="kw">self</span>, chunk_text):
+        <span class="cm"># LLM extracts structured tags</span>
+        response = <span class="kw">await</span> self._llm.complete(
+            system_prompt=<span class="str">"You are a metadata
+              extraction assistant specializing
+              in electronic and dance music."</span>,
+            user_prompt=_EXTRACTION_USER_PROMPT
+                .format(text=chunk_text[:3000]),
+            temperature=<span class="num">0.1</span>,
+            max_tokens=<span class="num">500</span>,
+        )
+        <span class="kw">return</span> {
+            <span class="str">"entity_tags"</span>: [...],     <span class="cm"># artists, labels</span>
+            <span class="str">"geographic_tags"</span>: [...], <span class="cm"># cities</span>
+            <span class="str">"genre_tags"</span>: [...],      <span class="cm"># genres</span>
+        }</pre>
+        <p style="font-size:0.85rem;">Each chunk is processed by an LLM to extract entity names, geographic locations, and genre tags. These tags enable filtered semantic retrieval&mdash;e.g., "find all passages about Carl Cox in Chicago published before 1997."</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">10 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — RAG Retrieval -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s11">
+  <div class="slide-inner">
+    <p class="subtitle">RAG Pipeline &mdash; Retrieval</p>
+    <h2>Semantic Search + Metadata Filtering</h2>
+
+    <div class="cols-2" style="margin-top:1.2rem;">
+      <div>
+        <h3>ChromaDB Vector Store</h3>
+        <span class="file-label">src/providers/vector_store/chromadb_provider.py</span>
+        <pre><span class="kw">class</span> <span class="typ">ChromaDBProvider</span>(<span class="typ">IVectorStoreProvider</span>):
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>,
+        embedding_provider,
+        persist_directory=<span class="str">"./data/chromadb"</span>,
+        collection_name=<span class="str">"raiveflier_corpus"</span>,
+    ):
+        self._collection = client.get_or_create_collection(
+            name=collection_name,
+            metadata={<span class="str">"hnsw:space"</span>: <span class="str">"cosine"</span>},
+        )
+
+    <span class="kw">async def</span> <span class="fn">query</span>(<span class="kw">self</span>, query_text,
+        top_k=<span class="num">20</span>, filters=<span class="num">None</span>):
+        query_embedding = <span class="kw">await</span> \
+            self._embedding_provider.embed_single(
+                query_text)
+        results = self._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=top_k,
+            where=self._translate_filters(filters),
+        )
+        <span class="cm"># Convert distance to similarity</span>
+        similarity = <span class="num">1.0</span> - distance</pre>
+
+        <h3 style="margin-top:1rem;">Citation Format</h3>
+        <pre><span class="cm"># Human-readable citation string</span>
+<span class="str">"Energy Flash, Simon Reynolds, p.142,
+ Faber &amp; Faber, 1998 [Tier 1]"</span></pre>
+      </div>
+      <div>
+        <h3>Artist Research + RAG Retrieval</h3>
+        <span class="file-label">src/services/artist_researcher.py</span>
+        <pre><span class="kw">async def</span> <span class="fn">_retrieve_from_corpus</span>(<span class="kw">self</span>,
+    artist_name, before_date):
+    <span class="str">"""Retrieve relevant passages from
+    the RAG corpus for this artist."""</span>
+
+    query = f<span class="str">"{artist_name} DJ electronic
+             music history career"</span>
+
+    filters = {}
+    <span class="kw">if</span> before_date:
+        filters[<span class="str">"date"</span>] = {
+            <span class="str">"$lte"</span>: before_date.isoformat()
+        }
+
+    chunks = <span class="kw">await</span> self._vector_store.query(
+        query_text=query,
+        top_k=<span class="num">15</span>,
+        filters=filters,
+    )
+
+    refs = []
+    <span class="kw">for</span> chunk <span class="kw">in</span> chunks:
+        <span class="kw">if</span> chunk.similarity_score < <span class="num">0.7</span>:
+            <span class="kw">continue</span>  <span class="cm"># Relevance threshold</span>
+        refs.append(ArticleReference(
+            title=chunk.chunk.source_title,
+            snippet=chunk.chunk.text[:200],
+            citation_tier=chunk.chunk.citation_tier,
+        ))
+    <span class="kw">return</span> refs</pre>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">11 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 12 — RAG Tunable Parameters -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s12">
+  <div class="slide-inner">
+    <p class="subtitle">RAG Pipeline &mdash; Tuning</p>
+    <h2>Tunable Parameters &amp; Their Effects</h2>
+
+    <table style="margin-top:1.2rem;">
+      <thead>
+        <tr><th>Parameter</th><th>Location</th><th>Default</th><th>Effect of Increase</th><th>Effect of Decrease</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>chunk_size</td>
+          <td>TextChunker</td>
+          <td>500 tokens</td>
+          <td>More context per chunk; fewer chunks total; higher embedding cost per chunk; better for long-form narrative</td>
+          <td>More granular retrieval; more chunks; better precision for short factual queries; risk of losing cross-sentence context</td>
+        </tr>
+        <tr>
+          <td>overlap</td>
+          <td>TextChunker</td>
+          <td>100 tokens</td>
+          <td>Less information lost at chunk boundaries; higher storage cost; prevents mid-thought splits</td>
+          <td>Smaller storage footprint; risk of losing context that spans chunk boundaries</td>
+        </tr>
+        <tr>
+          <td>top_k</td>
+          <td>ChromaDB query</td>
+          <td>20</td>
+          <td>More candidate passages retrieved; higher recall; more LLM context used; risk of including irrelevant results</td>
+          <td>Fewer but more relevant results; lower latency; risk of missing relevant passages</td>
+        </tr>
+        <tr>
+          <td>similarity_threshold</td>
+          <td>ArtistResearcher</td>
+          <td>0.7</td>
+          <td>Stricter relevance filtering; higher precision; risk of discarding marginally useful passages</td>
+          <td>More passages included; higher recall; risk of noise from loosely related content</td>
+        </tr>
+        <tr>
+          <td>min_confidence</td>
+          <td>OCRService</td>
+          <td>0.5</td>
+          <td>More providers tried before accepting; slower but potentially higher quality OCR</td>
+          <td>First acceptable result accepted faster; lower latency; risk of accepting low-quality OCR</td>
+        </tr>
+        <tr>
+          <td>max_concurrent</td>
+          <td>MetadataExtractor</td>
+          <td>5</td>
+          <td>Faster ingestion; more parallel LLM calls; risk of hitting rate limits</td>
+          <td>Slower ingestion; lower API pressure; safer for rate-limited providers</td>
+        </tr>
+        <tr>
+          <td>temperature</td>
+          <td>LLM calls</td>
+          <td>0.1&ndash;0.3</td>
+          <td>More creative/varied responses; risk of hallucination in metadata extraction</td>
+          <td>More deterministic, consistent results; better for structured extraction tasks</td>
+        </tr>
+        <tr>
+          <td>rag_enabled</td>
+          <td>Settings</td>
+          <td>false</td>
+          <td colspan="2">Toggle: when enabled, the system uses the vector store for research augmentation and feeds completed analyses back into the corpus (self-improving feedback loop)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <span class="slide-number">12 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 13 — Provider System -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s13">
+  <div class="slide-inner">
+    <p class="subtitle">Extensibility</p>
+    <h2>Swappable Provider System</h2>
+    <p>Every external dependency is wrapped behind an abstract interface. Adding a new provider means implementing one class&mdash;zero changes to services, pipeline, or API.</p>
+
+    <div class="cols-3" style="margin-top:1.2rem;">
+      <div class="card">
+        <h3>OCR Providers</h3>
+        <p><span class="badge badge-violet">IOCRProvider</span></p>
+        <ul>
+          <li>LLM Vision (OpenAI / Anthropic / Ollama)</li>
+          <li>EasyOCR (9-pass, cross-merge)</li>
+          <li>Tesseract (9-pass, PSM 11)</li>
+        </ul>
+        <p style="font-size:0.8rem;">Could add: Google Vision, AWS Textract, Azure OCR</p>
+      </div>
+      <div class="card">
+        <h3>LLM Providers</h3>
+        <p><span class="badge badge-cyan">ILLMProvider</span></p>
+        <ul>
+          <li>OpenAI (GPT-4, GPT-4o)</li>
+          <li>Anthropic (Claude)</li>
+          <li>Ollama (local, free)</li>
+          <li>OpenAI-compatible (TogetherAI, etc.)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Music Databases</h3>
+        <p><span class="badge badge-amber">IMusicDatabaseProvider</span></p>
+        <ul>
+          <li>Discogs API (with key)</li>
+          <li>Discogs Scrape (keyless fallback)</li>
+          <li>MusicBrainz (free, no key)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Web Search</h3>
+        <p><span class="badge badge-green">IWebSearchProvider</span></p>
+        <ul>
+          <li>DuckDuckGo (free, no key)</li>
+          <li>Serper (paid, higher quality)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Embeddings</h3>
+        <p><span class="badge badge-rose">IEmbeddingProvider</span></p>
+        <ul>
+          <li>OpenAI (text-embedding-3-small)</li>
+          <li>TogetherAI (BAAI/bge-base-en)</li>
+          <li>Nomic via Ollama (free, local)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Vector Store</h3>
+        <p><span class="badge badge-blue">IVectorStoreProvider</span></p>
+        <ul>
+          <li>ChromaDB (local, free)</li>
+        </ul>
+        <p style="font-size:0.8rem;">Could add: Qdrant, Pinecone, Weaviate, pgvector</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">13 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 14 — Frontend -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s14">
+  <div class="slide-inner">
+    <p class="subtitle">Frontend</p>
+    <h2>Single-Page Application</h2>
+    <p>Vanilla HTML/CSS/JS with a dark "Bunker + Amethyst" design theme. Four views driven by WebSocket progress updates.</p>
+
+    <div class="cols-2" style="margin-top:1.2rem;">
+      <div>
+        <h3>4-View Flow</h3>
+        <div class="flow" style="flex-direction:column; align-items:stretch;">
+          <span class="flow-step fs-violet" style="text-align:center;">Upload View &mdash; Drag-and-drop image upload</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-cyan" style="text-align:center;">Confirm View &mdash; Edit extracted entities</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-amber" style="text-align:center;">Progress View &mdash; Real-time WebSocket updates</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-green" style="text-align:center;">Results View &mdash; Artist cards, graph, citations</span>
+        </div>
+
+        <h3 style="margin-top:1.5rem;">Results Display</h3>
+        <ul>
+          <li><strong>Artist cards</strong> with discography, gig history, press</li>
+          <li><strong>Venue &amp; promoter</strong> profiles</li>
+          <li><strong>Date context</strong> (scene/city/cultural)</li>
+          <li><strong>Interconnection graph</strong> (network visualization)</li>
+          <li><strong>Citation list</strong> with tier badges and export</li>
+        </ul>
+      </div>
+      <div>
+        <span class="file-label">frontend/index.html</span>
+        <pre><span class="cm">&lt;!-- Film grain overlay --&gt;</span>
+&lt;<span class="kw">div</span> <span class="fn">class</span>=<span class="str">"grain-overlay"</span>&gt;&lt;/<span class="kw">div</span>&gt;
+
+&lt;<span class="kw">header</span> <span class="fn">class</span>=<span class="str">"site-header"</span>&gt;
+  &lt;<span class="kw">h1</span>&gt;raiveFlier&lt;/<span class="kw">h1</span>&gt;
+  &lt;<span class="kw">p</span>&gt;Upload a rave flier. Get the full story.&lt;/<span class="kw">p</span>&gt;
+&lt;/<span class="kw">header</span>&gt;
+
+&lt;<span class="kw">main</span> <span class="fn">id</span>=<span class="str">"app"</span>&gt;
+  &lt;<span class="kw">section</span> <span class="fn">id</span>=<span class="str">"upload-view"</span>&gt;
+    &lt;<span class="kw">div</span> <span class="fn">class</span>=<span class="str">"drop-zone"</span>&gt;
+      &lt;<span class="kw">p</span>&gt;Drop rave flier here&lt;/<span class="kw">p</span>&gt;
+      &lt;<span class="kw">p</span>&gt;JPEG, PNG, or WEBP &middot; Max 10 MB&lt;/<span class="kw">p</span>&gt;
+    &lt;/<span class="kw">div</span>&gt;
+    &lt;<span class="kw">button</span>&gt;Analyze Flier&lt;/<span class="kw">button</span>&gt;
+  &lt;/<span class="kw">section</span>&gt;
+
+  &lt;<span class="kw">section</span> <span class="fn">id</span>=<span class="str">"confirm-view"</span> hidden&gt;
+    <span class="cm">&lt;!-- Dynamic entity editor --&gt;</span>
+  &lt;/<span class="kw">section</span>&gt;
+
+  &lt;<span class="kw">section</span> <span class="fn">id</span>=<span class="str">"progress-view"</span> hidden&gt;
+    <span class="cm">&lt;!-- WebSocket progress bars --&gt;</span>
+  &lt;/<span class="kw">section</span>&gt;
+
+  &lt;<span class="kw">section</span> <span class="fn">id</span>=<span class="str">"results-view"</span> hidden&gt;
+    <span class="cm">&lt;!-- Artist cards, graph, citations --&gt;</span>
+  &lt;/<span class="kw">section</span>&gt;
+&lt;/<span class="kw">main</span>&gt;</pre>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">14 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 15 — Interactive Q&A -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s15">
+  <div class="slide-inner">
+    <p class="subtitle">Interactive Exploration</p>
+    <h2>RAG-Powered Q&amp;A</h2>
+    <p class="lead">Click any entity in the results&mdash;an artist, a venue, a date&mdash;and ask follow-up questions answered directly by the RAG pipeline. The system also suggests related questions you can click to keep exploring.</p>
+
+    <div class="cols-2" style="margin-top:1.5rem;">
+      <div>
+        <h3>How It Works</h3>
+        <div class="flow" style="flex-direction:column; align-items:stretch;">
+          <span class="flow-step fs-violet" style="text-align:center;">User clicks "Ask about this" on any entity</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-cyan" style="text-align:center;">Q&amp;A drawer slides open with context</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-amber" style="text-align:center;">RAG retrieves relevant passages (top_k=10, &ge;0.6)</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-green" style="text-align:center;">LLM answers with citations + 3&ndash;4 follow-up suggestions</span>
+          <span class="flow-arrow" style="text-align:center;">&darr;</span>
+          <span class="flow-step fs-rose" style="text-align:center;">User clicks a suggestion to continue exploring</span>
+        </div>
+      </div>
+      <div>
+        <span class="file-label">src/services/qa_service.py</span>
+        <pre><span class="kw">class</span> <span class="typ">QAService</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>,
+        llm: <span class="typ">ILLMProvider</span>,
+        vector_store: <span class="typ">IVectorStoreProvider</span> | <span class="typ">None</span>,
+        cache: <span class="typ">ICacheProvider</span> | <span class="typ">None</span>,
+    ): ...
+
+    <span class="kw">async def</span> <span class="fn">ask</span>(<span class="kw">self</span>,
+        question: <span class="typ">str</span>,
+        session_context: <span class="typ">dict</span>,
+        entity_type: <span class="typ">str</span> | <span class="typ">None</span>,
+        entity_name: <span class="typ">str</span> | <span class="typ">None</span>,
+    ) -> <span class="typ">QAResponse</span>:
+        <span class="cm"># 1. Check deterministic cache</span>
+        <span class="cm"># 2. Build context from session data</span>
+        <span class="cm"># 3. Retrieve RAG passages (if enabled)</span>
+        <span class="cm"># 4. LLM generates answer + suggestions</span>
+        <span class="cm"># 5. Parse JSON response, merge citations</span>
+        <span class="kw">return</span> QAResponse(answer, citations,
+            suggested_questions)</pre>
+
+        <h3 style="margin-top:0.8rem;">Graceful Degradation</h3>
+        <p style="font-size:0.85rem;">When RAG is disabled (<code>vector_store=None</code>), the Q&amp;A service falls back to LLM-only answers using the session's analysis context. Every answer still includes citations from the original research.</p>
+      </div>
+    </div>
+
+    <div class="cols-3" style="margin-top:1.2rem;">
+      <div class="card">
+        <h3>Entity-Aware</h3>
+        <p>"Ask about this" buttons on artist cards, venue, promoter, and date context sections pre-fill the entity context for targeted retrieval.</p>
+      </div>
+      <div class="card">
+        <h3>Suggested Questions</h3>
+        <p>Each answer includes 3&ndash;4 clickable follow-up questions generated by the LLM, turning static results into an interactive conversation with the archive.</p>
+      </div>
+      <div class="card">
+        <h3>Conversational Thread</h3>
+        <p>The slide-in drawer maintains a scrollable conversation history, so users can ask multiple questions without losing prior answers.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">15 / 16</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SLIDE 16 — MWRCA -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section class="slide" id="s16">
+  <div class="slide-inner">
+    <p class="subtitle">Cultural Preservation</p>
+    <h2>Advancing the Mission of MWRCA</h2>
+    <p class="lead">The <strong>Midwest Rave Culture Archive</strong> (mwrca.org) preserves audio/visual and print ephemera related to rave culture across the Midwest, making digitized collections freely accessible via the Internet Archive.</p>
+
+    <div class="highlight-box" style="margin-top:1.5rem;">
+      <p style="color:var(--text-primary); font-size:1.1rem;"><strong>raiveFlier could serve as MWRCA's automated research and cataloging engine.</strong> As volunteers digitize and scan fliers from the Midwest rave scene, raiveFlier could process each image to automatically identify every artist, venue, promoter, and date&mdash;enriching the archive's metadata with deep citations from music databases, press archives, and a growing RAG knowledge base built from MWRCA's own reference corpus. Hosted publicly, it could also allow community members and researchers to upload their own flier photographs and instantly access comprehensive, citation-backed histories of the events they attended, transforming ephemeral paper artifacts into interconnected cultural records.</p>
+    </div>
+
+    <div class="cols-3" style="margin-top:1.5rem;">
+      <div class="card">
+        <h3>For the Team</h3>
+        <p>Automate cataloging of the flier archive. Bulk-process scanned fliers to generate structured metadata (artists, venues, dates) at scale, dramatically reducing manual data entry.</p>
+      </div>
+      <div class="card">
+        <h3>For the Public</h3>
+        <p>Host raiveFlier as a public tool where anyone can upload a flier from the Midwest scene and get its full story&mdash;connecting them to the cultural history MWRCA preserves.</p>
+      </div>
+      <div class="card">
+        <h3>Growing Knowledge Base</h3>
+        <p>The RAG feedback loop means every analyzed flier enriches the corpus. Over time, the system accumulates deep institutional knowledge about the Midwest rave scene.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">16 / 16</span>
+</section>
+
+</body>
+</html>

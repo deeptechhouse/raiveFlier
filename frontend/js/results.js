@@ -35,6 +35,7 @@ const Results = (() => {
   // ------------------------------------------------------------------
 
   let _rawData = null;
+  let _sessionId = null;
 
   // ------------------------------------------------------------------
   // Utility helpers
@@ -342,6 +343,20 @@ const Results = (() => {
   }
 
   // ------------------------------------------------------------------
+  // Q&A Trigger button helper
+  // ------------------------------------------------------------------
+
+  /** Render an "Ask about this" button for the Q&A drawer. */
+  function _renderQATrigger(entityType, entityName) {
+    return `<button type="button" class="qa-trigger" data-entity-type="${_esc(entityType)}" data-entity-name="${_esc(entityName)}">` +
+      '<svg class="qa-trigger__icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">' +
+      '<path d="M7 1C3.686 1 1 3.686 1 7c0 1.21.36 2.34.976 3.282L1 13l2.718-.976A5.975 5.975 0 007 13c3.314 0 6-2.686 6-6s-2.686-6-6-6z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M5.5 5.5a1.5 1.5 0 112.565 1.06L7 7.5V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="7" cy="10" r="0.5" fill="currentColor"/>' +
+      "</svg> Ask about this</button>";
+  }
+
+  // ------------------------------------------------------------------
   // Section 1: Event Summary Header
   // ------------------------------------------------------------------
 
@@ -473,6 +488,9 @@ const Results = (() => {
 
     // Press & articles
     html += _renderArtistArticles(artist);
+
+    // Q&A trigger
+    html += _renderQATrigger("ARTIST", artist.name);
 
     html += "</div>"; // .expandable__content
     html += "</article>";
@@ -637,6 +655,9 @@ const Results = (() => {
         html += "</ul></div>";
       }
 
+      // Q&A trigger
+      html += _renderQATrigger("VENUE", venue.name);
+
       html += "</div></article>"; // expandable__content + venue-card
     }
 
@@ -682,6 +703,9 @@ const Results = (() => {
         });
         html += "</ul></div>";
       }
+
+      // Q&A trigger
+      html += _renderQATrigger("PROMOTER", promoter.name);
 
       html += "</div></article>"; // expandable__content + promoter-card
     }
@@ -830,6 +854,9 @@ const Results = (() => {
       });
       html += "</ul></div>";
     }
+
+    // Q&A trigger for date context
+    html += _renderQATrigger("DATE", "this event's date and context");
 
     html += "</div></div>"; // context-panels + results-section
     return html;
@@ -1114,6 +1141,22 @@ const Results = (() => {
   // Expandable card behaviour
   // ------------------------------------------------------------------
 
+  /** Attach click handlers to all .qa-trigger buttons. */
+  function _initQATriggers(container) {
+    const triggers = container.querySelectorAll(".qa-trigger");
+    triggers.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (typeof QA !== "undefined" && QA.openPanel) {
+          QA.openPanel(
+            _sessionId,
+            btn.dataset.entityType || null,
+            btn.dataset.entityName || null
+          );
+        }
+      });
+    });
+  }
+
   /** Initialise expand/collapse for all .expandable elements inside a container. */
   function _initExpandables(container) {
     const triggers = container.querySelectorAll(".expandable__trigger");
@@ -1180,6 +1223,7 @@ const Results = (() => {
    */
   function renderResults(data) {
     _rawData = _rawData || data;
+    _sessionId = data.session_id || null;
     const resultsView = document.getElementById("results-view");
     if (!resultsView) return;
 
@@ -1213,6 +1257,7 @@ const Results = (() => {
     // Initialise interactive behaviours
     _initExpandables(resultsView);
     _initGraphInteractions();
+    _initQATriggers(resultsView);
 
     // Export button
     const exportBtn = document.getElementById("export-json-btn");

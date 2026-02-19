@@ -1,0 +1,374 @@
+/**
+ * qa.js — raiveFlier interactive Q&A module.
+ *
+ * Renders a slide-in drawer panel where users can ask follow-up questions
+ * about analysis results. Answers are powered by RAG retrieval + LLM.
+ * Suggested follow-up questions are displayed as clickable chips.
+ */
+
+"use strict";
+
+const QA = (() => {
+  // ------------------------------------------------------------------
+  // Private state
+  // ------------------------------------------------------------------
+
+  let _sessionId = null;
+  let _isOpen = false;
+  let _isLoading = false;
+  let _history = []; // Array of {role: "user"|"assistant", content: string, citations: [], suggestions: []}
+  let _currentEntityType = null;
+  let _currentEntityName = null;
+
+  // ------------------------------------------------------------------
+  // Utility
+  // ------------------------------------------------------------------
+
+  function _esc(str) {
+    if (str == null) return "";
+    const div = document.createElement("div");
+    div.appendChild(document.createTextNode(String(str)));
+    return div.innerHTML;
+  }
+
+  // ------------------------------------------------------------------
+  // DOM references
+  // ------------------------------------------------------------------
+
+  function _getDrawer() {
+    return document.getElementById("qa-drawer");
+  }
+
+  function _getMessages() {
+    return document.getElementById("qa-messages");
+  }
+
+  function _getInput() {
+    return document.getElementById("qa-input");
+  }
+
+  // ------------------------------------------------------------------
+  // Rendering
+  // ------------------------------------------------------------------
+
+  /** Build the drawer's inner HTML shell. */
+  function _renderShell() {
+    const drawer = _getDrawer();
+    if (!drawer) return;
+
+    drawer.innerHTML = `
+      <div class="qa-drawer__header">
+        <div class="qa-drawer__title-row">
+          <svg class="qa-drawer__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm2-1.645A3.502 3.502 0 0012 6.5 3.501 3.501 0 008.5 10h2c0-.827.673-1.5 1.5-1.5s1.5.673 1.5 1.5c0 1.5-2 1.313-2 3h2c0-1.125 2-1.25 2-3 0-1.93-1.57-3.5-3.5-3.5z" fill="currentColor"/>
+          </svg>
+          <h3 class="qa-drawer__title">Ask a Question</h3>
+        </div>
+        <button type="button" class="qa-drawer__close" id="qa-close-btn" aria-label="Close Q&A panel">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="qa-drawer__context" id="qa-context"></div>
+      <div class="qa-drawer__messages" id="qa-messages"></div>
+      <div class="qa-drawer__input-bar">
+        <input type="text" id="qa-input" class="qa-drawer__input" placeholder="Ask about this..." maxlength="1000" autocomplete="off">
+        <button type="button" id="qa-send-btn" class="qa-drawer__send" aria-label="Send question">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M14 2L7 9M14 2L10 14L7 9M14 2L2 6L7 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    // Event listeners
+    document.getElementById("qa-close-btn").addEventListener("click", closePanel);
+    document.getElementById("qa-send-btn").addEventListener("click", _handleSend);
+
+    const input = _getInput();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        _handleSend();
+      }
+    });
+  }
+
+  /** Render a user message bubble. */
+  function _renderUserMessage(text) {
+    return `<div class="qa-message qa-message--user"><p>${_esc(text)}</p></div>`;
+  }
+
+  /** Render an assistant answer with citations and suggestions. */
+  function _renderAssistantMessage(answer, citations, suggestions) {
+    let html = '<div class="qa-message qa-message--assistant">';
+
+    // Answer text (preserve paragraphs)
+    const paragraphs = answer.split("\n\n").filter(Boolean);
+    paragraphs.forEach((p) => {
+      html += `<p>${_esc(p)}</p>`;
+    });
+
+    // Citations
+    if (citations && citations.length > 0) {
+      html += '<div class="qa-citations">';
+      html += '<span class="qa-citations__label">Sources:</span>';
+      citations.forEach((c) => {
+        const tierCls = c.tier <= 2 ? "qa-citation--high" : c.tier <= 4 ? "qa-citation--mid" : "qa-citation--low";
+        html += `<span class="qa-citation ${tierCls}" title="${_esc(c.text || c.source)}">${_esc(c.source || c.text)} <span class="qa-citation__tier">T${c.tier || "?"}</span></span>`;
+      });
+      html += "</div>";
+    }
+
+    html += "</div>";
+
+    // Suggested questions
+    if (suggestions && suggestions.length > 0) {
+      html += '<div class="qa-suggestions">';
+      suggestions.forEach((s) => {
+        const text = typeof s === "string" ? s : s.text;
+        const eType = typeof s === "object" ? (s.entity_type || "") : "";
+        const eName = typeof s === "object" ? (s.entity_name || "") : "";
+        html += `<button type="button" class="qa-suggestion" data-question="${_esc(text)}" data-entity-type="${_esc(eType)}" data-entity-name="${_esc(eName)}">${_esc(text)}</button>`;
+      });
+      html += "</div>";
+    }
+
+    return html;
+  }
+
+  /** Render a loading indicator. */
+  function _renderLoading() {
+    return '<div class="qa-message qa-message--loading"><span class="qa-loading-dots"><span></span><span></span><span></span></span></div>';
+  }
+
+  /** Re-render all messages from history. */
+  function _renderAllMessages() {
+    const container = _getMessages();
+    if (!container) return;
+
+    let html = "";
+    _history.forEach((msg) => {
+      if (msg.role === "user") {
+        html += _renderUserMessage(msg.content);
+      } else {
+        html += _renderAssistantMessage(msg.content, msg.citations, msg.suggestions);
+      }
+    });
+
+    if (_isLoading) {
+      html += _renderLoading();
+    }
+
+    container.innerHTML = html;
+
+    // Attach click handlers to suggestion buttons
+    container.querySelectorAll(".qa-suggestion").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const q = btn.dataset.question;
+        const eType = btn.dataset.entityType || _currentEntityType;
+        const eName = btn.dataset.entityName || _currentEntityName;
+        _currentEntityType = eType || _currentEntityType;
+        _currentEntityName = eName || _currentEntityName;
+        _submitQuestion(q);
+      });
+    });
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+  }
+
+  /** Update the context badge at the top. */
+  function _updateContext() {
+    const ctx = document.getElementById("qa-context");
+    if (!ctx) return;
+
+    if (_currentEntityType && _currentEntityName) {
+      const typeLabel = _currentEntityType.charAt(0) + _currentEntityType.slice(1).toLowerCase();
+      ctx.innerHTML = `<span class="qa-context__badge">${_esc(typeLabel)}: ${_esc(_currentEntityName)}</span>`;
+      ctx.hidden = false;
+    } else {
+      ctx.hidden = true;
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // API interaction
+  // ------------------------------------------------------------------
+
+  async function _submitQuestion(question) {
+    if (!question || !question.trim() || _isLoading || !_sessionId) return;
+
+    const q = question.trim();
+
+    // Add user message to history
+    _history.push({ role: "user", content: q });
+    _isLoading = true;
+    _renderAllMessages();
+
+    try {
+      const response = await fetch(
+        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/ask`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: q,
+            entity_type: _currentEntityType,
+            entity_name: _currentEntityName,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      _history.push({
+        role: "assistant",
+        content: data.answer,
+        citations: data.citations || [],
+        suggestions: data.suggested_questions || [],
+      });
+    } catch (err) {
+      _history.push({
+        role: "assistant",
+        content: `Sorry, I couldn't process that question: ${err.message}`,
+        citations: [],
+        suggestions: [],
+      });
+    }
+
+    _isLoading = false;
+    _renderAllMessages();
+
+    // Clear input
+    const input = _getInput();
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  function _handleSend() {
+    const input = _getInput();
+    if (!input) return;
+    _submitQuestion(input.value);
+  }
+
+  // ------------------------------------------------------------------
+  // Public API
+  // ------------------------------------------------------------------
+
+  /**
+   * Open the Q&A panel, optionally focused on a specific entity.
+   * @param {string} sessionId - The pipeline session UUID.
+   * @param {string|null} entityType - "ARTIST", "VENUE", "PROMOTER", "DATE", or null.
+   * @param {string|null} entityName - The entity name, or null for general questions.
+   */
+  function openPanel(sessionId, entityType, entityName) {
+    _sessionId = sessionId;
+    _currentEntityType = entityType || null;
+    _currentEntityName = entityName || null;
+    _history = [];
+    _isLoading = false;
+
+    const drawer = _getDrawer();
+    if (!drawer) return;
+
+    _renderShell();
+    _updateContext();
+    _renderAllMessages();
+
+    drawer.classList.add("qa-drawer--open");
+    _isOpen = true;
+
+    // Focus the input
+    const input = _getInput();
+    if (input) {
+      setTimeout(() => input.focus(), 300); // after transition
+    }
+
+    // Add initial suggestion if entity context
+    if (entityName) {
+      const initialSuggestions = _getInitialSuggestions(entityType, entityName);
+      if (initialSuggestions.length > 0) {
+        const container = _getMessages();
+        if (container) {
+          let html = '<div class="qa-suggestions qa-suggestions--initial">';
+          initialSuggestions.forEach((s) => {
+            html += `<button type="button" class="qa-suggestion" data-question="${_esc(s.text)}" data-entity-type="${_esc(s.entity_type || "")}" data-entity-name="${_esc(s.entity_name || "")}">${_esc(s.text)}</button>`;
+          });
+          html += "</div>";
+          container.innerHTML = html;
+
+          container.querySelectorAll(".qa-suggestion").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              _submitQuestion(btn.dataset.question);
+            });
+          });
+        }
+      }
+    }
+  }
+
+  /** Close the Q&A panel. */
+  function closePanel() {
+    const drawer = _getDrawer();
+    if (drawer) {
+      drawer.classList.remove("qa-drawer--open");
+    }
+    _isOpen = false;
+  }
+
+  /** Generate contextual starter questions. */
+  function _getInitialSuggestions(entityType, entityName) {
+    if (!entityType || !entityName) return [];
+
+    const name = entityName;
+    switch (entityType.toUpperCase()) {
+      case "ARTIST":
+        return [
+          { text: `What genre is ${name} known for?`, entity_type: "ARTIST", entity_name: name },
+          { text: `What labels has ${name} released on?`, entity_type: "ARTIST", entity_name: name },
+          { text: `Who has ${name} played with before?`, entity_type: "ARTIST", entity_name: name },
+          { text: `What is ${name}'s most notable release?`, entity_type: "ARTIST", entity_name: name },
+        ];
+      case "VENUE":
+        return [
+          { text: `What is the history of ${name}?`, entity_type: "VENUE", entity_name: name },
+          { text: `What notable events have been held at ${name}?`, entity_type: "VENUE", entity_name: name },
+          { text: `What DJs are associated with ${name}?`, entity_type: "VENUE", entity_name: name },
+        ];
+      case "PROMOTER":
+        return [
+          { text: `What events has ${name} organized?`, entity_type: "PROMOTER", entity_name: name },
+          { text: `What venues does ${name} work with?`, entity_type: "PROMOTER", entity_name: name },
+          { text: `What scene is ${name} associated with?`, entity_type: "PROMOTER", entity_name: name },
+        ];
+      case "DATE":
+        return [
+          { text: "What was happening in the rave scene at this time?", entity_type: "DATE", entity_name: name },
+          { text: "What other events were happening around this date?", entity_type: "DATE", entity_name: name },
+          { text: "What was the cultural context of this era?", entity_type: "DATE", entity_name: name },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  /** Check if the panel is currently open. */
+  function isOpen() {
+    return _isOpen;
+  }
+
+  return {
+    openPanel,
+    closePanel,
+    isOpen,
+  };
+})();
