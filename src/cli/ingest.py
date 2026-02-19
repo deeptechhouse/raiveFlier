@@ -165,6 +165,26 @@ async def _handle_pdf(args: argparse.Namespace, service) -> int:  # noqa: ANN001
     return 0
 
 
+async def _handle_epub(args: argparse.Namespace, service) -> int:  # noqa: ANN001
+    """Ingest an EPUB book."""
+    print(f"Ingesting EPUB: {args.title} by {args.author} ({args.year})")
+    print(f"  File: {args.file}")
+
+    result = await service.ingest_epub(
+        file_path=args.file,
+        title=args.title,
+        author=args.author,
+        year=args.year,
+    )
+
+    print("\nIngestion complete:")
+    print(f"  Chunks created: {result.chunks_created}")
+    print(f"  Total tokens:   {result.total_tokens}")
+    print(f"  Time:           {result.ingestion_time:.2f}s")
+    print(f"  Source ID:       {result.source_id}")
+    return 0
+
+
 async def _handle_article(args: argparse.Namespace, service) -> int:  # noqa: ANN001
     """Ingest a web article."""
     print(f"Ingesting article: {args.url}")
@@ -265,6 +285,13 @@ def _build_parser() -> argparse.ArgumentParser:
     pdf_parser.add_argument("--author", required=True, help="Author name")
     pdf_parser.add_argument("--year", required=True, type=int, help="Publication year")
 
+    # -- epub --
+    epub_parser = subparsers.add_parser("epub", help="Ingest an EPUB book")
+    epub_parser.add_argument("--file", required=True, help="Path to the EPUB file")
+    epub_parser.add_argument("--title", required=True, help="Book title")
+    epub_parser.add_argument("--author", required=True, help="Author name")
+    epub_parser.add_argument("--year", required=True, type=int, help="Publication year")
+
     # -- article --
     article_parser = subparsers.add_parser("article", help="Ingest a web article")
     article_parser.add_argument("--url", required=True, help="Article URL")
@@ -317,6 +344,8 @@ def main() -> None:
         exit_code = asyncio.run(_handle_book(args, service))
     elif args.command == "pdf":
         exit_code = asyncio.run(_handle_pdf(args, service))
+    elif args.command == "epub":
+        exit_code = asyncio.run(_handle_epub(args, service))
     elif args.command == "article":
         exit_code = asyncio.run(_handle_article(args, service))
     elif args.command == "directory":

@@ -26,6 +26,7 @@ from src.services.ingestion.source_processors.article_processor import (
     ArticleProcessor,
 )
 from src.services.ingestion.source_processors.book_processor import BookProcessor
+from src.services.ingestion.source_processors.epub_processor import EPUBProcessor
 from src.services.ingestion.source_processors.pdf_processor import PDFProcessor
 
 if TYPE_CHECKING:
@@ -69,6 +70,7 @@ class IngestionService:
         self._article_scraper = article_scraper
         self._book_processor = BookProcessor()
         self._pdf_processor = PDFProcessor()
+        self._epub_processor = EPUBProcessor()
         self._article_processor = ArticleProcessor()
         self._analysis_processor = AnalysisProcessor()
 
@@ -163,6 +165,51 @@ class IngestionService:
                 "author": section.author,
                 "publication_date": section.publication_date,
                 "page_number": section.page_number,
+            }
+            chunks = self._chunker.chunk(section.text, metadata)
+            all_chunks.extend(chunks)
+
+        return await self._tag_embed_store(
+            all_chunks, source_id=source_id, title=title, start=start
+        )
+
+    async def ingest_epub(
+        self,
+        file_path: str,
+        title: str,
+        author: str,
+        year: int,
+    ) -> IngestionResult:
+        """Ingest an EPUB book through the full pipeline.
+
+        1. :class:`EPUBProcessor` → chapter-level sections from XHTML
+        2. :class:`TextChunker` → embedding-sized chunks
+        3. :class:`MetadataExtractor` → entity / geo / genre tags
+        4. :class:`IEmbeddingProvider` → embedding vectors
+        5. :class:`IVectorStoreProvider` → stored in vector DB
+
+        Returns
+        -------
+        IngestionResult
+            Statistics about the ingestion run.
+        """
+        start = time.monotonic()
+
+        sections = self._epub_processor.process(file_path, title, author, year)
+        if not sections:
+            return self._empty_result(title=title, source_id="")
+
+        source_id = sections[0].source_id
+
+        all_chunks: list[DocumentChunk] = []
+        for section in sections:
+            metadata = {
+                "source_id": section.source_id,
+                "source_title": section.source_title,
+                "source_type": section.source_type,
+                "citation_tier": section.citation_tier,
+                "author": section.author,
+                "publication_date": section.publication_date,
             }
             chunks = self._chunker.chunk(section.text, metadata)
             all_chunks.extend(chunks)

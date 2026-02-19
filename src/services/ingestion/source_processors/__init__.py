@@ -12,11 +12,13 @@ from src.services.ingestion.source_processors.article_processor import (
     ArticleProcessor,
 )
 from src.services.ingestion.source_processors.book_processor import BookProcessor
+from src.services.ingestion.source_processors.epub_processor import EPUBProcessor
 from src.services.ingestion.source_processors.pdf_processor import PDFProcessor
 
 __all__ = [
     "AnalysisProcessor",
     "ArticleProcessor",
     "BookProcessor",
+    "EPUBProcessor",
     "PDFProcessor",
 ]
