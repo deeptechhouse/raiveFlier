@@ -102,9 +102,17 @@ class TestDenoise:
         assert result.size == (300, 200)
 
     def test_reduces_noise(self, preprocessor: ImagePreprocessor) -> None:
-        # Create noisy image
+        # Create a structured image (gradient) with Gaussian noise added.
+        # Pure random noise doesn't get smoothed — the denoiser needs
+        # underlying structure to distinguish signal from noise.
         rng = np.random.default_rng(42)
-        noisy = rng.integers(0, 256, (200, 300, 3), dtype=np.uint8)
+        rows, cols = 200, 300
+        # Horizontal gradient as base signal
+        gradient = np.tile(np.linspace(0, 255, cols, dtype=np.float64), (rows, 1))
+        base = np.stack([gradient, gradient, gradient], axis=-1)
+        # Add Gaussian noise (sigma=40)
+        noise = rng.normal(0, 40, base.shape)
+        noisy = np.clip(base + noise, 0, 255).astype(np.uint8)
         img = Image.fromarray(noisy)
         result = preprocessor.denoise(img)
         result_arr = np.array(result)

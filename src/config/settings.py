@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     openai_base_url: str = ""  # Custom base URL for OpenAI-compatible APIs (TogetherAI, etc.)
     openai_text_model: str = ""  # Override text model (e.g. meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo)
     openai_vision_model: str = ""  # Override vision model (leave empty to disable vision)
+    openai_embedding_model: str = ""  # Override embedding model (e.g. BAAI/bge-base-en-v1.5 for TogetherAI)
     anthropic_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 

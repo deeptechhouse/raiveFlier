@@ -160,14 +160,20 @@ class TextChunker:
 
         Handles ``.``, ``!``, ``?`` followed by whitespace or end-of-string.
         Common abbreviations (Dr., Mr., etc.) do not trigger a split.
+
+        Uses a masking approach instead of a variable-width lookbehind
+        (which Python 3.10's ``re`` module does not support).
         """
-        # Build a negative lookbehind for known abbreviations.
-        abbr_pattern = "|".join(re.escape(a) for a in _ABBREVIATIONS)
-        pattern = rf"(?<!(?:{abbr_pattern}))[.!?](?:\s|$)"
+        # Temporarily mask periods after known abbreviations so they
+        # don't trigger a sentence split.  Replace '.' with '\x00'
+        # (same length, keeps indices aligned with the original text).
+        masked = text
+        for abbr in _ABBREVIATIONS:
+            masked = masked.replace(f"{abbr}.", f"{abbr}\x00")
 
         sentences: list[str] = []
         last = 0
-        for match in re.finditer(pattern, text):
+        for match in re.finditer(r"[.!?](?:\s|$)", masked):
             end = match.end()
             sentence = text[last:end].strip()
             if sentence:

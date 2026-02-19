@@ -39,7 +39,7 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
         The first available embedding provider, or ``None`` if none are
         configured.
     """
-    if app_settings.openai_api_key and not app_settings.openai_base_url:
+    if app_settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
         )

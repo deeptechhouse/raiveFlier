@@ -104,13 +104,13 @@ def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
 def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
-    Priority: OpenAI (if real OpenAI key, not a custom base_url) ->
+    Priority: OpenAI/OpenAI-compatible (if API key set) ->
               Nomic/Ollama (if reachable).
     Returns ``None`` if no embedding provider is available.
     """
     from src.interfaces.embedding_provider import IEmbeddingProvider
 
-    if app_settings.openai_api_key and not app_settings.openai_base_url:
+    if app_settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
         )
