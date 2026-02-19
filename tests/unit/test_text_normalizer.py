@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from src.utils.text_normalizer import (
+    correct_ocr_errors,
     fuzzy_match,
     normalize_artist_name,
     split_artist_names,
@@ -148,3 +149,42 @@ class TestFuzzyMatch:
         assert result is not None
         _, score = result
         assert 0.0 <= score <= 1.0
+
+
+# ======================================================================
+# correct_ocr_errors
+# ======================================================================
+
+
+class TestCorrectOCRErrors:
+    """Tests for common OCR character substitution corrections."""
+
+    def test_rn_to_m(self) -> None:
+        assert correct_ocr_errors("Surnrner") == "Summer"
+
+    def test_leading_zero_to_O(self) -> None:
+        assert correct_ocr_errors("0PEN AIR") == "OPEN AIR"
+
+    def test_trailing_zero_to_O(self) -> None:
+        assert correct_ocr_errors("CARL0") == "CARLO"
+
+    def test_leading_one_to_l(self) -> None:
+        assert correct_ocr_errors("1ive") == "live"
+
+    def test_pipe_to_l(self) -> None:
+        assert correct_ocr_errors("|ive") == "live"
+
+    def test_vv_to_w(self) -> None:
+        assert correct_ocr_errors("VVarehouse") == "Warehouse"
+
+    def test_no_false_corrections_on_clean_text(self) -> None:
+        clean = "CARL COX AT TRESOR BERLIN"
+        assert correct_ocr_errors(clean) == clean
+
+    def test_preserves_intentional_numbers(self) -> None:
+        # "10pm" should NOT be corrected (standalone number)
+        assert correct_ocr_errors("10pm") == "10pm"
+
+    def test_preserves_standalone_zero(self) -> None:
+        # "0" alone should not be corrected
+        assert correct_ocr_errors("$10") == "$10"

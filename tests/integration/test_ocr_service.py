@@ -222,3 +222,48 @@ class TestOCRFallbackChain:
 
         assert result.provider_used == "provider-low"
         assert result.confidence == pytest.approx(0.3)
+
+    @pytest.mark.asyncio()
+    async def test_configurable_min_confidence_threshold(self) -> None:
+        """Custom min_confidence threshold controls short-circuit behavior."""
+        provider_a = _make_ocr_provider(
+            "provider-a",
+            confidence=0.5,
+            raw_text="CARL COX",
+        )
+        provider_b = _make_ocr_provider(
+            "provider-b",
+            confidence=0.9,
+            raw_text="CARL COX\nTRESOR BERLIN",
+        )
+
+        # With low threshold (0.4), provider-a's 0.5 meets it → short-circuits
+        service = OCRService(providers=[provider_a, provider_b], min_confidence=0.4)
+        flier = _make_flier_image()
+        result = await service.extract_text(flier)
+
+        assert result.provider_used == "provider-a"
+        assert result.confidence == pytest.approx(0.5)
+        provider_b.extract_text.assert_not_awaited()
+
+    @pytest.mark.asyncio()
+    async def test_high_threshold_forces_fallthrough(self) -> None:
+        """High min_confidence causes fallthrough to better provider."""
+        provider_a = _make_ocr_provider(
+            "provider-a",
+            confidence=0.6,
+            raw_text="C COX",
+        )
+        provider_b = _make_ocr_provider(
+            "provider-b",
+            confidence=0.95,
+            raw_text="CARL COX\nTRESOR BERLIN",
+        )
+
+        # With high threshold (0.9), provider-a's 0.6 does NOT meet it
+        service = OCRService(providers=[provider_a, provider_b], min_confidence=0.9)
+        flier = _make_flier_image()
+        result = await service.extract_text(flier)
+
+        assert result.provider_used == "provider-b"
+        assert result.confidence == pytest.approx(0.95)

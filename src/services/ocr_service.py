@@ -12,7 +12,7 @@ from src.models.flier import FlierImage, OCRResult
 from src.utils.errors import OCRExtractionError
 from src.utils.logging import get_logger
 
-_CONFIDENCE_THRESHOLD = 0.7
+_DEFAULT_CONFIDENCE_THRESHOLD = 0.7
 
 
 class OCRService:
@@ -25,8 +25,13 @@ class OCRService:
     :class:`OCRExtractionError` is raised.
     """
 
-    def __init__(self, providers: list[IOCRProvider]) -> None:
+    def __init__(
+        self,
+        providers: list[IOCRProvider],
+        min_confidence: float = _DEFAULT_CONFIDENCE_THRESHOLD,
+    ) -> None:
         self._providers = providers
+        self._min_confidence = min_confidence
         self._logger = get_logger(__name__)
 
     # ------------------------------------------------------------------
@@ -64,7 +69,7 @@ class OCRService:
                 self._logger.info("ocr_provider_attempting", provider=name)
                 result = await provider.extract_text(flier)
 
-                if result.confidence >= _CONFIDENCE_THRESHOLD:
+                if result.confidence >= self._min_confidence:
                     self._logger.info(
                         "ocr_provider_accepted",
                         provider=name,

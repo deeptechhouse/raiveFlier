@@ -26,7 +26,12 @@ from src.config.settings import Settings
 def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
-    Priority: OpenAI (if API key set) -> Nomic/Ollama (if reachable).
+    Priority: OpenAI (if real OpenAI key, not a custom base_url) ->
+              Nomic/Ollama (if reachable).
+
+    When ``openai_base_url`` is set (e.g. TogetherAI), the OpenAI
+    embedding endpoint is unreachable with that key, so we fall through
+    to Nomic/Ollama instead.
 
     Returns
     -------
@@ -34,7 +39,7 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
         The first available embedding provider, or ``None`` if none are
         configured.
     """
-    if app_settings.openai_api_key:
+    if app_settings.openai_api_key and not app_settings.openai_base_url:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
         )
@@ -126,6 +131,26 @@ async def _handle_book(args: argparse.Namespace, service) -> int:  # noqa: ANN00
     print(f"  File: {args.file}")
 
     result = await service.ingest_book(
+        file_path=args.file,
+        title=args.title,
+        author=args.author,
+        year=args.year,
+    )
+
+    print("\nIngestion complete:")
+    print(f"  Chunks created: {result.chunks_created}")
+    print(f"  Total tokens:   {result.total_tokens}")
+    print(f"  Time:           {result.ingestion_time:.2f}s")
+    print(f"  Source ID:       {result.source_id}")
+    return 0
+
+
+async def _handle_pdf(args: argparse.Namespace, service) -> int:  # noqa: ANN001
+    """Ingest a PDF book or document."""
+    print(f"Ingesting PDF: {args.title} by {args.author} ({args.year})")
+    print(f"  File: {args.file}")
+
+    result = await service.ingest_pdf(
         file_path=args.file,
         title=args.title,
         author=args.author,
@@ -233,6 +258,13 @@ def _build_parser() -> argparse.ArgumentParser:
     book_parser.add_argument("--author", required=True, help="Book author")
     book_parser.add_argument("--year", required=True, type=int, help="Publication year")
 
+    # -- pdf --
+    pdf_parser = subparsers.add_parser("pdf", help="Ingest a PDF book or document")
+    pdf_parser.add_argument("--file", required=True, help="Path to the PDF file")
+    pdf_parser.add_argument("--title", required=True, help="Book/document title")
+    pdf_parser.add_argument("--author", required=True, help="Author name")
+    pdf_parser.add_argument("--year", required=True, type=int, help="Publication year")
+
     # -- article --
     article_parser = subparsers.add_parser("article", help="Ingest a web article")
     article_parser.add_argument("--url", required=True, help="Article URL")
@@ -283,6 +315,8 @@ def main() -> None:
 
     if args.command == "book":
         exit_code = asyncio.run(_handle_book(args, service))
+    elif args.command == "pdf":
+        exit_code = asyncio.run(_handle_pdf(args, service))
     elif args.command == "article":
         exit_code = asyncio.run(_handle_article(args, service))
     elif args.command == "directory":

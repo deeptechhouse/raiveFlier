@@ -154,13 +154,21 @@ class MetadataExtractor:
             "genre_tags": [],
         }
 
-        # Strip markdown code fences if present.
+        # Strip markdown code fences and any preamble text.
         cleaned = response.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.split("\n")
-            # Remove first and last fence lines.
-            lines = [line for line in lines if not line.strip().startswith("```")]
-            cleaned = "\n".join(lines).strip()
+
+        # Try to extract JSON from between code fences first.
+        import re
+
+        fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", cleaned, re.DOTALL)
+        if fence_match:
+            cleaned = fence_match.group(1).strip()
+        else:
+            # Fallback: extract the first top-level JSON object.
+            brace_start = cleaned.find("{")
+            brace_end = cleaned.rfind("}")
+            if brace_start != -1 and brace_end > brace_start:
+                cleaned = cleaned[brace_start : brace_end + 1]
 
         try:
             data = json.loads(cleaned)

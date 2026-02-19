@@ -19,6 +19,17 @@ from src.utils.errors import LLMError
 logger = structlog.get_logger(logger_name=__name__)
 
 
+def _detect_media_type(image_bytes: bytes) -> str:
+    """Detect the MIME type of an image from its magic bytes."""
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes[:2] == b"\xff\xd8":
+        return "image/jpeg"
+    return "image/jpeg"  # safe fallback
+
+
 class OllamaLLMProvider(ILLMProvider):
     """LLM provider backed by a local Ollama server.
 
@@ -76,6 +87,7 @@ class OllamaLLMProvider(ILLMProvider):
     async def vision_extract(self, image_bytes: bytes, prompt: str) -> str:
         """Analyse an image using Ollama's vision model (llava)."""
         b64 = base64.b64encode(image_bytes).decode("utf-8")
+        media_type = _detect_media_type(image_bytes)
         try:
             response = await self._client.chat.completions.create(
                 model=self._vision_model,
@@ -87,7 +99,7 @@ class OllamaLLMProvider(ILLMProvider):
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{b64}",
+                                    "url": f"data:{media_type};base64,{b64}",
                                 },
                             },
                         ],

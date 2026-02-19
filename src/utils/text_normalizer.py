@@ -66,6 +66,49 @@ def fuzzy_match(
     return (match_str, score / 100.0)
 
 
+# ------------------------------------------------------------------
+# OCR error correction
+# ------------------------------------------------------------------
+
+# Common character misreads produced by traditional OCR engines on
+# stylised rave-flier text.  Each tuple is (pattern, replacement).
+# Applied only to EasyOCR/Tesseract output — NOT to LLM Vision output,
+# which does not make these systematic errors.
+_OCR_CORRECTIONS: list[tuple[re.Pattern[str], str]] = [
+    # "rn" misread as two characters instead of "m"
+    (re.compile(r"(?<=[a-zA-Z])rn(?=[a-zA-Z])"), "m"),
+    # Leading "0" before 2+ letters → "O" (e.g. "0PEN" → "OPEN")
+    (re.compile(r"\b0(?=[a-zA-Z]{2,})"), "O"),
+    # Trailing "0" after 2+ letters → "O" (e.g. "CARL0" → "CARLO")
+    (re.compile(r"(?<=[a-zA-Z][a-zA-Z])0\b"), "O"),
+    # Leading "1" before 2+ letters → "l" (e.g. "1ive" → "live")
+    (re.compile(r"\b1(?=[a-zA-Z]{2,})"), "l"),
+    # Pipe character → "l"
+    (re.compile(r"\|(?=[a-zA-Z])"), "l"),
+    # "VV" → "W" (common with wide fonts)
+    (re.compile(r"\bVV"), "W"),
+]
+
+
+def correct_ocr_errors(text: str) -> str:
+    """Apply common OCR character-substitution corrections.
+
+    Fixes systematic misreads that traditional OCR engines (EasyOCR,
+    Tesseract) make on stylised rave-flier typography.  Should NOT
+    be applied to LLM Vision output.
+
+    Args:
+        text: Raw OCR text.
+
+    Returns:
+        Corrected text.
+    """
+    corrected = text
+    for pattern, replacement in _OCR_CORRECTIONS:
+        corrected = pattern.sub(replacement, corrected)
+    return corrected
+
+
 _SEPARATOR_PATTERN = re.compile(
     r"\s+[Bb]2[Bb]\s+|\s+[Vv][Ss]\.?\s+|\s+&\s+|\s+feat\.?\s+" r"|\s+ft\.?\s+|\s+featuring\s+|,\s*",
     re.IGNORECASE,

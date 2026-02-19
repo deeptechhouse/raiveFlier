@@ -20,6 +20,17 @@ from src.utils.errors import LLMError
 logger = structlog.get_logger(logger_name=__name__)
 
 
+def _detect_media_type(image_bytes: bytes) -> str:
+    """Detect the MIME type of an image from its magic bytes."""
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes[:2] == b"\xff\xd8":
+        return "image/jpeg"
+    return "image/jpeg"  # safe fallback
+
+
 class OpenAILLMProvider(ILLMProvider):
     """LLM provider backed by an OpenAI-compatible API.
 
@@ -94,6 +105,7 @@ class OpenAILLMProvider(ILLMProvider):
                 provider_name=self.get_provider_name(),
             )
         b64 = base64.b64encode(image_bytes).decode("utf-8")
+        media_type = _detect_media_type(image_bytes)
         try:
             response = await self._client.chat.completions.create(
                 model=self._vision_model,
@@ -105,7 +117,7 @@ class OpenAILLMProvider(ILLMProvider):
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{b64}",
+                                    "url": f"data:{media_type};base64,{b64}",
                                 },
                             },
                         ],

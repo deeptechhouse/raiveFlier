@@ -18,6 +18,8 @@ from src.models.flier import FlierImage, OCRResult, TextRegion
 from src.utils.errors import OCRExtractionError
 from src.utils.image_preprocessor import ImagePreprocessor
 from src.utils.logging import get_logger
+from src.utils.ocr_helpers import merge_pass_results
+from src.utils.text_normalizer import correct_ocr_errors
 
 
 class EasyOCRProvider(IOCRProvider):
@@ -25,7 +27,8 @@ class EasyOCRProvider(IOCRProvider):
 
     The EasyOCR reader is initialised lazily on first use to avoid heavy
     model loading at import time.  Multi-pass preprocessing (standard,
-    inverted, per-channel) is applied identically to the Tesseract provider.
+    inverted, per-channel, CLAHE, denoised, saturation, Otsu) is applied
+    and results are merged across all passes.
     """
 
     def __init__(self, preprocessor: ImagePreprocessor) -> None:
@@ -52,17 +55,15 @@ class EasyOCRProvider(IOCRProvider):
             passes = self._build_passes(original)
             reader = self._get_reader()
 
-            best_result: dict | None = None
-            best_confidence = -1.0
+            all_results: list[dict | None] = []
 
             for pass_name, pass_image in passes:
                 self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="easyocr")
                 try:
                     result = self._run_easyocr(reader, pass_image)
-                    if result is not None and result["confidence"] > best_confidence:
-                        best_confidence = result["confidence"]
-                        best_result = result
-                        best_result["pass_name"] = pass_name
+                    if result is not None:
+                        result["pass_name"] = pass_name
+                    all_results.append(result)
                 except Exception as exc:
                     self._logger.warning(
                         "ocr_pass_failed",
@@ -70,10 +71,12 @@ class EasyOCRProvider(IOCRProvider):
                         provider="easyocr",
                         error=str(exc),
                     )
+                    all_results.append(None)
 
             elapsed = time.perf_counter() - start
 
-            if best_result is None:
+            merged = merge_pass_results(all_results)
+            if merged is None:
                 raise OCRExtractionError(
                     "All OCR passes returned no usable text",
                     provider_name=self.get_provider_name(),
@@ -82,18 +85,18 @@ class EasyOCRProvider(IOCRProvider):
             self._logger.info(
                 "ocr_extraction_complete",
                 provider="easyocr",
-                best_pass=best_result.get("pass_name", "unknown"),
-                confidence=round(best_confidence, 4),
-                num_regions=len(best_result["bounding_boxes"]),
+                passes_run=len(passes),
+                confidence=round(merged["confidence"], 4),
+                num_regions=len(merged["bounding_boxes"]),
                 processing_time=round(elapsed, 3),
             )
 
             return OCRResult(
-                raw_text=best_result["raw_text"],
-                confidence=best_result["confidence"],
+                raw_text=correct_ocr_errors(merged["raw_text"]),
+                confidence=merged["confidence"],
                 provider_used="easyocr",
                 processing_time=elapsed,
-                bounding_boxes=best_result["bounding_boxes"],
+                bounding_boxes=merged["bounding_boxes"],
             )
 
         except OCRExtractionError:
@@ -141,13 +144,16 @@ class EasyOCRProvider(IOCRProvider):
 
     def _build_passes(self, original: Image.Image) -> list[tuple[str, Image.Image]]:
         """Build (pass_name, preprocessed_image) pairs for multi-pass OCR."""
+        pp = self._preprocessor
         passes: list[tuple[str, Image.Image]] = []
 
+        # Shared base: resized (with upscaling for small images)
+        resized = pp.resize_for_ocr(original)
+
         # 1. Standard contrast-enhanced binarized image
-        resized = self._preprocessor.resize_for_ocr(original)
-        enhanced = self._preprocessor.enhance_contrast(resized)
-        binarized = self._preprocessor.binarize(enhanced)
-        deskewed = self._preprocessor.deskew(binarized)
+        enhanced = pp.enhance_contrast(resized)
+        binarized = pp.binarize(enhanced)
+        deskewed = pp.deskew(binarized)
         passes.append(("standard", deskewed))
 
         # 2. Inverted (light text on dark background — common on rave fliers)
@@ -155,17 +161,45 @@ class EasyOCRProvider(IOCRProvider):
         passes.append(("inverted", inverted))
 
         # 3. Individual color channels (isolate neon text)
-        channels = self._preprocessor.separate_color_channels(resized)
+        channels = pp.separate_color_channels(resized)
         channel_names = ["red", "green", "blue"]
         for ch_name, channel in zip(channel_names, channels, strict=True):
             passes.append((f"channel_{ch_name}", channel.convert("RGB")))
+
+        # 4. CLAHE — localized adaptive contrast (handles uneven lighting)
+        clahe_enhanced = pp.enhance_contrast_clahe(resized)
+        clahe_binarized = pp.binarize(clahe_enhanced)
+        clahe_deskewed = pp.deskew(clahe_binarized)
+        passes.append(("clahe", clahe_deskewed))
+
+        # 5. Denoised — remove camera sensor noise before OCR
+        denoised = pp.denoise(resized)
+        denoised_enhanced = pp.enhance_contrast(denoised)
+        denoised_binarized = pp.binarize(denoised_enhanced)
+        denoised_deskewed = pp.deskew(denoised_binarized)
+        passes.append(("denoised", denoised_deskewed))
+
+        # 6. HSV saturation channel — isolates neon-colored text
+        saturation = pp.extract_saturation_channel(resized)
+        sat_binarized = pp.binarize(saturation.convert("RGB"))
+        passes.append(("saturation", sat_binarized))
+
+        # 7. Otsu binarization — automatic global threshold
+        otsu_enhanced = pp.enhance_contrast(resized)
+        otsu_binarized = pp.binarize_otsu(otsu_enhanced)
+        otsu_deskewed = pp.deskew(otsu_binarized)
+        passes.append(("otsu", otsu_deskewed))
 
         return passes
 
     def _run_easyocr(self, reader, pass_image: Image.Image) -> dict | None:  # noqa: ANN001
         """Run EasyOCR on a single image and return results dict or None."""
         img_array = np.array(pass_image)
-        results = reader.readtext(img_array)
+        results = reader.readtext(
+            img_array,
+            low_text=0.3,
+            text_threshold=0.5,
+        )
 
         if not results:
             return None

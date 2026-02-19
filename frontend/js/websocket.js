@@ -230,30 +230,17 @@ const Progress = (() => {
     // Brief delay so the user sees 100%
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    try {
-      const response = await fetch(`/api/v1/fliers/${encodeURIComponent(sessionId)}/results`);
-      if (response.ok) {
-        const results = await response.json();
-        // Results view (G3) will consume this — store on App for now
-        if (typeof App._resultsData !== "undefined" || true) {
-          App._resultsData = results;
-        }
-      }
-    } catch (err) {
-      // Results fetch failed — user can still navigate
-    }
-
     App.showView("results");
 
-    // Populate results view if the Results module exists (G3)
-    if (typeof Results !== "undefined" && Results.populateResultsView) {
-      Results.populateResultsView(App._resultsData);
+    // Delegate to Results module for fetching and rendering
+    if (typeof Results !== "undefined" && Results.fetchAndDisplayResults) {
+      Results.fetchAndDisplayResults(sessionId);
     } else {
-      // Temporary placeholder until G3
+      // Fallback if results.js failed to load
       const resultsView = document.getElementById("results-view");
       if (resultsView) {
         resultsView.innerHTML = `<h2 class="text-heading">Analysis Complete</h2>
-          <p class="text-body" style="margin-top: var(--space-4)">Results view will be implemented in G3.</p>
+          <p class="text-body" style="margin-top: var(--space-4)">Results module failed to load.</p>
           <p class="text-caption" style="margin-top: var(--space-3)">Session: ${_escapeHTML(sessionId)}</p>`;
       }
     }

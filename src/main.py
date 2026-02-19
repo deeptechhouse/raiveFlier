@@ -104,12 +104,13 @@ def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
 def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
-    Priority: OpenAI (if API key set) -> Nomic/Ollama (if reachable).
+    Priority: OpenAI (if real OpenAI key, not a custom base_url) ->
+              Nomic/Ollama (if reachable).
     Returns ``None`` if no embedding provider is available.
     """
     from src.interfaces.embedding_provider import IEmbeddingProvider
 
-    if app_settings.openai_api_key:
+    if app_settings.openai_api_key and not app_settings.openai_base_url:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
         )
@@ -157,7 +158,9 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
     # -- OCR providers (ordered by priority) --
     ocr_providers = []
     if primary_llm.supports_vision():
-        ocr_providers.append(LLMVisionOCRProvider(llm_provider=primary_llm))
+        ocr_providers.append(
+            LLMVisionOCRProvider(llm_provider=primary_llm, preprocessor=preprocessor)
+        )
     ocr_providers.append(EasyOCRProvider(preprocessor=preprocessor))
     ocr_providers.append(TesseractOCRProvider(preprocessor=preprocessor))
 
@@ -219,7 +222,8 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
             )
 
     # -- Services --
-    ocr_service = OCRService(providers=ocr_providers)
+    ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
+    ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
     entity_extractor = EntityExtractor(llm_provider=primary_llm)
 
     artist_researcher = ArtistResearcher(
@@ -350,7 +354,8 @@ def build_pipeline(custom_settings: Settings | None = None) -> dict[str, Any]:
     ocr_providers.append(EasyOCRProvider(preprocessor=preprocessor))
     ocr_providers.append(TesseractOCRProvider(preprocessor=preprocessor))
 
-    ocr_service = OCRService(providers=ocr_providers)
+    ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
+    ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
     entity_extractor = EntityExtractor(llm_provider=llm)
 
     artist_researcher = ArtistResearcher(

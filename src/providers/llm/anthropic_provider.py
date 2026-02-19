@@ -18,6 +18,17 @@ from src.utils.errors import LLMError
 logger = structlog.get_logger(logger_name=__name__)
 
 
+def _detect_media_type(image_bytes: bytes) -> str:
+    """Detect the MIME type of an image from its magic bytes."""
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes[:2] == b"\xff\xd8":
+        return "image/jpeg"
+    return "image/jpeg"  # safe fallback
+
+
 class AnthropicLLMProvider(ILLMProvider):
     """LLM provider backed by the Anthropic Claude API.
 
@@ -73,6 +84,7 @@ class AnthropicLLMProvider(ILLMProvider):
     async def vision_extract(self, image_bytes: bytes, prompt: str) -> str:
         """Analyse an image using Claude's vision capability."""
         b64 = base64.b64encode(image_bytes).decode("utf-8")
+        media_type = _detect_media_type(image_bytes)
         try:
             response = await self._client.messages.create(
                 model=self._model,
@@ -85,7 +97,7 @@ class AnthropicLLMProvider(ILLMProvider):
                                 "type": "image",
                                 "source": {
                                     "type": "base64",
-                                    "media_type": "image/jpeg",
+                                    "media_type": media_type,
                                     "data": b64,
                                 },
                             },
