@@ -1,7 +1,9 @@
-"""OpenAI LLM provider adapter.
+"""OpenAI-compatible LLM provider adapter.
 
 Wraps the ``openai`` async client to implement :class:`ILLMProvider`.
-Supports both text completion (GPT-4o-mini) and vision analysis (GPT-4o).
+Supports both text completion and vision analysis.  When a custom
+``openai_base_url`` is configured (e.g. TogetherAI, Anyscale, Fireworks),
+the client points at that URL instead of the default OpenAI endpoint.
 """
 
 from __future__ import annotations
@@ -19,18 +21,29 @@ logger = structlog.get_logger(logger_name=__name__)
 
 
 class OpenAILLMProvider(ILLMProvider):
-    """LLM provider backed by the OpenAI API.
+    """LLM provider backed by an OpenAI-compatible API.
 
     Uses ``gpt-4o`` for vision tasks and ``gpt-4o-mini`` for text-only
-    completions by default.
+    completions by default.  These can be overridden via settings for
+    OpenAI-compatible providers like TogetherAI, Anyscale, or Fireworks.
     """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._api_key = settings.openai_api_key
-        self._client = openai.AsyncOpenAI(api_key=self._api_key)
-        self._text_model = "gpt-4o-mini"
-        self._vision_model = "gpt-4o"
+
+        # Build client kwargs — add base_url only when configured
+        client_kwargs: dict = {"api_key": self._api_key}
+        if settings.openai_base_url:
+            client_kwargs["base_url"] = settings.openai_base_url
+
+        self._client = openai.AsyncOpenAI(**client_kwargs)
+        self._text_model = settings.openai_text_model or "gpt-4o-mini"
+        self._vision_model = settings.openai_vision_model or "gpt-4o"
+        self._has_vision = bool(settings.openai_vision_model) or not settings.openai_base_url
+        self._provider_label = (
+            "openai-compatible" if settings.openai_base_url else "openai"
+        )
 
     # ------------------------------------------------------------------
     # ILLMProvider implementation
@@ -43,7 +56,7 @@ class OpenAILLMProvider(ILLMProvider):
         temperature: float = 0.3,
         max_tokens: int = 4000,
     ) -> str:
-        """Generate a text completion via the OpenAI chat API."""
+        """Generate a text completion via the OpenAI-compatible chat API."""
         try:
             response = await self._client.chat.completions.create(
                 model=self._text_model,
@@ -57,23 +70,29 @@ class OpenAILLMProvider(ILLMProvider):
             content = response.choices[0].message.content
             if content is None:
                 raise LLMError(
-                    message="OpenAI returned empty response",
+                    message=f"{self._provider_label} returned empty response",
                     provider_name=self.get_provider_name(),
                 )
             logger.info(
                 "openai_completion",
                 model=self._text_model,
+                provider=self._provider_label,
                 tokens=response.usage.total_tokens if response.usage else None,
             )
             return content
         except openai.APIError as exc:
             raise LLMError(
-                message=f"OpenAI API error: {exc}",
+                message=f"{self._provider_label} API error: {exc}",
                 provider_name=self.get_provider_name(),
             ) from exc
 
     async def vision_extract(self, image_bytes: bytes, prompt: str) -> str:
-        """Analyse an image using GPT-4o vision."""
+        """Analyse an image using the configured vision model."""
+        if not self._has_vision:
+            raise LLMError(
+                message="Vision not supported by this provider configuration",
+                provider_name=self.get_provider_name(),
+            )
         b64 = base64.b64encode(image_bytes).decode("utf-8")
         try:
             response = await self._client.chat.completions.create(
@@ -97,26 +116,27 @@ class OpenAILLMProvider(ILLMProvider):
             content = response.choices[0].message.content
             if content is None:
                 raise LLMError(
-                    message="OpenAI vision returned empty response",
+                    message=f"{self._provider_label} vision returned empty response",
                     provider_name=self.get_provider_name(),
                 )
             logger.info(
                 "openai_vision_extract",
                 model=self._vision_model,
+                provider=self._provider_label,
                 tokens=response.usage.total_tokens if response.usage else None,
             )
             return content
         except openai.APIError as exc:
             raise LLMError(
-                message=f"OpenAI vision API error: {exc}",
+                message=f"{self._provider_label} vision API error: {exc}",
                 provider_name=self.get_provider_name(),
             ) from exc
 
     def supports_vision(self) -> bool:
-        return True
+        return self._has_vision
 
     def is_available(self) -> bool:
-        """Return ``True`` if an OpenAI API key is configured."""
+        """Return ``True`` if an API key is configured."""
         return bool(self._api_key)
 
     async def validate_credentials(self) -> bool:
@@ -130,4 +150,4 @@ class OpenAILLMProvider(ILLMProvider):
             return False
 
     def get_provider_name(self) -> str:
-        return "openai"
+        return self._provider_label

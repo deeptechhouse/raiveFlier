@@ -13,6 +13,9 @@ class Settings(BaseSettings):
 
     # === LLM Providers ===
     openai_api_key: str = ""
+    openai_base_url: str = ""  # Custom base URL for OpenAI-compatible APIs (TogetherAI, etc.)
+    openai_text_model: str = ""  # Override text model (e.g. meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo)
+    openai_vision_model: str = ""  # Override vision model (leave empty to disable vision)
     anthropic_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
