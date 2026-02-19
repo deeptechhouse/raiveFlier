@@ -113,3 +113,14 @@ class RateLimitError(RaiveFlierError):
         provider_name: str | None = None,
     ) -> None:
         super().__init__(message=message, provider_name=provider_name)
+
+
+class RAGError(RaiveFlierError):
+    """Raised when a RAG pipeline operation fails (embedding or vector store)."""
+
+    def __init__(
+        self,
+        message: str = "RAG pipeline operation failed",
+        provider_name: str | None = None,
+    ) -> None:
+        super().__init__(message=message, provider_name=provider_name)

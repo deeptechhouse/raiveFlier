@@ -42,3 +42,6 @@ uploads/
 
 # Logs
 *.log
+
+# ChromaDB local data
+data/chromadb/

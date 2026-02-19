@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     # === Web Search ===
     serper_api_key: str = ""
 
+    # === RAG Configuration ===
+    chromadb_persist_dir: str = "./data/chromadb"
+    chromadb_collection: str = "raiveflier_corpus"
+    rag_enabled: bool = False
+    rag_top_k: int = 20
+    rag_max_tokens: int = 30000
+
     # === App Config ===
     app_host: str = "0.0.0.0"
     app_port: int = 8000
