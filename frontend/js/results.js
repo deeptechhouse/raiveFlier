@@ -1,0 +1,1089 @@
+/**
+ * results.js — raiveFlier results display module.
+ *
+ * Fetches completed analysis data and renders the full results view:
+ * event summary, artist cards, venue/promoter, date context,
+ * interconnection graph, and citations.
+ */
+
+"use strict";
+
+const Results = (() => {
+  // ------------------------------------------------------------------
+  // Constants
+  // ------------------------------------------------------------------
+
+  const TIER_NAMES = {
+    1: "Published Books",
+    2: "Press & Magazines",
+    3: "Event Postings",
+    4: "Database Records",
+    5: "Web Articles",
+    6: "Community Archives",
+  };
+
+  const NODE_COLORS = {
+    ARTIST: "var(--color-accent)",
+    VENUE: "var(--color-verdigris)",
+    PROMOTER: "var(--color-amber)",
+    LABEL: "var(--color-info)",
+    DATE: "var(--color-warning-text)",
+  };
+
+  // ------------------------------------------------------------------
+  // Private state
+  // ------------------------------------------------------------------
+
+  let _rawData = null;
+
+  // ------------------------------------------------------------------
+  // Utility helpers
+  // ------------------------------------------------------------------
+
+  /** Escape HTML special characters to prevent XSS. */
+  function _esc(str) {
+    if (str == null) return "";
+    const div = document.createElement("div");
+    div.appendChild(document.createTextNode(String(str)));
+    return div.innerHTML;
+  }
+
+  /** Map a numeric confidence score to a CSS class suffix. */
+  function _confidenceClass(score) {
+    if (score >= 0.8) return "high";
+    if (score >= 0.5) return "medium";
+    return "low";
+  }
+
+  /** Map a numeric confidence score to a human label. */
+  function _confidenceLabel(score) {
+    if (score >= 0.8) return "HIGH";
+    if (score >= 0.5) return "MEDIUM";
+    if (score >= 0.3) return "LOW";
+    return "UNCERTAIN";
+  }
+
+  /** Get the CSS class for a citation tier. */
+  function _tierClass(tier) {
+    if (tier === 1) return "tier-gold";
+    if (tier === 2) return "tier-silver";
+    return "tier-plain";
+  }
+
+  // ------------------------------------------------------------------
+  // Data normaliser
+  // ------------------------------------------------------------------
+
+  /**
+   * Transform either the FlierAnalysisResponse (raw API) or
+   * OutputFormatter shape into the display-ready format.
+   */
+  function _normalizeApiResponse(raw) {
+    // If already in OutputFormatter shape, augment and return
+    if (raw.research && Array.isArray(raw.research.artists)) {
+      return _augmentOutputFormatterShape(raw);
+    }
+
+    // Transform FlierAnalysisResponse to display format
+    const artists = [];
+    let venue = null;
+    let promoter = null;
+    let dateContext = null;
+
+    if (raw.research_results) {
+      for (const result of raw.research_results) {
+        if (result.artist) {
+          artists.push(_normalizeArtist(result));
+        }
+        if (result.venue) {
+          venue = _normalizeVenue(result.venue);
+        }
+        if (result.promoter) {
+          promoter = _normalizePromoter(result.promoter);
+        }
+        if (result.date_context) {
+          dateContext = _normalizeDateContext(result.date_context);
+        }
+      }
+    }
+
+    // Normalise interconnection_map
+    const imap = raw.interconnection_map || {};
+    const relationships = (imap.edges || []).map((e) => ({
+      source: e.source,
+      target: e.target,
+      type: e.relationship_type,
+      details: e.details,
+      citation:
+        e.citations && e.citations.length > 0 ? e.citations[0].text : null,
+      confidence: e.confidence || 0,
+    }));
+
+    const patterns = (imap.patterns || []).map((p) => ({
+      type: p.pattern_type,
+      description: p.description,
+      entities: p.involved_entities || [],
+    }));
+
+    const nodes = (imap.nodes || []).map((n) => ({
+      name: n.name,
+      entity_type: n.entity_type,
+    }));
+
+    const citations = (imap.citations || []).map((c) => ({
+      text: c.text,
+      source: c.source_name,
+      url: c.source_url,
+      tier: c.tier || 6,
+      accessible: null,
+    }));
+
+    // Build entities from extracted_entities
+    const ent = raw.extracted_entities || {};
+
+    return {
+      session_id: raw.session_id,
+      entities: {
+        artists: (ent.artists || []).map((a) => ({
+          name: a.text || a.name,
+          confidence: a.confidence,
+        })),
+        venue: ent.venue
+          ? { name: ent.venue.text || ent.venue.name }
+          : null,
+        date: ent.date ? { text: ent.date.text } : null,
+        promoter: ent.promoter
+          ? { name: ent.promoter.text || ent.promoter.name }
+          : null,
+      },
+      research: { artists, venue, promoter, date_context: dateContext },
+      interconnections: {
+        relationships,
+        patterns,
+        narrative: imap.narrative || null,
+        nodes,
+      },
+      citations,
+      completed_at: raw.completed_at,
+    };
+  }
+
+  function _normalizeArtist(result) {
+    const a = result.artist;
+    const labels = [
+      ...new Set((a.labels || []).map((l) => (typeof l === "string" ? l : l.name))),
+    ];
+
+    const labelObjects = (a.labels || []).map((l) => {
+      if (typeof l === "string") return { name: l, discogs_url: null };
+      return {
+        name: l.name,
+        discogs_url:
+          l.discogs_url ||
+          (l.discogs_id
+            ? `https://www.discogs.com/label/${l.discogs_id}`
+            : null),
+      };
+    });
+
+    return {
+      name: a.name,
+      discogs_url: a.discogs_id
+        ? `https://www.discogs.com/artist/${a.discogs_id}`
+        : null,
+      releases_count: (a.releases || []).length,
+      releases: (a.releases || []).map((r) => ({
+        title: r.title,
+        label: r.label,
+        year: r.year,
+        format: r.format,
+        discogs_url: r.discogs_url,
+      })),
+      labels,
+      label_objects: labelObjects,
+      appearances: (a.appearances || []).map((ap) => ({
+        event: ap.event_name,
+        venue: ap.venue,
+        date: ap.date,
+      })),
+      articles: (a.articles || []).map((ar) => ({
+        title: ar.title,
+        source: ar.source,
+        url: ar.url,
+        tier: ar.citation_tier || 6,
+      })),
+      confidence: result.confidence || a.confidence || 0,
+    };
+  }
+
+  function _normalizeVenue(v) {
+    return {
+      name: v.name,
+      history: v.history,
+      notable_events: v.notable_events || [],
+      cultural_significance: v.cultural_significance,
+      articles: (v.articles || []).map((ar) => ({
+        title: ar.title,
+        source: ar.source,
+        url: ar.url,
+      })),
+    };
+  }
+
+  function _normalizePromoter(p) {
+    return {
+      name: p.name,
+      event_history: p.event_history || [],
+      affiliated_artists: p.affiliated_artists || [],
+      affiliated_venues: p.affiliated_venues || [],
+      articles: (p.articles || []).map((ar) => ({
+        title: ar.title,
+        source: ar.source,
+        url: ar.url,
+      })),
+    };
+  }
+
+  function _normalizeDateContext(dc) {
+    return {
+      scene: dc.scene_context || dc.scene || null,
+      city: dc.city_context || dc.city || null,
+      cultural: dc.cultural_context || dc.cultural || null,
+      nearby_events: dc.nearby_events || [],
+    };
+  }
+
+  /** Augment OutputFormatter-shaped data with derived nodes. */
+  function _augmentOutputFormatterShape(data) {
+    const ic = data.interconnections || {};
+    if (!ic.nodes || ic.nodes.length === 0) {
+      ic.nodes = _deriveNodes(
+        ic.relationships || [],
+        data.entities,
+        data.research
+      );
+      data.interconnections = ic;
+    }
+    // Ensure date_context has nearby_events
+    if (data.research && data.research.date_context) {
+      const dc = data.research.date_context;
+      dc.nearby_events = dc.nearby_events || [];
+    }
+    return data;
+  }
+
+  /** Derive graph nodes from entities and relationships. */
+  function _deriveNodes(relationships, entities, research) {
+    const nodeMap = {};
+
+    if (research && research.artists) {
+      research.artists.forEach((a) => {
+        nodeMap[a.name] = { name: a.name, entity_type: "ARTIST" };
+      });
+    }
+    if (research && research.venue) {
+      nodeMap[research.venue.name] = {
+        name: research.venue.name,
+        entity_type: "VENUE",
+      };
+    }
+    if (research && research.promoter) {
+      nodeMap[research.promoter.name] = {
+        name: research.promoter.name,
+        entity_type: "PROMOTER",
+      };
+    }
+
+    relationships.forEach((r) => {
+      if (!nodeMap[r.source]) {
+        nodeMap[r.source] = { name: r.source, entity_type: "UNKNOWN" };
+      }
+      if (!nodeMap[r.target]) {
+        nodeMap[r.target] = { name: r.target, entity_type: "UNKNOWN" };
+      }
+    });
+
+    return Object.values(nodeMap);
+  }
+
+  // ------------------------------------------------------------------
+  // Section 1: Event Summary Header
+  // ------------------------------------------------------------------
+
+  function _renderEventSummary(data) {
+    const entities = data.entities || {};
+    const research = data.research || {};
+    const artistCount = (research.artists || []).length;
+    const citationCount = (data.citations || []).length;
+    const venueName = entities.venue ? _esc(entities.venue.name) : "Unknown venue";
+    const promoterName = entities.promoter ? _esc(entities.promoter.name) : null;
+    const dateText = entities.date ? _esc(entities.date.text) : null;
+
+    let html = '<div class="results-summary">';
+
+    // Flier thumbnail (if available from upload)
+    const previewImg = document.getElementById("preview-image");
+    if (previewImg && previewImg.src) {
+      html += `<div class="results-summary__thumb">
+        <img src="${_esc(previewImg.src)}" alt="Flier thumbnail" class="results-summary__thumb-img">
+      </div>`;
+    }
+
+    html += '<div class="results-summary__info">';
+    html += '<h2 class="text-heading results-summary__title">Analysis Complete</h2>';
+    html += '<div class="results-summary__meta">';
+
+    if (dateText) {
+      html += `<span class="results-summary__tag"><span class="results-summary__tag-label">Date</span> ${dateText}</span>`;
+    }
+    html += `<span class="results-summary__tag"><span class="results-summary__tag-label">Venue</span> ${venueName}</span>`;
+    if (promoterName) {
+      html += `<span class="results-summary__tag"><span class="results-summary__tag-label">Promoter</span> ${promoterName}</span>`;
+    }
+
+    html += "</div>"; // .meta
+    html += '<div class="results-summary__stats">';
+    html += `<span class="results-summary__stat">${artistCount} artist${artistCount !== 1 ? "s" : ""} researched</span>`;
+    html += `<span class="results-summary__stat">${citationCount} citation${citationCount !== 1 ? "s" : ""} found</span>`;
+    html += "</div>";
+    html += "</div>"; // .info
+    html += "</div>"; // .results-summary
+
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Section 2: Artist Cards
+  // ------------------------------------------------------------------
+
+  function _renderArtistCards(artists) {
+    if (!artists || artists.length === 0) {
+      return '<p class="text-caption">No artist research data available.</p>';
+    }
+
+    let html =
+      '<div class="results-section" id="results-artists">' +
+      '<h2 class="results-section__title text-heading">Artists</h2>' +
+      '<div class="artist-cards">';
+
+    artists.forEach((artist) => {
+      html += _renderArtistCard(artist);
+    });
+
+    html += "</div></div>";
+    return html;
+  }
+
+  function _renderArtistCard(artist) {
+    const confClass = _confidenceClass(artist.confidence);
+    const confLabel = _confidenceLabel(artist.confidence);
+    const releaseCount = artist.releases_count || (artist.releases || []).length;
+    const labelCount = (artist.labels || []).length;
+    const appearanceCount = (artist.appearances || []).length;
+    const articleCount = (artist.articles || []).length;
+
+    let html = '<article class="artist-card expandable">';
+
+    // Trigger / header
+    html += '<button class="expandable__trigger" type="button" aria-expanded="false">';
+    html += '<div class="artist-card__title-row">';
+    html += `<h3 class="artist-card__name">${_esc(artist.name)}</h3>`;
+    html += `<span class="confidence-badge confidence-${confClass}">${confLabel}</span>`;
+    html += "</div>";
+    html += '<div class="artist-card__meta">';
+    html += `<span class="artist-card__stat">${releaseCount} release${releaseCount !== 1 ? "s" : ""}</span>`;
+    html += `<span class="artist-card__stat">${labelCount} label${labelCount !== 1 ? "s" : ""}</span>`;
+    html += `<span class="artist-card__stat">${appearanceCount} appearance${appearanceCount !== 1 ? "s" : ""}</span>`;
+    if (articleCount > 0) {
+      html += `<span class="artist-card__stat">${articleCount} article${articleCount !== 1 ? "s" : ""}</span>`;
+    }
+    html += "</div>";
+    html += '<svg class="expandable__chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">';
+    html += '<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    html += "</svg>";
+    html += "</button>";
+
+    // Expandable content
+    html += '<div class="expandable__content">';
+
+    // Discogs link
+    if (artist.discogs_url) {
+      html += `<div class="artist-card__link"><a href="${_esc(artist.discogs_url)}" target="_blank" rel="noopener noreferrer">View on Discogs &rarr;</a></div>`;
+    }
+
+    // Releases subsection
+    html += _renderArtistReleases(artist);
+
+    // Labels subsection
+    html += _renderArtistLabels(artist);
+
+    // Past appearances
+    html += _renderArtistAppearances(artist);
+
+    // Press & articles
+    html += _renderArtistArticles(artist);
+
+    html += "</div>"; // .expandable__content
+    html += "</article>";
+
+    return html;
+  }
+
+  function _renderArtistReleases(artist) {
+    const releases = artist.releases || [];
+    const count = artist.releases_count || releases.length;
+
+    if (count === 0) return "";
+
+    let html = '<div class="artist-card__subsection">';
+    html += `<h4 class="artist-card__subsection-title">Releases (${count})</h4>`;
+
+    if (releases.length > 0) {
+      html += '<ul class="artist-card__list">';
+      releases.forEach((r) => {
+        const parts = [_esc(r.title)];
+        if (r.label) parts.push(_esc(r.label));
+        if (r.year) parts.push(String(r.year));
+        if (r.format) parts.push(_esc(r.format));
+
+        let li = `<li class="artist-card__list-item">${parts.join(" &mdash; ")}`;
+        if (r.discogs_url) {
+          li += ` <a href="${_esc(r.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View release on Discogs">&#x2197;</a>`;
+        }
+        li += "</li>";
+        html += li;
+      });
+      html += "</ul>";
+    } else {
+      html += `<p class="text-caption">${count} release${count !== 1 ? "s" : ""} found (details not loaded)</p>`;
+    }
+
+    html += "</div>";
+    return html;
+  }
+
+  function _renderArtistLabels(artist) {
+    const labels = artist.label_objects || [];
+    const labelNames = artist.labels || [];
+
+    if (labelNames.length === 0 && labels.length === 0) return "";
+
+    let html = '<div class="artist-card__subsection">';
+    html += '<h4 class="artist-card__subsection-title">Labels</h4>';
+    html += '<ul class="artist-card__list">';
+
+    if (labels.length > 0) {
+      labels.forEach((l) => {
+        let li = `<li class="artist-card__list-item">${_esc(l.name)}`;
+        if (l.discogs_url) {
+          li += ` <a href="${_esc(l.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View ${_esc(l.name)} on Discogs">&#x2197;</a>`;
+        }
+        li += "</li>";
+        html += li;
+      });
+    } else {
+      labelNames.forEach((name) => {
+        html += `<li class="artist-card__list-item">${_esc(name)}</li>`;
+      });
+    }
+
+    html += "</ul></div>";
+    return html;
+  }
+
+  function _renderArtistAppearances(artist) {
+    const appearances = artist.appearances || [];
+    if (appearances.length === 0) return "";
+
+    let html = '<div class="artist-card__subsection">';
+    html += `<h4 class="artist-card__subsection-title">Past Appearances (${appearances.length})</h4>`;
+    html += '<ul class="artist-card__list">';
+
+    appearances.forEach((a) => {
+      const parts = [];
+      if (a.event) parts.push(_esc(a.event));
+      if (a.venue) parts.push(_esc(a.venue));
+      if (a.date) parts.push(_esc(a.date));
+      html += `<li class="artist-card__list-item">${parts.join(" &mdash; ") || "Unknown event"}</li>`;
+    });
+
+    html += "</ul></div>";
+    return html;
+  }
+
+  function _renderArtistArticles(artist) {
+    const articles = artist.articles || [];
+    if (articles.length === 0) return "";
+
+    let html = '<div class="artist-card__subsection">';
+    html += `<h4 class="artist-card__subsection-title">Press &amp; Articles (${articles.length})</h4>`;
+    html += '<ul class="artist-card__article-list">';
+
+    articles.forEach((a) => {
+      const tierCls = _tierClass(a.tier);
+      const tierName = TIER_NAMES[a.tier] || "Source";
+      let li = `<li class="artist-card__article-item ${tierCls}">`;
+      li += `<span class="citation-tier-badge citation-tier-${a.tier}">${_esc(tierName)}</span> `;
+      if (a.url) {
+        li += `<a href="${_esc(a.url)}" target="_blank" rel="noopener noreferrer">${_esc(a.title || a.source)}</a>`;
+      } else {
+        li += _esc(a.title || a.source);
+      }
+      if (a.source && a.title) {
+        li += ` <span class="text-caption">${_esc(a.source)}</span>`;
+      }
+      li += "</li>";
+      html += li;
+    });
+
+    html += "</ul></div>";
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Section 3: Venue & Promoter
+  // ------------------------------------------------------------------
+
+  function _renderVenuePromoter(venue, promoter) {
+    if (!venue && !promoter) return "";
+
+    let html = '<div class="results-section" id="results-venue-promoter">';
+    html += '<h2 class="results-section__title text-heading">Venue &amp; Promoter</h2>';
+    html += '<div class="venue-promoter-grid">';
+
+    if (venue) {
+      html += '<article class="venue-card expandable">';
+      html += '<button class="expandable__trigger" type="button" aria-expanded="false">';
+      html += `<h3 class="venue-card__name">${_esc(venue.name)}</h3>`;
+      html += '<svg class="expandable__chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">';
+      html += '<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+      html += "</svg>";
+      html += "</button>";
+      html += '<div class="expandable__content">';
+
+      if (venue.history) {
+        html += `<div class="venue-card__section"><h4>History</h4><p>${_esc(venue.history)}</p></div>`;
+      }
+      if (venue.notable_events && venue.notable_events.length > 0) {
+        html += '<div class="venue-card__section"><h4>Notable Events</h4><ul>';
+        venue.notable_events.forEach((e) => {
+          html += `<li>${_esc(e)}</li>`;
+        });
+        html += "</ul></div>";
+      }
+      if (venue.cultural_significance) {
+        html += `<div class="venue-card__section"><h4>Cultural Significance</h4><p>${_esc(venue.cultural_significance)}</p></div>`;
+      }
+      if (venue.articles && venue.articles.length > 0) {
+        html += '<div class="venue-card__section"><h4>Articles</h4><ul>';
+        venue.articles.forEach((a) => {
+          if (a.url) {
+            html += `<li><a href="${_esc(a.url)}" target="_blank" rel="noopener noreferrer">${_esc(a.title)}</a> <span class="text-caption">${_esc(a.source)}</span></li>`;
+          } else {
+            html += `<li>${_esc(a.title)} <span class="text-caption">${_esc(a.source)}</span></li>`;
+          }
+        });
+        html += "</ul></div>";
+      }
+
+      html += "</div></article>"; // expandable__content + venue-card
+    }
+
+    if (promoter) {
+      html += '<article class="promoter-card expandable">';
+      html += '<button class="expandable__trigger" type="button" aria-expanded="false">';
+      html += `<h3 class="promoter-card__name">${_esc(promoter.name)}</h3>`;
+      html += '<svg class="expandable__chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">';
+      html += '<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+      html += "</svg>";
+      html += "</button>";
+      html += '<div class="expandable__content">';
+
+      if (promoter.event_history && promoter.event_history.length > 0) {
+        html += '<div class="promoter-card__section"><h4>Event History</h4><ul>';
+        promoter.event_history.forEach((e) => {
+          html += `<li>${_esc(e)}</li>`;
+        });
+        html += "</ul></div>";
+      }
+      if (promoter.affiliated_artists && promoter.affiliated_artists.length > 0) {
+        html += '<div class="promoter-card__section"><h4>Affiliated Artists</h4><ul>';
+        promoter.affiliated_artists.forEach((a) => {
+          html += `<li>${_esc(a)}</li>`;
+        });
+        html += "</ul></div>";
+      }
+      if (promoter.affiliated_venues && promoter.affiliated_venues.length > 0) {
+        html += '<div class="promoter-card__section"><h4>Affiliated Venues</h4><ul>';
+        promoter.affiliated_venues.forEach((v) => {
+          html += `<li>${_esc(v)}</li>`;
+        });
+        html += "</ul></div>";
+      }
+      if (promoter.articles && promoter.articles.length > 0) {
+        html += '<div class="promoter-card__section"><h4>Articles</h4><ul>';
+        promoter.articles.forEach((a) => {
+          if (a.url) {
+            html += `<li><a href="${_esc(a.url)}" target="_blank" rel="noopener noreferrer">${_esc(a.title)}</a> <span class="text-caption">${_esc(a.source)}</span></li>`;
+          } else {
+            html += `<li>${_esc(a.title)} <span class="text-caption">${_esc(a.source)}</span></li>`;
+          }
+        });
+        html += "</ul></div>";
+      }
+
+      html += "</div></article>"; // expandable__content + promoter-card
+    }
+
+    html += "</div></div>"; // venue-promoter-grid + results-section
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Section 4: Date Context
+  // ------------------------------------------------------------------
+
+  function _renderDateContext(dateContext) {
+    if (!dateContext) return "";
+
+    const hasContent =
+      dateContext.scene ||
+      dateContext.city ||
+      dateContext.cultural ||
+      (dateContext.nearby_events && dateContext.nearby_events.length > 0);
+
+    if (!hasContent) return "";
+
+    let html = '<div class="results-section" id="results-date-context">';
+    html += '<h2 class="results-section__title text-heading">Date &amp; Context</h2>';
+    html += '<div class="context-panels">';
+
+    if (dateContext.scene) {
+      html += '<div class="context-panel">';
+      html += '<h4 class="context-panel__title">Scene Context</h4>';
+      html += `<p>${_esc(dateContext.scene)}</p>`;
+      html += "</div>";
+    }
+
+    if (dateContext.city) {
+      html += '<div class="context-panel">';
+      html += '<h4 class="context-panel__title">City Context</h4>';
+      html += `<p>${_esc(dateContext.city)}</p>`;
+      html += "</div>";
+    }
+
+    if (dateContext.cultural) {
+      html += '<div class="context-panel">';
+      html += '<h4 class="context-panel__title">Cultural Context</h4>';
+      html += `<p>${_esc(dateContext.cultural)}</p>`;
+      html += "</div>";
+    }
+
+    if (dateContext.nearby_events && dateContext.nearby_events.length > 0) {
+      html += '<div class="context-panel">';
+      html += '<h4 class="context-panel__title">Nearby Events</h4>';
+      html += "<ul>";
+      dateContext.nearby_events.forEach((e) => {
+        html += `<li>${_esc(e)}</li>`;
+      });
+      html += "</ul></div>";
+    }
+
+    html += "</div></div>"; // context-panels + results-section
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Section 5: Interconnections
+  // ------------------------------------------------------------------
+
+  function _renderInterconnections(data) {
+    const ic = data.interconnections || {};
+    const relationships = ic.relationships || [];
+    const patterns = ic.patterns || [];
+    const narrative = ic.narrative;
+    const nodes = ic.nodes || [];
+
+    if (!narrative && relationships.length === 0 && patterns.length === 0) {
+      return "";
+    }
+
+    let html = '<div class="results-section" id="results-interconnections">';
+    html += '<h2 class="results-section__title text-heading">Interconnections</h2>';
+
+    // Narrative
+    if (narrative) {
+      html += '<div class="narrative-prose">';
+      html += `<p>${_esc(narrative)}</p>`;
+      html += "</div>";
+    }
+
+    // Relationship list
+    if (relationships.length > 0) {
+      html += '<div class="interconnections__relationships">';
+      html += `<h3 class="results-subsection__title">Relationships (${relationships.length})</h3>`;
+      html += '<ul class="relationship-list">';
+
+      relationships.forEach((rel) => {
+        const confPct = Math.round(rel.confidence * 100);
+        html += '<li class="relationship-item">';
+        html += `<span class="relationship-item__edge">`;
+        html += `<strong>${_esc(rel.source)}</strong>`;
+        html += ` <span class="relationship-item__type">&mdash;[${_esc(rel.type)}]&rarr;</span> `;
+        html += `<strong>${_esc(rel.target)}</strong>`;
+        html += "</span>";
+        html += `<span class="confidence-badge confidence-${_confidenceClass(rel.confidence)}">${confPct}%</span>`;
+        if (rel.citation) {
+          html += ` <span class="relationship-item__citation text-caption">${_esc(rel.citation)}</span>`;
+        }
+        html += "</li>";
+      });
+
+      html += "</ul></div>";
+    }
+
+    // Pattern insights
+    if (patterns.length > 0) {
+      html += '<div class="interconnections__patterns">';
+      html += '<h3 class="results-subsection__title">Pattern Insights</h3>';
+      html += '<div class="pattern-cards">';
+
+      patterns.forEach((p) => {
+        html += '<div class="pattern-card">';
+        html += `<span class="pattern-card__type text-caption">${_esc(p.type)}</span>`;
+        html += `<p class="pattern-card__desc">${_esc(p.description)}</p>`;
+        if (p.entities && p.entities.length > 0) {
+          html += '<div class="pattern-card__entities">';
+          p.entities.forEach((e) => {
+            html += `<span class="pattern-card__entity">${_esc(e)}</span>`;
+          });
+          html += "</div>";
+        }
+        html += "</div>";
+      });
+
+      html += "</div></div>";
+    }
+
+    // Relationship graph (SVG)
+    if (nodes.length > 0 && relationships.length > 0) {
+      html += '<div class="interconnections__graph">';
+      html += '<h3 class="results-subsection__title">Relationship Map</h3>';
+      html += renderRelationshipGraph(relationships, nodes);
+      html += "</div>";
+    }
+
+    html += "</div>"; // results-section
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Relationship graph (SVG)
+  // ------------------------------------------------------------------
+
+  /**
+   * Render a simple force-directed-style graph using SVG.
+   * Nodes placed in circular layout, lines between connected nodes.
+   */
+  function renderRelationshipGraph(relationships, nodes) {
+    if (!nodes || nodes.length === 0) return "";
+
+    const width = 700;
+    const height = 500;
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = Math.min(cx, cy) - 80;
+
+    // Position nodes in a circle
+    const positions = {};
+    nodes.forEach((node, i) => {
+      const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
+      positions[node.name] = {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle),
+      };
+    });
+
+    let svg = `<svg class="relationship-graph__svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Entity relationship graph">`;
+
+    // Draw edges
+    relationships.forEach((rel) => {
+      const from = positions[rel.source];
+      const to = positions[rel.target];
+      if (from && to) {
+        const thickness = Math.max(1, (rel.confidence || 0.5) * 3);
+        svg += `<line class="graph-edge" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke-width="${thickness}" data-source="${_esc(rel.source)}" data-target="${_esc(rel.target)}"/>`;
+      }
+    });
+
+    // Draw nodes
+    nodes.forEach((node) => {
+      const pos = positions[node.name];
+      if (!pos) return;
+
+      const fillColor = NODE_COLORS[node.entity_type] || NODE_COLORS.ARTIST;
+      const nodeRadius = 22;
+
+      svg += `<g class="graph-node-group" data-entity="${_esc(node.name)}" tabindex="0" role="button" aria-label="${_esc(node.name)}">`;
+      svg += `<circle class="graph-node" cx="${pos.x}" cy="${pos.y}" r="${nodeRadius}" fill="${fillColor}" />`;
+      // Truncate label if too long
+      const label = node.name.length > 14 ? node.name.substring(0, 12) + "\u2026" : node.name;
+      svg += `<text class="graph-label" x="${pos.x}" y="${pos.y + nodeRadius + 16}" text-anchor="middle">${_esc(label)}</text>`;
+      svg += "</g>";
+    });
+
+    svg += "</svg>";
+
+    return `<div class="relationship-graph" id="relationship-graph">${svg}</div>`;
+  }
+
+  /** Attach hover/focus handlers to the relationship graph. */
+  function _initGraphInteractions() {
+    const graphEl = document.getElementById("relationship-graph");
+    if (!graphEl) return;
+
+    const svgEl = graphEl.querySelector("svg");
+    if (!svgEl) return;
+
+    const nodeGroups = svgEl.querySelectorAll(".graph-node-group");
+    const edges = svgEl.querySelectorAll(".graph-edge");
+
+    function highlightEntity(entityName) {
+      nodeGroups.forEach((g) => {
+        const isMatch = g.dataset.entity === entityName;
+        g.classList.toggle("graph-node-group--highlighted", isMatch);
+      });
+      edges.forEach((e) => {
+        const isConnected =
+          e.dataset.source === entityName || e.dataset.target === entityName;
+        e.classList.toggle("graph-edge--highlighted", isConnected);
+        e.classList.toggle("graph-edge--dimmed", !isConnected);
+      });
+    }
+
+    function clearHighlights() {
+      nodeGroups.forEach((g) =>
+        g.classList.remove("graph-node-group--highlighted")
+      );
+      edges.forEach((e) => {
+        e.classList.remove("graph-edge--highlighted");
+        e.classList.remove("graph-edge--dimmed");
+      });
+    }
+
+    nodeGroups.forEach((group) => {
+      group.addEventListener("mouseenter", () =>
+        highlightEntity(group.dataset.entity)
+      );
+      group.addEventListener("mouseleave", clearHighlights);
+      group.addEventListener("focus", () =>
+        highlightEntity(group.dataset.entity)
+      );
+      group.addEventListener("blur", clearHighlights);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Section 6: Citations
+  // ------------------------------------------------------------------
+
+  function _renderCitations(citations) {
+    if (!citations || citations.length === 0) return "";
+
+    // Group by tier
+    const grouped = {};
+    citations.forEach((c) => {
+      const tier = c.tier || 6;
+      if (!grouped[tier]) grouped[tier] = [];
+      grouped[tier].push(c);
+    });
+
+    let html = '<div class="results-section" id="results-citations">';
+    html += '<h2 class="results-section__title text-heading">All Citations</h2>';
+
+    // Render tier groups in order
+    for (let tier = 1; tier <= 6; tier++) {
+      const items = grouped[tier];
+      if (!items || items.length === 0) continue;
+
+      const tierName = TIER_NAMES[tier] || `Tier ${tier}`;
+      html += `<div class="citation-tier-group">`;
+      html += `<h3 class="citation-tier-group__header"><span class="citation-tier-badge citation-tier-${tier}">${_esc(tierName)}</span> <span class="text-caption">(${items.length})</span></h3>`;
+      html += '<ul class="citation-list">';
+
+      items.forEach((c) => {
+        html += `<li class="citation-item citation-item--tier-${tier}">`;
+
+        // Accessibility status icon
+        if (c.accessible === true) {
+          html += '<span class="citation-item__status citation-item__status--ok" aria-label="Accessible" title="Link accessible">&#x2713;</span>';
+        } else if (c.accessible === false) {
+          html += '<span class="citation-item__status citation-item__status--fail" aria-label="Not accessible" title="Link not accessible">&#x2717;</span>';
+        } else {
+          html += '<span class="citation-item__status citation-item__status--unknown" aria-label="Status unknown" title="Status unknown">&mdash;</span>';
+        }
+
+        html += `<span class="citation-item__text">${_esc(c.text)}</span>`;
+
+        if (c.source) {
+          html += ` <span class="citation-item__source text-caption">${_esc(c.source)}</span>`;
+        }
+
+        if (c.url) {
+          html += ` <a href="${_esc(c.url)}" target="_blank" rel="noopener noreferrer" class="citation-item__link">View source &rarr;</a>`;
+        }
+
+        html += "</li>";
+      });
+
+      html += "</ul></div>";
+    }
+
+    // Export JSON button
+    html += '<div class="citation-export">';
+    html += '<button type="button" class="btn-secondary" id="export-json-btn">Export JSON</button>';
+    html += "</div>";
+
+    html += "</div>"; // results-section
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Export
+  // ------------------------------------------------------------------
+
+  function _exportJson() {
+    if (!_rawData) return;
+
+    const blob = new Blob([JSON.stringify(_rawData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `raiveflier-analysis-${_rawData.session_id || "export"}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ------------------------------------------------------------------
+  // Expandable card behaviour
+  // ------------------------------------------------------------------
+
+  /** Initialise expand/collapse for all .expandable elements inside a container. */
+  function _initExpandables(container) {
+    const triggers = container.querySelectorAll(".expandable__trigger");
+
+    triggers.forEach((trigger) => {
+      trigger.addEventListener("click", () => {
+        const card = trigger.closest(".expandable");
+        const isOpen = card.classList.contains("expandable--open");
+
+        card.classList.toggle("expandable--open", !isOpen);
+        trigger.setAttribute("aria-expanded", String(!isOpen));
+      });
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Public API
+  // ------------------------------------------------------------------
+
+  /**
+   * Fetch completed analysis results and render them.
+   * @param {string} sessionId — The pipeline session UUID.
+   */
+  async function fetchAndDisplayResults(sessionId) {
+    const resultsView = document.getElementById("results-view");
+    if (!resultsView) return;
+
+    // Show a loading state
+    resultsView.innerHTML =
+      '<div class="results-loading"><div class="spinner"></div><p class="loading-text">Loading results&hellip;</p></div>';
+    resultsView.hidden = false;
+
+    try {
+      const response = await fetch(`/api/v1/fliers/${encodeURIComponent(sessionId)}/results`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch results (HTTP ${response.status})`);
+      }
+
+      const raw = await response.json();
+
+      if (raw.status && raw.status !== "completed") {
+        resultsView.innerHTML =
+          '<div class="results-loading"><div class="spinner"></div>' +
+          `<p class="loading-text">Analysis still in progress (${_esc(raw.status)})&hellip;</p></div>`;
+        return;
+      }
+
+      _rawData = raw;
+      const data = _normalizeApiResponse(raw);
+      renderResults(data);
+    } catch (err) {
+      resultsView.innerHTML =
+        `<div class="results-error"><p>Failed to load results: ${_esc(err.message)}</p>` +
+        '<button type="button" class="btn-secondary" onclick="Results.fetchAndDisplayResults(\'' +
+        _esc(sessionId) +
+        "')\">Retry</button></div>";
+    }
+  }
+
+  /**
+   * Render the full results view from normalised data.
+   * @param {Object} data — Normalised analysis data.
+   */
+  function renderResults(data) {
+    _rawData = _rawData || data;
+    const resultsView = document.getElementById("results-view");
+    if (!resultsView) return;
+
+    const research = data.research || {};
+
+    let html = "";
+
+    // Section 1: Event Summary
+    html += _renderEventSummary(data);
+
+    // Section 2: Artist Cards
+    html += _renderArtistCards(research.artists);
+
+    // Section 3: Venue & Promoter
+    html += _renderVenuePromoter(research.venue, research.promoter);
+
+    // Section 4: Date Context
+    html += _renderDateContext(research.date_context);
+
+    // Section 5: Interconnections
+    html += _renderInterconnections(data);
+
+    // Section 6: Citations
+    html += _renderCitations(data.citations);
+
+    resultsView.innerHTML = html;
+
+    // Initialise interactive behaviours
+    _initExpandables(resultsView);
+    _initGraphInteractions();
+
+    // Export button
+    const exportBtn = document.getElementById("export-json-btn");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", _exportJson);
+    }
+
+    // Show the results view
+    if (typeof App !== "undefined" && App.showView) {
+      App.showView("results");
+    }
+  }
+
+  return {
+    fetchAndDisplayResults,
+    renderResults,
+    renderRelationshipGraph,
+  };
+})();

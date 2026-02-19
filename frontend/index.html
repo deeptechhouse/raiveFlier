@@ -71,8 +71,17 @@
       <!-- Populated dynamically by websocket.js -->
     </section>
 
-    <!-- View 4: Results (populated by G3) -->
-    <section id="results-view" class="view" aria-label="Analysis results" hidden></section>
+    <!-- View 4: Results -->
+    <section id="results-view" class="view" aria-label="Analysis results" hidden>
+      <!-- Dynamically populated by results.js:
+           - .results-summary (event header)
+           - .results-section#results-artists (artist cards)
+           - .results-section#results-venue-promoter (venue + promoter)
+           - .results-section#results-date-context (scene/city/cultural)
+           - .results-section#results-interconnections (graph + narrative)
+           - .results-section#results-citations (all citations + export)
+      -->
+    </section>
 
   </main>
 
@@ -87,5 +96,6 @@
   <script src="js/upload.js"></script>
   <script src="js/confirmation.js"></script>
   <script src="js/websocket.js"></script>
+  <script src="js/results.js"></script>
 </body>
 </html>
