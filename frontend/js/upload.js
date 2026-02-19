@@ -188,47 +188,13 @@ const Upload = (() => {
   }
 
   /**
-   * Minimal confirm-view population (G2 will replace this).
+   * Delegate to the Confirmation module for full entity review UI.
    * @param {object} data — FlierUploadResponse
    */
   function _populateConfirmView(data) {
-    const confirmView = document.getElementById("confirm-view");
-    if (!confirmView) return;
-
-    const entities = data.extracted_entities || {};
-    const artists = entities.artists || [];
-    const venue = entities.venue;
-    const date = entities.date;
-    const promoter = entities.promoter;
-
-    let html = `<h2 class="text-heading">Extracted Entities</h2>`;
-    html += `<p class="text-caption" style="margin:var(--space-3) 0 var(--space-5)">OCR confidence: ${(data.ocr_confidence * 100).toFixed(1)}% &middot; Provider: ${data.provider_used}</p>`;
-
-    artists.forEach((a) => {
-      html += _entityCardHTML("Artist", a.text);
-    });
-    if (venue) html += _entityCardHTML("Venue", venue.text);
-    if (date) html += _entityCardHTML("Date", date.text);
-    if (promoter) html += _entityCardHTML("Promoter", promoter.text);
-
-    html += `<div class="upload-actions"><button class="btn-primary" disabled>Confirm &amp; Research</button></div>`;
-    html += `<p class="text-caption" style="margin-top:var(--space-3)">Full confirmation UI coming in G2</p>`;
-
-    confirmView.innerHTML = html;
-  }
-
-  /**
-   * @param {string} type
-   * @param {string} name
-   * @returns {string}
-   */
-  function _entityCardHTML(type, name) {
-    return `<div class="entity-card">
-      <div class="entity-card__header">
-        <span class="entity-card__type">${_escapeHTML(type)}</span>
-      </div>
-      <p class="entity-card__name">${_escapeHTML(name)}</p>
-    </div>`;
+    if (typeof Confirmation !== "undefined" && Confirmation.populateConfirmView) {
+      Confirmation.populateConfirmView(data);
+    }
   }
 
   /** Reset the upload area to its initial state. */
@@ -253,16 +219,6 @@ const Upload = (() => {
   function _hideError() {
     _errorEl.hidden = true;
     _errorEl.textContent = "";
-  }
-
-  /**
-   * @param {string} str
-   * @returns {string}
-   */
-  function _escapeHTML(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
   }
 
   /** Public initialiser — called by App.initApp(). */
