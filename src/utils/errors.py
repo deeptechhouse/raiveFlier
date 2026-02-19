@@ -93,6 +93,17 @@ class ConfigurationError(RaiveFlierError):
         super().__init__(message=message, provider_name=provider_name)
 
 
+class LLMError(RaiveFlierError):
+    """Raised when an LLM API call fails or returns an invalid response."""
+
+    def __init__(
+        self,
+        message: str = "LLM API call failed",
+        provider_name: str | None = None,
+    ) -> None:
+        super().__init__(message=message, provider_name=provider_name)
+
+
 class RateLimitError(RaiveFlierError):
     """Raised when an API rate limit is exceeded."""
 
