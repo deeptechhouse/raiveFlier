@@ -20,7 +20,10 @@ from src.models.analysis import Citation
 from src.utils.logging import get_logger
 
 # Timeout for HEAD requests during citation verification (seconds)
-_VERIFY_TIMEOUT = 10.0
+_VERIFY_TIMEOUT = 5.0
+
+# Wayback Machine availability API endpoint
+_WAYBACK_API = "https://archive.org/wayback/available"
 
 # Source type keywords mapped to tiers (used when no URL is available)
 _SOURCE_TYPE_TIERS: dict[str, int] = {
@@ -236,11 +239,12 @@ class CitationService:
             page_number=page_number,
         )
 
-    async def verify_citation(self, citation: Citation) -> bool:
+    async def verify_citation(self, citation: Citation) -> tuple[Citation, bool]:
         """Check whether a citation's URL is still accessible.
 
-        Sends an HTTP HEAD request to the source URL and considers any
-        ``2xx`` or ``3xx`` response as accessible.
+        Sends an HTTP HEAD request to the source URL with a 5-second timeout.
+        If the URL is inaccessible, attempts to locate it via the Wayback
+        Machine availability API.
 
         Parameters
         ----------
@@ -249,42 +253,50 @@ class CitationService:
 
         Returns
         -------
-        bool
-            ``True`` if the URL responded with a success/redirect status,
-            ``False`` otherwise (including timeouts and missing URLs).
+        tuple[Citation, bool]
+            A ``(citation, is_accessible)`` tuple.  ``is_accessible`` is
+            ``True`` if the original URL or a Wayback Machine snapshot
+            responded with a success/redirect status.
         """
         if not citation.source_url:
-            return False
+            return (citation, False)
 
-        try:
-            async with httpx.AsyncClient(
-                follow_redirects=True,
-                timeout=_VERIFY_TIMEOUT,
-            ) as client:
-                response = await client.head(citation.source_url)
-                accessible = response.status_code < 400
-                self._logger.debug(
-                    "Citation verification",
-                    url=citation.source_url,
-                    status=response.status_code,
-                    accessible=accessible,
-                )
-                return accessible
-        except (httpx.HTTPError, httpx.InvalidURL, Exception) as exc:
+        accessible = await self._head_check(citation.source_url)
+        if accessible:
             self._logger.debug(
-                "Citation verification failed",
+                "citation_url_accessible",
                 url=citation.source_url,
-                error=str(exc),
             )
-            return False
+            return (citation, True)
 
-    async def verify_all(self, citations: list[Citation]) -> list[tuple[Citation, bool]]:
-        """Verify all citations in parallel.
+        # Original URL is down — try Wayback Machine
+        wayback_ok = await self._check_wayback(citation.source_url)
+        if wayback_ok:
+            self._logger.debug(
+                "citation_url_found_in_wayback",
+                url=citation.source_url,
+            )
+            return (citation, True)
+
+        self._logger.debug(
+            "citation_url_inaccessible",
+            url=citation.source_url,
+        )
+        return (citation, False)
+
+    async def verify_batch(
+        self,
+        citations: list[Citation],
+        max_concurrent: int = 10,
+    ) -> list[tuple[Citation, bool]]:
+        """Verify all citations concurrently with a concurrency limit.
 
         Parameters
         ----------
         citations:
             The citations to verify.
+        max_concurrent:
+            Maximum number of concurrent verification requests.
 
         Returns
         -------
@@ -295,26 +307,142 @@ class CitationService:
         if not citations:
             return []
 
-        tasks = [self.verify_citation(c) for c in citations]
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def _limited_verify(
+            c: Citation,
+        ) -> tuple[Citation, bool]:
+            async with semaphore:
+                return await self.verify_citation(c)
+
+        tasks = [_limited_verify(c) for c in citations]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         verified: list[tuple[Citation, bool]] = []
         for citation, result in zip(citations, results, strict=True):
             if isinstance(result, Exception):
                 self._logger.debug(
-                    "Verification task exception",
+                    "verification_task_exception",
                     url=citation.source_url,
                     error=str(result),
                 )
                 verified.append((citation, False))
             else:
-                verified.append((citation, result))
+                verified.append(result)  # type: ignore[arg-type]
 
         self._logger.info(
-            "Bulk citation verification complete",
+            "bulk_citation_verification_complete",
             total=len(verified),
             accessible=sum(1 for _, ok in verified if ok),
             inaccessible=sum(1 for _, ok in verified if not ok),
         )
 
         return verified
+
+    def format_citation(self, citation: Citation) -> str:
+        """Format a citation as a human-readable string.
+
+        Formatting varies by tier:
+
+        - **Tier 1** (book/academic): ``Author, Title, Publisher, Year, p.XX``
+        - **Tier 2** (press): ``Title — Publication, Date. URL``
+        - **Tier 4** (database): ``Discogs: Artist — Release. URL``
+        - **Tiers 5–6** (web/forum): ``Title, Source. URL``
+
+        Parameters
+        ----------
+        citation:
+            The citation to format.
+
+        Returns
+        -------
+        str
+            Human-readable citation string.
+        """
+        date_str = citation.source_date.isoformat() if citation.source_date else ""
+        url_str = citation.source_url or ""
+
+        if citation.tier == 1:
+            # Book / academic format
+            parts: list[str] = [citation.source_name, citation.text]
+            if date_str:
+                parts.append(date_str)
+            if citation.page_number:
+                parts.append(f"p.{citation.page_number}")
+            return ", ".join(p for p in parts if p)
+
+        if citation.tier == 2:
+            # Press format: Title — Publication, Date. URL
+            result = f"{citation.text} — {citation.source_name}"
+            if date_str:
+                result += f", {date_str}"
+            if url_str:
+                result += f". {url_str}"
+            return result
+
+        if citation.tier == 4:
+            # Database format: Discogs: Artist — Release. URL
+            result = f"{citation.source_name}: {citation.text}"
+            if url_str:
+                result += f". {url_str}"
+            return result
+
+        # Tiers 3, 5, 6 — general web / forum / flier archive
+        result = f"{citation.text}, {citation.source_name}"
+        if url_str:
+            result += f". {url_str}"
+        return result
+
+    # -- Private helpers ------------------------------------------------------
+
+    async def _head_check(self, url: str) -> bool:
+        """Send an HTTP HEAD request and return whether the URL is reachable.
+
+        Parameters
+        ----------
+        url:
+            The URL to check.
+
+        Returns
+        -------
+        bool
+            ``True`` if the server responded with ``2xx`` or ``3xx``.
+        """
+        try:
+            async with httpx.AsyncClient(
+                follow_redirects=True,
+                timeout=_VERIFY_TIMEOUT,
+            ) as client:
+                response = await client.head(url)
+                return response.status_code < 400
+        except (httpx.HTTPError, httpx.InvalidURL, Exception):
+            return False
+
+    async def _check_wayback(self, url: str) -> bool:
+        """Check the Wayback Machine for an archived snapshot of a URL.
+
+        Parameters
+        ----------
+        url:
+            The original URL to look up.
+
+        Returns
+        -------
+        bool
+            ``True`` if the Wayback Machine has an accessible snapshot.
+        """
+        try:
+            async with httpx.AsyncClient(
+                timeout=_VERIFY_TIMEOUT,
+            ) as client:
+                response = await client.get(
+                    _WAYBACK_API,
+                    params={"url": url},
+                )
+                if response.status_code != 200:
+                    return False
+                data = response.json()
+                snapshot = data.get("archived_snapshots", {}).get("closest", {})
+                return snapshot.get("available", False) is True
+        except (httpx.HTTPError, ValueError, Exception):
+            return False
