@@ -22,6 +22,7 @@ class EntityType(str, Enum):  # noqa: UP042 — StrEnum requires Python 3.11+
     DATE = "DATE"
     GENRE = "GENRE"
     LABEL = "LABEL"
+    EVENT = "EVENT"
 
 
 class ConfidenceLevel(str, Enum):  # noqa: UP042 — StrEnum requires Python 3.11+
@@ -89,6 +90,36 @@ class ArticleReference(BaseModel):
     article_type: str = "article"
     snippet: str | None = None
     citation_tier: int = Field(default=6, ge=1, le=6)
+
+
+class EventInstance(BaseModel):
+    """A single historical instance of a named event/party."""
+
+    model_config = ConfigDict(frozen=True)
+
+    event_name: str
+    promoter: str | None = None
+    venue: str | None = None
+    city: str | None = None
+    date: str | None = None
+    source_url: str | None = None
+
+
+class EventSeriesHistory(BaseModel):
+    """Historical research on a named event series (e.g. 'Bugged Out!', 'BLOC').
+
+    Groups past instances by promoter to reveal promoter name changes
+    or multiple promoters using similar event names.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    event_name: str
+    instances: list[EventInstance] = Field(default_factory=list)
+    promoter_groups: dict[str, list[EventInstance]] = Field(default_factory=dict)
+    promoter_name_changes: list[str] = Field(default_factory=list)
+    total_found: int = 0
+    articles: list[ArticleReference] = Field(default_factory=list)
 
 
 class Artist(BaseModel):

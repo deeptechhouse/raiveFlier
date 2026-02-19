@@ -26,6 +26,7 @@ _USER_AGENT = "raiveFlier/0.1.0"
 _MIN_REQUEST_INTERVAL = 1.0  # seconds — 60 requests per minute
 _MAX_SEARCH_RESULTS = 10
 _MAX_RELEASES_PER_FETCH = 100
+_MAX_LABEL_LOOKUPS = 10
 
 
 class DiscogsAPIProvider(IMusicDatabaseProvider):
@@ -114,6 +115,14 @@ class DiscogsAPIProvider(IMusicDatabaseProvider):
         # Accessing .data triggers the HTTP fetch for the full release
         return dict(release.data)
 
+    def _search_label_sync(self, label_name: str) -> dict[str, Any] | None:
+        """Search for a label by name and return its ID + name, or ``None``."""
+        client = self._get_client()
+        results = client.search(label_name, type="label")
+        for item in results:
+            return {"id": item.id, "name": item.data.get("title", label_name)}
+        return None
+
     # -- IMusicDatabaseProvider implementation ---------------------------------
 
     async def search_artist(self, name: str) -> list[ArtistSearchResult]:
@@ -181,14 +190,47 @@ class DiscogsAPIProvider(IMusicDatabaseProvider):
         return releases
 
     async def get_artist_labels(self, artist_id: str) -> list[Label]:
-        """Extract unique labels from the artist's release list."""
+        """Extract unique labels from the artist's releases and resolve Discogs IDs."""
         releases = await self.get_artist_releases(artist_id)
-        seen: dict[str, Label] = {}
+        seen: set[str] = set()
+        label_names: list[str] = []
         for release in releases:
             label_name = release.label
             if label_name and label_name != "Unknown" and label_name not in seen:
-                seen[label_name] = Label(name=label_name)
-        return list(seen.values())
+                seen.add(label_name)
+                label_names.append(label_name)
+
+        labels: list[Label] = []
+        for name in label_names[:_MAX_LABEL_LOOKUPS]:
+            await self._throttle()
+            try:
+                result = await asyncio.to_thread(self._search_label_sync, name)
+            except Exception:
+                result = None
+
+            if result and result.get("id"):
+                label_id = result["id"]
+                labels.append(
+                    Label(
+                        name=name,
+                        discogs_id=label_id,
+                        discogs_url=f"https://www.discogs.com/label/{label_id}",
+                    )
+                )
+            else:
+                labels.append(Label(name=name))
+
+        # Append remaining labels (beyond cap) without IDs
+        for name in label_names[_MAX_LABEL_LOOKUPS:]:
+            labels.append(Label(name=name))
+
+        self._logger.info(
+            "discogs_api_labels_complete",
+            artist_id=artist_id,
+            label_count=len(labels),
+            resolved=sum(1 for lb in labels if lb.discogs_id),
+        )
+        return labels
 
     async def get_release_details(self, release_id: str) -> Release | None:
         """Fetch full details for a single release by *release_id*."""

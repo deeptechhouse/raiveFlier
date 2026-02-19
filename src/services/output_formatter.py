@@ -175,6 +175,7 @@ class OutputFormatter:
                 "venue": None,
                 "date": None,
                 "promoter": None,
+                "event_name": None,
             }
 
         artists = [
@@ -207,11 +208,19 @@ class OutputFormatter:
                 "confidence": entities.promoter.confidence,
             }
 
+        event_name: dict[str, Any] | None = None
+        if entities.event_name:
+            event_name = {
+                "name": entities.event_name.text,
+                "confidence": entities.event_name.confidence,
+            }
+
         return {
             "artists": artists,
             "venue": venue,
             "date": date_info,
             "promoter": promoter,
+            "event_name": event_name,
         }
 
     def _format_research(self, results: list[ResearchResult]) -> dict[str, Any]:
@@ -249,6 +258,10 @@ class OutputFormatter:
         if artist.discogs_id:
             discogs_url = f"https://www.discogs.com/artist/{artist.discogs_id}"
 
+        musicbrainz_url: str | None = None
+        if artist.musicbrainz_id:
+            musicbrainz_url = f"https://musicbrainz.org/artist/{artist.musicbrainz_id}"
+
         labels = list({lb.name for lb in artist.labels})
 
         appearances = [
@@ -273,6 +286,7 @@ class OutputFormatter:
         return {
             "name": artist.name,
             "discogs_url": discogs_url,
+            "musicbrainz_url": musicbrainz_url,
             "releases_count": len(artist.releases),
             "labels": labels,
             "appearances": appearances,

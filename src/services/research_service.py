@@ -19,6 +19,7 @@ from src.models.flier import ExtractedEntities, ExtractedEntity
 from src.models.research import ResearchResult
 from src.services.artist_researcher import ArtistResearcher
 from src.services.date_context_researcher import DateContextResearcher
+from src.services.event_name_researcher import EventNameResearcher
 from src.services.promoter_researcher import PromoterResearcher
 from src.services.venue_researcher import VenueResearcher
 from src.utils.logging import get_logger
@@ -55,11 +56,13 @@ class ResearchService:
         venue_researcher: VenueResearcher,
         promoter_researcher: PromoterResearcher,
         date_context_researcher: DateContextResearcher,
+        event_name_researcher: EventNameResearcher | None = None,
     ) -> None:
         self._artist_researcher = artist_researcher
         self._venue_researcher = venue_researcher
         self._promoter_researcher = promoter_researcher
         self._date_context_researcher = date_context_researcher
+        self._event_name_researcher = event_name_researcher
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -100,6 +103,7 @@ class ResearchService:
             artists=len(entities.artists),
             has_venue=entities.venue is not None,
             has_promoter=entities.promoter is not None,
+            has_event_name=entities.event_name is not None,
             has_date=event_date is not None,
             event_date=str(event_date) if event_date else None,
         )
@@ -154,6 +158,19 @@ class ResearchService:
                 )
             )
             task_labels.append(f"date:{event_date.isoformat()}")
+
+        # 5. Event-name task
+        if entities.event_name is not None and self._event_name_researcher is not None:
+            tasks.append(
+                asyncio.ensure_future(
+                    self._event_name_researcher.research(
+                        event_name=entities.event_name.text,
+                        promoter_name=entities.promoter.text if entities.promoter else None,
+                        city=city,
+                    )
+                )
+            )
+            task_labels.append(f"event:{entities.event_name.text}")
 
         if not tasks:
             self._logger.warning("No researchable entities found on flier")

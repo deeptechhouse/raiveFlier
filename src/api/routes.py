@@ -203,12 +203,18 @@ async def confirm_entities(
         if body.promoter
         else None
     )
+    event_name = (
+        ExtractedEntity(text=body.event_name.name, entity_type=EntityType.EVENT)
+        if body.event_name
+        else None
+    )
 
     confirmed_entities = ExtractedEntities(
         artists=artists,
         venue=venue,
         date=date_entity,
         promoter=promoter,
+        event_name=event_name,
         genre_tags=body.genre_tags,
         ticket_price=body.ticket_price,
         raw_ocr=raw_ocr,

@@ -80,6 +80,7 @@ class ExtractedEntities(BaseModel):
     venue: ExtractedEntity | None = None
     date: ExtractedEntity | None = None
     promoter: ExtractedEntity | None = None
+    event_name: ExtractedEntity | None = None
     genre_tags: list[str] = Field(default_factory=list)
     ticket_price: str | None = None
     supporting_text: list[str] = Field(default_factory=list)

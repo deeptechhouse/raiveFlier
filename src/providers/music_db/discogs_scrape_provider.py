@@ -31,6 +31,7 @@ _SCRAPE_DELAY = 2.0  # seconds between requests
 _ARTIST_URL_RE = re.compile(r"/artist/(\d+)")
 _RELEASE_URL_RE = re.compile(r"/release/(\d+)")
 _MASTER_URL_RE = re.compile(r"/master/(\d+)")
+_LABEL_URL_RE = re.compile(r"/label/(\d+)")
 _MAX_SEARCH_RESULTS = 10
 
 
@@ -162,6 +163,12 @@ class DiscogsScrapeProvider(IMusicDatabaseProvider):
                 text = cell.get_text(strip=True)
                 if "label" in cell_class:
                     release_data.setdefault("label", text)
+                    # Try to extract label ID from link
+                    label_link = cell.find("a", href=_LABEL_URL_RE)
+                    if label_link:
+                        label_match = _LABEL_URL_RE.search(label_link["href"])
+                        if label_match:
+                            release_data.setdefault("label_id", label_match.group(1))
                 elif "catno" in cell_class:
                     release_data.setdefault("catalog_number", text)
                 elif "year" in cell_class:
@@ -247,13 +254,34 @@ class DiscogsScrapeProvider(IMusicDatabaseProvider):
         return releases
 
     async def get_artist_labels(self, artist_id: str) -> list[Label]:
-        """Extract unique labels from the artist's scraped releases."""
-        releases = await self.get_artist_releases(artist_id)
+        """Extract unique labels from the artist's discography page with Discogs IDs."""
+        url = f"{_BASE_URL}/artist/{artist_id}"
+        soup = await self._fetch_page(url)
+
+        if soup is None:
+            return []
+
+        raw_releases = self._parse_releases_table(soup)
         seen: dict[str, Label] = {}
-        for release in releases:
-            label_name = release.label
-            if label_name and label_name != "Unknown" and label_name not in seen:
-                seen[label_name] = Label(name=label_name)
+        for data in raw_releases:
+            label_name = data.get("label")
+            if not label_name or label_name == "Unknown" or label_name in seen:
+                continue
+            label_id_str = data.get("label_id")
+            label_id = int(label_id_str) if label_id_str else None
+            discogs_url = f"https://www.discogs.com/label/{label_id}" if label_id else None
+            seen[label_name] = Label(
+                name=label_name,
+                discogs_id=label_id,
+                discogs_url=discogs_url,
+            )
+
+        self._logger.info(
+            "discogs_scrape_labels_complete",
+            artist_id=artist_id,
+            label_count=len(seen),
+            resolved=sum(1 for lb in seen.values() if lb.discogs_id),
+        )
         return list(seen.values())
 
     async def get_release_details(self, release_id: str) -> Release | None:

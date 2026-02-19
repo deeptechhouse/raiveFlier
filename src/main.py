@@ -56,6 +56,7 @@ from src.services.artist_researcher import ArtistResearcher
 from src.services.citation_service import CitationService
 from src.services.date_context_researcher import DateContextResearcher
 from src.services.entity_extractor import EntityExtractor
+from src.services.event_name_researcher import EventNameResearcher
 from src.services.interconnection_service import InterconnectionService
 from src.services.ocr_service import OCRService
 from src.services.promoter_researcher import PromoterResearcher
@@ -254,11 +255,19 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         llm=primary_llm,
         cache=cache,
     )
+    event_name_researcher = EventNameResearcher(
+        web_search=primary_search,
+        article_scraper=primary_article,
+        llm=primary_llm,
+        cache=cache,
+        vector_store=vector_store,
+    )
     research_service = ResearchService(
         artist_researcher=artist_researcher,
         venue_researcher=venue_researcher,
         promoter_researcher=promoter_researcher,
         date_context_researcher=date_researcher,
+        event_name_researcher=event_name_researcher,
     )
 
     citation_service = CitationService()
@@ -383,6 +392,12 @@ def build_pipeline(custom_settings: Settings | None = None) -> dict[str, Any]:
         llm=llm,
         cache=cache,
     )
+    event_name_researcher = EventNameResearcher(
+        web_search=web_search,
+        article_scraper=article_scraper,
+        llm=llm,
+        cache=cache,
+    )
 
     citation_service = CitationService()
     interconnection_service = InterconnectionService(
@@ -397,6 +412,7 @@ def build_pipeline(custom_settings: Settings | None = None) -> dict[str, Any]:
         "venue_researcher": venue_researcher,
         "promoter_researcher": promoter_researcher,
         "date_context_researcher": date_context_researcher,
+        "event_name_researcher": event_name_researcher,
         "citation_service": citation_service,
         "interconnection_service": interconnection_service,
         "settings": s,

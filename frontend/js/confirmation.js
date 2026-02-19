@@ -105,6 +105,7 @@ const Confirmation = (() => {
     const venue = entities.venue;
     const date = entities.date;
     const promoter = entities.promoter;
+    const eventName = entities.event_name;
     const genreTags = entities.genre_tags || [];
     const ticketPrice = entities.ticket_price || "";
     const ocrConfidence = uploadResponse.ocr_confidence || 0;
@@ -171,6 +172,14 @@ const Confirmation = (() => {
       html += `<div class="confirm-section">
         <h3 class="confirm-section__title text-caption">Promoter</h3>`;
       html += _entityCardHTML("Promoter", promoter.text, promoter.confidence || 0, "PROMOTER", false);
+      html += `</div>`;
+    }
+
+    // Event Name
+    if (eventName) {
+      html += `<div class="confirm-section">
+        <h3 class="confirm-section__title text-caption">Event / Series Name</h3>`;
+      html += _entityCardHTML("Event Name", eventName.text, eventName.confidence || 0, "EVENT", false);
       html += `</div>`;
     }
 
@@ -349,6 +358,12 @@ const Confirmation = (() => {
       ? { name: promoterInput.value.trim(), entity_type: "PROMOTER" }
       : null;
 
+    // Collect event name
+    const eventNameInput = document.querySelector('.entity-card[data-entity-type="EVENT"] .entity-card__input');
+    const eventName = eventNameInput && eventNameInput.value.trim()
+      ? { name: eventNameInput.value.trim(), entity_type: "EVENT" }
+      : null;
+
     // Collect genre tags
     const genreChips = document.querySelectorAll("#genre-chips .genre-chip");
     const genreTags = [];
@@ -367,6 +382,7 @@ const Confirmation = (() => {
       venue: venue,
       date: date,
       promoter: promoter,
+      event_name: eventName,
       genre_tags: genreTags,
       ticket_price: ticketPrice,
     };

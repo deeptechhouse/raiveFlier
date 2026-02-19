@@ -165,6 +165,19 @@ class ArtistResearcher:
                     existing_titles.add(ref_title_lower)
                     articles.append(ref)
 
+        # Step 4.7 — PROFILE SYNTHESIS (only if at least 2 data sources)
+        profile_summary: str | None = None
+        data_source_count = sum([
+            bool(discogs_id or musicbrainz_id),
+            bool(releases),
+            bool(appearances),
+            bool(articles),
+        ])
+        if data_source_count >= 2:
+            profile_summary = await self._synthesize_profile(
+                normalized_name, releases, appearances, articles, labels
+            )
+
         # Step 5 — COMPILE
         overall_confidence = calculate_confidence(
             scores=[id_confidence, disco_confidence, gig_confidence, press_confidence],
@@ -187,6 +200,7 @@ class ArtistResearcher:
             labels=labels,
             appearances=appearances,
             articles=articles,
+            profile_summary=profile_summary,
         )
 
         result = ResearchResult(
@@ -667,6 +681,67 @@ class ArtistResearcher:
         """Extract the domain name from a URL for source attribution."""
         match = re.search(r"https?://(?:www\.)?([^/]+)", url)
         return match.group(1) if match else url
+
+    # -- Profile synthesis -----------------------------------------------------
+
+    async def _synthesize_profile(
+        self,
+        artist_name: str,
+        releases: list[Release],
+        appearances: list[EventAppearance],
+        articles: list[ArticleReference],
+        labels: list[Label],
+    ) -> str | None:
+        """Use LLM to synthesize a 2-3 sentence artist profile summary."""
+        # Build context from available data
+        context_parts: list[str] = []
+
+        if releases:
+            release_titles = [r.title for r in releases[:10]]
+            context_parts.append(f"Releases: {', '.join(release_titles)}")
+
+        if labels:
+            label_names = [lb.name for lb in labels[:10]]
+            context_parts.append(f"Labels: {', '.join(label_names)}")
+
+        if appearances:
+            event_names = [a.event_name for a in appearances[:10] if a.event_name]
+            if event_names:
+                context_parts.append(f"Events: {', '.join(event_names)}")
+
+        if articles:
+            article_titles = [a.title for a in articles[:5] if a.title]
+            if article_titles:
+                context_parts.append(f"Articles: {', '.join(article_titles)}")
+
+        if not context_parts:
+            return None
+
+        context_text = "\n".join(context_parts)
+
+        system_prompt = (
+            "You are a music journalist specializing in electronic and dance music. "
+            "Write concise, factual artist profiles."
+        )
+        user_prompt = (
+            f"Based on the following data about '{artist_name}', write a 2-3 sentence "
+            "profile summary placing them in the context of electronic/dance music culture. "
+            "Be specific and factual. Do not speculate.\n\n"
+            f"{context_text}"
+        )
+
+        try:
+            response = await self._llm.complete(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.3,
+                max_tokens=300,
+            )
+            summary = response.strip()
+            return summary if summary else None
+        except Exception as exc:
+            self._logger.debug("Profile synthesis failed", artist=artist_name, error=str(exc))
+            return None
 
     # -- Cache helpers ---------------------------------------------------------
 

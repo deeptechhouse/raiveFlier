@@ -193,8 +193,11 @@ class EntityExtractor:
             "- **Supporting DJs** are listed below headliners, often in smaller type.\n"
             "- **Date** is often near the top or bottom of the flier.\n"
             "- **Venue name and address** are usually near the bottom.\n"
-            "- **Promoter / event series name** is often in small text at the top "
-            "or bottom.\n"
+            "- **Promoter** is the person or company organizing the event, often "
+            "in small text at the top or bottom.\n"
+            "- **Event name / series name** (e.g. 'Bugged Out!', 'BLOC', 'Cream', "
+            "'Gatecrasher') is often the most prominent text on the flier, sometimes "
+            "even larger than artist names.  It is NOT the venue name.\n"
             '- Tokens like "b2b", "vs", "&" indicate multiple artists on one line.\n'
             '- Date formats vary widely: "Saturday March 15th", "03.15.97", '
             '"15/03/1997", "SAT 15 MAR", etc.\n'
@@ -211,6 +214,7 @@ class EntityExtractor:
             '  "venue": {"name": "<venue>", "confidence": <0.0-1.0>} | null,\n'
             '  "date": {"text": "<date string>", "confidence": <0.0-1.0>} | null,\n'
             '  "promoter": {"name": "<promoter>", "confidence": <0.0-1.0>} | null,\n'
+            '  "event_name": {"name": "<event/series name>", "confidence": <0.0-1.0>} | null,\n'
             '  "genre_tags": ["<tag1>", "<tag2>"],\n'
             '  "ticket_price": "<price string>" | null\n'
             "}\n"
@@ -245,7 +249,8 @@ class EntityExtractor:
             "\n"
             "Keys: artists (list of {name, confidence}), venue ({name, confidence} "
             "or null), date ({text, confidence} or null), promoter ({name, confidence} "
-            "or null), genre_tags (list of strings), ticket_price (string or null).\n"
+            "or null), event_name ({name, confidence} or null — the event/series name, "
+            "not the venue), genre_tags (list of strings), ticket_price (string or null).\n"
             "\n"
             f"Text:\n{ocr_text}"
         )
@@ -377,6 +382,16 @@ class EntityExtractor:
                 confidence=float(promoter_data.get("confidence", 0.5)),
             )
 
+        # --- Event Name ---
+        event_name: ExtractedEntity | None = None
+        event_name_data = parsed.get("event_name")
+        if isinstance(event_name_data, dict) and event_name_data.get("name"):
+            event_name = ExtractedEntity(
+                text=event_name_data["name"].strip(),
+                entity_type=EntityType.EVENT,
+                confidence=float(event_name_data.get("confidence", 0.5)),
+            )
+
         # --- Genre tags ---
         genre_tags: list[str] = []
         raw_tags = parsed.get("genre_tags", [])
@@ -396,6 +411,7 @@ class EntityExtractor:
             venue=venue,
             date=date,
             promoter=promoter,
+            event_name=event_name,
             genre_tags=genre_tags,
             ticket_price=ticket_price,
             raw_ocr=ocr_result,

@@ -90,6 +90,8 @@ const Results = (() => {
     let promoter = null;
     let dateContext = null;
 
+    let eventHistory = null;
+
     if (raw.research_results) {
       for (const result of raw.research_results) {
         if (result.artist) {
@@ -103,6 +105,9 @@ const Results = (() => {
         }
         if (result.date_context) {
           dateContext = _normalizeDateContext(result.date_context);
+        }
+        if (result.event_history) {
+          eventHistory = _normalizeEventHistory(result.event_history);
         }
       }
     }
@@ -155,8 +160,11 @@ const Results = (() => {
         promoter: ent.promoter
           ? { name: ent.promoter.text || ent.promoter.name }
           : null,
+        event_name: ent.event_name
+          ? { name: ent.event_name.text || ent.event_name.name }
+          : null,
       },
-      research: { artists, venue, promoter, date_context: dateContext },
+      research: { artists, venue, promoter, date_context: dateContext, event_history: eventHistory },
       interconnections: {
         relationships,
         patterns,
@@ -188,8 +196,12 @@ const Results = (() => {
 
     return {
       name: a.name,
+      profile_summary: a.profile_summary || null,
       discogs_url: a.discogs_id
         ? `https://www.discogs.com/artist/${a.discogs_id}`
+        : null,
+      musicbrainz_url: a.musicbrainz_id
+        ? `https://musicbrainz.org/artist/${a.musicbrainz_id}`
         : null,
       releases_count: (a.releases || []).length,
       releases: (a.releases || []).map((r) => ({
@@ -250,6 +262,29 @@ const Results = (() => {
       city: dc.city_context || dc.city || null,
       cultural: dc.cultural_context || dc.cultural || null,
       nearby_events: dc.nearby_events || [],
+    };
+  }
+
+  function _normalizeEventHistory(eh) {
+    return {
+      event_name: eh.event_name || "Unknown",
+      instances: (eh.instances || []).map((i) => ({
+        event_name: i.event_name,
+        promoter: i.promoter,
+        venue: i.venue,
+        city: i.city,
+        date: i.date,
+        source_url: i.source_url,
+      })),
+      promoter_groups: eh.promoter_groups || {},
+      promoter_name_changes: eh.promoter_name_changes || [],
+      total_found: eh.total_found || 0,
+      articles: (eh.articles || []).map((ar) => ({
+        title: ar.title,
+        source: ar.source,
+        url: ar.url,
+        tier: ar.citation_tier || 6,
+      })),
     };
   }
 
@@ -317,6 +352,7 @@ const Results = (() => {
     const citationCount = (data.citations || []).length;
     const venueName = entities.venue ? _esc(entities.venue.name) : "Unknown venue";
     const promoterName = entities.promoter ? _esc(entities.promoter.name) : null;
+    const eventName = entities.event_name ? _esc(entities.event_name.name || entities.event_name.text) : null;
     const dateText = entities.date ? _esc(entities.date.text) : null;
 
     let html = '<div class="results-summary">';
@@ -333,6 +369,9 @@ const Results = (() => {
     html += '<h2 class="text-heading results-summary__title">Analysis Complete</h2>';
     html += '<div class="results-summary__meta">';
 
+    if (eventName) {
+      html += `<span class="results-summary__tag"><span class="results-summary__tag-label">Event</span> ${eventName}</span>`;
+    }
     if (dateText) {
       html += `<span class="results-summary__tag"><span class="results-summary__tag-label">Date</span> ${dateText}</span>`;
     }
@@ -406,9 +445,21 @@ const Results = (() => {
     // Expandable content
     html += '<div class="expandable__content">';
 
-    // Discogs link
-    if (artist.discogs_url) {
-      html += `<div class="artist-card__link"><a href="${_esc(artist.discogs_url)}" target="_blank" rel="noopener noreferrer">View on Discogs &rarr;</a></div>`;
+    // External links
+    if (artist.discogs_url || artist.musicbrainz_url) {
+      html += '<div class="artist-card__links">';
+      if (artist.discogs_url) {
+        html += `<a href="${_esc(artist.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__link">View on Discogs &rarr;</a>`;
+      }
+      if (artist.musicbrainz_url) {
+        html += `<a href="${_esc(artist.musicbrainz_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__link">View on MusicBrainz &rarr;</a>`;
+      }
+      html += "</div>";
+    }
+
+    // Profile summary
+    if (artist.profile_summary) {
+      html += `<div class="artist-card__profile"><p>${_esc(artist.profile_summary)}</p></div>`;
     }
 
     // Releases subsection
@@ -636,6 +687,97 @@ const Results = (() => {
     }
 
     html += "</div></div>"; // venue-promoter-grid + results-section
+    return html;
+  }
+
+  // ------------------------------------------------------------------
+  // Section 3b: Event History
+  // ------------------------------------------------------------------
+
+  function _renderEventHistory(eventHistory) {
+    if (!eventHistory || eventHistory.total_found === 0) return "";
+
+    let html = '<div class="results-section" id="results-event-history">';
+    html += '<h2 class="results-section__title text-heading">Event History</h2>';
+
+    html += `<div class="event-history__header">`;
+    html += `<h3 class="event-history__name">${_esc(eventHistory.event_name)}</h3>`;
+    html += `<span class="event-history__count text-caption">${eventHistory.total_found} instance${eventHistory.total_found !== 1 ? "s" : ""} found</span>`;
+    html += "</div>";
+
+    // Promoter name change callout
+    if (eventHistory.promoter_name_changes && eventHistory.promoter_name_changes.length > 0) {
+      html += '<div class="event-history__callout">';
+      html += '<h4 class="event-history__callout-title">Promoter Name Changes Detected</h4>';
+      html += "<ul>";
+      eventHistory.promoter_name_changes.forEach((change) => {
+        html += `<li>${_esc(change)}</li>`;
+      });
+      html += "</ul></div>";
+    }
+
+    // Promoter groups
+    const groups = eventHistory.promoter_groups || {};
+    const groupNames = Object.keys(groups);
+
+    if (groupNames.length > 0) {
+      html += '<div class="event-history__groups">';
+      html += `<h4 class="results-subsection__title">By Promoter (${groupNames.length} promoter${groupNames.length !== 1 ? "s" : ""})</h4>`;
+
+      groupNames.forEach((pname) => {
+        const instances = groups[pname] || [];
+        html += '<article class="event-history__group expandable">';
+        html += '<button class="expandable__trigger" type="button" aria-expanded="false">';
+        html += `<span class="event-history__group-name">${_esc(pname)}</span>`;
+        html += `<span class="event-history__group-count text-caption">${instances.length} event${instances.length !== 1 ? "s" : ""}</span>`;
+        html += '<svg class="expandable__chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">';
+        html += '<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+        html += "</svg>";
+        html += "</button>";
+        html += '<div class="expandable__content">';
+        html += '<ul class="event-history__instance-list">';
+
+        instances.forEach((inst) => {
+          const parts = [];
+          if (inst.venue) parts.push(_esc(inst.venue));
+          if (inst.city) parts.push(_esc(inst.city));
+          if (inst.date) parts.push(_esc(inst.date));
+          html += `<li class="event-history__instance">${parts.join(" &mdash; ") || "Details unknown"}</li>`;
+        });
+
+        html += "</ul></div></article>";
+      });
+
+      html += "</div>";
+    }
+
+    // Articles
+    if (eventHistory.articles && eventHistory.articles.length > 0) {
+      html += '<div class="event-history__articles">';
+      html += `<h4 class="results-subsection__title">Sources (${eventHistory.articles.length})</h4>`;
+      html += '<ul class="artist-card__article-list">';
+
+      eventHistory.articles.forEach((a) => {
+        const tierCls = _tierClass(a.tier);
+        const tierName = TIER_NAMES[a.tier] || "Source";
+        let li = `<li class="artist-card__article-item ${tierCls}">`;
+        li += `<span class="citation-tier-badge citation-tier-${a.tier}">${_esc(tierName)}</span> `;
+        if (a.url) {
+          li += `<a href="${_esc(a.url)}" target="_blank" rel="noopener noreferrer">${_esc(a.title || a.source)}</a>`;
+        } else {
+          li += _esc(a.title || a.source);
+        }
+        if (a.source && a.title) {
+          li += ` <span class="text-caption">${_esc(a.source)}</span>`;
+        }
+        li += "</li>";
+        html += li;
+      });
+
+      html += "</ul></div>";
+    }
+
+    html += "</div>"; // results-section
     return html;
   }
 
@@ -1053,6 +1195,9 @@ const Results = (() => {
 
     // Section 3: Venue & Promoter
     html += _renderVenuePromoter(research.venue, research.promoter);
+
+    // Section 3b: Event History
+    html += _renderEventHistory(research.event_history);
 
     // Section 4: Date Context
     html += _renderDateContext(research.date_context);

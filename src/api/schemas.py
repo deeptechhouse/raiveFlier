@@ -37,6 +37,7 @@ class ConfirmEntitiesRequest(BaseModel):
     venue: EntityInput | None = None
     date: EntityInput | None = None
     promoter: EntityInput | None = None
+    event_name: EntityInput | None = None
     genre_tags: list[str] = Field(default_factory=list)
     ticket_price: str | None = None
 
