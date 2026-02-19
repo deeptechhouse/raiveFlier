@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -21,6 +21,9 @@ from src.models.research import ResearchResult
 from src.utils.confidence import calculate_confidence
 from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
+
+if TYPE_CHECKING:
+    from src.interfaces.vector_store_provider import IVectorStoreProvider
 
 _CACHE_TTL_SECONDS = 3600  # 1 hour
 _MAX_SCRAPE_RESULTS = 8
@@ -63,11 +66,13 @@ class PromoterResearcher:
         article_scraper: IArticleProvider,
         llm: ILLMProvider,
         cache: ICacheProvider | None = None,
+        vector_store: IVectorStoreProvider | None = None,
     ) -> None:
         self._web_search = web_search
         self._article_scraper = article_scraper
         self._llm = llm
         self._cache = cache
+        self._vector_store = vector_store
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -117,6 +122,11 @@ class PromoterResearcher:
         else:
             warnings.append("LLM extraction produced no promoter profile")
 
+        # Step 3.5 — CORPUS RETRIEVAL (RAG)
+        corpus_refs = await self._retrieve_from_corpus(promoter_name)
+        if corpus_refs:
+            sources_consulted.append("rag_corpus")
+
         # Step 4 — BUILD Promoter model and ResearchResult
         search_confidence = min(1.0, len(search_results) * 0.1) if search_results else 0.0
 
@@ -124,6 +134,16 @@ class PromoterResearcher:
         articles = await self._build_article_references(search_results, promoter_name)
         if articles:
             sources_consulted.append("web_search_articles")
+
+        # Merge corpus refs into articles
+        if corpus_refs:
+            existing_titles = {a.title.lower().strip() for a in articles if a.title}
+            for ref in corpus_refs:
+                ref_title_lower = ref.title.lower().strip() if ref.title else ""
+                if ref_title_lower and ref_title_lower not in existing_titles:
+                    existing_titles.add(ref_title_lower)
+                    articles.append(ref)
+
         article_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
 
         overall_confidence = calculate_confidence(
@@ -171,6 +191,46 @@ class PromoterResearcher:
         return result
 
     # -- Private helpers -------------------------------------------------------
+
+    async def _retrieve_from_corpus(self, promoter_name: str) -> list[ArticleReference]:
+        """Retrieve relevant passages from the RAG corpus for this promoter.
+
+        Returns an empty list if no vector store is configured or available.
+        """
+        if not self._vector_store or not self._vector_store.is_available():
+            return []
+
+        query = f"{promoter_name} promoter events rave"
+
+        try:
+            chunks = await self._vector_store.query(query_text=query, top_k=15)
+        except Exception as exc:
+            self._logger.debug("Corpus retrieval failed", promoter=promoter_name, error=str(exc))
+            return []
+
+        refs: list[ArticleReference] = []
+        for chunk in chunks:
+            if chunk.similarity_score < 0.7:
+                continue
+            refs.append(
+                ArticleReference(
+                    title=chunk.chunk.source_title,
+                    source=chunk.chunk.source_type,
+                    url=None,
+                    date=chunk.chunk.publication_date,
+                    article_type="book" if chunk.chunk.source_type == "book" else "article",
+                    snippet=chunk.chunk.text[:200] + "...",
+                    citation_tier=chunk.chunk.citation_tier,
+                )
+            )
+
+        if refs:
+            self._logger.info(
+                "Corpus retrieval complete",
+                promoter=promoter_name,
+                chunks_retrieved=len(refs),
+            )
+        return refs
 
     async def _search_promoter_activity(self, promoter_name: str) -> list[SearchResult]:
         """Search the web for promoter event activity and history."""

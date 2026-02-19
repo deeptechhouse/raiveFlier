@@ -101,6 +101,34 @@ def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
     return OllamaLLMProvider(settings=app_settings)
 
 
+def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
+    """Select the first available embedding provider.
+
+    Priority: OpenAI (if API key set) -> Nomic/Ollama (if reachable).
+    Returns ``None`` if no embedding provider is available.
+    """
+    from src.interfaces.embedding_provider import IEmbeddingProvider
+
+    if app_settings.openai_api_key:
+        from src.providers.embedding.openai_embedding_provider import (
+            OpenAIEmbeddingProvider,
+        )
+
+        provider: IEmbeddingProvider = OpenAIEmbeddingProvider(settings=app_settings)
+        if provider.is_available():
+            return provider
+
+    from src.providers.embedding.nomic_embedding_provider import (
+        NomicEmbeddingProvider,
+    )
+
+    provider = NomicEmbeddingProvider(settings=app_settings)
+    if provider.is_available():
+        return provider
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Full DI assembly for the FastAPI application
 # ---------------------------------------------------------------------------
@@ -150,6 +178,46 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
     # -- Cache --
     cache = MemoryCacheProvider()
 
+    # -- RAG components (only when RAG_ENABLED=True) --
+    vector_store = None
+    ingestion_service = None
+
+    if app_settings.rag_enabled:
+        embedding_provider = _build_embedding_provider(app_settings)
+        if embedding_provider is not None and embedding_provider.is_available():
+            from src.providers.vector_store.chromadb_provider import ChromaDBProvider
+            from src.services.ingestion.chunker import TextChunker
+            from src.services.ingestion.ingestion_service import IngestionService
+            from src.services.ingestion.metadata_extractor import MetadataExtractor
+
+            vector_store = ChromaDBProvider(
+                embedding_provider=embedding_provider,
+                persist_directory=app_settings.chromadb_persist_dir,
+                collection_name=app_settings.chromadb_collection,
+            )
+
+            chunker = TextChunker()
+            metadata_extractor = MetadataExtractor(llm=primary_llm)
+            ingestion_service = IngestionService(
+                chunker=chunker,
+                metadata_extractor=metadata_extractor,
+                embedding_provider=embedding_provider,
+                vector_store=vector_store,
+                article_scraper=primary_article,
+            )
+
+            _logger.info(
+                "rag_enabled",
+                embedding_provider=embedding_provider.get_provider_name(),
+                vector_store="chromadb",
+                persist_dir=app_settings.chromadb_persist_dir,
+            )
+        else:
+            _logger.warning(
+                "rag_enabled_but_no_embedding_provider",
+                msg="RAG_ENABLED=True but no embedding provider available. RAG disabled.",
+            )
+
     # -- Services --
     ocr_service = OCRService(providers=ocr_providers)
     entity_extractor = EntityExtractor(llm_provider=primary_llm)
@@ -160,18 +228,21 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         article_scraper=primary_article,
         llm=primary_llm,
         cache=cache,
+        vector_store=vector_store,
     )
     venue_researcher = VenueResearcher(
         web_search=primary_search,
         article_scraper=primary_article,
         llm=primary_llm,
         cache=cache,
+        vector_store=vector_store,
     )
     promoter_researcher = PromoterResearcher(
         web_search=primary_search,
         article_scraper=primary_article,
         llm=primary_llm,
         cache=cache,
+        vector_store=vector_store,
     )
     date_researcher = DateContextResearcher(
         web_search=primary_search,
@@ -190,6 +261,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
     interconnection_service = InterconnectionService(
         llm_provider=primary_llm,
         citation_service=citation_service,
+        vector_store=vector_store,
     )
     progress_tracker = ProgressTracker()
     confirmation_gate = ConfirmationGate()
@@ -201,6 +273,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         interconnection_service=interconnection_service,
         citation_service=citation_service,
         progress_tracker=progress_tracker,
+        ingestion_service=ingestion_service,
     )
 
     # -- Provider registry for /health --
@@ -211,6 +284,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         "search": True,
         "article": True,
         "cache": True,
+        "rag": vector_store is not None,
     }
 
     # -- Provider list for /providers --
@@ -232,6 +306,8 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         "provider_registry": provider_registry,
         "provider_list": provider_list,
         "primary_llm_name": primary_llm.get_provider_name(),
+        "ingestion_service": ingestion_service,
+        "rag_enabled": app_settings.rag_enabled and vector_store is not None,
     }
 
 

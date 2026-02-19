@@ -14,9 +14,12 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.interfaces.llm_provider import ILLMProvider
+
+if TYPE_CHECKING:
+    from src.interfaces.vector_store_provider import IVectorStoreProvider
 from src.models.analysis import (
     Citation,
     EntityNode,
@@ -58,6 +61,7 @@ class InterconnectionService:
         self,
         llm_provider: ILLMProvider,
         citation_service: CitationService,
+        vector_store: IVectorStoreProvider | None = None,
     ) -> None:
         """Initialise the service with injected dependencies.
 
@@ -67,9 +71,12 @@ class InterconnectionService:
             The LLM backend used for text completion.
         citation_service:
             Service used to assign citation tiers to sources.
+        vector_store:
+            Optional vector store for cross-entity RAG context retrieval.
         """
         self._llm = llm_provider
         self._citation_service = citation_service
+        self._vector_store = vector_store
         self._logger = get_logger(__name__)
 
     # ------------------------------------------------------------------
@@ -108,6 +115,12 @@ class InterconnectionService:
 
         # Step 1 — build context
         compiled_context = self._compile_research_context(research_results)
+
+        # Step 1.5 — RAG cross-entity context augmentation
+        rag_context = await self._retrieve_cross_entity_context(entities)
+        if rag_context:
+            compiled_context += "\n\n=== CORPUS CONTEXT (from indexed books/articles) ===\n"
+            compiled_context += rag_context
 
         # Step 2 — LLM analysis
         system_prompt = (
@@ -294,6 +307,70 @@ class InterconnectionService:
             sections.append("\n".join(parts))
 
         return "\n\n".join(sections)
+
+    async def _retrieve_cross_entity_context(self, entities: ExtractedEntities) -> str:
+        """Retrieve cross-entity passages from the RAG corpus.
+
+        Builds a query from all entity names and retrieves passages
+        that mention multiple entities (connection context).  Returns
+        formatted text within a token budget, or an empty string if
+        RAG is not available.
+        """
+        if not self._vector_store or not self._vector_store.is_available():
+            return ""
+
+        # Build a cross-entity query from all entity names
+        entity_names: list[str] = []
+        for artist_entity in entities.artists:
+            entity_names.append(artist_entity.text)
+        if entities.venue:
+            entity_names.append(entities.venue.text)
+        if entities.promoter:
+            entity_names.append(entities.promoter.text)
+
+        if not entity_names:
+            return ""
+
+        cross_query = " ".join(entity_names) + " connection relationship scene"
+
+        try:
+            chunks = await self._vector_store.query(query_text=cross_query, top_k=30)
+        except Exception as exc:
+            self._logger.debug("Cross-entity corpus retrieval failed", error=str(exc))
+            return ""
+
+        if not chunks:
+            return ""
+
+        # Budget: approximate token count (chars / 4), stay within limit
+        max_chars = 30000 * 4  # ~30K tokens
+        parts: list[str] = []
+        current_chars = 0
+
+        for chunk in chunks:
+            if chunk.similarity_score < 0.6:
+                continue
+
+            entry = (
+                f"[{chunk.chunk.source_title}"
+                f"{', ' + chunk.chunk.author if chunk.chunk.author else ''}"
+                f" — Tier {chunk.chunk.citation_tier}]\n"
+                f"{chunk.chunk.text}\n"
+            )
+
+            if current_chars + len(entry) > max_chars:
+                break
+            parts.append(entry)
+            current_chars += len(entry)
+
+        if parts:
+            self._logger.info(
+                "cross_entity_corpus_retrieval",
+                chunks_used=len(parts),
+                approx_tokens=current_chars // 4,
+            )
+
+        return "\n".join(parts)
 
     # ------------------------------------------------------------------
     # Step 2 — prompt construction

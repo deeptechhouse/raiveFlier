@@ -84,6 +84,16 @@ class ProvidersResponse(BaseModel):
     providers: list[dict[str, Any]]
 
 
+class CorpusStatsResponse(BaseModel):
+    """RAG corpus statistics."""
+
+    total_chunks: int = 0
+    total_sources: int = 0
+    sources_by_type: dict[str, int] = Field(default_factory=dict)
+    entity_tag_count: int = 0
+    geographic_tag_count: int = 0
+
+
 class ErrorResponse(BaseModel):
     """Standard error response body."""
 

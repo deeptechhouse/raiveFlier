@@ -11,7 +11,7 @@ import asyncio
 import contextlib
 import re
 from datetime import date
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -33,6 +33,9 @@ from src.utils.confidence import calculate_confidence
 from src.utils.errors import RateLimitError, ResearchError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import fuzzy_match, normalize_artist_name
+
+if TYPE_CHECKING:
+    from src.interfaces.vector_store_provider import IVectorStoreProvider
 
 _CACHE_TTL_SECONDS = 3600  # 1 hour
 _MAX_PRESS_ARTICLES = 10
@@ -78,12 +81,14 @@ class ArtistResearcher:
         llm: ILLMProvider,
         text_normalizer: type | None = None,
         cache: ICacheProvider | None = None,
+        vector_store: IVectorStoreProvider | None = None,
     ) -> None:
         self._music_dbs = list(music_dbs)
         self._web_search = web_search
         self._article_scraper = article_scraper
         self._llm = llm
         self._cache = cache
+        self._vector_store = vector_store
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -147,6 +152,18 @@ class ArtistResearcher:
         if articles:
             sources_consulted.append("web_search_press")
         press_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
+
+        # Step 4.5 — CORPUS RETRIEVAL (RAG)
+        corpus_refs = await self._retrieve_from_corpus(normalized_name, before_date)
+        if corpus_refs:
+            sources_consulted.append("rag_corpus")
+            # Merge corpus refs, deduplicating by title similarity
+            existing_titles = {a.title.lower().strip() for a in articles if a.title}
+            for ref in corpus_refs:
+                ref_title_lower = ref.title.lower().strip() if ref.title else ""
+                if ref_title_lower and ref_title_lower not in existing_titles:
+                    existing_titles.add(ref_title_lower)
+                    articles.append(ref)
 
         # Step 5 — COMPILE
         overall_confidence = calculate_confidence(
@@ -438,6 +455,53 @@ class ArtistResearcher:
             return []
 
         return self._parse_event_appearances(llm_response)
+
+    async def _retrieve_from_corpus(
+        self, artist_name: str, before_date: date | None
+    ) -> list[ArticleReference]:
+        """Retrieve relevant passages from the RAG corpus for this artist.
+
+        Returns an empty list if no vector store is configured or available.
+        """
+        if not self._vector_store or not self._vector_store.is_available():
+            return []
+
+        query = f"{artist_name} DJ electronic music history career"
+        filters: dict[str, object] = {}
+        if before_date:
+            filters["date"] = {"$lte": before_date.isoformat()}
+
+        try:
+            chunks = await self._vector_store.query(
+                query_text=query, top_k=15, filters=filters if filters else None
+            )
+        except Exception as exc:
+            self._logger.debug("Corpus retrieval failed", artist=artist_name, error=str(exc))
+            return []
+
+        refs: list[ArticleReference] = []
+        for chunk in chunks:
+            if chunk.similarity_score < 0.7:
+                continue
+            refs.append(
+                ArticleReference(
+                    title=chunk.chunk.source_title,
+                    source=chunk.chunk.source_type,
+                    url=None,
+                    date=chunk.chunk.publication_date,
+                    article_type="book" if chunk.chunk.source_type == "book" else "article",
+                    snippet=chunk.chunk.text[:200] + "...",
+                    citation_tier=chunk.chunk.citation_tier,
+                )
+            )
+
+        if refs:
+            self._logger.info(
+                "Corpus retrieval complete",
+                artist=artist_name,
+                chunks_retrieved=len(refs),
+            )
+        return refs
 
     async def _search_press(self, name: str, before_date: date | None) -> list[ArticleReference]:
         """Search for press articles and interviews mentioning the artist."""

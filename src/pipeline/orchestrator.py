@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -29,6 +30,9 @@ from src.services.ocr_service import OCRService
 from src.services.research_service import ResearchService
 from src.utils.errors import PipelineError
 from src.utils.logging import get_logger
+
+if TYPE_CHECKING:
+    from src.services.ingestion.ingestion_service import IngestionService
 
 
 class FlierAnalysisPipeline:
@@ -55,6 +59,7 @@ class FlierAnalysisPipeline:
         interconnection_service: InterconnectionService | None,
         citation_service: CitationService,
         progress_tracker: ProgressTracker,
+        ingestion_service: IngestionService | None = None,
     ) -> None:
         self._ocr_service = ocr_service
         self._entity_extractor = entity_extractor
@@ -62,6 +67,7 @@ class FlierAnalysisPipeline:
         self._interconnection_service = interconnection_service
         self._citation_service = citation_service
         self._progress_tracker = progress_tracker
+        self._ingestion_service = ingestion_service
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # ------------------------------------------------------------------
@@ -409,6 +415,29 @@ class FlierAnalysisPipeline:
                     recoverable=True,
                 )
             )
+
+        # --- Phase 5: RAG Feedback Loop (if enabled) ---
+        if self._ingestion_service is not None:
+            try:
+                ingestion_result = await self._ingestion_service.ingest_analysis(state)
+                self._logger.info(
+                    "rag_feedback_ingestion_complete",
+                    session_id=session_id,
+                    chunks=ingestion_result.chunks_created,
+                )
+            except Exception as exc:
+                self._logger.warning(
+                    "rag_feedback_ingestion_failed",
+                    session_id=session_id,
+                    error=str(exc),
+                )
+                errors.append(
+                    PipelineErrorModel(
+                        phase=PipelinePhase.OUTPUT,
+                        message=f"RAG feedback ingestion failed: {exc}",
+                        recoverable=True,
+                    )
+                )
 
         # --- Finalise ---
         state = state.model_copy(

@@ -18,6 +18,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from src.api.schemas import (
     ConfirmEntitiesRequest,
     ConfirmResponse,
+    CorpusStatsResponse,
     ErrorResponse,
     FlierAnalysisResponse,
     FlierUploadResponse,
@@ -344,3 +345,32 @@ async def list_providers(request: Request) -> ProvidersResponse:
         providers = request.app.state.provider_list
 
     return ProvidersResponse(providers=providers)
+
+
+@router.get(
+    "/corpus/stats",
+    response_model=CorpusStatsResponse,
+    responses={404: {"model": ErrorResponse}},
+    summary="Get RAG corpus statistics",
+)
+async def corpus_stats(request: Request) -> CorpusStatsResponse:
+    """Return aggregate statistics about the RAG vector-store corpus.
+
+    Returns 404 if RAG is not enabled.
+    """
+    rag_enabled = getattr(request.app.state, "rag_enabled", False)
+    if not rag_enabled:
+        raise HTTPException(status_code=404, detail="RAG is not enabled")
+
+    ingestion_service = getattr(request.app.state, "ingestion_service", None)
+    if ingestion_service is None:
+        raise HTTPException(status_code=404, detail="Ingestion service not available")
+
+    stats = await ingestion_service.get_corpus_stats()
+    return CorpusStatsResponse(
+        total_chunks=stats.total_chunks,
+        total_sources=stats.total_sources,
+        sources_by_type=stats.sources_by_type,
+        entity_tag_count=stats.entity_tag_count,
+        geographic_tag_count=stats.geographic_tag_count,
+    )
