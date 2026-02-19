@@ -13,7 +13,7 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.analysis import InterconnectionMap
-from src.models.flier import ExtractedEntities, OCRResult
+from src.models.flier import ExtractedEntities, FlierImage, OCRResult
 from src.models.research import ResearchResult
 
 
@@ -51,6 +51,7 @@ class PipelineState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     session_id: str
+    flier: FlierImage
     current_phase: PipelinePhase = PipelinePhase.UPLOAD
     ocr_result: OCRResult | None = None
     extracted_entities: ExtractedEntities | None = None
