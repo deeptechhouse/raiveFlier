@@ -27,7 +27,7 @@ from src.api.schemas import (
     HealthResponse,
     PipelineStatusResponse,
     ProvidersResponse,
-    SuggestedQuestion,
+    RelatedFact,
 )
 from src.models.entities import EntityType
 from src.models.flier import ExtractedEntities, ExtractedEntity, FlierImage, OCRResult
@@ -285,19 +285,19 @@ async def ask_question(
         entity_name=body.entity_name,
     )
 
-    suggestions = [
-        SuggestedQuestion(
-            text=s.get("text", s) if isinstance(s, dict) else str(s),
-            entity_type=s.get("entity_type") if isinstance(s, dict) else None,
-            entity_name=s.get("entity_name") if isinstance(s, dict) else None,
+    facts = [
+        RelatedFact(
+            text=f.get("text", f) if isinstance(f, dict) else str(f),
+            category=f.get("category") if isinstance(f, dict) else None,
+            entity_name=f.get("entity_name") if isinstance(f, dict) else None,
         )
-        for s in result.suggested_questions
+        for f in result.related_facts
     ]
 
     return AskQuestionResponse(
         answer=result.answer,
         citations=result.citations,
-        suggested_questions=suggestions,
+        related_facts=facts,
     )
 
 

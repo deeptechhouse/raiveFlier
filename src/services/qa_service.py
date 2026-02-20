@@ -2,7 +2,7 @@
 
 Accepts a user question together with session analysis context, queries
 the RAG vector store for relevant passages, sends everything to the LLM,
-and returns an answer plus suggested follow-up questions.
+and returns an answer plus related contextual facts.
 
 Design decisions
 ----------------
@@ -11,7 +11,7 @@ Design decisions
 - When ``vector_store`` is ``None`` (RAG disabled), falls back to
   LLM-only answers using just the session context.
 - Uses the cache provider to avoid re-asking identical questions.
-- Generates 3-4 suggested follow-up questions in a single LLM call
+- Generates 3-4 related facts in a single LLM call
   (not a separate call) to minimise latency.
 """
 
@@ -41,20 +41,20 @@ class QAResponse:
     citations:
         List of citation dicts with ``text``, ``source``, ``tier``, and
         optional ``similarity`` keys.
-    suggested_questions:
-        List of follow-up question dicts with ``text``, optional
-        ``entity_type``, and optional ``entity_name`` keys.
+    related_facts:
+        List of contextual fact dicts with ``text``, optional
+        ``category``, and optional ``entity_name`` keys.
     """
 
     def __init__(
         self,
         answer: str,
         citations: list[dict[str, Any]],
-        suggested_questions: list[dict[str, Any]],
+        related_facts: list[dict[str, Any]],
     ) -> None:
         self._answer = answer
         self._citations = list(citations)
-        self._suggested_questions = list(suggested_questions)
+        self._related_facts = list(related_facts)
 
     @property
     def answer(self) -> str:
@@ -67,9 +67,9 @@ class QAResponse:
         return list(self._citations)
 
     @property
-    def suggested_questions(self) -> list[dict[str, Any]]:
-        """Return a defensive copy of the suggested questions list."""
-        return list(self._suggested_questions)
+    def related_facts(self) -> list[dict[str, Any]]:
+        """Return a defensive copy of the related facts list."""
+        return list(self._related_facts)
 
 
 class QAService:
@@ -97,14 +97,23 @@ class QAService:
         "- Answer concisely but thoroughly (2-4 paragraphs max)\n"
         "- Cite specific sources when the retrieved passages support your answer\n"
         "- If the retrieved passages don't contain relevant info, say so and answer from general knowledge\n"
-        "- Be honest about uncertainty\n\n"
+        "- Be honest about uncertainty\n"
+        "- Stay strictly on-topic: electronic music, rave culture, DJs, labels, venues, promoters, "
+        "and the specific entities found on this flier. Do NOT generate content about unrelated topics.\n\n"
         "IMPORTANT: Your response MUST be valid JSON with this exact structure:\n"
         '{"answer": "your answer text here", "citations": [{"text": "citation text", '
         '"source": "source name", "tier": 1}], '
-        '"suggested_questions": [{"text": "follow-up question?", "entity_type": "ARTIST or '
-        'VENUE or null", "entity_name": "name or null"}]}\n'
-        "Include 3-4 suggested follow-up questions that the user would naturally want to ask next, "
-        "related to the topic. Make them specific and interesting."
+        '"related_facts": [{"text": "A concise, interesting fact", '
+        '"category": "LABEL or HISTORY or SCENE or VENUE or ARTIST or CONNECTION", '
+        '"entity_name": "name or null"}]}\n\n'
+        "Include 3-4 related facts. Each fact MUST be:\n"
+        "- A specific, true, interesting tidbit about one of the entities on this flier\n"
+        "- Written as a short declarative statement (NOT a question)\n"
+        "- Categories: LABEL (record labels artists released on), HISTORY (historical events "
+        "around the flier's date/city), SCENE (rave/club scene context), VENUE (venue history), "
+        "ARTIST (career facts, collaborations, discography), CONNECTION (links between flier entities)\n"
+        "- Grounded in the entities listed in the flier analysis context below. "
+        "Never invent facts about unrelated people, places, or topics."
     )
 
     _RAG_SIMILARITY_THRESHOLD = 0.6
@@ -147,7 +156,7 @@ class QAService:
         Returns
         -------
         QAResponse
-            The generated answer, citations, and suggested follow-ups.
+            The generated answer, citations, and related facts.
         """
         # Check cache first
         cache_key = self._cache_key(
@@ -161,7 +170,7 @@ class QAService:
                 return QAResponse(
                     answer=data["answer"],
                     citations=data.get("citations", []),
-                    suggested_questions=data.get("suggested_questions", []),
+                    related_facts=data.get("related_facts", data.get("suggested_questions", [])),
                 )
 
         # Build context summary from session analysis
@@ -179,7 +188,8 @@ class QAService:
 
         # Build user prompt
         user_prompt = self._build_user_prompt(
-            question, context_summary, rag_context, entity_type, entity_name
+            question, context_summary, rag_context, entity_type, entity_name,
+            session_context,
         )
 
         # Call LLM
@@ -198,7 +208,7 @@ class QAService:
                 cache_data = json.dumps({
                     "answer": response.answer,
                     "citations": response.citations,
-                    "suggested_questions": response.suggested_questions,
+                    "related_facts": response.related_facts,
                 })
                 await self._cache.set(cache_key, cache_data)
 
@@ -206,7 +216,7 @@ class QAService:
                 "qa_answered",
                 question=question[:80],
                 citations=len(response.citations),
-                suggestions=len(response.suggested_questions),
+                facts=len(response.related_facts),
                 rag_used=self._vector_store is not None,
             )
             return response
@@ -216,7 +226,7 @@ class QAService:
             return QAResponse(
                 answer="I wasn't able to answer that question right now. Please try again.",
                 citations=[],
-                suggested_questions=[],
+                related_facts=[],
             )
 
     # ------------------------------------------------------------------
@@ -374,6 +384,7 @@ class QAService:
         rag_context: str,
         entity_type: str | None,
         entity_name: str | None,
+        session_context: dict[str, Any] | None = None,
     ) -> str:
         """Assemble the full user prompt for the LLM."""
         parts: list[str] = []
@@ -390,13 +401,53 @@ class QAService:
                 f"\n## Focus Entity\nType: {entity_type}\nName: {entity_name}"
             )
 
+        # Provide an explicit list of entity names so the LLM anchors
+        # its related facts to actual flier content.
+        entity_names = self._extract_entity_names(session_context)
+        if entity_names:
+            parts.append(
+                "\n## Entities on this flier (use ONLY these for related facts)\n"
+                + ", ".join(entity_names)
+            )
+
         parts.append(f"\n## User Question\n{question}")
         parts.append(
             "\nRespond with valid JSON containing 'answer', 'citations', "
-            "and 'suggested_questions' fields."
+            "and 'related_facts' fields. "
+            "Each related fact MUST reference one of the entities listed above."
         )
 
         return "\n".join(parts)
+
+    @staticmethod
+    def _extract_entity_names(session_context: dict[str, Any] | None) -> list[str]:
+        """Extract all entity names from the session context for prompt anchoring."""
+        if not session_context:
+            return []
+
+        names: list[str] = []
+        entities = session_context.get("extracted_entities") or {}
+        if hasattr(entities, "model_dump"):
+            entities = entities.model_dump()
+
+        for artist in entities.get("artists", []):
+            name = artist.get("text", artist.get("name", ""))
+            if name:
+                names.append(name)
+
+        venue = entities.get("venue")
+        if venue:
+            name = venue.get("text", venue.get("name", ""))
+            if name:
+                names.append(name)
+
+        promoter = entities.get("promoter")
+        if promoter:
+            name = promoter.get("text", promoter.get("name", ""))
+            if name:
+                names.append(name)
+
+        return names
 
     # ------------------------------------------------------------------
     # Private helpers — response parsing
@@ -418,7 +469,8 @@ class QAService:
             data = json.loads(text)
             answer = data.get("answer", text)
             llm_citations = data.get("citations", [])
-            suggestions = data.get("suggested_questions", [])
+            # Support both new key and legacy key for transitional compatibility
+            facts = data.get("related_facts", data.get("suggested_questions", []))
 
             # Merge RAG citations with LLM-mentioned citations
             all_citations = list(rag_citations)
@@ -434,7 +486,7 @@ class QAService:
             return QAResponse(
                 answer=answer,
                 citations=all_citations,
-                suggested_questions=suggestions,
+                related_facts=facts,
             )
 
         except (json.JSONDecodeError, KeyError):
@@ -445,7 +497,7 @@ class QAService:
             return QAResponse(
                 answer=text,
                 citations=list(rag_citations),
-                suggested_questions=[],
+                related_facts=[],
             )
 
     # ------------------------------------------------------------------

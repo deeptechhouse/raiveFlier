@@ -62,6 +62,8 @@ class Release(BaseModel):
     year: int | None = None
     format: str | None = None
     discogs_url: str | None = None
+    bandcamp_url: str | None = None
+    beatport_url: str | None = None
     genres: list[str] = Field(default_factory=list)
     styles: list[str] = Field(default_factory=list)
 
@@ -131,6 +133,8 @@ class Artist(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     discogs_id: int | None = None
     musicbrainz_id: str | None = None
+    bandcamp_url: str | None = None
+    beatport_url: str | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     releases: list[Release] = Field(default_factory=list)
     labels: list[Label] = Field(default_factory=list)

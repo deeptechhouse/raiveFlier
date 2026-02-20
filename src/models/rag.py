@@ -25,6 +25,7 @@ class DocumentChunk(BaseModel):
 
     chunk_id: str = Field(description="Unique identifier (UUID) for this chunk.")
     text: str = Field(description="The chunk's textual content.")
+    token_count: int = Field(default=0, ge=0, description="Approximate token count for this chunk.")
     source_id: str = Field(description="Identifier of the parent source document.")
     source_title: str = Field(description="Human-readable title of the source document.")
     source_type: str = Field(

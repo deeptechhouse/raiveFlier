@@ -38,9 +38,11 @@ if TYPE_CHECKING:
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
 _CACHE_TTL_SECONDS = 3600  # 1 hour
-_MAX_PRESS_ARTICLES = 10
-_GIG_SEARCH_LIMIT = 20
-_PRESS_SEARCH_LIMIT = 15
+_MAX_PRESS_ARTICLES = 15
+_GIG_SEARCH_LIMIT = 30
+_PRESS_SEARCH_LIMIT = 20
+_MIN_ADEQUATE_APPEARANCES = 3  # trigger deeper search if below this
+_MIN_ADEQUATE_ARTICLES = 2
 
 # URL patterns mapped to citation tiers (1 = highest authority)
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
@@ -54,6 +56,7 @@ _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"discogs\.com", re.IGNORECASE), 3),
     (re.compile(r"musicbrainz\.org", re.IGNORECASE), 3),
     (re.compile(r"bandcamp\.com", re.IGNORECASE), 3),
+    (re.compile(r"beatport\.com", re.IGNORECASE), 3),
     (re.compile(r"soundcloud\.com", re.IGNORECASE), 4),
     (re.compile(r"youtube\.com|youtu\.be", re.IGNORECASE), 4),
     (re.compile(r"wikipedia\.org", re.IGNORECASE), 4),
@@ -126,18 +129,18 @@ class ArtistResearcher:
         sources_consulted: list[str] = []
 
         # Step 1 — IDENTIFY
-        discogs_id, musicbrainz_id, id_confidence = await self._search_music_databases(
-            normalized_name
+        discogs_id, musicbrainz_id, id_confidence, provider_ids = (
+            await self._search_music_databases(normalized_name)
         )
-        if discogs_id is None and musicbrainz_id is None:
+        if discogs_id is None and musicbrainz_id is None and not provider_ids:
             warnings.append("Artist not found in music databases")
             self._logger.warning("Artist not found in any music database", artist=normalized_name)
 
         # Step 2 — DISCOGRAPHY
         releases, labels = await self._fetch_discography(
-            normalized_name, discogs_id, musicbrainz_id, before_date
+            normalized_name, discogs_id, musicbrainz_id, before_date, provider_ids
         )
-        if discogs_id or musicbrainz_id:
+        if discogs_id or musicbrainz_id or provider_ids:
             sources_consulted.append("music_databases")
         disco_confidence = min(1.0, len(releases) * 0.1) if releases else 0.0
 
@@ -195,6 +198,12 @@ class ArtistResearcher:
             name=normalized_name,
             discogs_id=int(discogs_id) if discogs_id and discogs_id.isdigit() else None,
             musicbrainz_id=musicbrainz_id,
+            bandcamp_url=provider_ids.get("bandcamp"),
+            beatport_url=(
+                f"https://www.beatport.com/artist/{provider_ids['beatport']}"
+                if provider_ids.get("beatport")
+                else None
+            ),
             confidence=overall_confidence,
             releases=releases,
             labels=labels,
@@ -226,22 +235,33 @@ class ArtistResearcher:
 
     # -- Private helpers -------------------------------------------------------
 
-    async def _search_music_databases(self, name: str) -> tuple[str | None, str | None, float]:
+    async def _search_music_databases(
+        self, name: str
+    ) -> tuple[str | None, str | None, float, dict[str, str]]:
         """Search all music database providers for the artist.
 
         Returns
         -------
-        tuple[str | None, str | None, float]
-            (discogs_id, musicbrainz_id, identification_confidence)
+        tuple[str | None, str | None, float, dict[str, str]]
+            (discogs_id, musicbrainz_id, identification_confidence, provider_ids)
+            where ``provider_ids`` maps provider name to the matched artist ID
+            for every provider that found a match.
         """
         cached = await self._cache_get(f"artist_search:{name}")
         if cached is not None:
             self._logger.debug("Cache hit for artist search", artist=name)
-            return cached["discogs_id"], cached["musicbrainz_id"], cached["confidence"]
+            provider_ids = cached.get("provider_ids", {})
+            return (
+                cached["discogs_id"],
+                cached["musicbrainz_id"],
+                cached["confidence"],
+                provider_ids,
+            )
 
         discogs_id: str | None = None
         musicbrainz_id: str | None = None
         best_confidence = 0.0
+        provider_ids: dict[str, str] = {}
 
         for provider in self._music_dbs:
             provider_name = provider.get_provider_name()
@@ -278,6 +298,9 @@ class ArtistResearcher:
             # Use the higher of fuzzy score and provider-reported confidence
             effective_confidence = max(score, matched.confidence)
 
+            # Store the matched ID for this provider
+            provider_ids[provider_name] = matched.id
+
             if "discogs" in provider_name.lower():
                 discogs_id = matched.id
                 best_confidence = max(best_confidence, effective_confidence)
@@ -287,14 +310,16 @@ class ArtistResearcher:
             else:
                 best_confidence = max(best_confidence, effective_confidence)
 
-        # Cross-reference bonus: if both databases agree, boost confidence
-        if discogs_id and musicbrainz_id:
-            best_confidence = min(1.0, best_confidence + 0.15)
+        # Cross-reference bonus: if multiple databases agree, boost confidence
+        confirmed_count = sum(1 for _ in provider_ids)
+        if confirmed_count >= 2:
+            bonus = min(0.2, confirmed_count * 0.05)
+            best_confidence = min(1.0, best_confidence + bonus)
             self._logger.info(
                 "Cross-reference match found",
                 artist=name,
-                discogs_id=discogs_id,
-                musicbrainz_id=musicbrainz_id,
+                providers=list(provider_ids.keys()),
+                bonus=bonus,
             )
 
         await self._cache_set(
@@ -303,10 +328,11 @@ class ArtistResearcher:
                 "discogs_id": discogs_id,
                 "musicbrainz_id": musicbrainz_id,
                 "confidence": best_confidence,
+                "provider_ids": provider_ids,
             },
         )
 
-        return discogs_id, musicbrainz_id, best_confidence
+        return discogs_id, musicbrainz_id, best_confidence, provider_ids
 
     async def _fetch_discography(
         self,
@@ -314,15 +340,18 @@ class ArtistResearcher:
         discogs_id: str | None,
         musicbrainz_id: str | None,
         before_date: date | None,
+        provider_ids: dict[str, str] | None = None,
     ) -> tuple[list[Release], list[Label]]:
         """Fetch releases and labels from matched database entries.
 
         Attempts Discogs API first, falls back to scrape provider, then
-        supplements with MusicBrainz data if available.
+        supplements with MusicBrainz data and any additional providers
+        (Bandcamp, Beatport, etc.) that found a match.
         """
         releases: list[Release] = []
         labels: list[Label] = []
         seen_titles: set[str] = set()
+        fetched_providers: set[str] = set()
 
         # Try Discogs providers (API first, then scrape fallback)
         discogs_providers = [
@@ -341,6 +370,7 @@ class ArtistResearcher:
 
                     provider_labels = await provider.get_artist_labels(discogs_id)
                     labels.extend(provider_labels)
+                    fetched_providers.add(provider.get_provider_name())
                     self._logger.info(
                         "Discography fetched",
                         provider=provider.get_provider_name(),
@@ -380,6 +410,7 @@ class ArtistResearcher:
                         mb_labels = await provider.get_artist_labels(musicbrainz_id)
                         labels.extend(mb_labels)
 
+                    fetched_providers.add(provider.get_provider_name())
                     self._logger.debug(
                         "MusicBrainz supplement complete",
                         new_releases=len(mb_releases),
@@ -388,6 +419,43 @@ class ArtistResearcher:
                 except (ResearchError, RateLimitError) as exc:
                     self._logger.warning(
                         "MusicBrainz supplement failed",
+                        error=str(exc),
+                    )
+
+        # Supplement with additional providers (Bandcamp, Beatport, etc.)
+        if provider_ids:
+            for provider in self._music_dbs:
+                pname = provider.get_provider_name()
+                if pname in fetched_providers or pname not in provider_ids:
+                    continue
+                if "discogs" in pname.lower() or "musicbrainz" in pname.lower():
+                    continue
+
+                artist_id = provider_ids[pname]
+                try:
+                    extra_releases = await provider.get_artist_releases(artist_id, before_date)
+                    added = 0
+                    for release in extra_releases:
+                        title_key = release.title.lower().strip()
+                        if title_key not in seen_titles:
+                            seen_titles.add(title_key)
+                            releases.append(release)
+                            added += 1
+
+                    extra_labels = await provider.get_artist_labels(artist_id)
+                    labels.extend(extra_labels)
+                    fetched_providers.add(pname)
+
+                    self._logger.info(
+                        "Additional provider supplement complete",
+                        provider=pname,
+                        new_releases=added,
+                        new_labels=len(extra_labels),
+                    )
+                except Exception as exc:
+                    self._logger.warning(
+                        "Additional provider fetch failed",
+                        provider=pname,
                         error=str(exc),
                     )
 
@@ -404,15 +472,22 @@ class ArtistResearcher:
     async def _search_gig_history(
         self, name: str, before_date: date | None
     ) -> list[EventAppearance]:
-        """Search the web for past event appearances by the artist."""
-        queries = [
-            f'"{name}" DJ set',
-            f'"{name}" live event',
-            f'"{name}" club night',
+        """Search the web for past event appearances by the artist.
+
+        Uses RA.co (Resident Advisor) as the primary source for event
+        listings, supplemented by general web search. If initial results
+        are sparse, performs deeper follow-up searches.
+        """
+        # Phase 1: Primary queries — RA.co first, then general
+        primary_queries = [
+            f'site:ra.co/dj "{name}"',
+            f'site:ra.co/events "{name}"',
+            f'"{name}" DJ set event lineup',
+            f'"{name}" live club night rave',
         ]
 
         all_results: list[SearchResult] = []
-        for query in queries:
+        for query in primary_queries:
             try:
                 results = await self._web_search.search(
                     query=query,
@@ -427,9 +502,6 @@ class ArtistResearcher:
                     error=str(exc),
                 )
 
-        if not all_results:
-            return []
-
         # Deduplicate by URL
         seen_urls: set[str] = set()
         unique_results: list[SearchResult] = []
@@ -438,15 +510,53 @@ class ArtistResearcher:
                 seen_urls.add(result.url)
                 unique_results.append(result)
 
+        # Phase 2: Deepen search if results are thin
+        if len(unique_results) < _MIN_ADEQUATE_APPEARANCES:
+            deeper_queries = [
+                f'"{name}" resident advisor event',
+                f'"{name}" electronic music festival',
+                f'"{name}" boiler room OR dekmantel OR fabric OR berghain',
+                f'"{name}" DJ biography',
+            ]
+            for query in deeper_queries:
+                try:
+                    results = await self._web_search.search(
+                        query=query,
+                        num_results=_GIG_SEARCH_LIMIT,
+                        before_date=before_date,
+                    )
+                    for r in results:
+                        if r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            unique_results.append(r)
+                except ResearchError:
+                    continue
+
+            self._logger.info(
+                "Deepened gig search",
+                artist=name,
+                total_results=len(unique_results),
+            )
+
+        if not unique_results:
+            return []
+
+        # Prioritize RA.co results first in the snippet list
+        ra_results = [r for r in unique_results if "ra.co" in r.url or "residentadvisor" in r.url]
+        other_results = [r for r in unique_results if r not in ra_results]
+        ordered = ra_results + other_results
+
         # Use LLM to extract structured event data from search snippets
         snippet_text = "\n".join(
             f"- {r.title}: {r.snippet or '(no snippet)'} [{r.url}]"
-            for r in unique_results[:_GIG_SEARCH_LIMIT]
+            for r in ordered[:_GIG_SEARCH_LIMIT]
         )
 
         system_prompt = (
             "You are a music event data extractor. Given web search results about "
             "a DJ/artist, extract any identifiable past event appearances. "
+            "Pay special attention to Resident Advisor (ra.co) results — these are "
+            "the most authoritative source for electronic music event listings. "
             "Return one appearance per line in the format:\n"
             "EVENT_NAME | VENUE | DATE (YYYY-MM-DD or unknown) | SOURCE_URL\n"
             "Only include results that clearly indicate the artist performed at an event. "
@@ -462,7 +572,7 @@ class ArtistResearcher:
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=0.1,
-                max_tokens=2000,
+                max_tokens=3000,
             )
         except Exception as exc:
             self._logger.warning("LLM gig extraction failed", error=str(exc))
@@ -518,21 +628,33 @@ class ArtistResearcher:
         return refs
 
     async def _search_press(self, name: str, before_date: date | None) -> list[ArticleReference]:
-        """Search for press articles and interviews mentioning the artist."""
-        queries = [
-            f'"{name}" interview',
-            f'"{name}" DJ Mag OR "Resident Advisor" OR Mixmag',
+        """Search for press articles and interviews mentioning the artist.
+
+        Prioritizes RA.co (Resident Advisor) as the premier source for
+        electronic music artist profiles and event coverage. Performs
+        adaptive deepening when initial results are insufficient.
+        """
+        # Phase 1: Primary queries — RA.co artist profiles, then major press
+        primary_queries = [
+            f'site:ra.co "{name}"',
+            f'"{name}" interview OR profile "Resident Advisor" OR "DJ Mag" OR Mixmag',
+            f'"{name}" electronic music artist biography',
         ]
 
         all_results: list[SearchResult] = []
-        for query in queries:
+        seen_urls: set[str] = set()
+
+        for query in primary_queries:
             try:
                 results = await self._web_search.search(
                     query=query,
                     num_results=_PRESS_SEARCH_LIMIT,
                     before_date=before_date,
                 )
-                all_results.extend(results)
+                for r in results:
+                    if r.url not in seen_urls:
+                        seen_urls.add(r.url)
+                        all_results.append(r)
             except ResearchError as exc:
                 self._logger.warning(
                     "Press search failed",
@@ -540,22 +662,52 @@ class ArtistResearcher:
                     error=str(exc),
                 )
 
+        # Phase 2: Deepen if results are thin
+        if len(all_results) < _MIN_ADEQUATE_ARTICLES:
+            deeper_queries = [
+                f'"{name}" XLR8R OR Pitchfork OR "Fact Magazine" OR Mixmag',
+                f'"{name}" electronic music producer DJ',
+                f'"{name}" record label release announcement',
+            ]
+            for query in deeper_queries:
+                try:
+                    results = await self._web_search.search(
+                        query=query,
+                        num_results=_PRESS_SEARCH_LIMIT,
+                        before_date=before_date,
+                    )
+                    for r in results:
+                        if r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            all_results.append(r)
+                except ResearchError:
+                    continue
+
+            self._logger.info(
+                "Deepened press search",
+                artist=name,
+                total_results=len(all_results),
+            )
+
         if not all_results:
             return []
 
-        # Deduplicate by URL
-        seen_urls: set[str] = set()
-        unique_results: list[SearchResult] = []
-        for result in all_results:
-            if result.url not in seen_urls:
-                seen_urls.add(result.url)
-                unique_results.append(result)
+        # Prioritize RA.co and tier-1 sources for scraping
+        def _sort_key(r: SearchResult) -> int:
+            url = r.url.lower()
+            if "ra.co" in url or "residentadvisor" in url:
+                return 0
+            if any(d in url for d in ("djmag.com", "mixmag.net")):
+                return 1
+            return 2
+
+        all_results.sort(key=_sort_key)
 
         # Extract article content for the top results
         articles: list[ArticleReference] = []
         extraction_tasks = [
             self._extract_article_reference(result, name)
-            for result in unique_results[:_MAX_PRESS_ARTICLES]
+            for result in all_results[:_MAX_PRESS_ARTICLES]
         ]
         extracted = await asyncio.gather(*extraction_tasks, return_exceptions=True)
 

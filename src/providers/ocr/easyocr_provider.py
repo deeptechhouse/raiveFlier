@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import io
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 
 from src.interfaces.ocr_provider import IOCRProvider
 from src.models.flier import FlierImage, OCRResult, TextRegion
@@ -57,13 +58,14 @@ class EasyOCRProvider(IOCRProvider):
 
             all_results: list[dict | None] = []
 
-            for pass_name, pass_image in passes:
+            def _run_pass(args: tuple[str, Image.Image]) -> dict | None:
+                pass_name, pass_image = args
                 self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="easyocr")
                 try:
                     result = self._run_easyocr(reader, pass_image)
                     if result is not None:
                         result["pass_name"] = pass_name
-                    all_results.append(result)
+                    return result
                 except Exception as exc:
                     self._logger.warning(
                         "ocr_pass_failed",
@@ -71,7 +73,12 @@ class EasyOCRProvider(IOCRProvider):
                         provider="easyocr",
                         error=str(exc),
                     )
-                    all_results.append(None)
+                    return None
+
+            # EasyOCR releases the GIL during C++ inference, so threads
+            # give real parallelism on multi-core machines.
+            with ThreadPoolExecutor(max_workers=min(4, len(passes))) as pool:
+                all_results = list(pool.map(_run_pass, passes))
 
             elapsed = time.perf_counter() - start
 
@@ -143,54 +150,12 @@ class EasyOCRProvider(IOCRProvider):
         return self.__reader
 
     def _build_passes(self, original: Image.Image) -> list[tuple[str, Image.Image]]:
-        """Build (pass_name, preprocessed_image) pairs for multi-pass OCR."""
-        pp = self._preprocessor
-        passes: list[tuple[str, Image.Image]] = []
+        """Build (pass_name, preprocessed_image) pairs for multi-pass OCR.
 
-        # Shared base: resized (with upscaling for small images)
-        resized = pp.resize_for_ocr(original)
-
-        # 1. Standard contrast-enhanced binarized image
-        enhanced = pp.enhance_contrast(resized)
-        binarized = pp.binarize(enhanced)
-        deskewed = pp.deskew(binarized)
-        passes.append(("standard", deskewed))
-
-        # 2. Inverted (light text on dark background — common on rave fliers)
-        inverted = ImageOps.invert(deskewed.convert("RGB"))
-        passes.append(("inverted", inverted))
-
-        # 3. Individual color channels (isolate neon text)
-        channels = pp.separate_color_channels(resized)
-        channel_names = ["red", "green", "blue"]
-        for ch_name, channel in zip(channel_names, channels, strict=True):
-            passes.append((f"channel_{ch_name}", channel.convert("RGB")))
-
-        # 4. CLAHE — localized adaptive contrast (handles uneven lighting)
-        clahe_enhanced = pp.enhance_contrast_clahe(resized)
-        clahe_binarized = pp.binarize(clahe_enhanced)
-        clahe_deskewed = pp.deskew(clahe_binarized)
-        passes.append(("clahe", clahe_deskewed))
-
-        # 5. Denoised — remove camera sensor noise before OCR
-        denoised = pp.denoise(resized)
-        denoised_enhanced = pp.enhance_contrast(denoised)
-        denoised_binarized = pp.binarize(denoised_enhanced)
-        denoised_deskewed = pp.deskew(denoised_binarized)
-        passes.append(("denoised", denoised_deskewed))
-
-        # 6. HSV saturation channel — isolates neon-colored text
-        saturation = pp.extract_saturation_channel(resized)
-        sat_binarized = pp.binarize(saturation.convert("RGB"))
-        passes.append(("saturation", sat_binarized))
-
-        # 7. Otsu binarization — automatic global threshold
-        otsu_enhanced = pp.enhance_contrast(resized)
-        otsu_binarized = pp.binarize_otsu(otsu_enhanced)
-        otsu_deskewed = pp.deskew(otsu_binarized)
-        passes.append(("otsu", otsu_deskewed))
-
-        return passes
+        Delegates preprocessing to :meth:`ImagePreprocessor.build_ocr_passes`
+        which caches results so fallback providers skip redundant work.
+        """
+        return self._preprocessor.build_ocr_passes(original)
 
     def _run_easyocr(self, reader, pass_image: Image.Image) -> dict | None:  # noqa: ANN001
         """Run EasyOCR on a single image and return results dict or None."""

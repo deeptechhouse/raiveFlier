@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import io
 import time
+from concurrent.futures import ThreadPoolExecutor
 
-from PIL import Image, ImageOps
+from PIL import Image
 
 from src.interfaces.ocr_provider import IOCRProvider
 from src.models.flier import FlierImage, OCRResult, TextRegion
@@ -61,13 +62,14 @@ class TesseractOCRProvider(IOCRProvider):
 
             all_results: list[dict | None] = []
 
-            for pass_name, pass_image, config in passes:
+            def _run_pass(args: tuple[str, Image.Image, str]) -> dict | None:
+                pass_name, pass_image, config = args
                 self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="tesseract")
                 try:
                     result = self._run_tesseract(pass_image, config=config)
                     if result is not None:
                         result["pass_name"] = pass_name
-                    all_results.append(result)
+                    return result
                 except Exception as exc:
                     self._logger.warning(
                         "ocr_pass_failed",
@@ -75,7 +77,12 @@ class TesseractOCRProvider(IOCRProvider):
                         provider="tesseract",
                         error=str(exc),
                     )
-                    all_results.append(None)
+                    return None
+
+            # Tesseract spawns subprocesses, so threads give real
+            # parallelism without GIL contention.
+            with ThreadPoolExecutor(max_workers=min(4, len(passes))) as pool:
+                all_results = list(pool.map(_run_pass, passes))
 
             elapsed = time.perf_counter() - start
 
@@ -141,70 +148,41 @@ class TesseractOCRProvider(IOCRProvider):
     def _build_passes(
         self, original: Image.Image
     ) -> list[tuple[str, Image.Image, str]]:
-        """Build (pass_name, preprocessed_image, tesseract_config) triples."""
-        pp = self._preprocessor
-        passes: list[tuple[str, Image.Image, str]] = []
+        """Build (pass_name, preprocessed_image, tesseract_config) triples.
 
-        # Shared base: resized (with upscaling for small images)
-        resized = pp.resize_for_ocr(original)
+        Delegates preprocessing to :meth:`ImagePreprocessor.build_ocr_passes`
+        which caches results so fallback providers skip redundant work.
+        """
+        common_passes = self._preprocessor.build_ocr_passes(original)
+        passes: list[tuple[str, Image.Image, str]] = [
+            (name, img, "") for name, img in common_passes
+        ]
 
-        # 1. Standard contrast-enhanced binarized image
-        enhanced = pp.enhance_contrast(resized)
-        binarized = pp.binarize(enhanced)
-        deskewed = pp.deskew(binarized)
-        passes.append(("standard", deskewed, ""))
-
-        # 2. Inverted (light text on dark background — common on rave fliers)
-        inverted = ImageOps.invert(deskewed.convert("RGB"))
-        passes.append(("inverted", inverted, ""))
-
-        # 3. Individual color channels (isolate neon text)
-        channels = pp.separate_color_channels(resized)
-        channel_names = ["red", "green", "blue"]
-        for ch_name, channel in zip(channel_names, channels, strict=True):
-            passes.append((f"channel_{ch_name}", channel.convert("RGB"), ""))
-
-        # 4. CLAHE — localized adaptive contrast (handles uneven lighting)
-        clahe_enhanced = pp.enhance_contrast_clahe(resized)
-        clahe_binarized = pp.binarize(clahe_enhanced)
-        clahe_deskewed = pp.deskew(clahe_binarized)
-        passes.append(("clahe", clahe_deskewed, ""))
-
-        # 5. Denoised — remove camera sensor noise before OCR
-        denoised = pp.denoise(resized)
-        denoised_enhanced = pp.enhance_contrast(denoised)
-        denoised_binarized = pp.binarize(denoised_enhanced)
-        denoised_deskewed = pp.deskew(denoised_binarized)
-        passes.append(("denoised", denoised_deskewed, ""))
-
-        # 6. HSV saturation channel — isolates neon-colored text
-        saturation = pp.extract_saturation_channel(resized)
-        sat_binarized = pp.binarize(saturation.convert("RGB"))
-        passes.append(("saturation", sat_binarized, ""))
-
-        # 7. Otsu binarization — automatic global threshold
-        otsu_enhanced = pp.enhance_contrast(resized)
-        otsu_binarized = pp.binarize_otsu(otsu_enhanced)
-        otsu_deskewed = pp.deskew(otsu_binarized)
-        passes.append(("otsu", otsu_deskewed, ""))
-
-        # 8. Sparse text mode (PSM 11) — finds scattered text at any position
-        passes.append(("sparse", deskewed, "--psm 11"))
+        # Tesseract-specific: sparse text mode (PSM 11)
+        # Reuse the standard deskewed image from the common passes
+        standard_img = common_passes[0][1]
+        passes.append(("sparse", standard_img, "--psm 11"))
 
         return passes
 
     def _run_tesseract(self, image: Image.Image, config: str = "") -> dict | None:
-        """Run Tesseract on a single image and return results dict or None."""
+        """Run Tesseract on a single image and return results dict or None.
+
+        Uses only ``image_to_data`` (not ``image_to_string``) to avoid
+        running Tesseract twice on the same image.  Raw text is
+        reconstructed from the word-level data output.
+        """
         data = pytesseract.image_to_data(
             image, output_type=pytesseract.Output.DICT, config=config
         )
-        raw_text = pytesseract.image_to_string(image, config=config).strip()
-
-        if not raw_text:
-            return None
 
         bounding_boxes: list[TextRegion] = []
         confidences: list[float] = []
+        text_parts: list[str] = []
+
+        # Track block/paragraph boundaries for line-break reconstruction
+        prev_block = -1
+        prev_par = -1
 
         n_boxes = len(data["text"])
         for i in range(n_boxes):
@@ -213,7 +191,16 @@ class TesseractOCRProvider(IOCRProvider):
 
             # Skip empty entries and low-confidence noise (conf == -1 means invalid)
             if word and conf > 0:
+                # Insert line break on block/paragraph change
+                block_num = data["block_num"][i]
+                par_num = data["par_num"][i]
+                if text_parts and (block_num != prev_block or par_num != prev_par):
+                    text_parts.append("\n")
+                prev_block = block_num
+                prev_par = par_num
+
                 confidences.append(conf)
+                text_parts.append(word)
                 bounding_boxes.append(
                     TextRegion(
                         text=word,
@@ -225,6 +212,10 @@ class TesseractOCRProvider(IOCRProvider):
                     )
                 )
 
+        if not text_parts:
+            return None
+
+        raw_text = " ".join(text_parts).replace(" \n ", "\n").strip()
         avg_confidence = (sum(confidences) / len(confidences) / 100.0) if confidences else 0.0
 
         return {

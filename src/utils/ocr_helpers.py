@@ -32,25 +32,36 @@ def deduplicate_text_regions(
         return []
 
     kept: list[TextRegion] = []
+    kept_lower: list[str] = []  # Pre-computed lowercase text for kept regions
 
     for region in regions:
         text_lower = region.text.strip().lower()
         if not text_lower:
             continue
+        text_len = len(text_lower)
 
         is_duplicate = False
-        for idx, existing in enumerate(kept):
-            existing_lower = existing.text.strip().lower()
+        for idx, existing_lower in enumerate(kept_lower):
+            # Length pre-filter: skip if lengths differ too much for a match
+            existing_len = len(existing_lower)
+            if existing_len == 0:
+                continue
+            len_ratio = min(text_len, existing_len) / max(text_len, existing_len)
+            if len_ratio < 0.5:
+                continue
+
             ratio = fuzz.token_sort_ratio(text_lower, existing_lower) / 100.0
             if ratio >= similarity_threshold:
                 # Keep the higher-confidence version
-                if region.confidence > existing.confidence:
+                if region.confidence > kept[idx].confidence:
                     kept[idx] = region
+                    kept_lower[idx] = text_lower
                 is_duplicate = True
                 break
 
         if not is_duplicate:
             kept.append(region)
+            kept_lower.append(text_lower)
 
     return kept
 

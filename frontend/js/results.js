@@ -42,11 +42,12 @@ const Results = (() => {
   // ------------------------------------------------------------------
 
   /** Escape HTML special characters to prevent XSS. */
+  const _ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  const _ESC_RE = /[&<>"']/g;
+
   function _esc(str) {
     if (str == null) return "";
-    const div = document.createElement("div");
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
+    return String(str).replace(_ESC_RE, (ch) => _ESC_MAP[ch]);
   }
 
   /** Map a numeric confidence score to a CSS class suffix. */
@@ -69,6 +70,25 @@ const Results = (() => {
     if (tier === 1) return "tier-gold";
     if (tier === 2) return "tier-silver";
     return "tier-plain";
+  }
+
+  /**
+   * Format narrative text: escape HTML, convert [n] citation refs to
+   * styled superscript marks, and split into paragraphs.
+   */
+  function _formatNarrative(text) {
+    if (!text) return "";
+    // Escape HTML first
+    let safe = _esc(text);
+    // Convert [n] references to superscript citation marks
+    safe = safe.replace(
+      /\[(\d+)\]/g,
+      '<sup class="cite-ref" title="Source [$1]">[$1]</sup>'
+    );
+    // Split into paragraphs on double newlines
+    const paragraphs = safe.split(/\n\s*\n/).filter((p) => p.trim());
+    if (paragraphs.length <= 1) return `<p>${safe}</p>`;
+    return paragraphs.map((p) => `<p>${p.trim()}</p>`).join("\n");
   }
 
   // ------------------------------------------------------------------
@@ -204,6 +224,8 @@ const Results = (() => {
       musicbrainz_url: a.musicbrainz_id
         ? `https://musicbrainz.org/artist/${a.musicbrainz_id}`
         : null,
+      bandcamp_url: a.bandcamp_url || null,
+      beatport_url: a.beatport_url || null,
       releases_count: (a.releases || []).length,
       releases: (a.releases || []).map((r) => ({
         title: r.title,
@@ -211,6 +233,8 @@ const Results = (() => {
         year: r.year,
         format: r.format,
         discogs_url: r.discogs_url,
+        bandcamp_url: r.bandcamp_url || null,
+        beatport_url: r.beatport_url || null,
       })),
       labels,
       label_objects: labelObjects,
@@ -461,13 +485,19 @@ const Results = (() => {
     html += '<div class="expandable__content">';
 
     // External links
-    if (artist.discogs_url || artist.musicbrainz_url) {
+    if (artist.discogs_url || artist.musicbrainz_url || artist.bandcamp_url || artist.beatport_url) {
       html += '<div class="artist-card__links">';
       if (artist.discogs_url) {
         html += `<a href="${_esc(artist.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__link">View on Discogs &rarr;</a>`;
       }
       if (artist.musicbrainz_url) {
         html += `<a href="${_esc(artist.musicbrainz_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__link">View on MusicBrainz &rarr;</a>`;
+      }
+      if (artist.bandcamp_url) {
+        html += `<a href="${_esc(artist.bandcamp_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__link">View on Bandcamp &rarr;</a>`;
+      }
+      if (artist.beatport_url) {
+        html += `<a href="${_esc(artist.beatport_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__link">View on Beatport &rarr;</a>`;
       }
       html += "</div>";
     }
@@ -517,7 +547,13 @@ const Results = (() => {
 
         let li = `<li class="artist-card__list-item">${parts.join(" &mdash; ")}`;
         if (r.discogs_url) {
-          li += ` <a href="${_esc(r.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View release on Discogs">&#x2197;</a>`;
+          li += ` <a href="${_esc(r.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View on Discogs">&#x2197;</a>`;
+        }
+        if (r.bandcamp_url) {
+          li += ` <a href="${_esc(r.bandcamp_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View on Bandcamp">BC</a>`;
+        }
+        if (r.beatport_url) {
+          li += ` <a href="${_esc(r.beatport_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View on Beatport">BP</a>`;
         }
         li += "</li>";
         html += li;
@@ -880,10 +916,10 @@ const Results = (() => {
     let html = '<div class="results-section" id="results-interconnections">';
     html += '<h2 class="results-section__title text-heading">Interconnections</h2>';
 
-    // Narrative
+    // Factual chronicle
     if (narrative) {
       html += '<div class="narrative-prose">';
-      html += `<p>${_esc(narrative)}</p>`;
+      html += _formatNarrative(narrative);
       html += "</div>";
     }
 

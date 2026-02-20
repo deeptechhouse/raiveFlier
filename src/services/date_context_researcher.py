@@ -26,8 +26,8 @@ from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
 
 _CACHE_TTL_SECONDS = 7200  # 2 hours (date context changes less frequently)
-_MAX_SCRAPE_RESULTS = 8
-_MAX_ARTICLE_RESULTS = 10
+_MAX_SCRAPE_RESULTS = 10
+_MAX_ARTICLE_RESULTS = 12
 
 # URL patterns mapped to citation tiers (1 = highest authority)
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
@@ -41,6 +41,7 @@ _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"discogs\.com", re.IGNORECASE), 3),
     (re.compile(r"musicbrainz\.org", re.IGNORECASE), 3),
     (re.compile(r"bandcamp\.com", re.IGNORECASE), 3),
+    (re.compile(r"beatport\.com", re.IGNORECASE), 3),
     (re.compile(r"soundcloud\.com", re.IGNORECASE), 4),
     (re.compile(r"youtube\.com|youtu\.be", re.IGNORECASE), 4),
     (re.compile(r"wikipedia\.org", re.IGNORECASE), 4),
@@ -218,21 +219,28 @@ class DateContextResearcher:
     async def _search_scene_context(
         self, year: int, month_name: str, city: str | None
     ) -> list[SearchResult]:
-        """Search the web for electronic music scene context around the date."""
+        """Search the web for electronic music scene context around the date.
+
+        Uses RA.co as the primary source for scene context.
+        """
         queries: list[str] = []
 
+        # RA.co-first queries
         if city:
+            queries.append(f'site:ra.co "{city}" {year}')
             queries.append(f"{city} rave scene {year}")
             queries.append(f"{city} electronic music {month_name} {year}")
         else:
+            queries.append(f"site:ra.co electronic music {month_name} {year}")
             queries.append(f"electronic music scene {month_name} {year}")
 
+        queries.append(f"site:ra.co events {month_name} {year}")
         queries.append(f"rave culture {year}")
 
         all_results: list[SearchResult] = []
         for query in queries:
             try:
-                results = await self._web_search.search(query=query, num_results=10)
+                results = await self._web_search.search(query=query, num_results=12)
                 all_results.extend(results)
             except ResearchError as exc:
                 self._logger.warning(
@@ -254,6 +262,7 @@ class DateContextResearcher:
     async def _search_cultural_context(self, year: int, month_name: str) -> list[SearchResult]:
         """Search for broader cultural and historical context around the date."""
         queries = [
+            f"site:ra.co features {year}",
             f"electronic music history {year}",
             f"rave legislation law {year}",
             f"nightlife culture {month_name} {year}",
@@ -262,7 +271,7 @@ class DateContextResearcher:
         all_results: list[SearchResult] = []
         for query in queries:
             try:
-                results = await self._web_search.search(query=query, num_results=8)
+                results = await self._web_search.search(query=query, num_results=10)
                 all_results.extend(results)
             except ResearchError as exc:
                 self._logger.warning(

@@ -22,10 +22,10 @@ def mock_llm() -> AsyncMock:
     llm.complete = AsyncMock(return_value=json.dumps({
         "answer": "Test answer about the artist.",
         "citations": [{"text": "Energy Flash, p.142", "source": "Energy Flash", "tier": 1}],
-        "suggested_questions": [
-            {"text": "What labels has this artist released on?", "entity_type": "ARTIST", "entity_name": "Test DJ"},
-            {"text": "Who else played at this venue?", "entity_type": "VENUE", "entity_name": None},
-            {"text": "What was the scene like at this time?", "entity_type": None, "entity_name": None},
+        "related_facts": [
+            {"text": "Test DJ released on Underground Resistance in 1995", "category": "LABEL", "entity_name": "Test DJ"},
+            {"text": "Underground Club opened in 1992 as a warehouse space", "category": "VENUE", "entity_name": None},
+            {"text": "The Criminal Justice Act of 1994 shaped UK rave culture", "category": "HISTORY", "entity_name": None},
         ],
     }))
     return llm
@@ -104,14 +104,14 @@ class TestQAServiceBasic:
         assert isinstance(result.citations, list)
 
     @pytest.mark.asyncio()
-    async def test_ask_returns_suggested_questions(
+    async def test_ask_returns_related_facts(
         self, mock_llm: AsyncMock, mock_vector_store: AsyncMock, mock_cache: AsyncMock, sample_session_context: dict
     ) -> None:
         service = QAService(llm=mock_llm, vector_store=mock_vector_store, cache=mock_cache)
         result = await service.ask("Tell me about this artist", sample_session_context, "ARTIST", "Test DJ")
 
-        assert isinstance(result.suggested_questions, list)
-        assert len(result.suggested_questions) > 0
+        assert isinstance(result.related_facts, list)
+        assert len(result.related_facts) > 0
 
     @pytest.mark.asyncio()
     async def test_ask_calls_vector_store_query(
@@ -180,7 +180,7 @@ class TestQAServiceCaching:
         cached_data = json.dumps({
             "answer": "Cached answer",
             "citations": [],
-            "suggested_questions": [{"text": "cached question?"}],
+            "related_facts": [{"text": "Cached fact about the scene", "category": "SCENE"}],
         })
         mock_cache.get = AsyncMock(return_value=cached_data)
 

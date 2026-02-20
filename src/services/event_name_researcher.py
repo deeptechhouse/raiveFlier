@@ -263,20 +263,30 @@ class EventNameResearcher:
     async def _search_event_instances(
         self, event_name: str, promoter_name: str | None
     ) -> list[SearchResult]:
-        """Search the web for instances of the named event."""
+        """Search the web for instances of the named event.
+
+        Prioritizes Resident Advisor (ra.co) for authoritative event
+        listings with linked artist and venue data.
+        """
         queries = [
+            f'site:ra.co/events "{event_name}"',
             f'"{event_name}" rave OR club OR electronic music event',
-            f'"{event_name}" party night lineup',
+            f'"{event_name}" party night lineup promoter',
         ]
 
         if promoter_name:
             queries.append(f'"{event_name}" "{promoter_name}"')
+            queries.append(f'site:ra.co "{event_name}" "{promoter_name}"')
 
         all_results: list[SearchResult] = []
+        seen_urls: set[str] = set()
         for query in queries:
             try:
-                results = await self._web_search.search(query=query, num_results=10)
-                all_results.extend(results)
+                results = await self._web_search.search(query=query, num_results=15)
+                for r in results:
+                    if r.url not in seen_urls:
+                        seen_urls.add(r.url)
+                        all_results.append(r)
             except ResearchError as exc:
                 self._logger.warning(
                     "Event search failed",
@@ -284,15 +294,23 @@ class EventNameResearcher:
                     error=str(exc),
                 )
 
-        # Deduplicate by URL
-        seen_urls: set[str] = set()
-        unique: list[SearchResult] = []
-        for result in all_results:
-            if result.url not in seen_urls:
-                seen_urls.add(result.url)
-                unique.append(result)
+        # Deepen if thin results
+        if len(all_results) < 3:
+            deeper = [
+                f'"{event_name}" event history past editions',
+                f'"{event_name}" Resident Advisor OR Mixmag',
+            ]
+            for query in deeper:
+                try:
+                    results = await self._web_search.search(query=query, num_results=10)
+                    for r in results:
+                        if r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            all_results.append(r)
+                except ResearchError:
+                    continue
 
-        return unique
+        return all_results
 
     async def _scrape_results(self, results: list[SearchResult]) -> list[str]:
         """Scrape article content from search results, returning extracted text."""

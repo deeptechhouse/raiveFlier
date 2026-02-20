@@ -1393,6 +1393,26 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-loose);
   color: var(--color-text-primary);
+  margin-bottom: var(--space-3);
+}
+
+.narrative-prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* Inline citation superscripts  [n] */
+.cite-ref {
+  font-family: var(--font-mono);
+  font-size: 0.7em;
+  color: var(--color-accent);
+  opacity: 0.85;
+  vertical-align: super;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+
+.cite-ref:hover {
+  opacity: 1;
 }
 
 
@@ -2228,19 +2248,29 @@ body {
   opacity: 0.7;
 }
 
-/* Suggested questions */
-.qa-suggestions {
+/* Related facts */
+.qa-facts {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.25rem 0;
 }
 
-.qa-suggestions--initial {
+.qa-facts--initial {
   padding: 0;
 }
 
-.qa-suggestion {
+.qa-facts__label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: 100%;
+  margin-bottom: 0.2rem;
+}
+
+.qa-fact {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-accent-text);
@@ -2252,17 +2282,33 @@ body {
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   text-align: left;
   line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.qa-suggestion:hover {
+.qa-fact:hover {
   background: var(--color-accent-muted);
   border-color: rgba(106, 74, 138, 0.4);
   color: var(--color-text-primary);
 }
 
-.qa-suggestion:focus-visible {
+.qa-fact:focus-visible {
   outline: 2px solid var(--color-accent-text);
   outline-offset: 2px;
+}
+
+.qa-fact__category {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 /* Input bar */

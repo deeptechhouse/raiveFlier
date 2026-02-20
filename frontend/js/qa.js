@@ -3,7 +3,8 @@
  *
  * Renders a slide-in drawer panel where users can ask follow-up questions
  * about analysis results. Answers are powered by RAG retrieval + LLM.
- * Suggested follow-up questions are displayed as clickable chips.
+ * Related facts are displayed as clickable chips that expand into
+ * contextual explanations of how they relate to the analysis.
  */
 
 "use strict";
@@ -100,8 +101,8 @@ const QA = (() => {
     return `<div class="qa-message qa-message--user"><p>${_esc(text)}</p></div>`;
   }
 
-  /** Render an assistant answer with citations and suggestions. */
-  function _renderAssistantMessage(answer, citations, suggestions) {
+  /** Render an assistant answer with citations and related fact chips. */
+  function _renderAssistantMessage(answer, citations, facts) {
     let html = '<div class="qa-message qa-message--assistant">';
 
     // Answer text (preserve paragraphs)
@@ -123,14 +124,16 @@ const QA = (() => {
 
     html += "</div>";
 
-    // Suggested questions
-    if (suggestions && suggestions.length > 0) {
-      html += '<div class="qa-suggestions">';
-      suggestions.forEach((s) => {
-        const text = typeof s === "string" ? s : s.text;
-        const eType = typeof s === "object" ? (s.entity_type || "") : "";
-        const eName = typeof s === "object" ? (s.entity_name || "") : "";
-        html += `<button type="button" class="qa-suggestion" data-question="${_esc(text)}" data-entity-type="${_esc(eType)}" data-entity-name="${_esc(eName)}">${_esc(text)}</button>`;
+    // Related facts
+    if (facts && facts.length > 0) {
+      html += '<div class="qa-facts">';
+      html += '<span class="qa-facts__label">Related facts:</span>';
+      facts.forEach((f) => {
+        const text = typeof f === "string" ? f : f.text;
+        const category = typeof f === "object" ? (f.category || "") : "";
+        const eName = typeof f === "object" ? (f.entity_name || "") : "";
+        const categoryLabel = category ? `<span class="qa-fact__category">${_esc(category)}</span>` : "";
+        html += `<button type="button" class="qa-fact" data-fact="${_esc(text)}" data-category="${_esc(category)}" data-entity-name="${_esc(eName)}">${categoryLabel}${_esc(text)}</button>`;
       });
       html += "</div>";
     }
@@ -141,6 +144,14 @@ const QA = (() => {
   /** Render a loading indicator. */
   function _renderLoading() {
     return '<div class="qa-message qa-message--loading"><span class="qa-loading-dots"><span></span><span></span><span></span></span></div>';
+  }
+
+  /** Build a relational query from a clicked fact chip. */
+  function _buildFactQuery(factText) {
+    const contextLabel = _currentEntityName
+      ? `the analysis of ${_currentEntityName}`
+      : "this flier's analysis";
+    return `Tell me how this relates to ${contextLabel}: ${factText}`;
   }
 
   /** Re-render all messages from history. */
@@ -163,15 +174,13 @@ const QA = (() => {
 
     container.innerHTML = html;
 
-    // Attach click handlers to suggestion buttons
-    container.querySelectorAll(".qa-suggestion").forEach((btn) => {
+    // Attach click handlers to fact chip buttons
+    container.querySelectorAll(".qa-fact").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const q = btn.dataset.question;
-        const eType = btn.dataset.entityType || _currentEntityType;
+        const factText = btn.dataset.fact;
         const eName = btn.dataset.entityName || _currentEntityName;
-        _currentEntityType = eType || _currentEntityType;
         _currentEntityName = eName || _currentEntityName;
-        _submitQuestion(q);
+        _submitQuestion(_buildFactQuery(factText));
       });
     });
 
@@ -232,7 +241,7 @@ const QA = (() => {
         role: "assistant",
         content: data.answer,
         citations: data.citations || [],
-        suggestions: data.suggested_questions || [],
+        suggestions: data.related_facts || [],
       });
     } catch (err) {
       _history.push({
@@ -293,22 +302,24 @@ const QA = (() => {
       setTimeout(() => input.focus(), 300); // after transition
     }
 
-    // Add initial suggestion if entity context
+    // Add initial fact chips if entity context is provided
     if (entityName) {
-      const initialSuggestions = _getInitialSuggestions(entityType, entityName);
-      if (initialSuggestions.length > 0) {
+      const initialFacts = _getInitialFacts(entityType, entityName);
+      if (initialFacts.length > 0) {
         const container = _getMessages();
         if (container) {
-          let html = '<div class="qa-suggestions qa-suggestions--initial">';
-          initialSuggestions.forEach((s) => {
-            html += `<button type="button" class="qa-suggestion" data-question="${_esc(s.text)}" data-entity-type="${_esc(s.entity_type || "")}" data-entity-name="${_esc(s.entity_name || "")}">${_esc(s.text)}</button>`;
+          let html = '<div class="qa-facts qa-facts--initial">';
+          initialFacts.forEach((f) => {
+            const categoryLabel = f.category ? `<span class="qa-fact__category">${_esc(f.category)}</span>` : "";
+            html += `<button type="button" class="qa-fact" data-fact="${_esc(f.text)}" data-category="${_esc(f.category || "")}" data-entity-name="${_esc(f.entity_name || "")}">${categoryLabel}${_esc(f.text)}</button>`;
           });
           html += "</div>";
           container.innerHTML = html;
 
-          container.querySelectorAll(".qa-suggestion").forEach((btn) => {
+          container.querySelectorAll(".qa-fact").forEach((btn) => {
             btn.addEventListener("click", () => {
-              _submitQuestion(btn.dataset.question);
+              const factText = btn.dataset.fact;
+              _submitQuestion(`Tell me about: ${factText}`);
             });
           });
         }
@@ -325,36 +336,36 @@ const QA = (() => {
     _isOpen = false;
   }
 
-  /** Generate contextual starter questions. */
-  function _getInitialSuggestions(entityType, entityName) {
+  /** Generate contextual starter fact chips for the drawer opening. */
+  function _getInitialFacts(entityType, entityName) {
     if (!entityType || !entityName) return [];
 
     const name = entityName;
     switch (entityType.toUpperCase()) {
       case "ARTIST":
         return [
-          { text: `What genre is ${name} known for?`, entity_type: "ARTIST", entity_name: name },
-          { text: `What labels has ${name} released on?`, entity_type: "ARTIST", entity_name: name },
-          { text: `Who has ${name} played with before?`, entity_type: "ARTIST", entity_name: name },
-          { text: `What is ${name}'s most notable release?`, entity_type: "ARTIST", entity_name: name },
+          { text: `${name}'s record label history`, category: "LABEL", entity_name: name },
+          { text: `${name}'s notable releases and discography`, category: "ARTIST", entity_name: name },
+          { text: `Artists and collaborators connected to ${name}`, category: "CONNECTION", entity_name: name },
+          { text: `${name}'s place in the scene`, category: "SCENE", entity_name: name },
         ];
       case "VENUE":
         return [
-          { text: `What is the history of ${name}?`, entity_type: "VENUE", entity_name: name },
-          { text: `What notable events have been held at ${name}?`, entity_type: "VENUE", entity_name: name },
-          { text: `What DJs are associated with ${name}?`, entity_type: "VENUE", entity_name: name },
+          { text: `History and significance of ${name}`, category: "VENUE", entity_name: name },
+          { text: `Notable events held at ${name}`, category: "VENUE", entity_name: name },
+          { text: `Artists and scenes associated with ${name}`, category: "CONNECTION", entity_name: name },
         ];
       case "PROMOTER":
         return [
-          { text: `What events has ${name} organized?`, entity_type: "PROMOTER", entity_name: name },
-          { text: `What venues does ${name} work with?`, entity_type: "PROMOTER", entity_name: name },
-          { text: `What scene is ${name} associated with?`, entity_type: "PROMOTER", entity_name: name },
+          { text: `Events organized by ${name}`, category: "HISTORY", entity_name: name },
+          { text: `Venues and scenes ${name} is associated with`, category: "CONNECTION", entity_name: name },
+          { text: `${name}'s role in the local scene`, category: "SCENE", entity_name: name },
         ];
       case "DATE":
         return [
-          { text: "What was happening in the rave scene at this time?", entity_type: "DATE", entity_name: name },
-          { text: "What other events were happening around this date?", entity_type: "DATE", entity_name: name },
-          { text: "What was the cultural context of this era?", entity_type: "DATE", entity_name: name },
+          { text: `Rave scene around ${name}`, category: "HISTORY", entity_name: name },
+          { text: `Cultural and political context of ${name}`, category: "HISTORY", entity_name: name },
+          { text: `Notable releases and events from this period`, category: "SCENE", entity_name: name },
         ];
       default:
         return [];

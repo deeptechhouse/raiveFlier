@@ -110,17 +110,17 @@ class AskQuestionRequest(BaseModel):
     entity_name: str | None = None
 
 
-class SuggestedQuestion(BaseModel):
-    """A suggested follow-up question."""
+class RelatedFact(BaseModel):
+    """A contextual fact related to the flier's entities."""
 
     text: str
-    entity_type: str | None = None
+    category: str | None = None  # LABEL, HISTORY, SCENE, VENUE, ARTIST, CONNECTION
     entity_name: str | None = None
 
 
 class AskQuestionResponse(BaseModel):
-    """Response to a user question with answer, citations, and suggestions."""
+    """Response to a user question with answer, citations, and related facts."""
 
     answer: str
     citations: list[dict[str, Any]] = Field(default_factory=list)
-    suggested_questions: list[SuggestedQuestion] = Field(default_factory=list)
+    related_facts: list[RelatedFact] = Field(default_factory=list)

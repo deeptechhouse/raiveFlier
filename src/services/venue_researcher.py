@@ -228,16 +228,20 @@ class VenueResearcher:
 
     async def _search_venue_history(self, venue_name: str, city: str | None) -> list[SearchResult]:
         """Search the web for venue history and background information."""
-        queries = [f'"{venue_name}" venue history']
+        city_clause = f" {city}" if city else ""
+        queries = [
+            f'site:ra.co/clubs "{venue_name}"',
+            f'"{venue_name}"{city_clause} venue history',
+        ]
         if city:
-            queries.append(f'"{venue_name}" {city} nightclub')
+            queries.append(f'"{venue_name}" {city} nightclub events')
         else:
-            queries.append(f'"{venue_name}" nightclub club')
+            queries.append(f'"{venue_name}" nightclub club events')
 
         all_results: list[SearchResult] = []
         for query in queries:
             try:
-                results = await self._web_search.search(query=query, num_results=10)
+                results = await self._web_search.search(query=query, num_results=15)
                 all_results.extend(results)
             except ResearchError as exc:
                 self._logger.warning(
@@ -327,14 +331,15 @@ class VenueResearcher:
         """Search for press articles mentioning the venue."""
         city_clause = f" {city}" if city else ""
         queries = [
-            f'"{venue_name}"{city_clause} Resident Advisor OR Mixmag OR "DJ Mag"',
-            f'"{venue_name}" nightclub review OR history',
+            f'site:ra.co "{venue_name}"',
+            f'"{venue_name}"{city_clause} "Resident Advisor" OR Mixmag OR "DJ Mag"',
+            f'"{venue_name}" nightclub review OR history OR events',
         ]
 
         all_results: list[SearchResult] = []
         for query in queries:
             try:
-                results = await self._web_search.search(query=query, num_results=10)
+                results = await self._web_search.search(query=query, num_results=15)
                 all_results.extend(results)
             except ResearchError as exc:
                 self._logger.warning(

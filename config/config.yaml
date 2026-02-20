@@ -9,12 +9,12 @@ ocr:
     - llm_vision
     - easyocr
     - tesseract
-  min_confidence: 0.5
+  min_confidence: 0.3
 
 llm:
   default_provider: openai
-  temperature: 0.3
-  max_tokens: 4000
+  temperature: 0.1
+  max_tokens: 6000
 
 music_db:
   primary: discogs_api

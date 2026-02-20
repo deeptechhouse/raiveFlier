@@ -26,8 +26,9 @@ if TYPE_CHECKING:
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
 _CACHE_TTL_SECONDS = 3600  # 1 hour
-_MAX_SCRAPE_RESULTS = 8
-_MAX_ARTICLE_RESULTS = 10
+_MAX_SCRAPE_RESULTS = 10
+_MAX_ARTICLE_RESULTS = 12
+_MIN_ADEQUATE_RESULTS = 4
 
 # URL patterns mapped to citation tiers (1 = highest authority)
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
@@ -41,6 +42,7 @@ _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"discogs\.com", re.IGNORECASE), 3),
     (re.compile(r"musicbrainz\.org", re.IGNORECASE), 3),
     (re.compile(r"bandcamp\.com", re.IGNORECASE), 3),
+    (re.compile(r"beatport\.com", re.IGNORECASE), 3),
     (re.compile(r"soundcloud\.com", re.IGNORECASE), 4),
     (re.compile(r"youtube\.com|youtu\.be", re.IGNORECASE), 4),
     (re.compile(r"wikipedia\.org", re.IGNORECASE), 4),
@@ -233,17 +235,23 @@ class PromoterResearcher:
         return refs
 
     async def _search_promoter_activity(self, promoter_name: str) -> list[SearchResult]:
-        """Search the web for promoter event activity and history."""
+        """Search the web for promoter event activity and history.
+
+        Uses RA.co as the primary source, then general web searches.
+        Performs adaptive deepening if initial results are sparse.
+        """
+        # Phase 1 — RA.co-first + general queries
         queries = [
+            f'site:ra.co/promoters "{promoter_name}"',
+            f'site:ra.co/events "{promoter_name}"',
             f'"{promoter_name}" promoter events',
-            f'"{promoter_name}" rave',
-            f'"{promoter_name}" club night party',
+            f'"{promoter_name}" rave club night party',
         ]
 
         all_results: list[SearchResult] = []
         for query in queries:
             try:
-                results = await self._web_search.search(query=query, num_results=10)
+                results = await self._web_search.search(query=query, num_results=12)
                 all_results.extend(results)
             except ResearchError as exc:
                 self._logger.warning(
@@ -260,7 +268,32 @@ class PromoterResearcher:
                 seen_urls.add(result.url)
                 unique.append(result)
 
-        return unique
+        # Phase 2 — Adaptive deepening if sparse results
+        if len(unique) < _MIN_ADEQUATE_RESULTS:
+            self._logger.info(
+                "Sparse promoter results, deepening search",
+                promoter=promoter_name,
+                initial_count=len(unique),
+            )
+            deepening_queries = [
+                f'"{promoter_name}" promoter DJ event lineup',
+                f'"{promoter_name}" nightlife organizer',
+                f'site:ra.co "{promoter_name}"',
+            ]
+            for query in deepening_queries:
+                try:
+                    results = await self._web_search.search(query=query, num_results=10)
+                    for r in results:
+                        if r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            unique.append(r)
+                except ResearchError:
+                    pass
+
+        # Sort: RA.co results first
+        ra_results = [r for r in unique if "ra.co" in r.url]
+        other_results = [r for r in unique if "ra.co" not in r.url]
+        return ra_results + other_results
 
     async def _scrape_results(self, results: list[SearchResult]) -> list[str]:
         """Scrape article content from search results, returning extracted text."""

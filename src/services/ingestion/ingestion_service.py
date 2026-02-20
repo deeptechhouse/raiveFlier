@@ -10,6 +10,7 @@ into the RAG knowledge base.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -319,36 +320,39 @@ class IngestionService:
             logger.error("ingest_directory_not_found", dir_path=dir_path)
             return []
 
-        results: list[IngestionResult] = []
         files = sorted(path.glob("*.txt")) + sorted(path.glob("*.html"))
+        semaphore = asyncio.Semaphore(4)
 
-        for file_path in files:
-            start = time.monotonic()
-            raw_chunks = self._article_processor.process_file(
-                str(file_path), source_type=source_type
-            )
-            if not raw_chunks:
-                continue
+        async def _process_file(fp: Path) -> IngestionResult | None:
+            async with semaphore:
+                start = time.monotonic()
+                raw_chunks = self._article_processor.process_file(
+                    str(fp), source_type=source_type
+                )
+                if not raw_chunks:
+                    return None
 
-            source_id = raw_chunks[0].source_id
-            all_chunks: list[DocumentChunk] = []
-            for rc in raw_chunks:
-                metadata = {
-                    "source_id": rc.source_id,
-                    "source_title": rc.source_title,
-                    "source_type": rc.source_type,
-                    "citation_tier": rc.citation_tier,
-                }
-                chunks = self._chunker.chunk(rc.text, metadata)
-                all_chunks.extend(chunks)
+                source_id = raw_chunks[0].source_id
+                all_chunks: list[DocumentChunk] = []
+                for rc in raw_chunks:
+                    metadata = {
+                        "source_id": rc.source_id,
+                        "source_title": rc.source_title,
+                        "source_type": rc.source_type,
+                        "citation_tier": rc.citation_tier,
+                    }
+                    chunks = self._chunker.chunk(rc.text, metadata)
+                    all_chunks.extend(chunks)
 
-            result = await self._tag_embed_store(
-                all_chunks,
-                source_id=source_id,
-                title=file_path.name,
-                start=start,
-            )
-            results.append(result)
+                return await self._tag_embed_store(
+                    all_chunks,
+                    source_id=source_id,
+                    title=fp.name,
+                    start=start,
+                )
+
+        raw_results = await asyncio.gather(*[_process_file(f) for f in files])
+        results = [r for r in raw_results if r is not None]
 
         logger.info(
             "directory_ingestion_complete",
@@ -387,9 +391,7 @@ class IngestionService:
         stored = await self._vector_store.add_chunks(tagged_chunks, embeddings)
 
         elapsed = time.monotonic() - start
-        total_tokens = sum(
-            self._chunker._count_tokens(c.text) for c in tagged_chunks  # noqa: SLF001
-        )
+        total_tokens = sum(c.token_count for c in tagged_chunks)
 
         result = IngestionResult(
             source_id=source_id,

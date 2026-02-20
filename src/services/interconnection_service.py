@@ -124,8 +124,10 @@ class InterconnectionService:
 
         # Step 2 — LLM analysis
         system_prompt = (
-            "You are an expert music historian specialising in underground "
-            "electronic music culture."
+            "You are a factual music research analyst.  You report only "
+            "verified facts from the data provided, with inline source "
+            "citations.  You never invent, embellish, or speculate.  "
+            "Silence is preferable to unsourced claims."
         )
         user_prompt = self._build_synthesis_prompt(compiled_context)
 
@@ -133,8 +135,8 @@ class InterconnectionService:
             response = await self._llm.complete(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                temperature=0.3,
-                max_tokens=4000,
+                temperature=0.1,
+                max_tokens=5000,
             )
         except Exception as exc:
             self._logger.error(
@@ -185,10 +187,10 @@ class InterconnectionService:
 
     @staticmethod
     def _compile_research_context(results: list[ResearchResult]) -> str:
-        """Compile all research results into a structured text summary.
+        """Compile all research results into a structured, source-indexed summary.
 
-        For each entity the summary includes: name, type, key data points,
-        and the sources consulted.
+        Every citable fact is tagged with a numbered source reference ``[n]``
+        so the LLM can produce inline citations in its output.
 
         Parameters
         ----------
@@ -198,9 +200,19 @@ class InterconnectionService:
         Returns
         -------
         str
-            Multi-section text block ready for LLM consumption.
+            Multi-section text block with a source index appended.
         """
         sections: list[str] = []
+        # Global source index: maps source_key → (index, display_label, url)
+        source_index: dict[str, tuple[int, str, str | None]] = {}
+
+        def _ref(label: str, url: str | None = None) -> str:
+            """Return ``[n]`` for *label*, registering the source if new."""
+            key = (label.lower().strip(), (url or "").lower().strip())
+            if key not in source_index:
+                idx = len(source_index) + 1
+                source_index[key] = (idx, label, url)
+            return f"[{source_index[key][0]}]"
 
         for result in results:
             header = f"=== {result.entity_type.value}: {result.entity_name} ==="
@@ -218,31 +230,34 @@ class InterconnectionService:
                 if artist.releases:
                     rel_lines: list[str] = []
                     for r in artist.releases[:15]:
+                        src = r.label or "release"
+                        ref = _ref(src, r.discogs_url or r.bandcamp_url or r.beatport_url)
                         line = f"  - {r.title}"
                         if r.label:
                             line += f" ({r.label})"
                         if r.year:
                             line += f" [{r.year}]"
+                        line += f" {ref}"
                         rel_lines.append(line)
                     parts.append("Releases:\n" + "\n".join(rel_lines))
                 if artist.appearances:
                     app_lines: list[str] = []
                     for a in artist.appearances[:10]:
+                        src_label = a.source or "event listing"
+                        ref = _ref(src_label, a.source_url)
                         line = f"  - {a.event_name or 'Event'}"
                         if a.venue:
                             line += f" at {a.venue}"
                         if a.date:
                             line += f" ({a.date.isoformat()})"
-                        if a.source:
-                            line += f" [source: {a.source}]"
+                        line += f" {ref}"
                         app_lines.append(line)
                     parts.append("Appearances:\n" + "\n".join(app_lines))
                 if artist.articles:
                     art_lines: list[str] = []
                     for a in artist.articles[:10]:
-                        line = f"  - {a.title} ({a.source})"
-                        if a.url:
-                            line += f" [{a.url}]"
+                        ref = _ref(f"{a.title} ({a.source})", a.url)
+                        line = f"  - {a.title} ({a.source}) {ref}"
                         art_lines.append(line)
                     parts.append("Articles:\n" + "\n".join(art_lines))
 
@@ -264,9 +279,8 @@ class InterconnectionService:
                 if venue.articles:
                     art_lines = []
                     for a in venue.articles[:10]:
-                        line = f"  - {a.title} ({a.source})"
-                        if a.url:
-                            line += f" [{a.url}]"
+                        ref = _ref(f"{a.title} ({a.source})", a.url)
+                        line = f"  - {a.title} ({a.source}) {ref}"
                         art_lines.append(line)
                     parts.append("Articles:\n" + "\n".join(art_lines))
 
@@ -283,9 +297,8 @@ class InterconnectionService:
                 if promoter.articles:
                     art_lines = []
                     for a in promoter.articles[:10]:
-                        line = f"  - {a.title} ({a.source})"
-                        if a.url:
-                            line += f" [{a.url}]"
+                        ref = _ref(f"{a.title} ({a.source})", a.url)
+                        line = f"  - {a.title} ({a.source}) {ref}"
                         art_lines.append(line)
                     parts.append("Articles:\n" + "\n".join(art_lines))
 
@@ -300,11 +313,24 @@ class InterconnectionService:
                     parts.append(f"Cultural context: {dc.cultural_context}")
                 if dc.nearby_events:
                     parts.append("Nearby events: " + ", ".join(dc.nearby_events[:10]))
+                if dc.sources:
+                    for s in dc.sources[:10]:
+                        _ref(f"{s.title} ({s.source})", s.url)
 
             if result.sources_consulted:
                 parts.append("Sources consulted: " + ", ".join(result.sources_consulted))
 
             sections.append("\n".join(parts))
+
+        # Append the numbered source index
+        if source_index:
+            idx_lines = ["\n=== SOURCE INDEX ==="]
+            for _key, (idx, label, url) in sorted(source_index.items(), key=lambda x: x[1][0]):
+                entry = f"[{idx}] {label}"
+                if url:
+                    entry += f"  —  {url}"
+                idx_lines.append(entry)
+            sections.append("\n".join(idx_lines))
 
         return "\n\n".join(sections)
 
@@ -380,10 +406,13 @@ class InterconnectionService:
     def _build_synthesis_prompt(compiled_context: str) -> str:
         """Build the LLM user prompt for interconnection synthesis.
 
+        The prompt requests a strictly fact-based chronicle with inline
+        numbered citations — no generated story or speculation.
+
         Parameters
         ----------
         compiled_context:
-            The compiled research context text.
+            The compiled research context text with numbered source index.
 
         Returns
         -------
@@ -391,58 +420,72 @@ class InterconnectionService:
             Full synthesis prompt with the context embedded.
         """
         return (
-            "You are an expert music historian specializing in underground "
-            "electronic music culture.\n"
-            "\n"
-            "You have been given detailed research on all entities connected "
-            "to a single rave/electronic music event flier. Your task is to "
-            "trace ALL interconnections, relationships, and historical threads "
-            "linking these entities.\n"
+            "You have been given detailed, source-indexed research on all "
+            "entities connected to a single rave/electronic music event "
+            "flier.  Every fact in the research data has a numbered source "
+            "reference like [1], [2], etc.  A SOURCE INDEX at the end maps "
+            "each number to its origin.\n"
             "\n"
             "RESEARCH DATA:\n"
             f"{compiled_context}\n"
             "\n"
-            "ANALYSIS REQUIREMENTS:\n"
-            "1. SHARED LABELS: Identify any record labels that multiple "
-            "artists on this flier have released on.\n"
-            "2. SHARED LINEUPS: Identify previous events where two or more "
-            "of these artists appeared together.\n"
-            "3. PROMOTER-ARTIST LINKS: Trace how the promoter connects to "
-            "each artist (past bookings, shared scenes, geographic ties).\n"
-            "4. VENUE-SCENE CONNECTIONS: How does this venue fit into the "
-            "broader scene? What kind of events is it known for?\n"
-            "5. GEOGRAPHIC PATTERNS: Are these artists from the same "
-            "city/region? Is there a geographic cluster?\n"
-            "6. TEMPORAL PATTERNS: How does this event fit into the timeline "
-            "of these artists' careers?\n"
-            "7. SCENE CONTEXT: What movement or subgenre does this event "
-            "represent? Who are the key figures?\n"
+            "YOUR TASK:\n"
+            "Produce a factual chronicle that traces the path leading up to "
+            "this event.  The chronicle must be built ENTIRELY from the "
+            "facts provided — do NOT generate, invent, or embellish any "
+            "content.  Every factual statement MUST include its source "
+            "reference number inline, e.g. 'Artist X released Y on Label Z "
+            "[3].'  If a fact has no source number, omit it.\n"
             "\n"
-            "CRITICAL RULES:\n"
-            "- EVERY claim must cite a specific source from the research "
-            "data provided\n"
-            "- If you cannot find a source for a claim, DO NOT include it\n"
-            "- Distinguish between confirmed facts and reasonable inferences\n"
-            "- Flag uncertain connections with [UNCERTAIN]\n"
-            "- Prioritize first-hand sources (books, contemporary press) "
-            "over later retrospectives\n"
+            "ANALYSIS REQUIREMENTS:\n"
+            "1. SHARED LABELS: Record labels where multiple artists on "
+            "this flier have released music, with source references.\n"
+            "2. SHARED LINEUPS: Previous events where two or more of "
+            "these artists appeared together, with dates and sources.\n"
+            "3. PROMOTER-ARTIST LINKS: How the promoter connects to "
+            "each artist — past bookings, shared scenes, geographic ties "
+            "— citing specific events or articles.\n"
+            "4. VENUE-SCENE CONNECTIONS: The venue's role in the broader "
+            "scene — what events it is known for, cited from research.\n"
+            "5. GEOGRAPHIC PATTERNS: Whether artists are from the same "
+            "city/region and how that relates to the event.\n"
+            "6. TEMPORAL PATTERNS: Where this event falls in each "
+            "artist's career timeline.\n"
+            "7. SCENE CONTEXT: What movement or subgenre this event "
+            "represents, grounded in cited facts.\n"
+            "\n"
+            "STRICT RULES:\n"
+            "- ONLY state facts that appear in the research data above.\n"
+            "- EVERY factual claim MUST include at least one [n] source "
+            "reference from the SOURCE INDEX.\n"
+            "- Do NOT add connective language that implies causation, "
+            "motivation, or intent unless a source explicitly states it.\n"
+            "- Do NOT speculate or fill gaps.  If information is missing, "
+            "say nothing about it — silence is better than invention.\n"
+            "- Flag genuinely uncertain connections with [UNCERTAIN].\n"
+            "- Prioritize first-hand sources (tier 1-2) over secondary.\n"
             "\n"
             "Return your analysis as JSON:\n"
             "{\n"
             '  "relationships": [\n'
             '    {"source": "entity1", "target": "entity2", '
-            '"type": "relationship_type", "details": "explanation", '
-            '"source_citation": "where this fact comes from", '
+            '"type": "relationship_type", "details": "factual explanation '
+            'with [n] inline citations", '
+            '"source_citation": "the [n] reference(s) used", '
             '"confidence": 0.0-1.0}\n'
             "  ],\n"
             '  "patterns": [\n'
-            '    {"type": "pattern_type", "description": "what the pattern '
-            'is", "entities": ["entity1", "entity2"], '
-            '"source_citation": "source"}\n'
+            '    {"type": "pattern_type", "description": "factual pattern '
+            'with [n] citations", "entities": ["entity1", "entity2"], '
+            '"source_citation": "[n] reference(s)"}\n'
             "  ],\n"
-            '  "narrative": "A 2-3 paragraph narrative summary of how all '
-            "these entities connect, written in an engaging style suitable "
-            'for a music history reader."\n'
+            '  "narrative": "A multi-paragraph factual chronicle of the '
+            "path leading to this event, built from cited facts only.  "
+            "Each sentence that states a fact includes its [n] source "
+            "reference inline.  No embellishment, no invented connective "
+            "tissue — just facts arranged in meaningful order.  End with "
+            "a brief factual summary of how these entities converge at "
+            'this event."\n'
             "}"
         )
 

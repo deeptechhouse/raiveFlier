@@ -99,6 +99,7 @@ class TextChunker:
             chunk = DocumentChunk(
                 chunk_id=str(uuid.uuid4()),
                 text=chunk_text,
+                token_count=self._count_tokens(chunk_text),
                 source_id=str(source_metadata.get("source_id", "")),
                 source_title=str(source_metadata.get("source_title", "")),
                 source_type=str(source_metadata.get("source_type", "unknown")),
@@ -194,7 +195,7 @@ class TextChunker:
     def _accumulate_chunks(self, paragraphs: list[str]) -> list[str]:
         """Accumulate paragraphs into chunks respecting *chunk_size* and *overlap*."""
         chunks: list[str] = []
-        current_parts: list[str] = []
+        current_parts: list[tuple[str, int]] = []  # (text, token_count)
         current_tokens = 0
 
         for para in paragraphs:
@@ -204,7 +205,7 @@ class TextChunker:
             if para_tokens > self._chunk_size:
                 # Flush anything accumulated so far.
                 if current_parts:
-                    chunks.append("\n\n".join(current_parts))
+                    chunks.append("\n\n".join(t for t, _ in current_parts))
                     current_parts = []
                     current_tokens = 0
 
@@ -214,17 +215,17 @@ class TextChunker:
 
             # Would adding this paragraph exceed the limit?
             if current_tokens + para_tokens > self._chunk_size and current_parts:
-                chunks.append("\n\n".join(current_parts))
+                chunks.append("\n\n".join(t for t, _ in current_parts))
 
                 # Start next chunk with overlap from the tail of the previous.
                 current_parts, current_tokens = self._build_overlap(current_parts)
 
-            current_parts.append(para)
+            current_parts.append((para, para_tokens))
             current_tokens += para_tokens
 
         # Flush remaining content.
         if current_parts:
-            chunks.append("\n\n".join(current_parts))
+            chunks.append("\n\n".join(t for t, _ in current_parts))
 
         return chunks
 
@@ -232,36 +233,37 @@ class TextChunker:
         """Split a paragraph that exceeds *chunk_size* at sentence boundaries."""
         sentences = self._split_sentences(paragraph)
         chunks: list[str] = []
-        current_parts: list[str] = []
+        current_parts: list[tuple[str, int]] = []
         current_tokens = 0
 
         for sentence in sentences:
             sent_tokens = self._count_tokens(sentence)
             if current_tokens + sent_tokens > self._chunk_size and current_parts:
-                chunks.append(" ".join(current_parts))
+                chunks.append(" ".join(t for t, _ in current_parts))
                 # Overlap: keep trailing sentences.
                 current_parts, current_tokens = self._build_overlap_sentences(current_parts)
-            current_parts.append(sentence)
+            current_parts.append((sentence, sent_tokens))
             current_tokens += sent_tokens
 
         if current_parts:
-            chunks.append(" ".join(current_parts))
+            chunks.append(" ".join(t for t, _ in current_parts))
 
         return chunks
 
-    def _build_overlap(self, parts: list[str]) -> tuple[list[str], int]:
+    def _build_overlap(self, parts: list[tuple[str, int]]) -> tuple[list[tuple[str, int]], int]:
         """Return tail paragraphs from *parts* whose combined tokens <= *overlap*."""
-        overlap_parts: list[str] = []
+        overlap_parts: list[tuple[str, int]] = []
         overlap_tokens = 0
-        for part in reversed(parts):
-            part_tokens = self._count_tokens(part)
-            if overlap_tokens + part_tokens > self._overlap:
+        for text, tok_count in reversed(parts):
+            if overlap_tokens + tok_count > self._overlap:
                 break
-            overlap_parts.insert(0, part)
-            overlap_tokens += part_tokens
+            overlap_parts.insert(0, (text, tok_count))
+            overlap_tokens += tok_count
         return overlap_parts, overlap_tokens
 
-    def _build_overlap_sentences(self, parts: list[str]) -> tuple[list[str], int]:
+    def _build_overlap_sentences(
+        self, parts: list[tuple[str, int]]
+    ) -> tuple[list[tuple[str, int]], int]:
         """Return tail sentences from *parts* whose combined tokens <= *overlap*."""
         return self._build_overlap(parts)
 
@@ -273,4 +275,4 @@ class TextChunker:
         """Return the average token count across *chunks*."""
         if not chunks:
             return 0
-        return sum(self._count_tokens(c.text) for c in chunks) // len(chunks)
+        return sum(c.token_count for c in chunks) // len(chunks)

@@ -43,6 +43,8 @@ class ChromaDBProvider(IVectorStoreProvider):
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
         )
+        self._cached_stats: CorpusStats | None = None
+        self._cached_stats_count: int = -1
 
     # ------------------------------------------------------------------
     # IVectorStoreProvider implementation
@@ -117,6 +119,8 @@ class ChromaDBProvider(IVectorStoreProvider):
         if not chunks:
             return 0
 
+        self._cached_stats = None  # Invalidate stats cache
+
         try:
             ids = [c.chunk_id for c in chunks]
             documents = [c.text for c in chunks]
@@ -143,6 +147,7 @@ class ChromaDBProvider(IVectorStoreProvider):
 
     async def delete_by_source(self, source_id: str) -> int:
         """Delete all chunks originating from the given source."""
+        self._cached_stats = None  # Invalidate stats cache
         try:
             existing = self._collection.get(where={"source_id": source_id})
             count = len(existing["ids"]) if existing["ids"] else 0
@@ -164,16 +169,25 @@ class ChromaDBProvider(IVectorStoreProvider):
             ) from exc
 
     async def get_stats(self) -> CorpusStats:
-        """Return aggregate statistics about the corpus."""
+        """Return aggregate statistics about the corpus.
+
+        Results are cached and invalidated when chunks are added or deleted.
+        The cache also detects external changes by comparing the current
+        collection count against the count at cache time.
+        """
         try:
-            total_chunks = self._collection.count()
+            current_count = self._collection.count()
+
+            # Return cached stats if still valid
+            if self._cached_stats is not None and self._cached_stats_count == current_count:
+                return self._cached_stats
 
             sources_by_type: dict[str, int] = {}
             source_ids: set[str] = set()
             entity_tags: set[str] = set()
             geographic_tags: set[str] = set()
 
-            if total_chunks > 0:
+            if current_count > 0:
                 all_meta = self._collection.get(include=["metadatas"])
                 for meta in all_meta["metadatas"] or []:
                     source_ids.add(meta.get("source_id", ""))
@@ -185,13 +199,19 @@ class ChromaDBProvider(IVectorStoreProvider):
                     for tag in self._split_tags(meta.get("geographic_tags", "")):
                         geographic_tags.add(tag)
 
-            return CorpusStats(
-                total_chunks=total_chunks,
+            result = CorpusStats(
+                total_chunks=current_count,
                 total_sources=len(source_ids),
                 sources_by_type=sources_by_type,
                 entity_tag_count=len(entity_tags),
                 geographic_tag_count=len(geographic_tags),
             )
+
+            # Cache the result
+            self._cached_stats = result
+            self._cached_stats_count = current_count
+
+            return result
 
         except Exception as exc:
             raise RAGError(

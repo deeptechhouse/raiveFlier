@@ -130,6 +130,7 @@ class MetadataExtractor:
         return DocumentChunkModel(
             chunk_id=chunk.chunk_id,
             text=chunk.text,
+            token_count=chunk.token_count,
             source_id=chunk.source_id,
             source_title=chunk.source_title,
             source_type=chunk.source_type,

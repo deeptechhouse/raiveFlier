@@ -45,6 +45,8 @@ from src.providers.cache.memory_cache import MemoryCacheProvider
 from src.providers.llm.anthropic_provider import AnthropicLLMProvider
 from src.providers.llm.ollama_provider import OllamaLLMProvider
 from src.providers.llm.openai_provider import OpenAILLMProvider
+from src.providers.music_db.bandcamp_provider import BandcampProvider
+from src.providers.music_db.beatport_provider import BeatportProvider
 from src.providers.music_db.discogs_api_provider import DiscogsAPIProvider
 from src.providers.music_db.discogs_scrape_provider import DiscogsScrapeProvider
 from src.providers.music_db.musicbrainz_provider import MusicBrainzProvider
@@ -171,6 +173,8 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         music_dbs.append(DiscogsAPIProvider(settings=app_settings))
     music_dbs.append(DiscogsScrapeProvider(http_client=http_client))
     music_dbs.append(MusicBrainzProvider(settings=app_settings))
+    music_dbs.append(BandcampProvider(http_client=http_client))
+    music_dbs.append(BeatportProvider(http_client=http_client))
 
     # -- Search providers --
     primary_search = DuckDuckGoSearchProvider()
@@ -366,6 +370,8 @@ def build_pipeline(custom_settings: Settings | None = None) -> dict[str, Any]:
         music_dbs.append(DiscogsAPIProvider(settings=s))
     music_dbs.append(DiscogsScrapeProvider(http_client=http_client))
     music_dbs.append(MusicBrainzProvider(settings=s))
+    music_dbs.append(BandcampProvider(http_client=http_client))
+    music_dbs.append(BeatportProvider(http_client=http_client))
 
     ocr_providers = []
     if llm.supports_vision():

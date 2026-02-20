@@ -1,10 +1,11 @@
 """Image preprocessing utilities for OCR extraction from rave flier images."""
 
+import hashlib
 import io
 
 import cv2
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 
 
 class ImagePreprocessor:
@@ -14,6 +15,84 @@ class ImagePreprocessor:
     heavy stylization, and varying orientations — all of which degrade
     standard OCR accuracy.
     """
+
+    def __init__(self) -> None:
+        self._pass_cache: dict[str, list[tuple[str, Image.Image]]] = {}
+
+    def build_ocr_passes(self, original: Image.Image) -> list[tuple[str, Image.Image]]:
+        """Build all common OCR preprocessing passes for an image.
+
+        Results are cached by image content hash so that multiple providers
+        (e.g. Tesseract fallback to EasyOCR) share the same preprocessed
+        images without recomputing.
+
+        Returns a list of (pass_name, preprocessed_image) tuples.
+        """
+        img_hash = hashlib.md5(original.tobytes()).hexdigest()
+        if img_hash in self._pass_cache:
+            return self._pass_cache[img_hash]
+
+        passes: list[tuple[str, Image.Image]] = []
+
+        # Shared base: resized (with upscaling for small images)
+        resized = self.resize_for_ocr(original)
+
+        # 1. Standard contrast-enhanced binarized image
+        enhanced = self.enhance_contrast(resized)
+        enhanced_gray = np.array(enhanced.convert("L"))
+        binarized = self.binarize(enhanced, gray_array=enhanced_gray)
+
+        # Compute skew angle once on the standard binarized image and reuse
+        binarized_gray = np.array(binarized.convert("L"))
+        skew_angle = self.detect_skew_angle(binarized, gray_array=binarized_gray)
+
+        deskewed = self.apply_deskew(binarized, skew_angle)
+        passes.append(("standard", deskewed))
+
+        # 2. Inverted (light text on dark background)
+        inverted = ImageOps.invert(deskewed.convert("RGB"))
+        passes.append(("inverted", inverted))
+
+        # 3. Individual color channels (isolate neon text)
+        channels = self.separate_color_channels(resized)
+        channel_names = ["red", "green", "blue"]
+        for ch_name, channel in zip(channel_names, channels, strict=True):
+            passes.append((f"channel_{ch_name}", channel.convert("RGB")))
+
+        # 4. CLAHE — localized adaptive contrast
+        clahe_enhanced = self.enhance_contrast_clahe(resized)
+        clahe_gray = np.array(clahe_enhanced.convert("L"))
+        clahe_binarized = self.binarize(clahe_enhanced, gray_array=clahe_gray)
+        clahe_deskewed = self.apply_deskew(clahe_binarized, skew_angle)
+        passes.append(("clahe", clahe_deskewed))
+
+        # 5. Denoised
+        denoised = self.denoise(resized)
+        denoised_enhanced = self.enhance_contrast(denoised)
+        denoised_gray = np.array(denoised_enhanced.convert("L"))
+        denoised_binarized = self.binarize(denoised_enhanced, gray_array=denoised_gray)
+        denoised_deskewed = self.apply_deskew(denoised_binarized, skew_angle)
+        passes.append(("denoised", denoised_deskewed))
+
+        # 6. HSV saturation channel
+        saturation = self.extract_saturation_channel(resized)
+        sat_rgb = saturation.convert("RGB")
+        sat_gray = np.array(sat_rgb.convert("L"))
+        sat_binarized = self.binarize(sat_rgb, gray_array=sat_gray)
+        passes.append(("saturation", sat_binarized))
+
+        # 7. Otsu binarization
+        otsu_enhanced = self.enhance_contrast(resized)
+        otsu_gray = np.array(otsu_enhanced.convert("L"))
+        otsu_binarized = self.binarize_otsu(otsu_enhanced, gray_array=otsu_gray)
+        otsu_deskewed = self.apply_deskew(otsu_binarized, skew_angle)
+        passes.append(("otsu", otsu_deskewed))
+
+        # Cache (keep only the most recent to limit memory)
+        self._pass_cache.clear()
+        self._pass_cache[img_hash] = passes
+
+        return passes
 
     def prepare_for_ocr(self, image_bytes: bytes) -> bytes:
         """Run the full preprocessing pipeline on raw image bytes.
@@ -51,7 +130,12 @@ class ImagePreprocessor:
         enhancer = ImageEnhance.Sharpness(image)
         return enhancer.enhance(1.5)
 
-    def binarize(self, image: Image.Image, threshold: int = 128) -> Image.Image:
+    def binarize(
+        self,
+        image: Image.Image,
+        threshold: int = 128,
+        gray_array: np.ndarray | None = None,
+    ) -> Image.Image:
         """Convert image to black-and-white using adaptive thresholding.
 
         Uses OpenCV adaptive Gaussian thresholding for better results on
@@ -60,15 +144,17 @@ class ImagePreprocessor:
         Args:
             image: Input PIL Image.
             threshold: Fallback global threshold (0–255) if adaptive fails.
+            gray_array: Optional pre-computed grayscale numpy array to avoid
+                redundant RGB→L conversions.
 
         Returns:
             Binarized PIL Image in RGB mode.
         """
-        gray = image.convert("L")
-        img_array = np.array(gray)
+        if gray_array is None:
+            gray_array = np.array(image.convert("L"))
 
         binary = cv2.adaptiveThreshold(
-            img_array,
+            gray_array,
             255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
@@ -77,6 +163,62 @@ class ImagePreprocessor:
         )
 
         return Image.fromarray(binary).convert("RGB")
+
+    def detect_skew_angle(
+        self, image: Image.Image, gray_array: np.ndarray | None = None
+    ) -> float | None:
+        """Detect the skew angle of an image using Hough line detection.
+
+        Args:
+            image: Input PIL Image.
+            gray_array: Optional pre-computed grayscale numpy array.
+
+        Returns:
+            The median skew angle in degrees, or ``None`` if no significant
+            skew is detected.
+        """
+        if gray_array is None:
+            gray_array = np.array(image.convert("L"))
+        gray = gray_array
+        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+        lines = cv2.HoughLinesP(
+            edges, 1, np.pi / 180, threshold=100, minLineLength=50, maxLineGap=10
+        )
+
+        if lines is None:
+            return None
+
+        angles: list[float] = []
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+            if abs(angle) < 45:
+                angles.append(angle)
+
+        if not angles:
+            return None
+
+        median_angle = float(np.median(angles))
+
+        if abs(median_angle) < 0.5 or abs(median_angle) > 15:
+            return None
+
+        return median_angle
+
+    @staticmethod
+    def apply_deskew(image: Image.Image, angle: float | None) -> Image.Image:
+        """Rotate an image by a pre-computed skew angle.
+
+        Args:
+            image: Input PIL Image.
+            angle: Skew angle in degrees, or ``None`` to return the image unchanged.
+
+        Returns:
+            Deskewed PIL Image.
+        """
+        if angle is None:
+            return image
+        return image.rotate(angle, resample=Image.BICUBIC, expand=True, fillcolor=(0, 0, 0))
 
     def deskew(self, image: Image.Image) -> Image.Image:
         """Correct image rotation/skew using Hough line detection.
@@ -87,33 +229,8 @@ class ImagePreprocessor:
         Returns:
             Deskewed PIL Image, or the original if no significant skew detected.
         """
-        gray = np.array(image.convert("L"))
-        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        lines = cv2.HoughLinesP(
-            edges, 1, np.pi / 180, threshold=100, minLineLength=50, maxLineGap=10
-        )
-
-        if lines is None:
-            return image
-
-        angles: list[float] = []
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
-            # Only consider near-horizontal lines (likely text baselines)
-            if abs(angle) < 45:
-                angles.append(angle)
-
-        if not angles:
-            return image
-
-        median_angle = float(np.median(angles))
-
-        # Only deskew if the angle is significant but not extreme
-        if abs(median_angle) < 0.5 or abs(median_angle) > 15:
-            return image
-
-        return image.rotate(median_angle, resample=Image.BICUBIC, expand=True, fillcolor=(0, 0, 0))
+        angle = self.detect_skew_angle(image)
+        return self.apply_deskew(image, angle)
 
     def separate_color_channels(self, image: Image.Image) -> list[Image.Image]:
         """Extract individual color channels to isolate neon text from dark backgrounds.
@@ -171,8 +288,10 @@ class ImagePreprocessor:
     def denoise(self, image: Image.Image, strength: int = 10) -> Image.Image:
         """Remove sensor noise from phone-captured flier photos.
 
-        Uses OpenCV fast non-local means denoising which preserves edges
-        (important for text) while smoothing out camera noise.
+        Uses OpenCV bilateral filter which preserves edges (important for
+        text) while smoothing out camera noise.  Bilateral filtering is
+        10-50x faster than ``fastNlMeansDenoisingColored`` with comparable
+        OCR-relevant results.
 
         Args:
             image: Input PIL Image in RGB mode.
@@ -183,9 +302,7 @@ class ImagePreprocessor:
             Denoised PIL Image in RGB mode.
         """
         img_array = np.array(image.convert("RGB"))
-        denoised = cv2.fastNlMeansDenoisingColored(
-            img_array, None, strength, strength, 7, 21
-        )
+        denoised = cv2.bilateralFilter(img_array, d=9, sigmaColor=strength * 7.5, sigmaSpace=strength * 7.5)
         return Image.fromarray(denoised)
 
     def extract_saturation_channel(self, image: Image.Image) -> Image.Image:
@@ -207,7 +324,9 @@ class ImagePreprocessor:
         saturation = hsv[:, :, 1]
         return Image.fromarray(saturation)
 
-    def binarize_otsu(self, image: Image.Image) -> Image.Image:
+    def binarize_otsu(
+        self, image: Image.Image, gray_array: np.ndarray | None = None
+    ) -> Image.Image:
         """Binarize using Otsu's automatic thresholding method.
 
         Otsu's method computes the optimal global threshold by
@@ -217,13 +336,15 @@ class ImagePreprocessor:
 
         Args:
             image: Input PIL Image.
+            gray_array: Optional pre-computed grayscale numpy array.
 
         Returns:
             Binarized PIL Image in RGB mode.
         """
-        gray = np.array(image.convert("L"))
+        if gray_array is None:
+            gray_array = np.array(image.convert("L"))
         _, binary = cv2.threshold(
-            gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+            gray_array, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
         )
         return Image.fromarray(binary).convert("RGB")
 
