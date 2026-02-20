@@ -44,6 +44,28 @@ _PRESS_SEARCH_LIMIT = 20
 _MIN_ADEQUATE_APPEARANCES = 3  # trigger deeper search if below this
 _MIN_ADEQUATE_ARTICLES = 2
 
+# Domains known to be music-related — results from these always pass relevance check
+_MUSIC_DOMAINS = re.compile(
+    r"ra\.co|residentadvisor|djmag\.com|mixmag\.net|xlr8r\.com|pitchfork\.com|"
+    r"thequietus\.com|factmag\.com|factmagazine|discogs\.com|musicbrainz\.org|"
+    r"bandcamp\.com|beatport\.com|soundcloud\.com|youtube\.com|youtu\.be|"
+    r"boilerroom\.tv|traxsource\.com|juno\.co\.uk|boomkat\.com|"
+    r"electronicbeats\.net|djtechtools\.com|attackmagazine\.com",
+    re.IGNORECASE,
+)
+
+# Terms that signal music/electronic-music relevance in titles and snippets
+_MUSIC_RELEVANCE_TERMS = re.compile(
+    r"\b(?:dj|producer|remix|techno|house|drum\s*(?:and|&|n)\s*bass|"
+    r"electronic\s*music|rave|club|vinyl|label|release|mix|track|"
+    r"bpm|ep\b|lp\b|album|record|boiler\s*room|soundsystem|"
+    r"beatport|discogs|bandcamp|resident\s*advisor|soundcloud|"
+    r"dance\s*music|edm|jungle|garage|dubstep|acid|trance|"
+    r"breakbeat|ambient|industrial|synth|turntable|decks|"
+    r"festival|warehouse|nightclub|set\b|lineup|b2b)\b",
+    re.IGNORECASE,
+)
+
 # URL patterns mapped to citation tiers (1 = highest authority)
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"residentadvisor\.net|ra\.co", re.IGNORECASE), 1),
@@ -692,6 +714,21 @@ class ArtistResearcher:
         if not all_results:
             return []
 
+        # Filter out results that are clearly not about music/electronic music
+        relevant_results = [r for r in all_results if self._is_music_relevant(r)]
+
+        if len(relevant_results) < len(all_results):
+            self._logger.info(
+                "press_relevance_filter",
+                artist=name,
+                before=len(all_results),
+                after=len(relevant_results),
+                removed=len(all_results) - len(relevant_results),
+            )
+
+        if not relevant_results:
+            return []
+
         # Prioritize RA.co and tier-1 sources for scraping
         def _sort_key(r: SearchResult) -> int:
             url = r.url.lower()
@@ -701,13 +738,13 @@ class ArtistResearcher:
                 return 1
             return 2
 
-        all_results.sort(key=_sort_key)
+        relevant_results.sort(key=_sort_key)
 
         # Extract article content for the top results
         articles: list[ArticleReference] = []
         extraction_tasks = [
             self._extract_article_reference(result, name)
-            for result in all_results[:_MAX_PRESS_ARTICLES]
+            for result in relevant_results[:_MAX_PRESS_ARTICLES]
         ]
         extracted = await asyncio.gather(*extraction_tasks, return_exceptions=True)
 
@@ -806,6 +843,21 @@ class ArtistResearcher:
             )
 
         return appearances
+
+    @staticmethod
+    def _is_music_relevant(result: SearchResult) -> bool:
+        """Check whether a search result is plausibly about music/electronic music.
+
+        Results from known music domains always pass. For other domains,
+        the title and snippet must contain at least one music-related term.
+        """
+        # Known music domains always pass
+        if _MUSIC_DOMAINS.search(result.url):
+            return True
+
+        # Check title and snippet for music relevance signals
+        text_to_check = f"{result.title or ''} {result.snippet or ''}"
+        return bool(_MUSIC_RELEVANCE_TERMS.search(text_to_check))
 
     @staticmethod
     def _extract_relevant_snippet(text: str, artist_name: str, max_length: int = 500) -> str:
