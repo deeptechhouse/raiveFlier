@@ -1,9 +1,10 @@
 # ──────────────────────────────────────────────────────────────
 # RaiveFlier — Production Dockerfile (Render / any Docker host)
 # ──────────────────────────────────────────────────────────────
-# Targets: Render free tier (512 MB RAM).
+# Targets: Render Starter ($7/mo) with persistent disk at /data.
 # EasyOCR is excluded to avoid pulling PyTorch (~2 GB).
 # Primary OCR: LLM Vision (API-based).  Fallback: Tesseract.
+# Reference corpus is auto-ingested into ChromaDB on first boot.
 # ──────────────────────────────────────────────────────────────
 
 FROM python:3.12-slim AS base
@@ -42,7 +43,9 @@ COPY config/ config/
 COPY data/reference_corpus/ data/reference_corpus/
 
 # Create writable directories for runtime data
-RUN mkdir -p data/chromadb uploads
+# On Render, /data is a persistent disk mount — these are fallbacks
+# for local Docker runs where no volume is mounted.
+RUN mkdir -p data/chromadb /data/chromadb uploads
 
 # ── Runtime ──────────────────────────────────────────────────
 EXPOSE 8000

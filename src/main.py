@@ -334,7 +334,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
     provider_list.append({"name": "WaybackProvider", "type": "article", "available": True})
 
     # -- Feedback provider (SQLite-backed ratings persistence) --
-    feedback_provider = SQLiteFeedbackProvider(db_path="data/feedback.db")
+    feedback_provider = SQLiteFeedbackProvider(db_path=app_settings.feedback_db_path)
 
     return {
         "http_client": http_client,
@@ -540,6 +540,57 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
 
 
 # ---------------------------------------------------------------------------
+# Auto-ingest reference corpus on first boot
+# ---------------------------------------------------------------------------
+
+_REFERENCE_CORPUS_DIR = Path(__file__).resolve().parent.parent / "data" / "reference_corpus"
+
+
+async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
+    """Ingest curated reference text files into the RAG corpus if empty.
+
+    Runs once on startup.  If the vector store already has data (e.g. from
+    a persistent disk), this is a no-op.  The ``ingest_directory`` method
+    also deduplicates by ``source_id``, so re-runs are safe.
+    """
+    ingestion_service = getattr(application.state, "ingestion_service", None)
+    vector_store = getattr(application.state, "vector_store", None)
+    if ingestion_service is None or vector_store is None:
+        return  # RAG not enabled
+
+    try:
+        stats = await vector_store.get_stats()
+        if stats.total_chunks > 0:
+            _logger.info(
+                "reference_corpus_already_ingested",
+                chunks=stats.total_chunks,
+                sources=stats.total_sources,
+            )
+            return
+    except Exception:
+        pass  # Can't determine state — proceed with ingestion
+
+    corpus_dir = _REFERENCE_CORPUS_DIR
+    if not corpus_dir.is_dir():
+        _logger.warning("reference_corpus_dir_not_found", path=str(corpus_dir))
+        return
+
+    _logger.info("auto_ingesting_reference_corpus", path=str(corpus_dir))
+    try:
+        results = await ingestion_service.ingest_directory(
+            str(corpus_dir), source_type="reference"
+        )
+        total_chunks = sum(r.chunks_created for r in results)
+        _logger.info(
+            "reference_corpus_ingested",
+            files=len(results),
+            chunks=total_chunks,
+        )
+    except Exception as exc:
+        _logger.error("reference_corpus_ingestion_failed", error=str(exc))
+
+
+# ---------------------------------------------------------------------------
 # Application lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
 
@@ -555,6 +606,9 @@ async def _lifespan(application: FastAPI):  # noqa: ANN201
     # Initialize feedback database (creates table if needed)
     if hasattr(application.state, "feedback_provider"):
         await application.state.feedback_provider.initialize()
+
+    # Auto-ingest reference corpus on first boot (idempotent — skips if already populated)
+    await _auto_ingest_reference_corpus(application)
 
     _logger.info(
         "app_startup",

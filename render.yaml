@@ -4,11 +4,9 @@
 # Deploy: connect your GitHub repo on Render, or click
 # "New > Blueprint" and point to this file.
 #
-# Free tier: 512 MB RAM, 0.1 CPU, spins down after 15 min
-# idle (cold start ~30 s on next request).
-# Disk is ephemeral — ChromaDB and SQLite feedback data
-# reset on each deploy.  Upgrade to a paid instance ($7/mo)
-# for persistent disk and no spin-down.
+# Starter plan ($7/mo): 512 MB RAM, no spin-down, persistent
+# disk at /data for ChromaDB corpus and SQLite feedback.
+# Reference corpus is auto-ingested on first startup.
 # ──────────────────────────────────────────────────────────────
 
 services:
@@ -17,9 +15,13 @@ services:
     runtime: docker
     repo: https://github.com/deeptechhouse/raiveFlier
     branch: feat/geographic-filtering-ratings-deploy
-    plan: free
+    plan: starter
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/health
+    disk:
+      name: raiveflier-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       # === LLM Provider (at least one required) ===
       - key: ANTHROPIC_API_KEY
@@ -52,8 +54,10 @@ services:
       - key: LOG_LEVEL
         value: INFO
 
-      # === RAG (disabled by default on free tier) ===
+      # === RAG (enabled — persistent disk at /data) ===
       - key: RAG_ENABLED
-        value: "false"
+        value: "true"
       - key: CHROMADB_PERSIST_DIR
-        value: ./data/chromadb
+        value: /data/chromadb
+      - key: FEEDBACK_DB_PATH
+        value: /data/feedback.db
