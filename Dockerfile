@@ -61,4 +61,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Entrypoint downloads corpus from private GitHub release if
 # ChromaDB is empty, then starts uvicorn.
-CMD ["scripts/entrypoint.sh"]
+CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]
