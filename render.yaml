@@ -46,6 +46,10 @@ services:
       - key: MUSICBRAINZ_CONTACT
         sync: false
 
+      # === Corpus Download (private repo) ===
+      - key: GITHUB_TOKEN
+        sync: false
+
       # === App Config ===
       - key: APP_ENV
         value: production

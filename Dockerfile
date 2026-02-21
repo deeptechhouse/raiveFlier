@@ -41,11 +41,13 @@ COPY src/ src/
 COPY frontend/ frontend/
 COPY config/ config/
 COPY data/reference_corpus/ data/reference_corpus/
+COPY scripts/entrypoint.sh scripts/entrypoint.sh
 
 # Create writable directories for runtime data
 # On Render, /data is a persistent disk mount — these are fallbacks
 # for local Docker runs where no volume is mounted.
-RUN mkdir -p data/chromadb /data/chromadb uploads
+RUN mkdir -p data/chromadb /data/chromadb uploads \
+    && chmod +x scripts/entrypoint.sh
 
 # ── Runtime ──────────────────────────────────────────────────
 EXPOSE 8000
@@ -57,9 +59,6 @@ ENV PORT=8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:${PORT}/api/v1/health || exit 1
 
-# Run with uvicorn — Render sets PORT env var automatically
-CMD python -m uvicorn src.main:app \
-    --host 0.0.0.0 \
-    --port ${PORT} \
-    --workers 1 \
-    --timeout-keep-alive 65
+# Entrypoint downloads corpus from private GitHub release if
+# ChromaDB is empty, then starts uvicorn.
+CMD ["scripts/entrypoint.sh"]
