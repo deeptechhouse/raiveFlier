@@ -43,7 +43,8 @@ uploads/
 
 # Documentation / non-runtime files
 next_steps/
-scripts/
+scripts/*
+!scripts/entrypoint.sh
 transcripts/
 annotated/
 README*
