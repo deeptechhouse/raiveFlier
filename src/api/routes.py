@@ -20,14 +20,23 @@ from src.api.schemas import (
     AskQuestionResponse,
     ConfirmEntitiesRequest,
     ConfirmResponse,
+    CorpusSearchChunk,
+    CorpusSearchRequest,
+    CorpusSearchResponse,
     CorpusStatsResponse,
+    DismissConnectionRequest,
+    DismissConnectionResponse,
     ErrorResponse,
     FlierAnalysisResponse,
     FlierUploadResponse,
     HealthResponse,
     PipelineStatusResponse,
     ProvidersResponse,
+    RatingResponse,
+    RatingSummaryResponse,
     RelatedFact,
+    SessionRatingsResponse,
+    SubmitRatingRequest,
 )
 from src.models.entities import EntityType
 from src.models.flier import ExtractedEntities, ExtractedEntity, FlierImage, OCRResult
@@ -82,7 +91,21 @@ def _get_qa_service(request: Request) -> Any:
     return getattr(request.app.state, "qa_service", None)
 
 
+def _get_vector_store(request: Request) -> Any:
+    """Return the vector store from application state, or ``None``."""
+    return getattr(request.app.state, "vector_store", None)
+
+
 QAServiceDep = Annotated[Any, Depends(_get_qa_service)]
+VectorStoreDep = Annotated[Any, Depends(_get_vector_store)]
+
+
+def _get_feedback_provider(request: Request) -> Any:
+    """Return the feedback provider from application state, or ``None``."""
+    return getattr(request.app.state, "feedback_provider", None)
+
+
+FeedbackDep = Annotated[Any, Depends(_get_feedback_provider)]
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +325,137 @@ async def ask_question(
 
 
 # ---------------------------------------------------------------------------
+# Connection correction endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/fliers/{session_id}/dismiss-connection",
+    response_model=DismissConnectionResponse,
+    responses={404: {"model": ErrorResponse}},
+    summary="Dismiss an incorrect interconnection",
+)
+async def dismiss_connection(
+    session_id: str,
+    body: DismissConnectionRequest,
+    session_states: SessionStatesDep,
+) -> DismissConnectionResponse:
+    """Mark a specific interconnection relationship as dismissed/incorrect."""
+    state = session_states.get(session_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+    if state.interconnection_map is None:
+        raise HTTPException(status_code=404, detail="No interconnection data available")
+
+    # Find and dismiss matching edges
+    dismissed_count = 0
+    updated_edges = []
+    for edge in state.interconnection_map.edges:
+        if (
+            edge.source.lower() == body.source.lower()
+            and edge.target.lower() == body.target.lower()
+            and edge.relationship_type.lower() == body.relationship_type.lower()
+        ):
+            edge = edge.model_copy(update={"dismissed": True})
+            dismissed_count += 1
+        updated_edges.append(edge)
+
+    # Update the state with the modified interconnection map
+    updated_map = state.interconnection_map.model_copy(update={"edges": updated_edges})
+    updated_state = state.model_copy(update={"interconnection_map": updated_map})
+    session_states[session_id] = updated_state
+
+    return DismissConnectionResponse(
+        session_id=session_id,
+        dismissed_count=dismissed_count,
+        message=f"Dismissed {dismissed_count} connection(s).",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rating endpoints
+# ---------------------------------------------------------------------------
+
+_VALID_RATING_TYPES = frozenset({
+    "ARTIST", "VENUE", "PROMOTER", "DATE", "EVENT",
+    "CONNECTION", "PATTERN", "QA", "CORPUS",
+})
+
+
+@router.post(
+    "/fliers/{session_id}/rate",
+    response_model=RatingResponse,
+    responses={400: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    summary="Submit a thumbs up/down rating for a result item",
+)
+async def submit_rating(
+    session_id: str,
+    body: SubmitRatingRequest,
+    feedback: FeedbackDep,
+) -> RatingResponse:
+    """Rate a specific result item with thumbs up (+1) or thumbs down (-1)."""
+    if feedback is None:
+        raise HTTPException(status_code=503, detail="Feedback service not available")
+    if body.rating not in (1, -1):
+        raise HTTPException(status_code=400, detail="Rating must be +1 or -1")
+    if body.item_type.upper() not in _VALID_RATING_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid item_type: {body.item_type}. "
+            f"Allowed: {', '.join(sorted(_VALID_RATING_TYPES))}",
+        )
+
+    result = await feedback.submit_rating(
+        session_id=session_id,
+        item_type=body.item_type,
+        item_key=body.item_key,
+        rating=body.rating,
+    )
+    return RatingResponse(**result)
+
+
+@router.get(
+    "/fliers/{session_id}/ratings",
+    response_model=SessionRatingsResponse,
+    responses={503: {"model": ErrorResponse}},
+    summary="Get all ratings for a session",
+)
+async def get_session_ratings(
+    session_id: str,
+    feedback: FeedbackDep,
+) -> SessionRatingsResponse:
+    """Return all ratings submitted for this session."""
+    if feedback is None:
+        raise HTTPException(status_code=503, detail="Feedback service not available")
+
+    ratings = await feedback.get_ratings(session_id)
+    return SessionRatingsResponse(
+        session_id=session_id,
+        ratings=[RatingResponse(**r) for r in ratings],
+        total=len(ratings),
+    )
+
+
+@router.get(
+    "/ratings/summary",
+    response_model=RatingSummaryResponse,
+    responses={503: {"model": ErrorResponse}},
+    summary="Get aggregate rating statistics",
+)
+async def get_rating_summary(
+    feedback: FeedbackDep,
+    item_type: str | None = None,
+) -> RatingSummaryResponse:
+    """Return aggregate rating statistics across all sessions."""
+    if feedback is None:
+        raise HTTPException(status_code=503, detail="Feedback service not available")
+
+    summary = await feedback.get_rating_summary(item_type=item_type)
+    return RatingSummaryResponse(**summary)
+
+
+# ---------------------------------------------------------------------------
 # Status & results endpoints
 # ---------------------------------------------------------------------------
 
@@ -441,4 +595,62 @@ async def corpus_stats(request: Request) -> CorpusStatsResponse:
         sources_by_type=stats.sources_by_type,
         entity_tag_count=stats.entity_tag_count,
         geographic_tag_count=stats.geographic_tag_count,
+    )
+
+
+@router.post(
+    "/corpus/search",
+    response_model=CorpusSearchResponse,
+    responses={503: {"model": ErrorResponse}},
+    summary="Search the RAG corpus",
+)
+async def corpus_search(
+    body: CorpusSearchRequest,
+    request: Request,
+    vector_store: VectorStoreDep,
+) -> CorpusSearchResponse:
+    """Perform semantic search against the RAG vector-store corpus.
+
+    Does not require a session — available at any time when RAG is enabled.
+    """
+    rag_enabled = getattr(request.app.state, "rag_enabled", False)
+    if not rag_enabled or vector_store is None:
+        raise HTTPException(status_code=503, detail="RAG corpus not available")
+
+    # Build filters from request
+    filters: dict[str, Any] = {}
+    if body.source_type:
+        filters["source_type"] = {"$in": body.source_type}
+    if body.entity_tag:
+        filters["entity_tags"] = {"$contains": body.entity_tag}
+    if body.geographic_tag:
+        filters["geographic_tags"] = {"$contains": body.geographic_tag}
+
+    chunks = await vector_store.query(
+        query_text=body.query,
+        top_k=body.top_k,
+        filters=filters if filters else None,
+    )
+
+    results = [
+        CorpusSearchChunk(
+            text=c.chunk.text,
+            source_title=c.chunk.source_title,
+            source_type=c.chunk.source_type,
+            author=c.chunk.author,
+            citation_tier=c.chunk.citation_tier,
+            page_number=c.chunk.page_number,
+            similarity_score=round(c.similarity_score, 3),
+            formatted_citation=c.formatted_citation,
+            entity_tags=c.chunk.entity_tags,
+            geographic_tags=c.chunk.geographic_tags,
+            genre_tags=c.chunk.genre_tags,
+        )
+        for c in chunks
+    ]
+
+    return CorpusSearchResponse(
+        query=body.query,
+        total_results=len(results),
+        results=results,
     )

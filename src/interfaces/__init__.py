@@ -23,11 +23,14 @@ IVectorStoreProvider
     Vector-store storage and semantic retrieval contract.
 IEmbeddingProvider
     Text-embedding generation contract.
+IFeedbackProvider
+    User-feedback persistence contract (thumbs up/down ratings).
 """
 
 from src.interfaces.article_provider import ArticleContent, IArticleProvider
 from src.interfaces.cache_provider import ICacheProvider
 from src.interfaces.embedding_provider import IEmbeddingProvider
+from src.interfaces.feedback_provider import IFeedbackProvider
 from src.interfaces.llm_provider import ILLMProvider
 from src.interfaces.music_db_provider import ArtistSearchResult, IMusicDatabaseProvider
 from src.interfaces.ocr_provider import IOCRProvider
@@ -40,6 +43,7 @@ __all__ = [
     "IArticleProvider",
     "ICacheProvider",
     "IEmbeddingProvider",
+    "IFeedbackProvider",
     "ILLMProvider",
     "IMusicDatabaseProvider",
     "IOCRProvider",

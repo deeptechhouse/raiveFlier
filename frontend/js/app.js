@@ -60,6 +60,10 @@ const App = (() => {
     if (typeof Upload !== "undefined" && Upload.initUpload) {
       Upload.initUpload();
     }
+
+    if (typeof Corpus !== "undefined" && Corpus.init) {
+      Corpus.init();
+    }
   }
 
   return {

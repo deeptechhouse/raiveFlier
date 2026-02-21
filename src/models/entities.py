@@ -75,6 +75,7 @@ class EventAppearance(BaseModel):
 
     event_name: str | None = None
     venue: str | None = None
+    city: str | None = None
     date: datetime.date | None = None
     source: str | None = None
     source_url: str | None = None
@@ -141,6 +142,9 @@ class Artist(BaseModel):
     appearances: list[EventAppearance] = Field(default_factory=list)
     articles: list[ArticleReference] = Field(default_factory=list)
     profile_summary: str | None = None
+    city: str | None = None
+    region: str | None = None
+    country: str | None = None
 
     @property
     def confidence_level(self) -> ConfidenceLevel:
@@ -181,3 +185,6 @@ class Promoter(BaseModel):
     affiliated_artists: list[str] = Field(default_factory=list)
     affiliated_venues: list[str] = Field(default_factory=list)
     articles: list[ArticleReference] = Field(default_factory=list)
+    city: str | None = None
+    region: str | None = None
+    country: str | None = None

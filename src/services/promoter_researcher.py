@@ -82,6 +82,7 @@ class PromoterResearcher:
     async def research(
         self,
         promoter_name: str,
+        city: str | None = None,
     ) -> ResearchResult:
         """Execute the full research pipeline for a single promoter.
 
@@ -89,6 +90,9 @@ class PromoterResearcher:
         ----------
         promoter_name:
             The promoter/organizer name to research.
+        city:
+            Optional city hint from the venue entity for geographic
+            disambiguation and context-aware search queries.
 
         Returns
         -------
@@ -97,13 +101,13 @@ class PromoterResearcher:
             event history, affiliated artists and venues, confidence scores,
             and any warnings about data gaps.
         """
-        self._logger.info("Starting promoter research", promoter=promoter_name)
+        self._logger.info("Starting promoter research", promoter=promoter_name, city=city)
 
         warnings: list[str] = []
         sources_consulted: list[str] = []
 
         # Step 1 — SEARCH for promoter activity
-        search_results = await self._search_promoter_activity(promoter_name)
+        search_results = await self._search_promoter_activity(promoter_name, city=city)
         if search_results:
             sources_consulted.append("web_search_promoter")
         else:
@@ -114,9 +118,16 @@ class PromoterResearcher:
         scrape_confidence = min(1.0, len(scraped_texts) * 0.15) if scraped_texts else 0.0
 
         # Step 3 — LLM EXTRACTION of affiliations and event history
-        event_history, affiliated_artists, affiliated_venues = await self._extract_promoter_profile(
-            promoter_name, scraped_texts
+        extraction_result = await self._extract_promoter_profile(
+            promoter_name, scraped_texts, city=city
         )
+        event_history = extraction_result["event_history"]
+        affiliated_artists = extraction_result["affiliated_artists"]
+        affiliated_venues = extraction_result["affiliated_venues"]
+        based_city = extraction_result.get("based_city")
+        based_region = extraction_result.get("based_region")
+        based_country = extraction_result.get("based_country")
+
         extraction_confidence = 0.0
         if event_history or affiliated_artists or affiliated_venues:
             extraction_confidence = 0.7
@@ -125,7 +136,7 @@ class PromoterResearcher:
             warnings.append("LLM extraction produced no promoter profile")
 
         # Step 3.5 — CORPUS RETRIEVAL (RAG)
-        corpus_refs = await self._retrieve_from_corpus(promoter_name)
+        corpus_refs = await self._retrieve_from_corpus(promoter_name, city=city)
         if corpus_refs:
             sources_consulted.append("rag_corpus")
 
@@ -168,6 +179,9 @@ class PromoterResearcher:
             affiliated_artists=affiliated_artists,
             affiliated_venues=affiliated_venues,
             articles=articles,
+            city=based_city,
+            region=based_region,
+            country=based_country,
         )
 
         result = ResearchResult(
@@ -187,6 +201,7 @@ class PromoterResearcher:
             affiliated_artists=len(affiliated_artists),
             affiliated_venues=len(affiliated_venues),
             articles=len(articles),
+            based_city=based_city,
             warnings=len(warnings),
         )
 
@@ -194,7 +209,9 @@ class PromoterResearcher:
 
     # -- Private helpers -------------------------------------------------------
 
-    async def _retrieve_from_corpus(self, promoter_name: str) -> list[ArticleReference]:
+    async def _retrieve_from_corpus(
+        self, promoter_name: str, city: str | None = None
+    ) -> list[ArticleReference]:
         """Retrieve relevant passages from the RAG corpus for this promoter.
 
         Returns an empty list if no vector store is configured or available.
@@ -202,7 +219,8 @@ class PromoterResearcher:
         if not self._vector_store or not self._vector_store.is_available():
             return []
 
-        query = f"{promoter_name} promoter events rave"
+        city_part = f" {city}" if city else ""
+        query = f"{promoter_name}{city_part} promoter events rave"
 
         try:
             chunks = await self._vector_store.query(query_text=query, top_k=15)
@@ -234,19 +252,32 @@ class PromoterResearcher:
             )
         return refs
 
-    async def _search_promoter_activity(self, promoter_name: str) -> list[SearchResult]:
+    async def _search_promoter_activity(
+        self, promoter_name: str, city: str | None = None
+    ) -> list[SearchResult]:
         """Search the web for promoter event activity and history.
 
         Uses RA.co as the primary source, then general web searches.
+        When ``city`` is provided, city-qualified queries are prepended
+        to improve disambiguation for common-word promoter names.
         Performs adaptive deepening if initial results are sparse.
         """
-        # Phase 1 — RA.co-first + general queries
-        queries = [
+        # Phase 0 — City-qualified queries (disambiguation)
+        queries: list[str] = []
+        if city:
+            queries.extend([
+                f'site:ra.co/promoters "{promoter_name}" "{city}"',
+                f'"{promoter_name}" promoter events "{city}"',
+                f'"{promoter_name}" "{city}" rave club night',
+            ])
+
+        # Phase 1 — RA.co-first + general queries (always included as fallback)
+        queries.extend([
             f'site:ra.co/promoters "{promoter_name}"',
             f'site:ra.co/events "{promoter_name}"',
             f'"{promoter_name}" promoter events',
             f'"{promoter_name}" rave club night party',
-        ]
+        ])
 
         all_results: list[SearchResult] = []
         for query in queries:
@@ -316,18 +347,30 @@ class PromoterResearcher:
         self,
         promoter_name: str,
         scraped_texts: list[str],
-    ) -> tuple[list[str], list[str], list[str]]:
-        """Use LLM to extract event history and affiliations from scraped content.
+        city: str | None = None,
+    ) -> dict[str, Any]:
+        """Use LLM to extract event history, affiliations, and geography.
 
         Returns
         -------
-        tuple[list[str], list[str], list[str]]
-            (event_history, affiliated_artists, affiliated_venues)
+        dict[str, Any]
+            Keys: event_history, affiliated_artists, affiliated_venues,
+            based_city, based_region, based_country.
         """
+        empty_result: dict[str, Any] = {
+            "event_history": [],
+            "affiliated_artists": [],
+            "affiliated_venues": [],
+            "based_city": None,
+            "based_region": None,
+            "based_country": None,
+        }
         if not scraped_texts:
-            return [], [], []
+            return empty_result
 
         combined_text = "\n---\n".join(scraped_texts[:6])
+
+        city_context = f"The event flier is from {city}.\n" if city else ""
 
         system_prompt = (
             "You are a music event historian specializing in rave and electronic music culture. "
@@ -335,12 +378,16 @@ class PromoterResearcher:
             "information about their activities."
         )
         user_prompt = (
+            f"{city_context}"
             f"Analyze the following content about promoter '{promoter_name}' and provide:\n\n"
-            "1. EVENT_HISTORY: A list of events they organized or promoted, one per line, "
+            "1. BASED_IN: The city, region/state, and country where this promoter primarily "
+            "operates, on one line, prefixed with '- '. Format: CITY, REGION, COUNTRY. "
+            "If unknown, write 'NONE'.\n"
+            "2. EVENT_HISTORY: A list of events they organized or promoted, one per line, "
             "prefixed with '- '. Include event name, venue, and approximate date if available.\n"
-            "2. AFFILIATED_ARTISTS: A list of artists/DJs who have performed at their events, "
+            "3. AFFILIATED_ARTISTS: A list of artists/DJs who have performed at their events, "
             "one per line, prefixed with '- '.\n"
-            "3. AFFILIATED_VENUES: A list of venues where they have hosted events, "
+            "4. AFFILIATED_VENUES: A list of venues where they have hosted events, "
             "one per line, prefixed with '- '.\n\n"
             "Use these exact section headers. If information is not available for a section, "
             "write 'NONE' for that section.\n\n"
@@ -356,7 +403,7 @@ class PromoterResearcher:
             )
         except Exception as exc:
             self._logger.warning("LLM promoter extraction failed", error=str(exc))
-            return [], [], []
+            return empty_result
 
         return self._parse_promoter_extraction(response)
 
@@ -423,17 +470,21 @@ class PromoterResearcher:
     # -- Parsing helpers -------------------------------------------------------
 
     @staticmethod
-    def _parse_promoter_extraction(llm_text: str) -> tuple[list[str], list[str], list[str]]:
+    def _parse_promoter_extraction(llm_text: str) -> dict[str, Any]:
         """Parse LLM promoter extraction response into structured components.
 
         Returns
         -------
-        tuple[list[str], list[str], list[str]]
-            (event_history, affiliated_artists, affiliated_venues)
+        dict[str, Any]
+            Keys: event_history, affiliated_artists, affiliated_venues,
+            based_city, based_region, based_country.
         """
         event_history: list[str] = []
         affiliated_artists: list[str] = []
         affiliated_venues: list[str] = []
+        based_city: str | None = None
+        based_region: str | None = None
+        based_country: str | None = None
 
         def _extract_list(section_text: str) -> list[str]:
             items: list[str] = []
@@ -442,6 +493,23 @@ class PromoterResearcher:
                 if line and line.upper() != "NONE":
                     items.append(line.strip())
             return items
+
+        # Parse BASED_IN section
+        based_match = re.search(
+            r"BASED_IN\s*:?\s*\n?(.*?)(?=EVENT_HISTORY|AFFILIATED_ARTISTS|AFFILIATED_VENUES|\Z)",
+            llm_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if based_match:
+            line = based_match.group(1).strip().lstrip("- •*").strip()
+            if line and line.upper() != "NONE":
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 1 and parts[0]:
+                    based_city = parts[0]
+                if len(parts) >= 2 and parts[1]:
+                    based_region = parts[1]
+                if len(parts) >= 3 and parts[2]:
+                    based_country = parts[2]
 
         events_match = re.search(
             r"EVENT_HISTORY\s*:?\s*\n?(.*?)(?=AFFILIATED_ARTISTS|AFFILIATED_VENUES|\Z)",
@@ -467,7 +535,14 @@ class PromoterResearcher:
         if venues_match:
             affiliated_venues = _extract_list(venues_match.group(1))
 
-        return event_history, affiliated_artists, affiliated_venues
+        return {
+            "event_history": event_history,
+            "affiliated_artists": affiliated_artists,
+            "affiliated_venues": affiliated_venues,
+            "based_city": based_city,
+            "based_region": based_region,
+            "based_country": based_country,
+        }
 
     def _assign_citation_tier(self, source_url: str) -> int:
         """Assign a citation authority tier (1-6) based on URL domain patterns."""

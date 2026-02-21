@@ -163,6 +163,12 @@ class InterconnectionService:
         # Step 4 — enrich: penalise uncertain relationships
         edges = self._penalise_uncertain(edges)
 
+        # Step 4.5 — penalise geographic mismatches
+        edges = self._penalise_geographic_mismatch(edges, research_results)
+
+        # Step 4.6 — discard edges with very low confidence after all penalties
+        edges = [e for e in edges if e.confidence >= 0.15]
+
         all_citations = self._collect_all_citations(edges, patterns)
 
         imap = InterconnectionMap(
@@ -220,6 +226,13 @@ class InterconnectionService:
 
             if result.artist:
                 artist = result.artist
+                if artist.city:
+                    geo_str = artist.city
+                    if artist.region:
+                        geo_str += f", {artist.region}"
+                    if artist.country:
+                        geo_str += f", {artist.country}"
+                    parts.append(f"Based in: {geo_str}")
                 if artist.profile_summary:
                     parts.append(f"Profile: {artist.profile_summary}")
                 if artist.aliases:
@@ -286,6 +299,13 @@ class InterconnectionService:
 
             if result.promoter:
                 promoter = result.promoter
+                if promoter.city:
+                    geo_str = promoter.city
+                    if promoter.region:
+                        geo_str += f", {promoter.region}"
+                    if promoter.country:
+                        geo_str += f", {promoter.country}"
+                    parts.append(f"Based in: {geo_str}")
                 if promoter.event_history:
                     parts.append("Event history: " + ", ".join(promoter.event_history[:10]))
                 if promoter.affiliated_artists:
@@ -781,8 +801,12 @@ class InterconnectionService:
                     properties["aliases"] = result.artist.aliases
                 if result.artist.labels:
                     properties["labels"] = [lb.name for lb in result.artist.labels]
+                if result.artist.city:
+                    properties["city"] = result.artist.city
             if result.venue and result.venue.city:
                 properties["city"] = result.venue.city
+            if result.promoter and result.promoter.city:
+                properties["city"] = result.promoter.city
 
             nodes.append(
                 EntityNode(
@@ -850,6 +874,65 @@ class InterconnectionService:
                 new_confidence = max(0.0, edge.confidence - _UNCERTAIN_CONFIDENCE_PENALTY)
                 edge = edge.model_copy(update={"confidence": new_confidence})
             enriched.append(edge)
+        return enriched
+
+    @staticmethod
+    def _penalise_geographic_mismatch(
+        edges: list[RelationshipEdge],
+        research_results: list[ResearchResult],
+    ) -> list[RelationshipEdge]:
+        """Penalise edges linking entities in geographically incompatible locations.
+
+        If both source and target have known cities that do not match,
+        reduce confidence by 0.4.  If only one has a city and it does
+        not match the venue city, reduce by 0.2.
+
+        Parameters
+        ----------
+        edges:
+            Relationship edges to check.
+        research_results:
+            Research results containing geographic data for entities.
+
+        Returns
+        -------
+        list[RelationshipEdge]
+            Edges with confidence adjusted for geographic mismatches.
+        """
+        # Build a city lookup from research results
+        city_map: dict[str, str] = {}
+        venue_city: str | None = None
+
+        for result in research_results:
+            name_lower = result.entity_name.lower()
+            if result.artist and result.artist.city:
+                city_map[name_lower] = result.artist.city.lower()
+            if result.venue and result.venue.city:
+                city_map[name_lower] = result.venue.city.lower()
+                venue_city = result.venue.city.lower()
+            if result.promoter and result.promoter.city:
+                city_map[name_lower] = result.promoter.city.lower()
+
+        enriched: list[RelationshipEdge] = []
+        for edge in edges:
+            source_city = city_map.get(edge.source.lower())
+            target_city = city_map.get(edge.target.lower())
+
+            penalty = 0.0
+            if source_city and target_city:
+                if source_city != target_city:
+                    penalty = 0.4
+            elif source_city or target_city:
+                known_city = source_city or target_city
+                if venue_city and known_city != venue_city:
+                    penalty = 0.2
+
+            if penalty > 0:
+                new_confidence = max(0.0, edge.confidence - penalty)
+                edge = edge.model_copy(update={"confidence": new_confidence})
+
+            enriched.append(edge)
+
         return enriched
 
     @staticmethod

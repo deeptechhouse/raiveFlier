@@ -1,0 +1,59 @@
+# ──────────────────────────────────────────────────────────────
+# Render Blueprint — raiveFlier
+# ──────────────────────────────────────────────────────────────
+# Deploy: connect your GitHub repo on Render, or click
+# "New > Blueprint" and point to this file.
+#
+# Free tier: 512 MB RAM, 0.1 CPU, spins down after 15 min
+# idle (cold start ~30 s on next request).
+# Disk is ephemeral — ChromaDB and SQLite feedback data
+# reset on each deploy.  Upgrade to a paid instance ($7/mo)
+# for persistent disk and no spin-down.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: raiveflier
+    runtime: docker
+    repo: https://github.com/YOUR_GITHUB_USERNAME/raiveFlier
+    branch: main
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      # === LLM Provider (at least one required) ===
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # Optional: point to an OpenAI-compatible API
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: OPENAI_TEXT_MODEL
+        sync: false
+      - key: OPENAI_VISION_MODEL
+        sync: false
+      - key: OPENAI_EMBEDDING_MODEL
+        sync: false
+
+      # === Music Databases ===
+      - key: DISCOGS_CONSUMER_KEY
+        sync: false
+      - key: DISCOGS_CONSUMER_SECRET
+        sync: false
+      - key: MUSICBRAINZ_CONTACT
+        sync: false
+
+      # === App Config ===
+      - key: APP_ENV
+        value: production
+      - key: APP_HOST
+        value: "0.0.0.0"
+      - key: LOG_LEVEL
+        value: INFO
+
+      # === RAG (disabled by default on free tier) ===
+      - key: RAG_ENABLED
+        value: "false"
+      - key: CHROMADB_PERSIST_DIR
+        value: ./data/chromadb

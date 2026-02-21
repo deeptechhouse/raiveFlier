@@ -143,6 +143,7 @@ const Results = (() => {
       citation:
         e.citations && e.citations.length > 0 ? e.citations[0].text : null,
       confidence: e.confidence || 0,
+      dismissed: e.dismissed || false,
     }));
 
     const patterns = (imap.patterns || []).map((p) => ({
@@ -519,8 +520,11 @@ const Results = (() => {
     // Press & articles
     html += _renderArtistArticles(artist);
 
-    // Q&A trigger
+    // Q&A trigger + rating
     html += _renderQATrigger("ARTIST", artist.name);
+    if (typeof Rating !== "undefined") {
+      html += Rating.renderWidget("ARTIST", artist.name);
+    }
 
     html += "</div>"; // .expandable__content
     html += "</article>";
@@ -691,8 +695,11 @@ const Results = (() => {
         html += "</ul></div>";
       }
 
-      // Q&A trigger
+      // Q&A trigger + rating
       html += _renderQATrigger("VENUE", venue.name);
+      if (typeof Rating !== "undefined") {
+        html += Rating.renderWidget("VENUE", venue.name);
+      }
 
       html += "</div></article>"; // expandable__content + venue-card
     }
@@ -740,8 +747,11 @@ const Results = (() => {
         html += "</ul></div>";
       }
 
-      // Q&A trigger
+      // Q&A trigger + rating
       html += _renderQATrigger("PROMOTER", promoter.name);
+      if (typeof Rating !== "undefined") {
+        html += Rating.renderWidget("PROMOTER", promoter.name);
+      }
 
       html += "</div></article>"; // expandable__content + promoter-card
     }
@@ -763,6 +773,9 @@ const Results = (() => {
     html += `<div class="event-history__header">`;
     html += `<h3 class="event-history__name">${_esc(eventHistory.event_name)}</h3>`;
     html += `<span class="event-history__count text-caption">${eventHistory.total_found} instance${eventHistory.total_found !== 1 ? "s" : ""} found</span>`;
+    if (typeof Rating !== "undefined") {
+      html += Rating.renderWidget("EVENT", eventHistory.event_name);
+    }
     html += "</div>";
 
     // Promoter name change callout
@@ -891,8 +904,11 @@ const Results = (() => {
       html += "</ul></div>";
     }
 
-    // Q&A trigger for date context
+    // Q&A trigger + rating for date context
     html += _renderQATrigger("DATE", "this event's date and context");
+    if (typeof Rating !== "undefined") {
+      html += Rating.renderWidget("DATE", "date_context");
+    }
 
     html += "</div></div>"; // context-panels + results-section
     return html;
@@ -930,14 +946,19 @@ const Results = (() => {
       html += '<ul class="relationship-list">';
 
       relationships.forEach((rel) => {
+        if (rel.dismissed) return;
         const confPct = Math.round(rel.confidence * 100);
-        html += '<li class="relationship-item">';
+        html += `<li class="relationship-item" data-source="${_esc(rel.source)}" data-target="${_esc(rel.target)}" data-type="${_esc(rel.type)}">`;
         html += `<span class="relationship-item__edge">`;
         html += `<strong>${_esc(rel.source)}</strong>`;
         html += ` <span class="relationship-item__type">&mdash;[${_esc(rel.type)}]&rarr;</span> `;
         html += `<strong>${_esc(rel.target)}</strong>`;
         html += "</span>";
         html += `<span class="confidence-badge confidence-${_confidenceClass(rel.confidence)}">${confPct}%</span>`;
+        html += `<button type="button" class="relationship-item__dismiss" aria-label="Dismiss connection: ${_esc(rel.source)} to ${_esc(rel.target)}" title="Dismiss incorrect connection">&times;</button>`;
+        if (typeof Rating !== "undefined") {
+          html += Rating.renderWidget("CONNECTION", rel.source + "|" + rel.target + "|" + rel.type);
+        }
         if (rel.citation) {
           html += ` <span class="relationship-item__citation text-caption">${_esc(rel.citation)}</span>`;
         }
@@ -963,6 +984,10 @@ const Results = (() => {
             html += `<span class="pattern-card__entity">${_esc(e)}</span>`;
           });
           html += "</div>";
+        }
+        if (typeof Rating !== "undefined") {
+          const descKey = (p.type || "") + "::" + (p.description || "").substring(0, 60);
+          html += Rating.renderWidget("PATTERN", descKey);
         }
         html += "</div>";
       });
@@ -1085,6 +1110,52 @@ const Results = (() => {
         highlightEntity(group.dataset.entity)
       );
       group.addEventListener("blur", clearHighlights);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Dismiss connection handler
+  // ------------------------------------------------------------------
+
+  async function _dismissConnection(source, target, type, listItemEl) {
+    const sessionId = App.getSessionId();
+    if (!sessionId) return;
+
+    try {
+      const resp = await fetch(
+        `/api/v1/fliers/${sessionId}/dismiss-connection`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: source,
+            target: target,
+            relationship_type: type,
+          }),
+        }
+      );
+
+      if (resp.ok) {
+        listItemEl.classList.add("relationship-item--dismissed");
+        setTimeout(() => listItemEl.remove(), 300);
+      }
+    } catch (err) {
+      console.error("[Results] Dismiss connection failed:", err);
+    }
+  }
+
+  function _initDismissHandlers() {
+    const container = document.getElementById("results-interconnections");
+    if (!container) return;
+
+    container.addEventListener("click", (e) => {
+      const btn = e.target.closest(".relationship-item__dismiss");
+      if (!btn) return;
+
+      const li = btn.closest(".relationship-item");
+      if (!li) return;
+
+      _dismissConnection(li.dataset.source, li.dataset.target, li.dataset.type, li);
     });
   }
 
@@ -1293,7 +1364,14 @@ const Results = (() => {
     // Initialise interactive behaviours
     _initExpandables(resultsView);
     _initGraphInteractions();
+    _initDismissHandlers();
     _initQATriggers(resultsView);
+
+    // Rating widgets: load cached state and attach event delegation
+    if (typeof Rating !== "undefined" && _sessionId) {
+      Rating.loadRatings(_sessionId);
+      Rating.initWidgets(resultsView, _sessionId);
+    }
 
     // Export button
     const exportBtn = document.getElementById("export-json-btn");

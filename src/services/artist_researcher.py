@@ -122,6 +122,7 @@ class ArtistResearcher:
         self,
         artist_name: str,
         before_date: date | None = None,
+        city: str | None = None,
     ) -> ResearchResult:
         """Execute the full research pipeline for a single artist.
 
@@ -132,6 +133,9 @@ class ArtistResearcher:
         before_date:
             If supplied, constrain discography and event results to entries
             before this date (useful for era-specific flier analysis).
+        city:
+            Optional city hint from the venue entity for geographic
+            disambiguation and context-aware search queries.
 
         Returns
         -------
@@ -167,13 +171,13 @@ class ArtistResearcher:
         disco_confidence = min(1.0, len(releases) * 0.1) if releases else 0.0
 
         # Step 3 — GIG HISTORY
-        appearances = await self._search_gig_history(normalized_name, before_date)
+        appearances = await self._search_gig_history(normalized_name, before_date, city=city)
         if appearances:
             sources_consulted.append("web_search_gigs")
         gig_confidence = min(1.0, len(appearances) * 0.15) if appearances else 0.0
 
         # Step 4 — PRESS
-        articles = await self._search_press(normalized_name, before_date)
+        articles = await self._search_press(normalized_name, before_date, city=city)
         if articles:
             sources_consulted.append("web_search_press")
         press_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
@@ -200,8 +204,13 @@ class ArtistResearcher:
         ])
         if data_source_count >= 2:
             profile_summary = await self._synthesize_profile(
-                normalized_name, releases, appearances, articles, labels
+                normalized_name, releases, appearances, articles, labels, city=city
             )
+
+        # Step 4.8 — GEOGRAPHIC EXTRACTION
+        artist_city, artist_region, artist_country = self._extract_artist_geography(
+            appearances, city
+        )
 
         # Step 5 — COMPILE
         overall_confidence = calculate_confidence(
@@ -232,6 +241,9 @@ class ArtistResearcher:
             appearances=appearances,
             articles=articles,
             profile_summary=profile_summary,
+            city=artist_city,
+            region=artist_region,
+            country=artist_country,
         )
 
         result = ResearchResult(
@@ -492,13 +504,15 @@ class ArtistResearcher:
         return releases, unique_labels
 
     async def _search_gig_history(
-        self, name: str, before_date: date | None
+        self, name: str, before_date: date | None, city: str | None = None
     ) -> list[EventAppearance]:
         """Search the web for past event appearances by the artist.
 
         Uses RA.co (Resident Advisor) as the primary source for event
-        listings, supplemented by general web search. If initial results
-        are sparse, performs deeper follow-up searches.
+        listings, supplemented by general web search. When ``city`` is
+        provided, city-qualified queries are included to improve
+        disambiguation. Performs deeper follow-up searches if initial
+        results are sparse.
         """
         # Phase 1: Primary queries — RA.co first, then general
         primary_queries = [
@@ -507,6 +521,8 @@ class ArtistResearcher:
             f'"{name}" DJ set event lineup',
             f'"{name}" live club night rave',
         ]
+        if city:
+            primary_queries.insert(2, f'"{name}" DJ "{city}" event')
 
         all_results: list[SearchResult] = []
         for query in primary_queries:
@@ -649,12 +665,15 @@ class ArtistResearcher:
             )
         return refs
 
-    async def _search_press(self, name: str, before_date: date | None) -> list[ArticleReference]:
+    async def _search_press(
+        self, name: str, before_date: date | None, city: str | None = None
+    ) -> list[ArticleReference]:
         """Search for press articles and interviews mentioning the artist.
 
         Prioritizes RA.co (Resident Advisor) as the premier source for
-        electronic music artist profiles and event coverage. Performs
-        adaptive deepening when initial results are insufficient.
+        electronic music artist profiles and event coverage. When ``city``
+        is provided, a city-qualified query is added for disambiguation.
+        Performs adaptive deepening when initial results are insufficient.
         """
         # Phase 1: Primary queries — RA.co artist profiles, then major press
         primary_queries = [
@@ -662,6 +681,8 @@ class ArtistResearcher:
             f'"{name}" interview OR profile "Resident Advisor" OR "DJ Mag" OR Mixmag',
             f'"{name}" electronic music artist biography',
         ]
+        if city:
+            primary_queries.append(f'"{name}" "{city}" electronic music DJ')
 
         all_results: list[SearchResult] = []
         seen_urls: set[str] = set()
@@ -886,6 +907,40 @@ class ArtistResearcher:
         match = re.search(r"https?://(?:www\.)?([^/]+)", url)
         return match.group(1) if match else url
 
+    # -- Geography extraction --------------------------------------------------
+
+    @staticmethod
+    def _extract_artist_geography(
+        appearances: list[EventAppearance],
+        flier_city: str | None,
+    ) -> tuple[str | None, str | None, str | None]:
+        """Determine the artist's primary geographic base from appearance data.
+
+        Uses a heuristic: if >= 50% of appearances with a known city share
+        the same city, return that city.  Otherwise returns ``(None, None, None)``.
+
+        Returns
+        -------
+        tuple[str | None, str | None, str | None]
+            (city, region, country)
+        """
+        city_counts: dict[str, int] = {}
+        for app in appearances:
+            if app.city:
+                key = app.city.strip().lower()
+                city_counts[key] = city_counts.get(key, 0) + 1
+
+        if not city_counts:
+            return (None, None, None)
+
+        top_city = max(city_counts, key=city_counts.get)  # type: ignore[arg-type]
+        total_with_city = sum(city_counts.values())
+
+        if city_counts[top_city] >= total_with_city * 0.5:
+            return (top_city.title(), None, None)
+
+        return (None, None, None)
+
     # -- Profile synthesis -----------------------------------------------------
 
     async def _synthesize_profile(
@@ -895,10 +950,14 @@ class ArtistResearcher:
         appearances: list[EventAppearance],
         articles: list[ArticleReference],
         labels: list[Label],
+        city: str | None = None,
     ) -> str | None:
         """Use LLM to synthesize a 2-3 sentence artist profile summary."""
         # Build context from available data
         context_parts: list[str] = []
+
+        if city:
+            context_parts.append(f"Flier city: {city}")
 
         if releases:
             release_titles = [r.title for r in releases[:10]]
@@ -930,6 +989,7 @@ class ArtistResearcher:
         user_prompt = (
             f"Based on the following data about '{artist_name}', write a 2-3 sentence "
             "profile summary placing them in the context of electronic/dance music culture. "
+            "Include the city/region they are based in if apparent from the data. "
             "Be specific and factual. Do not speculate.\n\n"
             f"{context_text}"
         )

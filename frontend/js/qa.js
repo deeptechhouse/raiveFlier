@@ -102,7 +102,7 @@ const QA = (() => {
   }
 
   /** Render an assistant answer with citations and related fact chips. */
-  function _renderAssistantMessage(answer, citations, facts) {
+  function _renderAssistantMessage(answer, citations, facts, question) {
     let html = '<div class="qa-message qa-message--assistant">';
 
     // Answer text (preserve paragraphs)
@@ -120,6 +120,11 @@ const QA = (() => {
         html += `<span class="qa-citation ${tierCls}" title="${_esc(c.text || c.source)}">${_esc(c.source || c.text)} <span class="qa-citation__tier">T${c.tier || "?"}</span></span>`;
       });
       html += "</div>";
+    }
+
+    // Rating widget
+    if (typeof Rating !== "undefined" && question) {
+      html += Rating.renderWidget("QA", Rating.simpleHash(question));
     }
 
     html += "</div>";
@@ -160,11 +165,13 @@ const QA = (() => {
     if (!container) return;
 
     let html = "";
+    let lastQuestion = "";
     _history.forEach((msg) => {
       if (msg.role === "user") {
+        lastQuestion = msg.content;
         html += _renderUserMessage(msg.content);
       } else {
-        html += _renderAssistantMessage(msg.content, msg.citations, msg.suggestions);
+        html += _renderAssistantMessage(msg.content, msg.citations, msg.suggestions, lastQuestion);
       }
     });
 
@@ -183,6 +190,11 @@ const QA = (() => {
         _submitQuestion(_buildFactQuery(factText));
       });
     });
+
+    // Rating widgets: attach event delegation
+    if (typeof Rating !== "undefined" && _sessionId) {
+      Rating.initWidgets(container, _sessionId);
+    }
 
     // Scroll to bottom
     container.scrollTop = container.scrollHeight;

@@ -45,3 +45,6 @@ uploads/
 
 # ChromaDB local data
 data/chromadb/
+
+# SQLite feedback database (runtime data)
+data/feedback.db
