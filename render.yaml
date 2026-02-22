@@ -1,0 +1,67 @@
+# ──────────────────────────────────────────────────────────────
+# Render Blueprint — raiveFlier
+# ──────────────────────────────────────────────────────────────
+# Deploy: connect your GitHub repo on Render, or click
+# "New > Blueprint" and point to this file.
+#
+# Starter plan ($7/mo): 512 MB RAM, no spin-down, persistent
+# disk at /data for ChromaDB corpus and SQLite feedback.
+# Reference corpus is auto-ingested on first startup.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: raiveflier
+    runtime: docker
+    repo: https://github.com/deeptechhouse/raiveFlier
+    branch: feat/geographic-filtering-ratings-deploy
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    disk:
+      name: raiveflier-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      # === LLM Provider (at least one required) ===
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # Optional: point to an OpenAI-compatible API
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: OPENAI_TEXT_MODEL
+        sync: false
+      - key: OPENAI_VISION_MODEL
+        sync: false
+      - key: OPENAI_EMBEDDING_MODEL
+        sync: false
+
+      # === Music Databases ===
+      - key: DISCOGS_CONSUMER_KEY
+        sync: false
+      - key: DISCOGS_CONSUMER_SECRET
+        sync: false
+      - key: MUSICBRAINZ_CONTACT
+        sync: false
+
+      # === Corpus Download (private repo) ===
+      - key: GITHUB_TOKEN
+        sync: false
+
+      # === App Config ===
+      - key: APP_ENV
+        value: production
+      - key: APP_HOST
+        value: "0.0.0.0"
+      - key: LOG_LEVEL
+        value: INFO
+
+      # === RAG (enabled — persistent disk at /data) ===
+      - key: RAG_ENABLED
+        value: "true"
+      - key: CHROMADB_PERSIST_DIR
+        value: /data/chromadb
+      - key: FEEDBACK_DB_PATH
+        value: /data/feedback.db

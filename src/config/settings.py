@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     rag_top_k: int = 20
     rag_max_tokens: int = 30000
 
+    # === Feedback / Ratings ===
+    feedback_db_path: str = "data/feedback.db"
+
     # === App Config ===
     app_host: str = "0.0.0.0"
     app_port: int = 8000

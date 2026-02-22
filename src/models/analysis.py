@@ -50,6 +50,7 @@ class RelationshipEdge(BaseModel):
     details: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    dismissed: bool = False
 
 
 class PatternInsight(BaseModel):

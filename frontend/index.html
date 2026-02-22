@@ -27,6 +27,20 @@
     </div>
   </header>
 
+  <!-- Corpus Search Sidebar (left panel, always available) -->
+  <aside id="corpus-sidebar" class="corpus-sidebar" aria-label="Search knowledge base">
+    <!-- Populated dynamically by corpus.js -->
+  </aside>
+
+  <!-- Corpus toggle button (fixed bottom-left) -->
+  <button type="button" id="corpus-toggle" class="corpus-toggle" aria-label="Toggle corpus search" aria-expanded="false">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+      <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="corpus-toggle__label">Corpus</span>
+  </button>
+
   <main id="app" class="container">
 
     <!-- View 1: Upload -->
@@ -99,6 +113,8 @@
   <script src="js/upload.js"></script>
   <script src="js/confirmation.js"></script>
   <script src="js/websocket.js"></script>
+  <script src="js/corpus.js"></script>
+  <script src="js/rating.js"></script>
   <script src="js/qa.js"></script>
   <script src="js/results.js"></script>
 </body>

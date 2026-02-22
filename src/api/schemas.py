@@ -124,3 +124,103 @@ class AskQuestionResponse(BaseModel):
     answer: str
     citations: list[dict[str, Any]] = Field(default_factory=list)
     related_facts: list[RelatedFact] = Field(default_factory=list)
+
+
+class CorpusSearchRequest(BaseModel):
+    """User query for corpus semantic search."""
+
+    query: str = Field(..., min_length=1, max_length=500)
+    top_k: int = Field(default=10, ge=1, le=50)
+    source_type: list[str] | None = Field(
+        default=None,
+        description='Filter by source types: "book", "article", "interview", etc.',
+    )
+    entity_tag: str | None = Field(
+        default=None,
+        description="Filter to chunks mentioning a specific entity name.",
+    )
+    geographic_tag: str | None = Field(
+        default=None,
+        description="Filter to chunks referencing a specific city/region.",
+    )
+
+
+class CorpusSearchChunk(BaseModel):
+    """A single corpus search result chunk."""
+
+    text: str
+    source_title: str
+    source_type: str
+    author: str | None = None
+    citation_tier: int = 6
+    page_number: str | None = None
+    similarity_score: float = 0.0
+    formatted_citation: str = ""
+    entity_tags: list[str] = Field(default_factory=list)
+    geographic_tags: list[str] = Field(default_factory=list)
+    genre_tags: list[str] = Field(default_factory=list)
+
+
+class CorpusSearchResponse(BaseModel):
+    """Response containing corpus search results."""
+
+    query: str
+    total_results: int
+    results: list[CorpusSearchChunk] = Field(default_factory=list)
+
+
+class SubmitRatingRequest(BaseModel):
+    """Submit a thumbs up/down rating for a result item."""
+
+    item_type: str = Field(
+        ...,
+        description="ARTIST, VENUE, PROMOTER, DATE, EVENT, CONNECTION, PATTERN, QA, CORPUS",
+    )
+    item_key: str = Field(..., min_length=1, max_length=500)
+    rating: int = Field(..., description="+1 for thumbs up, -1 for thumbs down")
+
+
+class RatingResponse(BaseModel):
+    """Response after submitting a rating."""
+
+    id: int
+    session_id: str
+    item_type: str
+    item_key: str
+    rating: int
+    created_at: str
+    updated_at: str
+
+
+class SessionRatingsResponse(BaseModel):
+    """All ratings for a session."""
+
+    session_id: str
+    ratings: list[RatingResponse] = Field(default_factory=list)
+    total: int = 0
+
+
+class RatingSummaryResponse(BaseModel):
+    """Aggregate rating statistics."""
+
+    total_ratings: int = 0
+    positive: int = 0
+    negative: int = 0
+    by_type: dict[str, dict[str, int]] = Field(default_factory=dict)
+
+
+class DismissConnectionRequest(BaseModel):
+    """Request to dismiss a specific interconnection edge."""
+
+    source: str
+    target: str
+    relationship_type: str
+    reason: str | None = None
+
+
+class DismissConnectionResponse(BaseModel):
+    """Response after dismissing a connection."""
+
+    session_id: str
+    dismissed_count: int
+    message: str

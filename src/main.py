@@ -42,6 +42,7 @@ from src.pipeline.progress_tracker import ProgressTracker
 from src.providers.article.wayback_provider import WaybackProvider
 from src.providers.article.web_scraper_provider import WebScraperProvider
 from src.providers.cache.memory_cache import MemoryCacheProvider
+from src.providers.feedback.sqlite_feedback_provider import SQLiteFeedbackProvider
 from src.providers.llm.anthropic_provider import AnthropicLLMProvider
 from src.providers.llm.ollama_provider import OllamaLLMProvider
 from src.providers.llm.openai_provider import OpenAILLMProvider
@@ -50,9 +51,17 @@ from src.providers.music_db.beatport_provider import BeatportProvider
 from src.providers.music_db.discogs_api_provider import DiscogsAPIProvider
 from src.providers.music_db.discogs_scrape_provider import DiscogsScrapeProvider
 from src.providers.music_db.musicbrainz_provider import MusicBrainzProvider
-from src.providers.ocr.easyocr_provider import EasyOCRProvider
 from src.providers.ocr.llm_vision_provider import LLMVisionOCRProvider
 from src.providers.ocr.tesseract_provider import TesseractOCRProvider
+
+# EasyOCR is optional — it pulls in PyTorch (~2 GB) which exceeds RAM on
+# lightweight deployments (e.g. Render free tier 512 MB).
+try:
+    from src.providers.ocr.easyocr_provider import EasyOCRProvider
+
+    _EASYOCR_AVAILABLE = True
+except ImportError:
+    _EASYOCR_AVAILABLE = False
 from src.providers.search.duckduckgo_provider import DuckDuckGoSearchProvider
 from src.services.artist_researcher import ArtistResearcher
 from src.services.citation_service import CitationService
@@ -164,7 +173,8 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         ocr_providers.append(
             LLMVisionOCRProvider(llm_provider=primary_llm, preprocessor=preprocessor)
         )
-    ocr_providers.append(EasyOCRProvider(preprocessor=preprocessor))
+    if _EASYOCR_AVAILABLE:
+        ocr_providers.append(EasyOCRProvider(preprocessor=preprocessor))
     ocr_providers.append(TesseractOCRProvider(preprocessor=preprocessor))
 
     # -- Music DB providers --
@@ -323,6 +333,9 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
     provider_list.append({"name": "WebScraperProvider", "type": "article", "available": True})
     provider_list.append({"name": "WaybackProvider", "type": "article", "available": True})
 
+    # -- Feedback provider (SQLite-backed ratings persistence) --
+    feedback_provider = SQLiteFeedbackProvider(db_path=app_settings.feedback_db_path)
+
     return {
         "http_client": http_client,
         "pipeline": pipeline,
@@ -333,8 +346,10 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
         "provider_list": provider_list,
         "primary_llm_name": primary_llm.get_provider_name(),
         "ingestion_service": ingestion_service,
+        "vector_store": vector_store,
         "rag_enabled": app_settings.rag_enabled and vector_store is not None,
         "qa_service": qa_service,
+        "feedback_provider": feedback_provider,
     }
 
 
@@ -376,7 +391,8 @@ def build_pipeline(custom_settings: Settings | None = None) -> dict[str, Any]:
     ocr_providers = []
     if llm.supports_vision():
         ocr_providers.append(LLMVisionOCRProvider(llm_provider=llm))
-    ocr_providers.append(EasyOCRProvider(preprocessor=preprocessor))
+    if _EASYOCR_AVAILABLE:
+        ocr_providers.append(EasyOCRProvider(preprocessor=preprocessor))
     ocr_providers.append(TesseractOCRProvider(preprocessor=preprocessor))
 
     ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
@@ -454,7 +470,7 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
     services = build_pipeline()
     session_id = str(uuid4())
 
-    state = PipelineState(session_id=session_id)
+    state = PipelineState(session_id=session_id, flier=flier)
 
     # -- Phase 1: OCR --
     _logger.info("pipeline_phase", phase="OCR", session=session_id)
@@ -524,6 +540,57 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
 
 
 # ---------------------------------------------------------------------------
+# Auto-ingest reference corpus on first boot
+# ---------------------------------------------------------------------------
+
+_REFERENCE_CORPUS_DIR = Path(__file__).resolve().parent.parent / "data" / "reference_corpus"
+
+
+async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
+    """Ingest curated reference text files into the RAG corpus if empty.
+
+    Runs once on startup.  If the vector store already has data (e.g. from
+    a persistent disk), this is a no-op.  The ``ingest_directory`` method
+    also deduplicates by ``source_id``, so re-runs are safe.
+    """
+    ingestion_service = getattr(application.state, "ingestion_service", None)
+    vector_store = getattr(application.state, "vector_store", None)
+    if ingestion_service is None or vector_store is None:
+        return  # RAG not enabled
+
+    try:
+        stats = await vector_store.get_stats()
+        if stats.total_chunks > 0:
+            _logger.info(
+                "reference_corpus_already_ingested",
+                chunks=stats.total_chunks,
+                sources=stats.total_sources,
+            )
+            return
+    except Exception:
+        pass  # Can't determine state — proceed with ingestion
+
+    corpus_dir = _REFERENCE_CORPUS_DIR
+    if not corpus_dir.is_dir():
+        _logger.warning("reference_corpus_dir_not_found", path=str(corpus_dir))
+        return
+
+    _logger.info("auto_ingesting_reference_corpus", path=str(corpus_dir))
+    try:
+        results = await ingestion_service.ingest_directory(
+            str(corpus_dir), source_type="reference"
+        )
+        total_chunks = sum(r.chunks_created for r in results)
+        _logger.info(
+            "reference_corpus_ingested",
+            files=len(results),
+            chunks=total_chunks,
+        )
+    except Exception as exc:
+        _logger.error("reference_corpus_ingestion_failed", error=str(exc))
+
+
+# ---------------------------------------------------------------------------
 # Application lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
 
@@ -535,6 +602,13 @@ async def _lifespan(application: FastAPI):  # noqa: ANN201
 
     for key, value in components.items():
         setattr(application.state, key, value)
+
+    # Initialize feedback database (creates table if needed)
+    if hasattr(application.state, "feedback_provider"):
+        await application.state.feedback_provider.initialize()
+
+    # Auto-ingest reference corpus on first boot (idempotent — skips if already populated)
+    await _auto_ingest_reference_corpus(application)
 
     _logger.info(
         "app_startup",

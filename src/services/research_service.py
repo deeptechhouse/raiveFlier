@@ -119,6 +119,7 @@ class ResearchService:
                     self._artist_researcher.research(
                         artist_name=artist_entity.text,
                         before_date=event_date,
+                        city=city,
                     )
                 )
             )
@@ -142,6 +143,7 @@ class ResearchService:
                 asyncio.ensure_future(
                     self._promoter_researcher.research(
                         promoter_name=entities.promoter.text,
+                        city=city,
                     )
                 )
             )

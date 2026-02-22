@@ -294,15 +294,6 @@ class QAService:
                                 for r in releases[:5]
                             ]
                             parts.append(f"Key releases: {', '.join(rel_strs)}")
-                        appearances = artist_data.get("appearances", [])
-                        if appearances:
-                            app_strs = [
-                                f"{a.get('event_name', '')} @ {a.get('venue', '')}"
-                                for a in appearances[:5]
-                            ]
-                            parts.append(
-                                f"Past appearances: {', '.join(app_strs)}"
-                            )
 
                     venue_data = result.get("venue", {})
                     if venue_data and venue_data.get("history"):
