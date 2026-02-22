@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import struct
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -510,3 +510,179 @@ def tmp_chromadb(tmp_path: Path):
     persist_dir = str(tmp_path / "chromadb_test")
     client = chromadb.PersistentClient(path=persist_dir)
     return client, persist_dir
+
+
+# ---------------------------------------------------------------------------
+# Shared utility fixtures (Phase 1 — coverage push)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_settings() -> Any:
+    """Return a Settings-like object with dummy API keys for provider tests."""
+    from src.config.settings import Settings
+
+    return Settings(
+        openai_api_key="sk-test-key",
+        anthropic_api_key="test-anthropic-key",
+        discogs_consumer_key="test-discogs-key",
+        discogs_consumer_secret="test-discogs-secret",
+        serper_api_key="test-serper-key",
+        rag_enabled=True,
+        chromadb_persist_dir="/tmp/test_chromadb",
+        app_env="test",
+    )
+
+
+@pytest.fixture
+def mock_cache_provider() -> Any:
+    """Return a MagicMock(spec=ICacheProvider) with AsyncMock methods."""
+    from src.interfaces.cache_provider import ICacheProvider
+
+    mock = MagicMock(spec=ICacheProvider)
+    mock.get = AsyncMock(return_value=None)
+    mock.set = AsyncMock(return_value=None)
+    mock.delete = AsyncMock(return_value=None)
+    mock.exists = AsyncMock(return_value=False)
+    return mock
+
+
+@pytest.fixture
+def sample_pipeline_state(
+    sample_flier_image: tuple[FlierImage, bytes],
+    sample_ocr_result: OCRResult,
+    sample_extracted_entities: ExtractedEntities,
+) -> Any:
+    """Build a fully-populated PipelineState for output formatter tests."""
+    from datetime import timezone
+
+    from src.models.analysis import (
+        Citation,
+        EntityNode,
+        InterconnectionMap,
+        PatternInsight,
+        RelationshipEdge,
+    )
+    from src.models.entities import Artist, Label, Promoter, Release, Venue
+    from src.models.pipeline import PipelineError, PipelinePhase, PipelineState
+    from src.models.research import DateContext, ResearchResult
+
+    flier, _ = sample_flier_image
+
+    citation = Citation(
+        text="Carl Cox played at Tresor Berlin in 1997",
+        source_type="press",
+        source_name="Resident Advisor",
+        source_url="https://ra.co/features/carl-cox-tresor",
+        tier=2,
+    )
+
+    artist = Artist(
+        name="Carl Cox",
+        discogs_id=12345,
+        musicbrainz_id="abc-123",
+        confidence=0.95,
+        releases=[
+            Release(title="Phat Trax", label="React", year=1995),
+        ],
+        labels=[
+            Label(name="Intec", discogs_id=100),
+        ],
+    )
+
+    venue = Venue(
+        name="Tresor",
+        city="Berlin",
+        country="Germany",
+        history="Opened in 1991 in the vault of a former department store.",
+        notable_events=["Love Parade afterparty", "Tresor Records launch"],
+        articles=[],
+    )
+
+    promoter = Promoter(
+        name="Tresor Records",
+        event_history=["Tresor nights", "Love Parade"],
+        articles=[],
+    )
+
+    date_context = DateContext(
+        event_date=date(1997, 3, 15),
+        scene_context="Berlin techno was at its peak in 1997.",
+        city_context="Berlin was the capital of electronic music.",
+        cultural_context="Post-reunification culture thriving.",
+    )
+
+    research_results = [
+        ResearchResult(
+            entity_type=EntityType.ARTIST,
+            entity_name="Carl Cox",
+            artist=artist,
+            confidence=0.95,
+            warnings=["Limited release data before 1993"],
+        ),
+        ResearchResult(
+            entity_type=EntityType.VENUE,
+            entity_name="Tresor",
+            venue=venue,
+            confidence=0.88,
+        ),
+        ResearchResult(
+            entity_type=EntityType.PROMOTER,
+            entity_name="Tresor Records",
+            promoter=promoter,
+            confidence=0.70,
+        ),
+        ResearchResult(
+            entity_type=EntityType.DATE,
+            entity_name="1997-03-15",
+            date_context=date_context,
+            confidence=0.85,
+        ),
+    ]
+
+    interconnection_map = InterconnectionMap(
+        nodes=[
+            EntityNode(entity_type=EntityType.ARTIST, name="Carl Cox"),
+            EntityNode(entity_type=EntityType.VENUE, name="Tresor"),
+        ],
+        edges=[
+            RelationshipEdge(
+                source="Carl Cox",
+                target="Tresor",
+                relationship_type="performed_at",
+                details="Played at Tresor Berlin in spring 1997",
+                citations=[citation],
+                confidence=0.9,
+            ),
+        ],
+        patterns=[
+            PatternInsight(
+                pattern_type="venue_residency",
+                description="Carl Cox had recurring appearances at Tresor",
+                involved_entities=["Carl Cox", "Tresor"],
+            ),
+        ],
+        narrative="Carl Cox was a key figure in the Berlin techno scene.",
+        citations=[citation],
+    )
+
+    errors = [
+        PipelineError(
+            phase=PipelinePhase.RESEARCH,
+            message="Bandcamp rate limit exceeded",
+        ),
+    ]
+
+    return PipelineState(
+        session_id="test-session-001",
+        flier=flier,
+        current_phase=PipelinePhase.OUTPUT,
+        ocr_result=sample_ocr_result,
+        extracted_entities=sample_extracted_entities,
+        confirmed_entities=sample_extracted_entities,
+        research_results=research_results,
+        interconnection_map=interconnection_map,
+        completed_at=datetime(2026, 2, 22, 12, 0, 0, tzinfo=timezone.utc),
+        errors=errors,
+        progress_percent=100.0,
+    )

@@ -277,3 +277,69 @@ class TestQAServiceContext:
         prompt_text = str(call_args)
         # Should include data from the session context
         assert "Underground Club" in prompt_text or "Test DJ" in prompt_text
+
+
+# ── JSON Parse Resilience ────────────────────────────────
+
+
+class TestQAServiceJSONParsing:
+    """Test that _parse_response handles various LLM output formats."""
+
+    def _make_service(self) -> QAService:
+        return QAService(llm=AsyncMock(), vector_store=None, cache=None)
+
+    def test_parses_clean_json(self) -> None:
+        service = self._make_service()
+        raw = json.dumps({
+            "answer": "Clean answer",
+            "citations": [],
+            "related_facts": [{"text": "A fact", "category": "HISTORY"}],
+        })
+        result = service._parse_response(raw, [])
+        assert result.answer == "Clean answer"
+        assert len(result.related_facts) == 1
+
+    def test_parses_markdown_wrapped_json(self) -> None:
+        service = self._make_service()
+        raw = '```json\n{"answer": "Wrapped answer", "citations": [], "related_facts": []}\n```'
+        result = service._parse_response(raw, [])
+        assert result.answer == "Wrapped answer"
+
+    def test_parses_prose_wrapped_json(self) -> None:
+        """LLM prefixes JSON with prose — regex extraction should handle it."""
+        service = self._make_service()
+        raw = 'Here is my response:\n{"answer": "Prose-wrapped", "citations": [], "related_facts": []}'
+        result = service._parse_response(raw, [])
+        assert result.answer == "Prose-wrapped"
+
+    def test_falls_back_on_json_with_trailing_text(self) -> None:
+        """LLM appends text after JSON — falls back to raw text since it starts with { but isn't clean JSON."""
+        service = self._make_service()
+        raw = '{"answer": "With trailing", "citations": [], "related_facts": []}\nI hope this helps!'
+        result = service._parse_response(raw, [])
+        # json.loads fails on trailing text; falls back to raw text as answer
+        assert isinstance(result, QAResponse)
+        assert len(result.answer) > 0
+
+    def test_falls_back_to_raw_text_on_no_json(self) -> None:
+        """When no JSON is present at all, use raw text as answer."""
+        service = self._make_service()
+        raw = "Just a plain text answer with no JSON whatsoever."
+        result = service._parse_response(raw, [])
+        assert "plain text answer" in result.answer
+        assert result.citations == []
+        assert result.related_facts == []
+
+    def test_merges_rag_citations_with_llm_citations(self) -> None:
+        service = self._make_service()
+        rag_cit = [{"text": "RAG citation", "source": "Energy Flash", "tier": 1}]
+        raw = json.dumps({
+            "answer": "Answer",
+            "citations": [{"text": "LLM citation", "source": "Mixmag", "tier": 2}],
+            "related_facts": [],
+        })
+        result = service._parse_response(raw, rag_cit)
+        assert len(result.citations) == 2
+        sources = [c["source"] for c in result.citations]
+        assert "Energy Flash" in sources
+        assert "Mixmag" in sources

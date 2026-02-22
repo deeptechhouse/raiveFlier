@@ -113,10 +113,11 @@ def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
     return OllamaLLMProvider(settings=app_settings)
 
 
-def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
+async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
-    Priority: OpenAI/OpenAI-compatible (if API key set) ->
+    Priority: OpenAI/OpenAI-compatible (if API key set and reachable) ->
+              SentenceTransformer (local, free, no API needed) ->
               Nomic/Ollama (if reachable).
     Returns ``None`` if no embedding provider is available.
     """
@@ -129,7 +130,33 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
 
         provider: IEmbeddingProvider = OpenAIEmbeddingProvider(settings=app_settings)
         if provider.is_available():
-            return provider
+            try:
+                await provider.embed_single("test")
+                return provider
+            except Exception as exc:
+                _logger.warning(
+                    "openai_embedding_unavailable",
+                    error=str(exc)[:200],
+                    msg="Falling back to local embedding provider.",
+                )
+
+    # Local ONNX embedding via fastembed — no PyTorch, lightweight
+    from src.providers.embedding.fastembed_embedding_provider import (
+        FastEmbedEmbeddingProvider,
+    )
+
+    fe_provider: IEmbeddingProvider = FastEmbedEmbeddingProvider()
+    if fe_provider.is_available():
+        return fe_provider
+
+    # Local sentence-transformer (requires PyTorch) — heavier fallback
+    from src.providers.embedding.sentence_transformer_embedding_provider import (
+        SentenceTransformerEmbeddingProvider,
+    )
+
+    st_provider: IEmbeddingProvider = SentenceTransformerEmbeddingProvider()
+    if st_provider.is_available():
+        return st_provider
 
     from src.providers.embedding.nomic_embedding_provider import (
         NomicEmbeddingProvider,
@@ -147,7 +174,7 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
 # ---------------------------------------------------------------------------
 
 
-def _build_all(app_settings: Settings) -> dict[str, Any]:
+async def _build_all(app_settings: Settings) -> dict[str, Any]:
     """Construct every provider and service instance for the application.
 
     Returns a flat dict of named components to be stored on ``app.state``.
@@ -201,7 +228,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
     ingestion_service = None
 
     if app_settings.rag_enabled:
-        embedding_provider = _build_embedding_provider(app_settings)
+        embedding_provider = await _build_embedding_provider(app_settings)
         if embedding_provider is not None and embedding_provider.is_available():
             from src.providers.vector_store.chromadb_provider import ChromaDBProvider
             from src.services.ingestion.chunker import TextChunker
@@ -227,6 +254,7 @@ def _build_all(app_settings: Settings) -> dict[str, Any]:
             _logger.info(
                 "rag_enabled",
                 embedding_provider=embedding_provider.get_provider_name(),
+                embedding_dimension=embedding_provider.get_dimension(),
                 vector_store="chromadb",
                 persist_dir=app_settings.chromadb_persist_dir,
             )
@@ -589,6 +617,18 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
     except Exception as exc:
         _logger.error("reference_corpus_ingestion_failed", error=str(exc))
 
+    # Always log final corpus state for operational visibility
+    try:
+        final_stats = await vector_store.get_stats()
+        _logger.info(
+            "corpus_readiness",
+            total_chunks=final_stats.total_chunks,
+            total_sources=final_stats.total_sources,
+            ready=final_stats.total_chunks > 0,
+        )
+    except Exception as exc:
+        _logger.error("corpus_readiness_check_failed", error=str(exc))
+
 
 # ---------------------------------------------------------------------------
 # Application lifespan (startup / shutdown)
@@ -598,7 +638,7 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
 @asynccontextmanager
 async def _lifespan(application: FastAPI):  # noqa: ANN201
     """Initialise all providers and services on startup, clean up on shutdown."""
-    components = _build_all(settings)
+    components = await _build_all(settings)
 
     for key, value in components.items():
         setattr(application.state, key, value)
@@ -647,7 +687,12 @@ def create_app() -> FastAPI:
     # -- Middleware (order matters: last added = first executed) --
     application.add_middleware(ErrorHandlingMiddleware)
     application.add_middleware(RequestLoggingMiddleware)
-    configure_cors(application)
+    if settings.app_env == "production":
+        configure_cors(application, allowed_origins=[
+            "https://raiveflier.onrender.com",
+        ])
+    else:
+        configure_cors(application)
 
     # -- API routes --
     application.include_router(api_router)

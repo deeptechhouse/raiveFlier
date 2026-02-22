@@ -291,7 +291,10 @@ async def ask_question(
 
     state = session_states.get(session_id)
     if state is None:
-        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session not found: {session_id}. Sessions are cleared on server restart. Please re-upload the flier.",
+        )
 
     # Build session context dict from PipelineState
     session_context: dict[str, Any] = {
@@ -343,7 +346,10 @@ async def dismiss_connection(
     """Mark a specific interconnection relationship as dismissed/incorrect."""
     state = session_states.get(session_id)
     if state is None:
-        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session not found: {session_id}. Sessions are cleared on server restart. Please re-upload the flier.",
+        )
 
     if state.interconnection_map is None:
         raise HTTPException(status_code=404, detail="No interconnection data available")
@@ -507,7 +513,10 @@ async def get_results(
     """Return full analysis results if complete, or current progress status."""
     state = session_states.get(session_id)
     if state is None:
-        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session not found: {session_id}. Sessions are cleared on server restart. Please re-upload the flier.",
+        )
 
     entities = state.confirmed_entities or state.extracted_entities
 
@@ -546,10 +555,32 @@ async def health_check(request: Request) -> HealthResponse:
     """Return application health, version, and provider availability."""
     providers: dict[str, Any] = {}
     if hasattr(request.app.state, "provider_registry"):
-        providers = request.app.state.provider_registry
+        providers = dict(request.app.state.provider_registry)
+
+    # Actively verify RAG corpus readiness
+    vector_store = getattr(request.app.state, "vector_store", None)
+    if vector_store is not None:
+        try:
+            stats = await vector_store.get_stats()
+            providers["rag"] = stats.total_chunks > 0
+            providers["rag_chunks"] = stats.total_chunks
+        except Exception:
+            providers["rag"] = False
+            providers["rag_chunks"] = 0
+
+    all_critical_ok = providers.get("llm", False) and providers.get("ocr", False)
+    rag_expected = getattr(request.app.state, "rag_enabled", False)
+    rag_ok = providers.get("rag", False) or not rag_expected
+
+    if all_critical_ok and rag_ok:
+        status = "healthy"
+    elif all_critical_ok:
+        status = "degraded"
+    else:
+        status = "unhealthy"
 
     return HealthResponse(
-        status="healthy",
+        status=status,
         version="0.1.0",
         providers=providers,
     )

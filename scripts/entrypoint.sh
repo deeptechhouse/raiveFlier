@@ -67,21 +67,42 @@ except Exception as e:
 
     # Download and extract — the tarball contains chromadb/ as top dir
     PARENT_DIR=$(dirname "$CHROMADB_DIR")
-    if curl -sL \
-        -H "Authorization: token $GITHUB_TOKEN" \
-        -H "Accept: application/octet-stream" \
-        "https://api.github.com/repos/$CORPUS_REPO/releases/assets/$ASSET_ID" \
-        | tar xz -C "$PARENT_DIR"; then
-        echo "[entrypoint] Corpus downloaded and extracted to $CHROMADB_DIR"
-        # Verify
+    MAX_RETRIES=3
+    RETRY_DELAY=5
+    DOWNLOAD_OK=false
+
+    for attempt in $(seq 1 $MAX_RETRIES); do
+        echo "[entrypoint] Download attempt $attempt of $MAX_RETRIES..."
+        if curl -sL --fail \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/$CORPUS_REPO/releases/assets/$ASSET_ID" \
+            | tar xz -C "$PARENT_DIR"; then
+            DOWNLOAD_OK=true
+            echo "[entrypoint] Corpus downloaded and extracted to $CHROMADB_DIR"
+            break
+        else
+            echo "[entrypoint] Attempt $attempt failed"
+            if [ "$attempt" -lt "$MAX_RETRIES" ]; then
+                echo "[entrypoint] Retrying in ${RETRY_DELAY}s..."
+                sleep "$RETRY_DELAY"
+            fi
+        fi
+    done
+
+    if [ "$DOWNLOAD_OK" = true ]; then
+        # Verify extraction
         if [ -f "$CHROMADB_DIR/chroma.sqlite3" ]; then
             FINAL_SIZE=$(wc -c < "$CHROMADB_DIR/chroma.sqlite3")
             echo "[entrypoint] Verified: chroma.sqlite3 is $FINAL_SIZE bytes"
+            if [ "$FINAL_SIZE" -lt 100000 ]; then
+                echo "[entrypoint] WARNING: Corpus file suspiciously small ($FINAL_SIZE bytes)"
+            fi
         else
             echo "[entrypoint] WARNING: chroma.sqlite3 not found after extraction"
         fi
     else
-        echo "[entrypoint] WARNING: Corpus download/extraction failed"
+        echo "[entrypoint] WARNING: Corpus download failed after $MAX_RETRIES attempts"
     fi
 }
 

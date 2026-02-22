@@ -31,17 +31,34 @@ from src.services.ingestion.source_processors.article_processor import ArticlePr
 from src.models.rag import DocumentChunk
 
 
-def build_ingestion_service() -> tuple[IngestionService, str]:
+async def build_ingestion_service() -> tuple[IngestionService, str]:
     """Bootstrap the ingestion service from project settings."""
     settings = Settings()
 
-    # Embedding provider
+    # Embedding provider — try OpenAI-compatible first, then local
+    # sentence-transformers (same model, no API needed), then Nomic/Ollama.
     embedding_provider = None
     if settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
         )
         provider = OpenAIEmbeddingProvider(settings=settings)
+        if provider.is_available():
+            # Quick connectivity check — skip if API credits exhausted
+            try:
+                await provider.embed_single("test")
+                embedding_provider = provider
+            except Exception as _e:
+                print(f"  OpenAI-compatible provider unavailable: {str(_e)[:120]}")
+                print("  Falling back to local sentence-transformers...")
+
+    if embedding_provider is None:
+        from src.providers.embedding.sentence_transformer_embedding_provider import (
+            SentenceTransformerEmbeddingProvider,
+        )
+        provider = SentenceTransformerEmbeddingProvider(
+            model_name=settings.openai_embedding_model or None
+        )
         if provider.is_available():
             embedding_provider = provider
 
@@ -185,7 +202,7 @@ async def main() -> None:
 
     # Bootstrap ingestion service
     print("Initializing ingestion pipeline...")
-    service, emb_name = build_ingestion_service()
+    service, emb_name = await build_ingestion_service()
     print(f"  Embedding provider: {emb_name}")
     print()
 

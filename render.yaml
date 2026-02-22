@@ -14,7 +14,7 @@ services:
     name: raiveflier
     runtime: docker
     repo: https://github.com/deeptechhouse/raiveFlier
-    branch: feat/geographic-filtering-ratings-deploy
+    branch: main
     plan: starter
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/health

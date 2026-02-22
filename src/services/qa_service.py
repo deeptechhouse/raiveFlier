@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 import structlog
@@ -184,6 +185,14 @@ class QAService:
         if self._vector_store is not None:
             rag_context, rag_citations = await self._retrieve_passages(
                 question, entity_name
+            )
+
+        if self._vector_store is not None and not rag_context:
+            logger.warning(
+                "qa_rag_empty",
+                question=question[:80],
+                entity_name=entity_name,
+                msg="RAG enabled but no relevant passages found above similarity threshold.",
             )
 
         # Build user prompt
@@ -384,6 +393,16 @@ class QAService:
         parts.append(context_summary)
 
         if rag_context:
+            # Enforce token budget: ~4 chars/token, reserve ~10K tokens for
+            # context summary + question + response generation
+            max_rag_chars = 80_000
+            if len(rag_context) > max_rag_chars:
+                logger.info(
+                    "qa_rag_context_truncated",
+                    original_chars=len(rag_context),
+                    max_chars=max_rag_chars,
+                )
+                rag_context = rag_context[:max_rag_chars]
             parts.append("\n## Retrieved Knowledge Base Passages")
             parts.append(rag_context)
 
@@ -455,6 +474,12 @@ class QAService:
             lines = text.split("\n")
             lines = [line for line in lines if not line.strip().startswith("```")]
             text = "\n".join(lines).strip()
+
+        # Handle LLM responses that wrap JSON in prose (e.g. "Here is my response: {...}")
+        if not text.startswith("{"):
+            json_match = re.search(r"\{[\s\S]*\}", text)
+            if json_match:
+                text = json_match.group(0)
 
         try:
             data = json.loads(text)

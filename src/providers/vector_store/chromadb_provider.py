@@ -46,6 +46,60 @@ class ChromaDBProvider(IVectorStoreProvider):
         self._cached_stats: CorpusStats | None = None
         self._cached_stats_count: int = -1
 
+        # Validate embedding dimensions match existing corpus data
+        self._validate_embedding_dimensions()
+
+    # ------------------------------------------------------------------
+    # Startup validation
+    # ------------------------------------------------------------------
+
+    def _validate_embedding_dimensions(self) -> None:
+        """Verify embedding provider dimensions match existing corpus vectors.
+
+        Peeks at a single stored vector and compares its length to the
+        provider's declared dimension.  A mismatch means every query will
+        produce garbage results — fail loud and fast.
+        """
+        try:
+            collection_count = self._collection.count()
+            if collection_count == 0:
+                return  # Empty collection — nothing to validate against
+
+            sample = self._collection.peek(limit=1)
+            embeddings = sample.get("embeddings") if sample else None
+            if embeddings is None or len(embeddings) == 0:
+                return  # No embeddings stored (shouldn't happen, but defensive)
+
+            stored_dim = len(embeddings[0])
+            expected_dim = self._embedding_provider.get_dimension()
+
+            if stored_dim != expected_dim:
+                logger.error(
+                    "embedding_dimension_mismatch",
+                    stored_dim=stored_dim,
+                    expected_dim=expected_dim,
+                    provider=self._embedding_provider.get_provider_name(),
+                )
+                raise RAGError(
+                    message=(
+                        f"Embedding dimension mismatch: corpus has {stored_dim}-dim vectors "
+                        f"but provider '{self._embedding_provider.get_provider_name()}' "
+                        f"produces {expected_dim}-dim vectors. "
+                        f"Set OPENAI_EMBEDDING_MODEL to the model used to build the corpus."
+                    ),
+                    provider_name="chromadb",
+                )
+
+            logger.info(
+                "embedding_dimension_validated",
+                dimension=stored_dim,
+                corpus_chunks=collection_count,
+            )
+        except RAGError:
+            raise
+        except Exception as exc:
+            logger.warning("embedding_dimension_check_skipped", error=str(exc))
+
     # ------------------------------------------------------------------
     # IVectorStoreProvider implementation
     # ------------------------------------------------------------------

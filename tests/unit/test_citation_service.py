@@ -326,3 +326,259 @@ class TestBuildCitation:
         )
         assert c.page_number == "42"
         assert c.tier == 1
+
+
+# ======================================================================
+# verify_citation (async — mock httpx)
+# ======================================================================
+
+
+class TestVerifyCitation:
+    """Tests for citation URL verification with mocked HTTP calls."""
+
+    @pytest.mark.asyncio
+    async def test_no_url_returns_false(self, service: CitationService) -> None:
+        c = Citation(text="claim", source_type="book", source_name="author", tier=1)
+        result_citation, accessible = await service.verify_citation(c)
+        assert accessible is False
+
+    @pytest.mark.asyncio
+    async def test_url_accessible_returns_true(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        c = Citation(
+            text="claim",
+            source_type="press",
+            source_name="RA",
+            source_url="https://ra.co/features/123",
+            tier=2,
+        )
+
+        with patch.object(service, "_head_check", new_callable=AsyncMock, return_value=True):
+            _, accessible = await service.verify_citation(c)
+            assert accessible is True
+
+    @pytest.mark.asyncio
+    async def test_url_down_wayback_available(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        c = Citation(
+            text="claim",
+            source_type="press",
+            source_name="Old Blog",
+            source_url="https://oldblog.com/post",
+            tier=5,
+        )
+
+        with (
+            patch.object(service, "_head_check", new_callable=AsyncMock, return_value=False),
+            patch.object(service, "_check_wayback", new_callable=AsyncMock, return_value=True),
+        ):
+            _, accessible = await service.verify_citation(c)
+            assert accessible is True
+
+    @pytest.mark.asyncio
+    async def test_url_down_no_wayback(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        c = Citation(
+            text="claim",
+            source_type="web",
+            source_name="Dead Site",
+            source_url="https://dead-site.com",
+            tier=5,
+        )
+
+        with (
+            patch.object(service, "_head_check", new_callable=AsyncMock, return_value=False),
+            patch.object(service, "_check_wayback", new_callable=AsyncMock, return_value=False),
+        ):
+            _, accessible = await service.verify_citation(c)
+            assert accessible is False
+
+
+# ======================================================================
+# verify_batch (async — mock httpx)
+# ======================================================================
+
+
+class TestVerifyBatch:
+    """Tests for batch citation verification."""
+
+    @pytest.mark.asyncio
+    async def test_empty_list_returns_empty(self, service: CitationService) -> None:
+        result = await service.verify_batch([])
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_mixed_results(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        c1 = Citation(
+            text="accessible",
+            source_type="press",
+            source_name="RA",
+            source_url="https://ra.co/1",
+            tier=2,
+        )
+        c2 = Citation(
+            text="dead link",
+            source_type="web",
+            source_name="Dead",
+            source_url="https://dead.com",
+            tier=5,
+        )
+        c3 = Citation(
+            text="no url",
+            source_type="book",
+            source_name="Author",
+            tier=1,
+        )
+
+        async def mock_verify(c: Citation) -> tuple[Citation, bool]:
+            if c.source_url and "ra.co" in c.source_url:
+                return (c, True)
+            if c.source_url is None:
+                return (c, False)
+            return (c, False)
+
+        with patch.object(service, "verify_citation", side_effect=mock_verify):
+            results = await service.verify_batch([c1, c2, c3])
+
+        assert len(results) == 3
+        assert results[0][1] is True   # ra.co accessible
+        assert results[1][1] is False  # dead link
+        assert results[2][1] is False  # no url
+
+    @pytest.mark.asyncio
+    async def test_exception_handling_in_batch(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        c1 = Citation(
+            text="boom",
+            source_type="web",
+            source_name="Err",
+            source_url="https://err.com",
+            tier=5,
+        )
+
+        async def mock_verify(c: Citation) -> tuple[Citation, bool]:
+            raise ConnectionError("Network error")
+
+        with patch.object(service, "verify_citation", side_effect=mock_verify):
+            results = await service.verify_batch([c1])
+
+        assert len(results) == 1
+        assert results[0][1] is False  # exception → inaccessible
+
+
+# ======================================================================
+# _head_check and _check_wayback (low-level httpx mocking)
+# ======================================================================
+
+
+class TestHeadCheck:
+    @pytest.mark.asyncio
+    async def test_successful_head_check(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.head = AsyncMock(return_value=mock_response)
+
+        with patch("src.services.citation_service.httpx.AsyncClient", return_value=mock_client):
+            result = await service._head_check("https://example.com")
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_failed_head_check(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.head = AsyncMock(return_value=mock_response)
+
+        with patch("src.services.citation_service.httpx.AsyncClient", return_value=mock_client):
+            result = await service._head_check("https://example.com")
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_head_check_exception(self, service: CitationService) -> None:
+        import httpx
+        from unittest.mock import AsyncMock, patch
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.head = AsyncMock(side_effect=httpx.ConnectTimeout("timeout"))
+
+        with patch("src.services.citation_service.httpx.AsyncClient", return_value=mock_client):
+            result = await service._head_check("https://example.com")
+            assert result is False
+
+
+class TestCheckWayback:
+    @pytest.mark.asyncio
+    async def test_wayback_available(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "archived_snapshots": {
+                "closest": {
+                    "available": True,
+                    "url": "https://web.archive.org/web/20240101/https://example.com",
+                }
+            }
+        }
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with patch("src.services.citation_service.httpx.AsyncClient", return_value=mock_client):
+            result = await service._check_wayback("https://example.com")
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_wayback_not_available(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"archived_snapshots": {}}
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with patch("src.services.citation_service.httpx.AsyncClient", return_value=mock_client):
+            result = await service._check_wayback("https://example.com")
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_wayback_api_error(self, service: CitationService) -> None:
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with patch("src.services.citation_service.httpx.AsyncClient", return_value=mock_client):
+            result = await service._check_wayback("https://example.com")
+            assert result is False

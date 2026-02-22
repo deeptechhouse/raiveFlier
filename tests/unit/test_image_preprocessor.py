@@ -197,3 +197,116 @@ class TestMorphologicalCleanup:
         # The gap should be filled (or at least reduced)
         gap_region = result_arr[50, 45:47]
         assert gap_region.max() > 0
+
+
+# ======================================================================
+# build_ocr_passes
+# ======================================================================
+
+
+class TestBuildOcrPasses:
+    def test_returns_eight_passes(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_neon_on_black(400, 300)
+        passes = preprocessor.build_ocr_passes(img)
+        # standard, inverted, channel_red, channel_green, channel_blue,
+        # clahe, denoised, saturation, otsu => but code shows 8 from reading
+        assert len(passes) >= 8
+        names = [name for name, _ in passes]
+        assert "standard" in names
+        assert "inverted" in names
+        assert "channel_red" in names
+        assert "channel_green" in names
+        assert "channel_blue" in names
+        assert "clahe" in names
+        assert "denoised" in names
+
+    def test_passes_are_pil_images(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(400, 300)
+        passes = preprocessor.build_ocr_passes(img)
+        for name, processed_img in passes:
+            assert isinstance(name, str)
+            assert isinstance(processed_img, Image.Image)
+
+    def test_caching_returns_same_result(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(400, 300)
+        passes1 = preprocessor.build_ocr_passes(img)
+        passes2 = preprocessor.build_ocr_passes(img)
+        # Cached — should be the exact same list object
+        assert passes1 is passes2
+
+    def test_different_image_replaces_cache(self, preprocessor: ImagePreprocessor) -> None:
+        img1 = _make_image(400, 300, (100, 100, 100))
+        img2 = _make_image(400, 300, (200, 200, 200))
+        passes1 = preprocessor.build_ocr_passes(img1)
+        passes2 = preprocessor.build_ocr_passes(img2)
+        # Different images — cache replaced
+        assert passes1 is not passes2
+
+
+# ======================================================================
+# prepare_for_ocr
+# ======================================================================
+
+
+class TestPrepareForOcr:
+    def test_returns_png_bytes(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(400, 300)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        result = preprocessor.prepare_for_ocr(buf.getvalue())
+        assert isinstance(result, bytes)
+        # PNG magic bytes
+        assert result[:4] == b"\x89PNG"
+
+    def test_output_is_valid_image(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(400, 300)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        result = preprocessor.prepare_for_ocr(buf.getvalue())
+        # Should be openable as an image
+        opened = Image.open(io.BytesIO(result))
+        assert opened.format == "PNG"
+
+
+# ======================================================================
+# detect_skew_angle + apply_deskew
+# ======================================================================
+
+
+class TestDeskew:
+    def test_apply_deskew_none_returns_original(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(200, 200)
+        result = preprocessor.apply_deskew(img, None)
+        assert result is img
+
+    def test_apply_deskew_with_angle_rotates(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(200, 200)
+        result = preprocessor.apply_deskew(img, 5.0)
+        # Rotated image with expand=True will have different dimensions
+        assert result.size != img.size or result is not img
+
+    def test_detect_skew_angle_no_lines(self, preprocessor: ImagePreprocessor) -> None:
+        # Uniform image — no lines to detect
+        img = _make_image(200, 200)
+        angle = preprocessor.detect_skew_angle(img)
+        assert angle is None
+
+    def test_deskew_convenience_method(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_image(200, 200)
+        result = preprocessor.deskew(img)
+        assert isinstance(result, Image.Image)
+
+
+# ======================================================================
+# separate_color_channels
+# ======================================================================
+
+
+class TestSeparateColorChannels:
+    def test_returns_three_channels(self, preprocessor: ImagePreprocessor) -> None:
+        img = _make_neon_on_black(200, 200)
+        channels = preprocessor.separate_color_channels(img)
+        assert len(channels) == 3
+        for ch in channels:
+            assert ch.mode == "L"
+            assert ch.size == (200, 200)

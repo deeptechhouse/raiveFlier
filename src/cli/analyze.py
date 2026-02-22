@@ -89,8 +89,8 @@ def _format_text_output(state) -> str:  # noqa: ANN001
 
             if r.artist:
                 a = r.artist
-                if a.bio_summary:
-                    bio = a.bio_summary[:200] + ("..." if len(a.bio_summary) > 200 else "")
+                if a.profile_summary:
+                    bio = a.profile_summary[:200] + ("..." if len(a.profile_summary) > 200 else "")
                     lines.append(f"  Bio: {bio}")
                 if a.labels:
                     label_names = [lb.name for lb in a.labels[:8]]
@@ -102,26 +102,19 @@ def _format_text_output(state) -> str:  # noqa: ANN001
                         lines.append(f"    - {rel.title} [{rel.label}]{year_str}")
                     if len(a.releases) > 5:
                         lines.append(f"    ... and {len(a.releases) - 5} more")
-                if a.press_articles:
-                    lines.append(f"  Press: {len(a.press_articles)} articles")
-                    for pa in a.press_articles[:3]:
-                        lines.append(f"    - {pa.title}")
-                        if pa.url:
-                            lines.append(f"      {pa.url}")
 
             if r.venue:
                 v = r.venue
-                if v.description:
-                    desc = v.description[:200] + ("..." if len(v.description) > 200 else "")
-                    lines.append(f"  Description: {desc}")
+                if v.history:
+                    desc = v.history[:200] + ("..." if len(v.history) > 200 else "")
+                    lines.append(f"  History: {desc}")
                 if v.city:
                     lines.append(f"  City: {v.city}")
 
             if r.promoter:
                 p = r.promoter
-                if p.description:
-                    desc = p.description[:200] + ("..." if len(p.description) > 200 else "")
-                    lines.append(f"  Description: {desc}")
+                if p.event_history:
+                    lines.append(f"  Events: {', '.join(p.event_history[:5])}")
 
             if r.date_context:
                 dc = r.date_context
