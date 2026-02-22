@@ -170,60 +170,31 @@ class ArtistResearcher:
             sources_consulted.append("music_databases")
         disco_confidence = min(1.0, len(releases) * 0.1) if releases else 0.0
 
-        # Step 3 — GIG HISTORY
-        appearances = await self._search_gig_history(normalized_name, before_date, city=city)
-        if appearances:
-            sources_consulted.append("web_search_gigs")
-        gig_confidence = min(1.0, len(appearances) * 0.15) if appearances else 0.0
-
-        # Step 4 — PRESS
-        articles = await self._search_press(normalized_name, before_date, city=city)
-        if articles:
-            sources_consulted.append("web_search_press")
-        press_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
-
-        # Step 4.5 — CORPUS RETRIEVAL (RAG)
+        # Step 3 — CORPUS RETRIEVAL (RAG)
         corpus_refs = await self._retrieve_from_corpus(normalized_name, before_date)
         if corpus_refs:
             sources_consulted.append("rag_corpus")
-            # Merge corpus refs, deduplicating by title similarity
-            existing_titles = {a.title.lower().strip() for a in articles if a.title}
-            for ref in corpus_refs:
-                ref_title_lower = ref.title.lower().strip() if ref.title else ""
-                if ref_title_lower and ref_title_lower not in existing_titles:
-                    existing_titles.add(ref_title_lower)
-                    articles.append(ref)
 
-        # Step 4.7 — PROFILE SYNTHESIS (only if at least 2 data sources)
+        # Step 4 — PROFILE SYNTHESIS (only if at least 2 data sources)
         profile_summary: str | None = None
         data_source_count = sum([
             bool(discogs_id or musicbrainz_id),
             bool(releases),
-            bool(appearances),
-            bool(articles),
+            bool(corpus_refs),
         ])
         if data_source_count >= 2:
             profile_summary = await self._synthesize_profile(
-                normalized_name, releases, appearances, articles, labels, city=city
+                normalized_name, releases, [], [], labels, city=city
             )
-
-        # Step 4.8 — GEOGRAPHIC EXTRACTION
-        artist_city, artist_region, artist_country = self._extract_artist_geography(
-            appearances, city
-        )
 
         # Step 5 — COMPILE
         overall_confidence = calculate_confidence(
-            scores=[id_confidence, disco_confidence, gig_confidence, press_confidence],
-            weights=[3.0, 2.0, 1.5, 1.5],
+            scores=[id_confidence, disco_confidence],
+            weights=[3.0, 2.0],
         )
 
         if not releases:
             warnings.append("No releases found for artist")
-        if not appearances:
-            warnings.append("No event appearances found for artist")
-        if not articles:
-            warnings.append("No press articles found for artist")
 
         artist = Artist(
             name=normalized_name,
@@ -238,12 +209,7 @@ class ArtistResearcher:
             confidence=overall_confidence,
             releases=releases,
             labels=labels,
-            appearances=appearances,
-            articles=articles,
             profile_summary=profile_summary,
-            city=artist_city,
-            region=artist_region,
-            country=artist_country,
         )
 
         result = ResearchResult(
@@ -260,8 +226,6 @@ class ArtistResearcher:
             artist=normalized_name,
             confidence=round(overall_confidence, 3),
             releases=len(releases),
-            appearances=len(appearances),
-            articles=len(articles),
             warnings=len(warnings),
         )
 

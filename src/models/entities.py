@@ -139,8 +139,6 @@ class Artist(BaseModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     releases: list[Release] = Field(default_factory=list)
     labels: list[Label] = Field(default_factory=list)
-    appearances: list[EventAppearance] = Field(default_factory=list)
-    articles: list[ArticleReference] = Field(default_factory=list)
     profile_summary: str | None = None
     city: str | None = None
     region: str | None = None

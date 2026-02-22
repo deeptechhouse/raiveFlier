@@ -99,15 +99,11 @@ class TestArtist:
         a2 = Artist(name="B")
         assert a1.releases is not a2.releases
         assert a1.labels is not a2.labels
-        assert a1.appearances is not a2.appearances
-        assert a1.articles is not a2.articles
 
     def test_default_factory_lists_are_empty(self) -> None:
         artist = Artist(name="A")
         assert artist.releases == []
         assert artist.labels == []
-        assert artist.appearances == []
-        assert artist.articles == []
         assert artist.aliases == []
 
     def test_model_dump_json_valid(self) -> None:

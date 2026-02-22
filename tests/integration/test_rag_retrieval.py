@@ -123,14 +123,6 @@ class TestArtistResearcherWithRAG:
         assert result.entity_name == "Carl Cox"
         assert "rag_corpus" in result.sources_consulted
 
-        # Check that corpus-sourced ArticleReferences are present
-        corpus_refs = [a for a in result.artist.articles if a.source == "book"]
-        assert len(corpus_refs) > 0, "Should have article refs from RAG corpus"
-
-        # Corpus refs should carry tier 1 (book source)
-        for ref in corpus_refs:
-            assert ref.citation_tier == 1
-
 
 class TestArtistResearcherWithoutRAG:
     """Verify identical behavior when vector_store=None (pre-RAG baseline)."""
@@ -149,10 +141,6 @@ class TestArtistResearcherWithoutRAG:
 
         assert result.entity_name == "Carl Cox"
         assert "rag_corpus" not in result.sources_consulted
-
-        # No corpus-sourced references should exist
-        corpus_refs = [a for a in result.artist.articles if a.source == "book"]
-        assert len(corpus_refs) == 0
 
 
 # ---------------------------------------------------------------------------

@@ -264,33 +264,12 @@ class OutputFormatter:
 
         labels = list({lb.name for lb in artist.labels})
 
-        appearances = [
-            {
-                "event": a.event_name,
-                "venue": a.venue,
-                "date": a.date.isoformat() if a.date else None,
-            }
-            for a in artist.appearances[:20]
-        ]
-
-        articles = [
-            {
-                "title": a.title,
-                "source": a.source,
-                "url": a.url,
-                "tier": a.citation_tier,
-            }
-            for a in artist.articles[:20]
-        ]
-
         return {
             "name": artist.name,
             "discogs_url": discogs_url,
             "musicbrainz_url": musicbrainz_url,
             "releases_count": len(artist.releases),
             "labels": labels,
-            "appearances": appearances,
-            "articles": articles,
             "confidence": result.confidence,
         }
 

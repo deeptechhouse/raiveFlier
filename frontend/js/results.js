@@ -239,17 +239,6 @@ const Results = (() => {
       })),
       labels,
       label_objects: labelObjects,
-      appearances: (a.appearances || []).map((ap) => ({
-        event: ap.event_name,
-        venue: ap.venue,
-        date: ap.date,
-      })),
-      articles: (a.articles || []).map((ar) => ({
-        title: ar.title,
-        source: ar.source,
-        url: ar.url,
-        tier: ar.citation_tier || 6,
-      })),
       confidence: result.confidence || a.confidence || 0,
     };
   }
@@ -458,9 +447,6 @@ const Results = (() => {
     const confLabel = _confidenceLabel(artist.confidence);
     const releaseCount = artist.releases_count || (artist.releases || []).length;
     const labelCount = (artist.labels || []).length;
-    const appearanceCount = (artist.appearances || []).length;
-    const articleCount = (artist.articles || []).length;
-
     let html = '<article class="artist-card expandable">';
 
     // Trigger / header
@@ -472,10 +458,6 @@ const Results = (() => {
     html += '<div class="artist-card__meta">';
     html += `<span class="artist-card__stat">${releaseCount} release${releaseCount !== 1 ? "s" : ""}</span>`;
     html += `<span class="artist-card__stat">${labelCount} label${labelCount !== 1 ? "s" : ""}</span>`;
-    html += `<span class="artist-card__stat">${appearanceCount} appearance${appearanceCount !== 1 ? "s" : ""}</span>`;
-    if (articleCount > 0) {
-      html += `<span class="artist-card__stat">${articleCount} article${articleCount !== 1 ? "s" : ""}</span>`;
-    }
     html += "</div>";
     html += '<svg class="expandable__chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">';
     html += '<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -514,11 +496,6 @@ const Results = (() => {
     // Labels subsection
     html += _renderArtistLabels(artist);
 
-    // Past appearances
-    html += _renderArtistAppearances(artist);
-
-    // Press & articles
-    html += _renderArtistArticles(artist);
 
     // Q&A trigger + rating
     html += _renderQATrigger("ARTIST", artist.name);

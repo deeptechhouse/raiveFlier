@@ -157,20 +157,6 @@ class AnalysisProcessor:
                 release_lines.append(line)
             parts.append("Key releases:\n" + "\n".join(release_lines))
 
-        if artist.appearances:
-            app_lines = []
-            for a in artist.appearances[:10]:
-                line = f"  - {a.event_name or 'Event'}"
-                if a.venue:
-                    line += f" at {a.venue}"
-                if a.date:
-                    line += f" ({a.date.isoformat()})"
-                app_lines.append(line)
-            parts.append("Appearances:\n" + "\n".join(app_lines))
-
-        if artist.articles:
-            art_lines = [f"  - {a.title} ({a.source})" for a in artist.articles[:10]]
-            parts.append("Articles/references:\n" + "\n".join(art_lines))
 
         return "\n\n".join(parts)
 

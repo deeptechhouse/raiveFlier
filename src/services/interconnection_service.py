@@ -253,26 +253,6 @@ class InterconnectionService:
                         line += f" {ref}"
                         rel_lines.append(line)
                     parts.append("Releases:\n" + "\n".join(rel_lines))
-                if artist.appearances:
-                    app_lines: list[str] = []
-                    for a in artist.appearances[:10]:
-                        src_label = a.source or "event listing"
-                        ref = _ref(src_label, a.source_url)
-                        line = f"  - {a.event_name or 'Event'}"
-                        if a.venue:
-                            line += f" at {a.venue}"
-                        if a.date:
-                            line += f" ({a.date.isoformat()})"
-                        line += f" {ref}"
-                        app_lines.append(line)
-                    parts.append("Appearances:\n" + "\n".join(app_lines))
-                if artist.articles:
-                    art_lines: list[str] = []
-                    for a in artist.articles[:10]:
-                        ref = _ref(f"{a.title} ({a.source})", a.url)
-                        line = f"  - {a.title} ({a.source}) {ref}"
-                        art_lines.append(line)
-                    parts.append("Articles:\n" + "\n".join(art_lines))
 
             if result.venue:
                 venue = result.venue
@@ -600,16 +580,6 @@ class InterconnectionService:
                 known_sources.add(src.lower())
 
             if result.artist:
-                for article in result.artist.articles:
-                    known_sources.add(article.title.lower())
-                    known_sources.add(article.source.lower())
-                    if article.url:
-                        known_sources.add(article.url.lower())
-                for appearance in result.artist.appearances:
-                    if appearance.source:
-                        known_sources.add(appearance.source.lower())
-                    if appearance.source_url:
-                        known_sources.add(appearance.source_url.lower())
                 for label in result.artist.labels:
                     known_sources.add(label.name.lower())
                 for release in result.artist.releases:
