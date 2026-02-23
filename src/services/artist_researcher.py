@@ -36,6 +36,7 @@ from src.utils.logging import get_logger
 from src.utils.text_normalizer import fuzzy_match, normalize_artist_name
 
 if TYPE_CHECKING:
+    from src.interfaces.feedback_provider import IFeedbackProvider
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
 _CACHE_TTL_SECONDS = 3600  # 1 hour
@@ -108,6 +109,7 @@ class ArtistResearcher:
         text_normalizer: type | None = None,
         cache: ICacheProvider | None = None,
         vector_store: IVectorStoreProvider | None = None,
+        feedback: IFeedbackProvider | None = None,
     ) -> None:
         self._music_dbs = list(music_dbs)
         self._web_search = web_search
@@ -115,6 +117,7 @@ class ArtistResearcher:
         self._llm = llm
         self._cache = cache
         self._vector_store = vector_store
+        self._feedback = feedback
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -169,6 +172,12 @@ class ArtistResearcher:
         )
         if discogs_id or musicbrainz_id or provider_ids:
             sources_consulted.append("music_databases")
+
+        # Step 2b — FEEDBACK FILTER (cross-session)
+        releases, labels = await self._filter_by_feedback(
+            normalized_name, releases, labels
+        )
+
         disco_confidence = min(1.0, len(releases) * 0.1) if releases else 0.0
 
         # Step 3 — CORPUS RETRIEVAL (RAG)
@@ -472,6 +481,62 @@ class ArtistResearcher:
                 unique_labels.append(label)
 
         return releases, unique_labels
+
+    async def _filter_by_feedback(
+        self,
+        artist_name: str,
+        releases: list[Release],
+        labels: list[Label],
+    ) -> tuple[list[Release], list[Label]]:
+        """Remove releases and labels that have been thumbs-downed in prior sessions.
+
+        Handles the 'wrong artist with same name' problem: when a user
+        thumbs-downs a release belonging to a different artist, it is
+        excluded from future research results for the same artist name.
+        """
+        if self._feedback is None:
+            return releases, labels
+
+        release_prefix = f"{artist_name}::release::"
+        label_prefix = f"{artist_name}::label::"
+
+        try:
+            negative_releases, negative_labels = await asyncio.gather(
+                self._feedback.get_negative_item_keys("RELEASE", release_prefix),
+                self._feedback.get_negative_item_keys("LABEL", label_prefix),
+            )
+        except Exception as exc:
+            self._logger.debug(
+                "Feedback lookup failed, skipping filter",
+                artist=artist_name,
+                error=str(exc),
+            )
+            return releases, labels
+
+        if not negative_releases and not negative_labels:
+            return releases, labels
+
+        filtered_releases = [
+            r for r in releases
+            if f"{artist_name}::release::{r.title}" not in negative_releases
+        ]
+        filtered_labels = [
+            lb for lb in labels
+            if f"{artist_name}::label::{lb.name}" not in negative_labels
+        ]
+
+        removed_releases = len(releases) - len(filtered_releases)
+        removed_labels = len(labels) - len(filtered_labels)
+
+        if removed_releases or removed_labels:
+            self._logger.info(
+                "Cross-session feedback filter applied",
+                artist=artist_name,
+                removed_releases=removed_releases,
+                removed_labels=removed_labels,
+            )
+
+        return filtered_releases, filtered_labels
 
     async def _search_gig_history(
         self, name: str, before_date: date | None, city: str | None = None

@@ -99,6 +99,7 @@ const Rating = (() => {
       var cacheKey = type + "::" + key;
       var rating = _cache.get(cacheKey) || 0;
       _updateWidgetVisuals(widget, rating);
+      _applyItemDimming(widget, rating);
     });
   }
 
@@ -119,6 +120,7 @@ const Rating = (() => {
 
     _cache.set(cacheKey, rating);
     _updateWidgetVisuals(widgetEl, rating);
+    _applyItemDimming(widgetEl, rating);
 
     try {
       var resp = await fetch(
@@ -145,6 +147,24 @@ const Rating = (() => {
         _cache.set(cacheKey, current);
       }
       _updateWidgetVisuals(widgetEl, current);
+      _applyItemDimming(widgetEl, current);
+    }
+  }
+
+  /**
+   * Toggle visual dimming on the parent list item when thumbs-downed.
+   * Applies to release and label items with the --rated modifier class.
+   * @param {HTMLElement} widgetEl  The .rating-widget container
+   * @param {number}      rating   +1, -1, or 0
+   */
+  function _applyItemDimming(widgetEl, rating) {
+    var listItem = widgetEl.closest(".artist-card__list-item--rated");
+    if (!listItem) return;
+
+    if (rating === -1) {
+      listItem.classList.add("artist-card__list-item--dimmed");
+    } else {
+      listItem.classList.remove("artist-card__list-item--dimmed");
     }
   }
 

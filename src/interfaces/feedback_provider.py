@@ -84,6 +84,33 @@ class IFeedbackProvider(ABC):
         """
 
     @abstractmethod
+    async def get_negative_item_keys(
+        self,
+        item_type: str,
+        item_key_prefix: str,
+    ) -> set[str]:
+        """Return item_keys with net-negative ratings across ALL sessions.
+
+        Used for cross-session filtering: when prior sessions have
+        thumbs-downed a release or label for a given artist, future
+        sessions should exclude or flag that item.
+
+        Parameters
+        ----------
+        item_type:
+            The category to filter (e.g. ``"RELEASE"`` or ``"LABEL"``).
+        item_key_prefix:
+            A prefix to match against ``item_key`` using SQL ``LIKE``.
+            For releases: ``"Henry Brooks::release::"`` matches all
+            releases for artist "Henry Brooks".
+
+        Returns
+        -------
+        set[str]
+            Set of full ``item_key`` strings that have net-negative ratings.
+        """
+
+    @abstractmethod
     async def initialize(self) -> None:
         """Create tables/indices if they don't exist.  Called at startup."""
 

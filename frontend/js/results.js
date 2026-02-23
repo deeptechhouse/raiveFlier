@@ -526,7 +526,10 @@ const Results = (() => {
         if (r.year) parts.push(String(r.year));
         if (r.format) parts.push(_esc(r.format));
 
-        let li = `<li class="artist-card__list-item">${parts.join(" &mdash; ")}`;
+        const itemKey = artist.name + "::release::" + r.title;
+
+        let li = `<li class="artist-card__list-item artist-card__list-item--rated">`;
+        li += `<span class="artist-card__list-item-text">${parts.join(" &mdash; ")}`;
         if (r.discogs_url) {
           li += ` <a href="${_esc(r.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View on Discogs">&#x2197;</a>`;
         }
@@ -535,6 +538,10 @@ const Results = (() => {
         }
         if (r.beatport_url) {
           li += ` <a href="${_esc(r.beatport_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View on Beatport">BP</a>`;
+        }
+        li += "</span>";
+        if (typeof Rating !== "undefined") {
+          li += Rating.renderWidget("RELEASE", itemKey);
         }
         li += "</li>";
         html += li;
@@ -560,16 +567,31 @@ const Results = (() => {
 
     if (labels.length > 0) {
       labels.forEach((l) => {
-        let li = `<li class="artist-card__list-item">${_esc(l.name)}`;
+        const itemKey = artist.name + "::label::" + l.name;
+
+        let li = `<li class="artist-card__list-item artist-card__list-item--rated">`;
+        li += `<span class="artist-card__list-item-text">${_esc(l.name)}`;
         if (l.discogs_url) {
           li += ` <a href="${_esc(l.discogs_url)}" target="_blank" rel="noopener noreferrer" class="artist-card__ext-link" aria-label="View ${_esc(l.name)} on Discogs">&#x2197;</a>`;
+        }
+        li += "</span>";
+        if (typeof Rating !== "undefined") {
+          li += Rating.renderWidget("LABEL", itemKey);
         }
         li += "</li>";
         html += li;
       });
     } else {
       labelNames.forEach((name) => {
-        html += `<li class="artist-card__list-item">${_esc(name)}</li>`;
+        const itemKey = artist.name + "::label::" + name;
+
+        let li = `<li class="artist-card__list-item artist-card__list-item--rated">`;
+        li += `<span class="artist-card__list-item-text">${_esc(name)}</span>`;
+        if (typeof Rating !== "undefined") {
+          li += Rating.renderWidget("LABEL", itemKey);
+        }
+        li += "</li>";
+        html += li;
       });
     }
 
