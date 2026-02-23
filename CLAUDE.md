@@ -30,7 +30,22 @@ When writing or modifying code in this repo, add inline comments that explain:
 | HTML | `<!-- ... -->` | `<!-- ... -->` block at file top |
 | YAML | `#` inline | `#` block at file top |
 | Shell | `#` inline | `#` block at file top |
-| Dockerfile | `#` inline | `#` block at file top |
+| Dockerfile | `#` own line only | `#` block at file top |
+
+### Dockerfile Comment Rule
+
+**Dockerfiles do NOT support inline comments on instruction lines.** The Docker build engine parses `#` fragments on `COPY`, `RUN`, `ADD`, etc. as literal file paths, which breaks the build.
+
+```dockerfile
+# WRONG — inline comment is parsed as a file path, breaks the build
+COPY requirements.txt . # copy requirements first for caching
+
+# CORRECT — comment on its own line above the instruction
+# Copy requirements first for layer caching
+COPY requirements.txt .
+```
+
+This applies to all Dockerfile instructions (`COPY`, `RUN`, `ADD`, `ENV`, `EXPOSE`, `CMD`, `ENTRYPOINT`, etc.). Always place comments on their own dedicated line above the instruction they describe.
 
 ### What NOT to Do
 
@@ -38,6 +53,7 @@ When writing or modifying code in this repo, add inline comments that explain:
 - Do not add comments to code you did not write or modify in the current session — only annotate new or changed code.
 - Do not break code with comments — verify syntax after annotating.
 - Do not add docstrings to functions that already have adequate docstrings unless you are changing the function's behavior.
+- **Do not place inline comments on Dockerfile instruction lines** — they will be parsed as arguments and break the build (see Dockerfile Comment Rule above).
 
 ---
 
