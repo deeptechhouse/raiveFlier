@@ -25,6 +25,7 @@ from src.models.entities import (
     EventSeriesHistory,
 )
 from src.models.research import ResearchResult
+from src.utils.concurrency import parallel_search
 from src.utils.confidence import calculate_confidence
 from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
@@ -283,21 +284,20 @@ class EventNameResearcher:
             queries.append(f'"{event_name}" "{promoter_name}"')
             queries.append(f'site:ra.co "{event_name}" "{promoter_name}"')
 
+        # Execute all primary queries in parallel with throttling
+        raw_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": 15} for q in queries],
+            logger=self._logger,
+            error_msg="Event search failed",
+        )
+
         all_results: list[SearchResult] = []
         seen_urls: set[str] = set()
-        for query in queries:
-            try:
-                results = await self._web_search.search(query=query, num_results=15)
-                for r in results:
-                    if r.url not in seen_urls:
-                        seen_urls.add(r.url)
-                        all_results.append(r)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Event search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        for r in raw_results:
+            if r.url not in seen_urls:
+                seen_urls.add(r.url)
+                all_results.append(r)
 
         # Deepen if thin results
         if len(all_results) < 3:
@@ -305,15 +305,16 @@ class EventNameResearcher:
                 f'"{event_name}" event history past editions',
                 f'"{event_name}" Resident Advisor OR Mixmag',
             ]
-            for query in deeper:
-                try:
-                    results = await self._web_search.search(query=query, num_results=10)
-                    for r in results:
-                        if r.url not in seen_urls:
-                            seen_urls.add(r.url)
-                            all_results.append(r)
-                except ResearchError:
-                    continue
+            deeper_results: list[SearchResult] = await parallel_search(
+                self._web_search.search,
+                [{"query": q, "num_results": 10} for q in deeper],
+                logger=self._logger,
+                error_msg="Deepened event search failed",
+            )
+            for r in deeper_results:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    all_results.append(r)
 
         return all_results
 

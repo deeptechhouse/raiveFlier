@@ -21,6 +21,7 @@ from src.interfaces.llm_provider import ILLMProvider
 from src.interfaces.web_search_provider import IWebSearchProvider, SearchResult
 from src.models.entities import ArticleReference, EntityType
 from src.models.research import DateContext, ResearchResult
+from src.utils.concurrency import parallel_search
 from src.utils.confidence import calculate_confidence
 from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
@@ -237,17 +238,13 @@ class DateContextResearcher:
         queries.append(f"site:ra.co events {month_name} {year}")
         queries.append(f"rave culture {year}")
 
-        all_results: list[SearchResult] = []
-        for query in queries:
-            try:
-                results = await self._web_search.search(query=query, num_results=12)
-                all_results.extend(results)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Scene context search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        # Execute all queries in parallel with throttling
+        all_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": 12} for q in queries],
+            logger=self._logger,
+            error_msg="Scene context search failed",
+        )
 
         # Deduplicate by URL
         seen_urls: set[str] = set()
@@ -268,17 +265,13 @@ class DateContextResearcher:
             f"nightlife culture {month_name} {year}",
         ]
 
-        all_results: list[SearchResult] = []
-        for query in queries:
-            try:
-                results = await self._web_search.search(query=query, num_results=10)
-                all_results.extend(results)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Cultural context search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        # Execute all queries in parallel with throttling
+        all_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": 10} for q in queries],
+            logger=self._logger,
+            error_msg="Cultural context search failed",
+        )
 
         # Deduplicate by URL
         seen_urls: set[str] = set()

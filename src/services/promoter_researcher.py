@@ -18,6 +18,7 @@ from src.interfaces.llm_provider import ILLMProvider
 from src.interfaces.web_search_provider import IWebSearchProvider, SearchResult
 from src.models.entities import ArticleReference, EntityType, Promoter
 from src.models.research import ResearchResult
+from src.utils.concurrency import parallel_search
 from src.utils.confidence import calculate_confidence
 from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
@@ -284,17 +285,13 @@ class PromoterResearcher:
             f'"{promoter_name}" rave club night party',
         ])
 
-        all_results: list[SearchResult] = []
-        for query in queries:
-            try:
-                results = await self._web_search.search(query=query, num_results=12)
-                all_results.extend(results)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Promoter activity search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        # Execute all primary queries in parallel with throttling
+        all_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": 12} for q in queries],
+            logger=self._logger,
+            error_msg="Promoter activity search failed",
+        )
 
         # Deduplicate by URL
         seen_urls: set[str] = set()
@@ -316,15 +313,16 @@ class PromoterResearcher:
                 f'"{promoter_name}" nightlife organizer',
                 f'site:ra.co "{promoter_name}"',
             ]
-            for query in deepening_queries:
-                try:
-                    results = await self._web_search.search(query=query, num_results=10)
-                    for r in results:
-                        if r.url not in seen_urls:
-                            seen_urls.add(r.url)
-                            unique.append(r)
-                except ResearchError:
-                    pass
+            deeper_results: list[SearchResult] = await parallel_search(
+                self._web_search.search,
+                [{"query": q, "num_results": 10} for q in deepening_queries],
+                logger=self._logger,
+                error_msg="Deepened promoter search failed",
+            )
+            for r in deeper_results:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    unique.append(r)
 
         # Sort: RA.co results first
         ra_results = [r for r in unique if "ra.co" in r.url]

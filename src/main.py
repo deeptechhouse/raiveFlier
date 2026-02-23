@@ -10,6 +10,7 @@ for CLI or scripting usage outside the web server.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -517,23 +518,43 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
         }
     )
 
-    # -- Phase 3: Research --
+    # -- Phase 3: Research (parallel) --
     _logger.info("pipeline_phase", phase="RESEARCH", session=session_id)
     state = state.model_copy(update={"current_phase": PipelinePhase.RESEARCH})
 
-    research_results: list[ResearchResult] = []
+    research_tasks: list[asyncio.Task[ResearchResult]] = []
     for artist_entity in extracted.artists:
-        result = await services["artist_researcher"].research(artist_entity.text)
-        research_results.append(result)
+        research_tasks.append(
+            asyncio.ensure_future(
+                services["artist_researcher"].research(artist_entity.text)
+            )
+        )
     if extracted.venue:
-        result = await services["venue_researcher"].research(extracted.venue.text)
-        research_results.append(result)
+        research_tasks.append(
+            asyncio.ensure_future(
+                services["venue_researcher"].research(extracted.venue.text)
+            )
+        )
     if extracted.promoter:
-        result = await services["promoter_researcher"].research(extracted.promoter.text)
-        research_results.append(result)
+        research_tasks.append(
+            asyncio.ensure_future(
+                services["promoter_researcher"].research(extracted.promoter.text)
+            )
+        )
     if extracted.date:
-        result = await services["date_context_researcher"].research(extracted.date.text)
-        research_results.append(result)
+        research_tasks.append(
+            asyncio.ensure_future(
+                services["date_context_researcher"].research(extracted.date.text)
+            )
+        )
+
+    raw_research = await asyncio.gather(*research_tasks, return_exceptions=True)
+    research_results: list[ResearchResult] = []
+    for raw in raw_research:
+        if isinstance(raw, Exception):
+            _logger.error("CLI research task failed", error=str(raw))
+        else:
+            research_results.append(raw)
 
     state = state.model_copy(update={"research_results": research_results})
 

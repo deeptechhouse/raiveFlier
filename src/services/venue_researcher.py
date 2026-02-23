@@ -18,6 +18,7 @@ from src.interfaces.llm_provider import ILLMProvider
 from src.interfaces.web_search_provider import IWebSearchProvider, SearchResult
 from src.models.entities import ArticleReference, EntityType, Venue
 from src.models.research import ResearchResult
+from src.utils.concurrency import parallel_search
 from src.utils.confidence import calculate_confidence
 from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
@@ -243,17 +244,13 @@ class VenueResearcher:
         else:
             queries.append(f'"{venue_name}" nightclub club events')
 
-        all_results: list[SearchResult] = []
-        for query in queries:
-            try:
-                results = await self._web_search.search(query=query, num_results=15)
-                all_results.extend(results)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Venue history search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        # Execute all queries in parallel with throttling
+        all_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": 15} for q in queries],
+            logger=self._logger,
+            error_msg="Venue history search failed",
+        )
 
         # Deduplicate by URL
         seen_urls: set[str] = set()
@@ -341,17 +338,13 @@ class VenueResearcher:
             f'"{venue_name}" nightclub review OR history OR events',
         ]
 
-        all_results: list[SearchResult] = []
-        for query in queries:
-            try:
-                results = await self._web_search.search(query=query, num_results=15)
-                all_results.extend(results)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Venue article search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        # Execute all queries in parallel with throttling
+        all_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": 15} for q in queries],
+            logger=self._logger,
+            error_msg="Venue article search failed",
+        )
 
         if not all_results:
             return []

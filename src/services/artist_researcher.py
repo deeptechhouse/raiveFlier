@@ -30,6 +30,7 @@ from src.models.entities import (
 )
 from src.models.research import ResearchResult
 from src.utils.confidence import calculate_confidence
+from src.utils.concurrency import parallel_search, throttled_gather
 from src.utils.errors import RateLimitError, ResearchError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import fuzzy_match, normalize_artist_name
@@ -261,25 +262,30 @@ class ArtistResearcher:
         best_confidence = 0.0
         provider_ids: dict[str, str] = {}
 
-        for provider in self._music_dbs:
+        # Search all music databases in parallel
+        search_coros = [provider.search_artist(name) for provider in self._music_dbs]
+        raw_results = await throttled_gather(search_coros, return_exceptions=True)
+
+        for idx, raw in enumerate(raw_results):
+            provider = self._music_dbs[idx]
             provider_name = provider.get_provider_name()
-            try:
-                results: list[ArtistSearchResult] = await provider.search_artist(name)
-            except (ResearchError, RateLimitError) as exc:
+
+            if isinstance(raw, (ResearchError, RateLimitError)):
                 self._logger.warning(
                     "Music database search failed",
                     provider=provider_name,
-                    error=str(exc),
+                    error=str(raw),
                 )
                 continue
-            except Exception as exc:
+            elif isinstance(raw, Exception):
                 self._logger.error(
                     "Unexpected error searching music database",
                     provider=provider_name,
-                    error=str(exc),
+                    error=str(raw),
                 )
                 continue
 
+            results: list[ArtistSearchResult] = raw
             if not results:
                 continue
 
@@ -488,21 +494,14 @@ class ArtistResearcher:
         if city:
             primary_queries.insert(2, f'"{name}" DJ "{city}" event')
 
-        all_results: list[SearchResult] = []
-        for query in primary_queries:
-            try:
-                results = await self._web_search.search(
-                    query=query,
-                    num_results=_GIG_SEARCH_LIMIT,
-                    before_date=before_date,
-                )
-                all_results.extend(results)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Gig history search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        # Execute all primary queries in parallel with throttling
+        all_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": _GIG_SEARCH_LIMIT, "before_date": before_date}
+             for q in primary_queries],
+            logger=self._logger,
+            error_msg="Gig history search failed",
+        )
 
         # Deduplicate by URL
         seen_urls: set[str] = set()
@@ -520,19 +519,17 @@ class ArtistResearcher:
                 f'"{name}" boiler room OR dekmantel OR fabric OR berghain',
                 f'"{name}" DJ biography',
             ]
-            for query in deeper_queries:
-                try:
-                    results = await self._web_search.search(
-                        query=query,
-                        num_results=_GIG_SEARCH_LIMIT,
-                        before_date=before_date,
-                    )
-                    for r in results:
-                        if r.url not in seen_urls:
-                            seen_urls.add(r.url)
-                            unique_results.append(r)
-                except ResearchError:
-                    continue
+            deeper_results: list[SearchResult] = await parallel_search(
+                self._web_search.search,
+                [{"query": q, "num_results": _GIG_SEARCH_LIMIT, "before_date": before_date}
+                 for q in deeper_queries],
+                logger=self._logger,
+                error_msg="Deepened gig search failed",
+            )
+            for r in deeper_results:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    unique_results.append(r)
 
             self._logger.info(
                 "Deepened gig search",
@@ -653,26 +650,21 @@ class ArtistResearcher:
         if city:
             primary_queries.append(f'"{name}" "{city}" electronic music DJ')
 
+        # Execute all primary queries in parallel with throttling
+        raw_press_results: list[SearchResult] = await parallel_search(
+            self._web_search.search,
+            [{"query": q, "num_results": _PRESS_SEARCH_LIMIT, "before_date": before_date}
+             for q in primary_queries],
+            logger=self._logger,
+            error_msg="Press search failed",
+        )
+
         all_results: list[SearchResult] = []
         seen_urls: set[str] = set()
-
-        for query in primary_queries:
-            try:
-                results = await self._web_search.search(
-                    query=query,
-                    num_results=_PRESS_SEARCH_LIMIT,
-                    before_date=before_date,
-                )
-                for r in results:
-                    if r.url not in seen_urls:
-                        seen_urls.add(r.url)
-                        all_results.append(r)
-            except ResearchError as exc:
-                self._logger.warning(
-                    "Press search failed",
-                    query=query,
-                    error=str(exc),
-                )
+        for r in raw_press_results:
+            if r.url not in seen_urls:
+                seen_urls.add(r.url)
+                all_results.append(r)
 
         # Phase 2: Deepen if results are thin
         if len(all_results) < _MIN_ADEQUATE_ARTICLES:
@@ -681,19 +673,17 @@ class ArtistResearcher:
                 f'"{name}" electronic music producer DJ',
                 f'"{name}" record label release announcement',
             ]
-            for query in deeper_queries:
-                try:
-                    results = await self._web_search.search(
-                        query=query,
-                        num_results=_PRESS_SEARCH_LIMIT,
-                        before_date=before_date,
-                    )
-                    for r in results:
-                        if r.url not in seen_urls:
-                            seen_urls.add(r.url)
-                            all_results.append(r)
-                except ResearchError:
-                    continue
+            deeper_press_results: list[SearchResult] = await parallel_search(
+                self._web_search.search,
+                [{"query": q, "num_results": _PRESS_SEARCH_LIMIT, "before_date": before_date}
+                 for q in deeper_queries],
+                logger=self._logger,
+                error_msg="Deepened press search failed",
+            )
+            for r in deeper_press_results:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    all_results.append(r)
 
             self._logger.info(
                 "Deepened press search",
