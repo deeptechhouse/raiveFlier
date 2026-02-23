@@ -6,6 +6,7 @@ into the vector store so that future analyses benefit from accumulated knowledge
 
 from __future__ import annotations
 
+import re
 import uuid
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,24 @@ if TYPE_CHECKING:
     from src.models.pipeline import PipelineState
 
 logger = structlog.get_logger(logger_name=__name__)
+
+# Minimum artist confidence score required to ingest into the corpus.
+_MIN_ARTIST_CONFIDENCE = 0.3
+
+# Phrases that indicate the LLM could not find useful information.
+_NEGATIVE_PROFILE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"couldn'?t find (?:any )?information",
+        r"no (?:relevant |useful )?information (?:was )?found",
+        r"unable to (?:find|locate|verify)",
+        r"does not appear to be (?:an )?(?:electronic|dance)",
+        r"is not (?:an )?(?:electronic|dance|rave)",
+        r"no evidence .* electronic",
+        r"I (?:was )?unable to (?:confirm|determine|verify)",
+        r"appears to (?:be )?(?:a )?(?:different|unrelated)",
+    )
+]
 
 
 class AnalysisProcessor:
@@ -54,6 +73,15 @@ class AnalysisProcessor:
             if result.artist:
                 artist = result.artist
                 entity_names.append(artist.name)
+
+                if not self._is_useful_artist(artist):
+                    logger.debug(
+                        "skipping_low_quality_artist",
+                        artist=artist.name,
+                        confidence=artist.confidence,
+                    )
+                    continue
+
                 text = self._build_artist_summary(artist)
                 if text.strip():
                     chunks.append(
@@ -130,6 +158,27 @@ class AnalysisProcessor:
             entities=entity_names,
         )
         return chunks
+
+    # ------------------------------------------------------------------
+    # Quality gates
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_useful_artist(artist) -> bool:  # noqa: ANN001 – avoids circular
+        """Return ``True`` only if the artist research is worth ingesting.
+
+        Rejects artists with very low confidence or whose profile summary
+        is essentially an LLM "not found" message.
+        """
+        if artist.confidence < _MIN_ARTIST_CONFIDENCE:
+            return False
+
+        summary = artist.profile_summary or ""
+        for pattern in _NEGATIVE_PROFILE_PATTERNS:
+            if pattern.search(summary):
+                return False
+
+        return True
 
     # ------------------------------------------------------------------
     # Summary builders
