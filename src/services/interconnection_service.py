@@ -136,7 +136,7 @@ class InterconnectionService:
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=0.1,
-                max_tokens=5000,
+                max_tokens=8000,
             )
         except Exception as exc:
             self._logger.error(
@@ -250,9 +250,52 @@ class InterconnectionService:
                             line += f" ({r.label})"
                         if r.year:
                             line += f" [{r.year}]"
+                        if r.format:
+                            line += f" format:{r.format}"
+                        if r.catalog_number:
+                            line += f" cat:{r.catalog_number}"
+                        if r.genres:
+                            line += f" genres:{','.join(r.genres)}"
+                        if r.styles:
+                            line += f" styles:{','.join(r.styles)}"
                         line += f" {ref}"
                         rel_lines.append(line)
                     parts.append("Releases:\n" + "\n".join(rel_lines))
+
+                    # Release format summary for pattern analysis
+                    formats = [r.format for r in artist.releases if r.format]
+                    if formats:
+                        format_counts: dict[str, int] = {}
+                        for fmt in formats:
+                            fmt_key = fmt.strip().lower()
+                            format_counts[fmt_key] = format_counts.get(fmt_key, 0) + 1
+                        fmt_summary = ", ".join(
+                            f"{fmt}: {count}" for fmt, count in
+                            sorted(format_counts.items(), key=lambda x: -x[1])
+                        )
+                        parts.append(f"Release format breakdown: {fmt_summary}")
+
+                    # Release type hints from catalog structure
+                    genres_all = [g for r in artist.releases for g in r.genres]
+                    styles_all = [s for r in artist.releases for s in r.styles]
+                    if genres_all:
+                        genre_counts: dict[str, int] = {}
+                        for g in genres_all:
+                            genre_counts[g] = genre_counts.get(g, 0) + 1
+                        top_genres = sorted(genre_counts.items(), key=lambda x: -x[1])[:5]
+                        parts.append(
+                            "Top genres across releases: "
+                            + ", ".join(f"{g} ({c})" for g, c in top_genres)
+                        )
+                    if styles_all:
+                        style_counts: dict[str, int] = {}
+                        for s in styles_all:
+                            style_counts[s] = style_counts.get(s, 0) + 1
+                        top_styles = sorted(style_counts.items(), key=lambda x: -x[1])[:5]
+                        parts.append(
+                            "Top styles across releases: "
+                            + ", ".join(f"{s} ({c})" for s, c in top_styles)
+                        )
 
             if result.venue:
                 venue = result.venue
@@ -439,20 +482,53 @@ class InterconnectionService:
             "\n"
             "ANALYSIS REQUIREMENTS:\n"
             "1. SHARED LABELS: Record labels where multiple artists on "
-            "this flier have released music, with source references.\n"
+            "this flier have released music, with source references. Go "
+            "deeper — are these labels part of the same family or "
+            "distribution network? Does one artist run or co-run a label "
+            "that others release on?\n"
             "2. SHARED LINEUPS: Previous events where two or more of "
             "these artists appeared together, with dates and sources.\n"
             "3. PROMOTER-ARTIST LINKS: How the promoter connects to "
             "each artist — past bookings, shared scenes, geographic ties "
             "— citing specific events or articles.\n"
             "4. VENUE-SCENE CONNECTIONS: The venue's role in the broader "
-            "scene — what events it is known for, cited from research.\n"
+            "scene — what events it is known for, cited from research. "
+            "Do any of these artists have recurring residencies or "
+            "repeated bookings at this venue or the promoter's other "
+            "venues?\n"
             "5. GEOGRAPHIC PATTERNS: Whether artists are from the same "
             "city/region and how that relates to the event.\n"
             "6. TEMPORAL PATTERNS: Where this event falls in each "
             "artist's career timeline.\n"
             "7. SCENE CONTEXT: What movement or subgenre this event "
             "represents, grounded in cited facts.\n"
+            "8. RELEASE FORMAT PATTERNS: Based on release data, do these "
+            "artists primarily release on vinyl, digital, or both? Do "
+            "they share a vinyl-first or digital-first release strategy? "
+            "Are releases primarily singles/EPs or full albums? Cite "
+            "specific releases and format data.\n"
+            "9. PERFORMANCE STYLE: Based on available evidence (articles, "
+            "event listings, profiles), are these artists primarily DJs, "
+            "live performers, or hybrid live/DJ acts? Do they share a "
+            "similar performance approach? Cite sources.\n"
+            "10. TOURING & VENUE OVERLAP: Are any of these artists "
+            "playing the same club or venue chain across different "
+            "cities on their own solo tours? Do they share festival "
+            "circuits or the same booking agency ecosystem? Look for "
+            "patterns in where these artists regularly perform.\n"
+            "11. LABEL ECOSYSTEM DEPTH: Beyond simple shared labels, "
+            "are there deeper label connections? Same parent label, "
+            "sister imprints, shared A&R, label founders who also "
+            "appear on the flier? Do multiple artists have long-term "
+            "relationships with the same label vs. one-off releases?\n"
+            "12. CAREER STAGE & TRAJECTORY: Are these artists at similar "
+            "career stages — emerging, mid-career, established, veteran? "
+            "Is there a headliner/support dynamic visible from the data? "
+            "How does each artist's output volume and recency compare?\n"
+            "13. GENRE & STYLE ALIGNMENT: Based on release genre/style "
+            "tags, do these artists operate in the same subgenre niche "
+            "or do they represent a deliberate genre spread? Note any "
+            "stylistic evolution visible in their catalogs.\n"
             "\n"
             "STRICT RULES:\n"
             "- ONLY state facts that appear in the research data above.\n"
@@ -486,7 +562,20 @@ class InterconnectionService:
             "tissue — just facts arranged in meaningful order.  End with "
             "a brief factual summary of how these entities converge at "
             'this event."\n'
-            "}"
+            "}\n"
+            "\n"
+            "RELATIONSHIP TYPE VALUES — use these in the 'type' field:\n"
+            "  shared_label, shared_lineup, promoter_booking, "
+            "venue_residency, geographic_link, temporal_link, "
+            "release_format_pattern, performance_style_link, "
+            "touring_overlap, label_ecosystem, career_stage_alignment, "
+            "genre_style_alignment\n"
+            "\n"
+            "PATTERN TYPE VALUES — use these in the patterns 'type' field:\n"
+            "  label_network, geographic_cluster, release_strategy, "
+            "format_preference, performance_style, touring_circuit, "
+            "career_stage_mix, genre_cohesion, genre_spread, "
+            "vinyl_culture, digital_native, label_loyalty"
         )
 
     # ------------------------------------------------------------------
