@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raiveFlier - Remaining Local Computation Optimizations (#4-#13)</title>
+  <style>
+    :root {
+      --bg: #0e0e12;
+      --surface: #18181f;
+      --card: #1e1e28;
+      --accent: #e84cff;
+      --cyan: #00e5ff;
+      --green: #39ff85;
+      --amber: #ffb300;
+      --text: #e0e0e0;
+      --dim: #888;
+      --border: #2a2a38;
+      --code-bg: #12121a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: var(--accent);
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 0.5rem;
+    }
+    h2 {
+      color: var(--cyan);
+      font-size: 1.15rem;
+      margin: 2rem 0 0.75rem 0;
+    }
+    h3 {
+      color: var(--green);
+      font-size: 1rem;
+      margin: 1.5rem 0 0.5rem 0;
+    }
+    .meta {
+      color: var(--dim);
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+    .summary {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+    .opt {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .opt-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .badge-high { background: #e84cff33; color: var(--accent); border: 1px solid var(--accent); }
+    .badge-medium { background: #ffb30033; color: var(--amber); border: 1px solid var(--amber); }
+    .badge-low { background: #39ff8533; color: var(--green); border: 1px solid var(--green); }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      margin: 0.5rem 0;
+    }
+    code {
+      color: var(--cyan);
+      font-size: 0.85rem;
+    }
+    .file-ref {
+      color: var(--amber);
+      font-size: 0.85rem;
+    }
+    p { margin: 0.4rem 0; }
+    ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+    li { margin: 0.3rem 0; }
+    .completed-banner {
+      background: #39ff8520;
+      border: 1px solid var(--green);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      color: var(--green);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+    }
+    th, td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: var(--card);
+      color: var(--cyan);
+    }
+    td:first-child { color: var(--amber); white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+<h1>raiveFlier - Remaining Local Computation Optimizations</h1>
+<p class="meta">Generated: 2026-02-19 | Optimizations #4 through #13 from performance analysis</p>
+
+<div class="summary">
+  <strong>Context:</strong> A full performance analysis identified 13 local computation bottlenecks.
+  The <strong>top 3</strong> have been implemented and tested (333 tests pass, 0 fail):
+  <ol style="margin-top: 0.5rem;">
+    <li><s>bilateralFilter replaced fastNlMeansDenoisingColored (10-50x faster)</s></li>
+    <li><s>Eliminated double Tesseract invocation (reconstructed text from image_to_data)</s></li>
+    <li><s>Parallelized OCR passes with ThreadPoolExecutor (both providers)</s></li>
+  </ol>
+  <p style="margin-top: 0.5rem;">This prompt covers the <strong>remaining 10 optimizations</strong>, ordered by impact.</p>
+</div>
+
+<div class="completed-banner">
+  All tests passing: <code>python -m pytest tests/ -v</code> &rarr; 333 passed, 0 failed, 5 warnings
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #4: O(n&sup2;) Fuzzy Dedup in ocr_helpers.py</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-high">HIGH IMPACT</span>
+    <span class="file-ref">src/utils/ocr_helpers.py:14-55</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p><code>deduplicate_text_regions()</code> compares every region against every kept region using <code>fuzz.token_sort_ratio()</code>. With 8 OCR passes producing ~50-100 regions each, this can be 400-800 regions &times; 200+ kept = 80,000-160,000 fuzzy string comparisons.</p>
+
+  <h3>Current Code</h3>
+<pre>
+for region in regions:
+    text_lower = region.text.strip().lower()
+    is_duplicate = False
+    for idx, existing in enumerate(kept):
+        ratio = fuzz.token_sort_ratio(text_lower, existing_lower) / 100.0
+        if ratio >= similarity_threshold:
+            if region.confidence > existing.confidence:
+                kept[idx] = region
+            is_duplicate = True
+            break
+    if not is_duplicate:
+        kept.append(region)
+</pre>
+
+  <h3>Fix</h3>
+  <p>Add a <strong>length pre-filter</strong> before the expensive fuzzy comparison. Two strings that differ in length by more than ~30% cannot possibly reach 80% token_sort_ratio. Skip the fuzzy call entirely for these pairs.</p>
+<pre>
+for region in regions:
+    text_lower = region.text.strip().lower()
+    if not text_lower:
+        continue
+    text_len = len(text_lower)
+
+    is_duplicate = False
+    for idx, existing in enumerate(kept):
+        existing_lower = existing.text.strip().lower()
+        # Length pre-filter: skip if lengths differ too much
+        existing_len = len(existing_lower)
+        if existing_len == 0:
+            continue
+        len_ratio = min(text_len, existing_len) / max(text_len, existing_len)
+        if len_ratio < 0.5:  # Cannot reach 0.80 similarity
+            continue
+
+        ratio = fuzz.token_sort_ratio(text_lower, existing_lower) / 100.0
+        if ratio >= similarity_threshold:
+            if region.confidence > existing.confidence:
+                kept[idx] = region
+            is_duplicate = True
+            break
+    if not is_duplicate:
+        kept.append(region)
+</pre>
+  <p><strong>Expected speedup:</strong> 30-50% fewer fuzzy string comparisons. Also consider pre-computing <code>existing_lower</code> once instead of recomputing on every inner-loop iteration.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #5: get_stats() Loads Entire Corpus</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-high">HIGH IMPACT</span>
+    <span class="file-ref">src/providers/vector_store/chromadb_provider.py:166-200</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p><code>get_stats()</code> calls <code>self._collection.get(include=["metadatas"])</code> which loads ALL document metadata into memory. As the corpus grows (thousands of chunks), this becomes increasingly slow and memory-heavy.</p>
+
+  <h3>Current Code</h3>
+<pre>
+async def get_stats(self) -> CorpusStats:
+    total_chunks = self._collection.count()
+    if total_chunks > 0:
+        all_meta = self._collection.get(include=["metadatas"])
+        for meta in all_meta["metadatas"] or []:
+            source_ids.add(meta.get("source_id", ""))
+            src_type = meta.get("source_type", "unknown")
+            sources_by_type[src_type] = sources_by_type.get(src_type, 0) + 1
+            # ... tag extraction ...
+</pre>
+
+  <h3>Fix</h3>
+  <p>Cache the stats and invalidate on <code>add_chunks()</code> / <code>delete_by_source()</code>. Stats rarely change between calls.</p>
+<pre>
+def __init__(self, ...):
+    # ... existing init ...
+    self._cached_stats: CorpusStats | None = None
+    self._cached_stats_count: int = -1  # Track count to detect external changes
+
+async def get_stats(self) -> CorpusStats:
+    current_count = self._collection.count()
+    if self._cached_stats and self._cached_stats_count == current_count:
+        return self._cached_stats
+
+    # ... existing computation ...
+    self._cached_stats = result
+    self._cached_stats_count = current_count
+    return result
+
+async def add_chunks(self, ...):
+    self._cached_stats = None  # Invalidate cache
+    # ... existing code ...
+
+async def delete_by_source(self, ...):
+    self._cached_stats = None  # Invalidate cache
+    # ... existing code ...
+</pre>
+  <p><strong>Expected speedup:</strong> Eliminates full-corpus metadata loads on repeated calls (common during Q&amp;A sessions).</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #6: Preprocessing Computed Twice in Fallback Chain</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-high">HIGH IMPACT</span>
+    <span class="file-ref">src/services/ocr_service.py + src/providers/ocr/tesseract_provider.py + easyocr_provider.py</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p>When <code>OCRService</code> falls back from one provider to the next, each provider independently re-runs the full preprocessing pipeline (resize, enhance, binarize, deskew, CLAHE, denoise, saturation, Otsu) on the same image. The <code>_build_passes()</code> methods in both providers do identical preprocessing.</p>
+
+  <h3>Fix</h3>
+  <p>Extract preprocessing to a shared cache layer. Two approaches:</p>
+  <p><strong>Option A (simple):</strong> Add an <code>LRU cache</code> to <code>ImagePreprocessor</code> methods keyed by image hash. Since the same bytes are passed to both providers, the second provider hits the cache.</p>
+  <p><strong>Option B (architecture):</strong> Move <code>_build_passes()</code> out of the individual providers into a shared preprocessing step in <code>OCRService.extract_text()</code>. Compute passes once, pass the preprocessed images to each provider.</p>
+<pre>
+# Option B sketch (in OCRService):
+async def extract_text(self, flier: FlierImage) -> OCRResult:
+    original = Image.open(io.BytesIO(flier.image_data)).convert("RGB")
+    preprocessed_passes = self._preprocessor.build_all_passes(original)
+
+    for provider in self._providers:
+        if not provider.is_available():
+            continue
+        result = await provider.extract_text_from_passes(preprocessed_passes)
+        # ... existing fallback logic ...
+</pre>
+  <p><strong>Expected speedup:</strong> 40-60% reduction in preprocessing time when fallback is triggered (eliminates redundant resize, binarize, deskew, etc.).</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #7: Deskew Recomputed 3-4 Times per Image</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-medium">MEDIUM IMPACT</span>
+    <span class="file-ref">src/utils/image_preprocessor.py:81-116</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p><code>deskew()</code> runs Canny edge detection + Hough line detection every time it's called. In <code>_build_passes()</code> it's called on the standard pass, the CLAHE pass, the denoised pass, and the Otsu pass &mdash; each on a slightly different binarization but the <em>same geometry</em>. The skew angle doesn't change between binarization methods.</p>
+
+  <h3>Fix</h3>
+  <p>Compute the skew angle <strong>once</strong> on the first deskew call, then reuse it for subsequent calls on the same image.</p>
+<pre>
+def _detect_skew_angle(self, image: Image.Image) -> float | None:
+    """Detect skew angle using Hough lines. Returns angle or None."""
+    gray = np.array(image.convert("L"))
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100,
+                            minLineLength=50, maxLineGap=10)
+    if lines is None:
+        return None
+    angles = [np.degrees(np.arctan2(y2 - y1, x2 - x1))
+              for line in lines for x1, y1, x2, y2 in [line[0]]
+              if abs(np.degrees(np.arctan2(y2 - y1, x2 - x1))) < 45]
+    if not angles:
+        return None
+    median_angle = float(np.median(angles))
+    if abs(median_angle) < 0.5 or abs(median_angle) > 15:
+        return None
+    return median_angle
+
+# In _build_passes():
+skew_angle = pp._detect_skew_angle(binarized)  # Compute once
+
+def _apply_deskew(img, angle):
+    if angle is None:
+        return img
+    return img.rotate(angle, resample=Image.BICUBIC, expand=True, fillcolor=(0,0,0))
+
+passes.append(("standard", _apply_deskew(binarized, skew_angle), ""))
+# ... reuse skew_angle for clahe, denoised, otsu passes ...
+</pre>
+  <p><strong>Expected speedup:</strong> 3x fewer Canny + Hough computations per image.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #8: Redundant Grayscale Conversions</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-medium">MEDIUM IMPACT</span>
+    <span class="file-ref">src/utils/image_preprocessor.py (multiple methods)</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p>Several <code>ImagePreprocessor</code> methods convert to grayscale independently:</p>
+  <ul>
+    <li><code>binarize()</code>: <code>image.convert("L")</code> &rarr; line 67</li>
+    <li><code>deskew()</code>: <code>image.convert("L")</code> &rarr; line 90</li>
+    <li><code>binarize_otsu()</code>: <code>image.convert("L")</code> &rarr; line 224</li>
+  </ul>
+  <p>When called in sequence (binarize &rarr; deskew), the same RGB&rarr;L conversion happens twice. Each conversion allocates a new image in memory and iterates over all pixels.</p>
+
+  <h3>Fix</h3>
+  <p>Cache the grayscale version or accept an optional pre-converted grayscale parameter:</p>
+<pre>
+def binarize(self, image: Image.Image, threshold: int = 128,
+             gray_array: np.ndarray | None = None) -> Image.Image:
+    if gray_array is None:
+        gray_array = np.array(image.convert("L"))
+    binary = cv2.adaptiveThreshold(gray_array, 255, ...)
+    return Image.fromarray(binary).convert("RGB")
+</pre>
+  <p>Alternatively, compute the grayscale once in <code>_build_passes()</code> and pass it to both <code>binarize()</code> and <code>deskew()</code>.</p>
+  <p><strong>Expected speedup:</strong> Marginal per-call (few ms) but adds up across 8 passes &times; 2 providers.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #9: DOM-Based HTML Escaping in results.js</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-medium">MEDIUM IMPACT</span>
+    <span class="file-ref">frontend/js/results.js:45-49</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p>The <code>_esc()</code> function creates a new DOM element, adds a text node, then reads <code>.innerHTML</code> on <strong>every single string</strong> being escaped. This is called hundreds of times per render (every artist name, venue, date, citation, etc.).</p>
+
+  <h3>Current Code</h3>
+<pre>
+function _esc(str) {
+  if (str == null) return "";
+  const div = document.createElement("div");
+  div.appendChild(document.createTextNode(String(str)));
+  return div.innerHTML;
+}
+</pre>
+
+  <h3>Fix</h3>
+  <p>Replace with a static regex-based replacement (the standard approach for HTML escaping in template strings):</p>
+<pre>
+const _ESC_MAP = { "&": "&amp;amp;", "<": "&amp;lt;", ">": "&amp;gt;", '"': "&amp;quot;", "'": "&amp;#39;" };
+const _ESC_RE = /[&<>"']/g;
+
+function _esc(str) {
+  if (str == null) return "";
+  return String(str).replace(_ESC_RE, (ch) => _ESC_MAP[ch]);
+}
+</pre>
+  <p><strong>Expected speedup:</strong> 5-10x faster per call. No DOM allocation overhead.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #10: Token Counts Computed Twice in Chunker</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-low">LOW IMPACT</span>
+    <span class="file-ref">src/services/ingestion/chunker.py:194-229</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p>In <code>_accumulate_chunks()</code>, <code>_count_tokens(para)</code> is called for every paragraph. Then in <code>_build_overlap()</code>, <code>_count_tokens(part)</code> is called again on the same paragraphs that were already counted.</p>
+
+  <h3>Fix</h3>
+  <p>Store token counts alongside paragraph text to avoid re-tokenization:</p>
+<pre>
+def _accumulate_chunks(self, paragraphs: list[str]) -> list[str]:
+    chunks: list[str] = []
+    current_parts: list[tuple[str, int]] = []  # (text, token_count)
+    current_tokens = 0
+
+    for para in paragraphs:
+        para_tokens = self._count_tokens(para)
+
+        if para_tokens > self._chunk_size:
+            if current_parts:
+                chunks.append("\n\n".join(t for t, _ in current_parts))
+                current_parts = []
+                current_tokens = 0
+            sentence_chunks = self._chunk_long_paragraph(para)
+            chunks.extend(sentence_chunks)
+            continue
+
+        if current_tokens + para_tokens > self._chunk_size and current_parts:
+            chunks.append("\n\n".join(t for t, _ in current_parts))
+            current_parts, current_tokens = self._build_overlap(current_parts)
+
+        current_parts.append((para, para_tokens))
+        current_tokens += para_tokens
+
+    if current_parts:
+        chunks.append("\n\n".join(t for t, _ in current_parts))
+    return chunks
+
+def _build_overlap(self, parts: list[tuple[str, int]]) -> tuple[list[tuple[str, int]], int]:
+    overlap_parts: list[tuple[str, int]] = []
+    overlap_tokens = 0
+    for text, tok_count in reversed(parts):
+        if overlap_tokens + tok_count > self._overlap:
+            break
+        overlap_parts.insert(0, (text, tok_count))
+        overlap_tokens += tok_count
+    return overlap_parts, overlap_tokens
+</pre>
+  <p><strong>Expected speedup:</strong> Eliminates ~30-50% of tokenizer calls during chunking. Matters most with the HuggingFace tokenizer (slower than len//4 fallback).</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #11: Tokens Re-Counted After Chunking in Ingestion</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-low">LOW IMPACT</span>
+    <span class="file-ref">src/services/ingestion/ingestion_service.py:389-392</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p>After chunking and storing, <code>_tag_embed_store()</code> re-counts tokens for the result:</p>
+<pre>
+total_tokens = sum(
+    self._chunker._count_tokens(c.text) for c in tagged_chunks
+)
+</pre>
+  <p>The chunker already counted these tokens during <code>chunk()</code>. This is a full re-tokenization of the entire corpus slice.</p>
+
+  <h3>Fix</h3>
+  <p>Store the token count on each <code>DocumentChunk</code> during chunking, then sum the stored values:</p>
+<pre>
+# In DocumentChunk model (src/models/rag.py):
+class DocumentChunk(BaseModel):
+    # ... existing fields ...
+    token_count: int = 0  # New field
+
+# In TextChunker.chunk():
+chunk = DocumentChunk(
+    chunk_id=str(uuid.uuid4()),
+    text=chunk_text,
+    token_count=self._count_tokens(chunk_text),  # Store at creation
+    # ... other fields ...
+)
+
+# In _tag_embed_store():
+total_tokens = sum(c.token_count for c in tagged_chunks)  # No re-tokenization
+</pre>
+  <p><strong>Expected speedup:</strong> Eliminates one full tokenization pass over all chunks. Larger savings with HuggingFace tokenizer.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #12: Sequential Directory Ingestion</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-low">LOW IMPACT</span>
+    <span class="file-ref">src/services/ingestion/ingestion_service.py:298-358</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p><code>ingest_directory()</code> processes files sequentially in a <code>for</code> loop. Each file goes through process &rarr; chunk &rarr; tag &rarr; embed &rarr; store. The CPU-bound processing and I/O-bound embedding/storing could be overlapped.</p>
+
+  <h3>Current Code</h3>
+<pre>
+for file_path in files:
+    raw_chunks = self._article_processor.process_file(str(file_path), ...)
+    # ... chunk, tag, embed, store ...
+    result = await self._tag_embed_store(all_chunks, ...)
+    results.append(result)
+</pre>
+
+  <h3>Fix</h3>
+  <p>Use <code>asyncio.gather()</code> with a semaphore to process files concurrently (limiting concurrency to avoid memory spikes):</p>
+<pre>
+import asyncio
+
+async def ingest_directory(self, dir_path: str, source_type: str) -> list[IngestionResult]:
+    path = Path(dir_path)
+    if not path.is_dir():
+        return []
+
+    files = sorted(path.glob("*.txt")) + sorted(path.glob("*.html"))
+    semaphore = asyncio.Semaphore(4)  # Max 4 concurrent files
+
+    async def _process_file(file_path: Path) -> IngestionResult | None:
+        async with semaphore:
+            start = time.monotonic()
+            raw_chunks = self._article_processor.process_file(str(file_path), source_type=source_type)
+            if not raw_chunks:
+                return None
+            # ... chunk ...
+            return await self._tag_embed_store(all_chunks, ...)
+
+    tasks = [_process_file(f) for f in files]
+    raw_results = await asyncio.gather(*tasks)
+    results = [r for r in raw_results if r is not None]
+    return results
+</pre>
+  <p><strong>Expected speedup:</strong> 2-4x for directory ingestion (overlaps I/O with CPU). Only matters during bulk corpus ingestion, not per-flier analysis.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Optimization #13: model_dump() on Every Q&amp;A Cache Check</h2>
+<!-- ============================================================ -->
+<div class="opt">
+  <div class="opt-header">
+    <span class="badge badge-low">LOW IMPACT</span>
+    <span class="file-ref">src/services/qa_service.py (ask method)</span>
+  </div>
+
+  <h3>Problem</h3>
+  <p>The QA service builds a cache key using <code>json.dumps(session_context)</code> which may include large nested dicts. If session_context contains model objects, this could trigger <code>model_dump()</code> serialization on every question.</p>
+
+  <h3>Fix</h3>
+  <p>Use only the session_id for the cache key (questions within the same session share context), reducing the hashing payload:</p>
+<pre>
+@staticmethod
+def _cache_key(question: str, entity_type: str | None,
+               entity_name: str | None, session_id: str) -> str:
+    raw = f"{session_id}:{entity_type}:{entity_name}:{question}"
+    return f"qa:{hashlib.sha256(raw.encode()).hexdigest()}"
+</pre>
+  <p><strong>Expected speedup:</strong> Marginal (saves a few ms per Q&amp;A call). Mostly a correctness/hygiene fix.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Implementation Order (Recommended)</h2>
+<!-- ============================================================ -->
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Optimization</th>
+      <th>Impact</th>
+      <th>Difficulty</th>
+      <th>File(s)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>4</td>
+      <td>O(n&sup2;) fuzzy dedup length pre-filter</td>
+      <td>HIGH</td>
+      <td>Easy</td>
+      <td>ocr_helpers.py</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Cache get_stats() corpus load</td>
+      <td>HIGH</td>
+      <td>Easy</td>
+      <td>chromadb_provider.py</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Share preprocessing across OCR fallback</td>
+      <td>HIGH</td>
+      <td>Medium</td>
+      <td>ocr_service.py, both providers</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Regex HTML escaping (frontend)</td>
+      <td>MEDIUM</td>
+      <td>Easy</td>
+      <td>results.js</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Deskew angle compute-once</td>
+      <td>MEDIUM</td>
+      <td>Easy</td>
+      <td>image_preprocessor.py, providers</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Grayscale conversion cache</td>
+      <td>MEDIUM</td>
+      <td>Easy</td>
+      <td>image_preprocessor.py</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Token count memoization in chunker</td>
+      <td>LOW</td>
+      <td>Easy</td>
+      <td>chunker.py</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Store token_count on DocumentChunk</td>
+      <td>LOW</td>
+      <td>Easy</td>
+      <td>rag.py, chunker.py, ingestion_service.py</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Parallel directory ingestion</td>
+      <td>LOW</td>
+      <td>Medium</td>
+      <td>ingestion_service.py</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>Lean Q&amp;A cache key</td>
+      <td>LOW</td>
+      <td>Easy</td>
+      <td>qa_service.py</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Testing</h2>
+<p>After each optimization, run the full test suite:</p>
+<pre>cd /Users/aaandy/_andy_ai_projects_2026/raiveFlier && python -m pytest tests/ -v</pre>
+<p>Current baseline: <strong>333 passed, 0 failed, 5 warnings</strong></p>
+
+</body>
+</html>

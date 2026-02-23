@@ -54,3 +54,9 @@ transcripts/
 
 # RA.co scrape checkpoints (large JSON files, resumable)
 data/ra_scrape/
+
+# SQLite flier history database (runtime data)
+data/flier_history.db
+
+# Scrape logs
+scrape_log.txt
