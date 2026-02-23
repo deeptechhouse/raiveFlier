@@ -21,7 +21,7 @@
  *    - session_id: UUID for this analysis pipeline
  *    - extracted_entities: OCR results (artists, venue, date, etc.)
  *    - duplicate_match: optional match if a similar flier was seen before
- * 4. If duplicate detected: show warning, user can proceed or cancel
+ * 4. If duplicate detected: show non-blocking notice, user clicks Analyze again
  * 5. On proceed: App.setSessionId(id), delegate to Confirmation module, switch view
  *
  * MODULE COMMUNICATION
@@ -52,15 +52,13 @@ const Upload = (() => {
   let _submitBtn = null;
   let _errorEl = null;
   let _loadingOverlay = null;
-  let _duplicateWarning = null;
+  let _duplicateNotice = null;
   let _duplicateText = null;
-  let _duplicateMeta = null;
-  let _duplicateAnalyzeBtn = null;
-  let _duplicateCancelBtn = null;
   let _analysisCountBadge = null;
 
-  // When the backend detects a duplicate flier, we store the full upload
-  // response here so the user can choose "Analyze Anyway" to proceed.
+  // When the backend detects a duplicate, we store the full upload response
+  // here. The next click of "Analyze Flier" uses this data instead of
+  // re-uploading, then clears it.
   let _pendingDuplicateData = null;
 
   /** Bind all DOM references. */
@@ -74,11 +72,8 @@ const Upload = (() => {
     _submitBtn = document.getElementById("submit-btn");
     _errorEl = document.getElementById("upload-error");
     _loadingOverlay = document.getElementById("loading-overlay");
-    _duplicateWarning = document.getElementById("duplicate-warning");
+    _duplicateNotice = document.getElementById("duplicate-warning");
     _duplicateText = document.getElementById("duplicate-warning-text");
-    _duplicateMeta = document.getElementById("duplicate-warning-meta");
-    _duplicateAnalyzeBtn = document.getElementById("duplicate-analyze-btn");
-    _duplicateCancelBtn = document.getElementById("duplicate-cancel-btn");
     _analysisCountBadge = document.getElementById("analysis-count-badge");
   }
 
@@ -124,21 +119,6 @@ const Upload = (() => {
       }
     });
 
-    // Duplicate warning: "Analyze Anyway" — proceed to confirm view.
-    // Capture the data reference BEFORE _hideDuplicateWarning() nulls it.
-    _duplicateAnalyzeBtn.addEventListener("click", () => {
-      const data = _pendingDuplicateData;
-      if (data) {
-        _hideDuplicateWarning();
-        _proceedToConfirm(data);
-      }
-    });
-
-    // Duplicate warning: "Cancel" — reset the upload
-    _duplicateCancelBtn.addEventListener("click", () => {
-      _hideDuplicateWarning();
-      _resetUpload();
-    });
   }
 
   /**
@@ -213,23 +193,33 @@ const Upload = (() => {
   /**
    * POST the file to the backend upload endpoint via multipart FormData.
    *
+   * If the user already saw a duplicate notification and clicked "Analyze Flier"
+   * again, we skip the re-upload and proceed with the stored response data.
+   *
    * API: POST /api/v1/fliers/upload
    * Request: multipart/form-data with a single "file" field
    * Response: FlierUploadResponse JSON containing:
-   *   - session_id: UUID for the pipeline session
-   *   - extracted_entities: { artists: [], venue: {}, date: {}, ... }
-   *   - ocr_confidence: float 0-1
-   *   - duplicate_match: optional object if perceptual hash matches
+   *   - session_id, extracted_entities, ocr_confidence, duplicate_match, times_analyzed
    *
    * Flow after response:
-   *   - If duplicate_match present -> show warning, pause for user decision
-   *   - Otherwise -> proceed directly to confirm view
+   *   - If duplicate_match present -> show non-blocking notice, keep submit enabled
+   *   - Next "Analyze Flier" click -> dismiss notice, proceed to confirm
+   *   - No duplicate -> proceed directly to confirm view
    *
    * @param {File} file
    */
   async function _submitFlier(file) {
+    // If duplicate was already acknowledged, proceed with stored data
+    if (_pendingDuplicateData) {
+      const data = _pendingDuplicateData;
+      _pendingDuplicateData = null;
+      _hideDuplicateNotice();
+      _proceedToConfirm(data);
+      return;
+    }
+
     _hideError();
-    _hideDuplicateWarning();
+    _hideDuplicateNotice();
     _loadingOverlay.hidden = false;
     _submitBtn.disabled = true;
 
@@ -251,10 +241,10 @@ const Upload = (() => {
 
       const data = await response.json();
 
-      // Check for duplicate match — show warning and pause before proceeding
+      // Duplicate detected — show non-blocking notice, store data for next click
       if (data.duplicate_match) {
         _pendingDuplicateData = data;
-        _showDuplicateWarning(data.duplicate_match);
+        _showDuplicateNotice(data.duplicate_match, data.times_analyzed || 1);
         return;
       }
 
@@ -263,7 +253,7 @@ const Upload = (() => {
       _showError(err.message || "Upload failed. Please try again.");
     } finally {
       _loadingOverlay.hidden = true;
-      _submitBtn.disabled = _selectedFile === null || !_duplicateWarning.hidden;
+      _submitBtn.disabled = _selectedFile === null;
     }
   }
 
@@ -287,44 +277,28 @@ const Upload = (() => {
   }
 
   /**
-   * Display the duplicate flier warning with match details.
+   * Show a non-blocking duplicate notice. The user can click "Analyze Flier"
+   * again to dismiss and proceed.
    * @param {object} match — DuplicateMatch from the API response
+   * @param {number} timesAnalyzed — total previous analyses of this image
    */
-  function _showDuplicateWarning(match) {
-    const pct = Math.round(match.similarity * 100);
+  function _showDuplicateNotice(match, timesAnalyzed) {
     const dateStr = match.analyzed_at
       ? new Date(match.analyzed_at).toLocaleDateString()
       : "unknown date";
+    const countLabel = timesAnalyzed === 1 ? "once" : `${timesAnalyzed} times`;
 
     _duplicateText.textContent =
-      `This flier appears ${pct}% visually similar to one analyzed on ${dateStr}. ` +
-      "You can analyze it again or cancel.";
+      `Previously analyzed ${countLabel} (last: ${dateStr}). ` +
+      "Click Analyze Flier to continue.";
 
-    // Build metadata tags
-    _duplicateMeta.innerHTML = "";
-    const tags = [];
-    if (match.artists && match.artists.length > 0) {
-      match.artists.forEach((a) => tags.push(a));
-    }
-    if (match.venue) tags.push(match.venue);
-    if (match.event_name) tags.push(match.event_name);
-    if (match.event_date) tags.push(match.event_date);
-
-    tags.forEach((tag) => {
-      const el = document.createElement("span");
-      el.className = "duplicate-warning__tag";
-      el.textContent = tag;
-      _duplicateMeta.appendChild(el);
-    });
-
-    _duplicateWarning.hidden = false;
+    _duplicateNotice.hidden = false;
   }
 
-  /** Hide the duplicate warning and clear pending data. */
-  function _hideDuplicateWarning() {
-    if (_duplicateWarning) {
-      _duplicateWarning.hidden = true;
-      _pendingDuplicateData = null;
+  /** Hide the duplicate notice. */
+  function _hideDuplicateNotice() {
+    if (_duplicateNotice) {
+      _duplicateNotice.hidden = true;
     }
   }
 
@@ -347,7 +321,8 @@ const Upload = (() => {
     _dropContent.hidden = false;
     _submitBtn.disabled = true;
     _hideError();
-    _hideDuplicateWarning();
+    _hideDuplicateNotice();
+    _pendingDuplicateData = null;
     _updateAnalysisCount(0);
   }
 
