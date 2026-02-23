@@ -884,7 +884,8 @@ async def corpus_search(
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
     # When the query is NOT explicitly asking for artists, diversify results
-    # so a single entity doesn't dominate (max 2 results per entity tag).
+    # so a single entity doesn't dominate (max 2 results per entity tag)
+    # and drop chunks focused on a single artist (exactly 1 entity tag).
     if not _is_artist_query(body.query):
         _MAX_PER_ENTITY = 2
         entity_counts: dict[str, int] = {}
@@ -894,6 +895,10 @@ async def corpus_search(
         for r in deduped:
             if not r.entity_tags:
                 diversified.append(r)
+                continue
+            # Skip single-entity chunks — these are artist-focused results
+            # that should only appear when the user asks for artists.
+            if len(r.entity_tags) == 1:
                 continue
             # A chunk can have multiple entity tags; gate on the most-seen one.
             capped = False
