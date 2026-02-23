@@ -664,8 +664,9 @@ async def corpus_search(
         filters=filters if filters else None,
     )
 
-    # Safety-net dedup by source_id — keep best chunk per source
-    best_per_source: dict[str, CorpusSearchChunk] = {}
+    # Safety-net dedup by source_id — keep top 3 chunks per source
+    _MAX_PER_SOURCE = 3
+    source_chunks: dict[str, list[CorpusSearchChunk]] = {}
     for c in chunks:
         sid = c.chunk.source_id
         candidate = CorpusSearchChunk(
@@ -681,12 +682,15 @@ async def corpus_search(
             geographic_tags=c.chunk.geographic_tags,
             genre_tags=c.chunk.genre_tags,
         )
-        existing = best_per_source.get(sid)
-        if existing is None or candidate.similarity_score > existing.similarity_score:
-            best_per_source[sid] = candidate
+        source_chunks.setdefault(sid, []).append(candidate)
+
+    deduped: list[CorpusSearchChunk] = []
+    for entries in source_chunks.values():
+        entries.sort(key=lambda r: r.similarity_score, reverse=True)
+        deduped.extend(entries[:_MAX_PER_SOURCE])
 
     results = sorted(
-        best_per_source.values(),
+        deduped,
         key=lambda r: r.similarity_score,
         reverse=True,
     )

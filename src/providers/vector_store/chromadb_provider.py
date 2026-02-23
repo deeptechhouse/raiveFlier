@@ -109,19 +109,20 @@ class ChromaDBProvider(IVectorStoreProvider):
         query_text: str,
         top_k: int = 20,
         filters: dict[str, Any] | None = None,
+        max_per_source: int = 3,
     ) -> list[RetrievedChunk]:
         """Perform semantic search against the ChromaDB collection.
 
         Results are deduplicated by ``source_id``: when multiple chunks from
-        the same source document match, only the highest-scoring chunk is
-        returned.  To compensate, ChromaDB is asked for up to ``3 * top_k``
+        the same source document match, only the top *max_per_source* chunks
+        are kept.  To compensate, ChromaDB is asked for up to ``3 * top_k``
         raw results before dedup and trimming.
         """
         try:
             query_embedding = await self._embedding_provider.embed_single(query_text)
             where_clause = self._translate_filters(filters) if filters else None
 
-            # Over-fetch to have enough results after source-level dedup
+            # Over-fetch to have enough results after per-source limiting
             fetch_k = min(top_k * 3, max(top_k, self._collection.count()))
 
             kwargs: dict[str, Any] = {
@@ -140,26 +141,29 @@ class ChromaDBProvider(IVectorStoreProvider):
             metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(documents)
             distances = results["distances"][0] if results["distances"] else [0.0] * len(documents)
 
-            # Deduplicate by source_id — keep the highest-scoring chunk per source
-            best_per_source: dict[str, RetrievedChunk] = {}
+            # Group by source_id, keeping top max_per_source chunks per source
+            chunks_per_source: dict[str, list[RetrievedChunk]] = {}
 
             for doc_text, meta, distance in zip(documents, metadatas, distances, strict=True):
                 similarity = max(0.0, min(1.0, 1.0 - distance))
                 chunk = self._metadata_to_chunk(meta, doc_text)
                 source_id = chunk.source_id
+                citation = self._format_citation(chunk, similarity)
+                rc = RetrievedChunk(
+                    chunk=chunk,
+                    similarity_score=similarity,
+                    formatted_citation=citation,
+                )
+                chunks_per_source.setdefault(source_id, []).append(rc)
 
-                existing = best_per_source.get(source_id)
-                if existing is None or similarity > existing.similarity_score:
-                    citation = self._format_citation(chunk, similarity)
-                    best_per_source[source_id] = RetrievedChunk(
-                        chunk=chunk,
-                        similarity_score=similarity,
-                        formatted_citation=citation,
-                    )
+            # Keep top N per source, flatten, sort globally, trim to top_k
+            deduped: list[RetrievedChunk] = []
+            for entries in chunks_per_source.values():
+                entries.sort(key=lambda rc: rc.similarity_score, reverse=True)
+                deduped.extend(entries[:max_per_source])
 
-            # Sort by similarity (descending) and trim to top_k
             retrieved = sorted(
-                best_per_source.values(),
+                deduped,
                 key=lambda rc: rc.similarity_score,
                 reverse=True,
             )[:top_k]
@@ -168,7 +172,7 @@ class ChromaDBProvider(IVectorStoreProvider):
                 "chromadb_query",
                 query_length=len(query_text),
                 raw_results=len(documents),
-                unique_sources=len(best_per_source),
+                unique_sources=len(chunks_per_source),
                 results_count=len(retrieved),
                 top_score=retrieved[0].similarity_score if retrieved else 0.0,
             )

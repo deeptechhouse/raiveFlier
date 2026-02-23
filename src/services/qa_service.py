@@ -349,8 +349,9 @@ class QAService:
                 filters=filters if filters else None,
             )
 
-            # Deduplicate by source_id — keep best chunk per source (safety net)
-            best_per_source: dict[str, tuple[float, str, dict[str, Any]]] = {}
+            # Deduplicate by source_id — keep top 3 chunks per source (safety net)
+            _MAX_PER_SOURCE = 3
+            source_chunks: dict[str, list[tuple[float, str, dict[str, Any]]]] = {}
 
             for chunk in chunks:
                 if chunk.similarity_score < self._RAG_SIMILARITY_THRESHOLD:
@@ -366,12 +367,17 @@ class QAService:
                     "tier": chunk.chunk.citation_tier,
                     "similarity": round(chunk.similarity_score, 3),
                 }
-                existing = best_per_source.get(sid)
-                if existing is None or chunk.similarity_score > existing[0]:
-                    best_per_source[sid] = (chunk.similarity_score, passage, citation)
+                source_chunks.setdefault(sid, []).append(
+                    (chunk.similarity_score, passage, citation)
+                )
 
-            # Sort by similarity descending
-            ordered = sorted(best_per_source.values(), key=lambda t: t[0], reverse=True)
+            # Keep top N per source, sort globally
+            deduped: list[tuple[float, str, dict[str, Any]]] = []
+            for entries in source_chunks.values():
+                entries.sort(key=lambda t: t[0], reverse=True)
+                deduped.extend(entries[:_MAX_PER_SOURCE])
+
+            ordered = sorted(deduped, key=lambda t: t[0], reverse=True)
             passages = [p for _, p, _ in ordered]
             citations = [c for _, _, c in ordered]
 

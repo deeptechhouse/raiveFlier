@@ -41,6 +41,7 @@ class IVectorStoreProvider(ABC):
         query_text: str,
         top_k: int = 20,
         filters: dict[str, Any] | None = None,
+        max_per_source: int = 3,
     ) -> list[RetrievedChunk]:
         """Perform a semantic search against the vector store.
 
@@ -53,6 +54,10 @@ class IVectorStoreProvider(ABC):
         filters:
             Optional metadata filters to narrow the search (see class
             docstring for supported syntax).
+        max_per_source:
+            Maximum number of chunks from any single source document.
+            Prevents one long document from dominating results while
+            still allowing multiple relevant passages.
 
         Returns
         -------

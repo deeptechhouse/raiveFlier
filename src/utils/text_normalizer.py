@@ -129,3 +129,70 @@ def split_artist_names(raw: str) -> list[str]:
     """
     parts = _SEPARATOR_PATTERN.split(raw)
     return [part.strip() for part in parts if part.strip()]
+
+
+# ------------------------------------------------------------------
+# Transcript text preprocessing
+# ------------------------------------------------------------------
+
+# Bracketed timestamps: [00:15:22], [1:05:30], [15:22]
+_BRACKET_TIMESTAMP = re.compile(r"\[\d{1,2}:\d{2}(?::\d{2})?\]")
+
+# Bare timestamps at line start: 00:15:22 or 00:15:22 -
+_BARE_TIMESTAMP = re.compile(r"^\d{1,2}:\d{2}(?::\d{2})?\s*[-–—]?\s*", re.MULTILINE)
+
+# Parenthesized timestamps: (15:22), (1:05:30)
+_PAREN_TIMESTAMP = re.compile(r"\(\d{1,2}:\d{2}(?::\d{2})?\)")
+
+# Noise markers: [INAUDIBLE], [CROSSTALK], [LAUGHTER], [MUSIC], etc.
+_NOISE_MARKER = re.compile(
+    r"\[(?:INAUDIBLE|CROSSTALK|LAUGHTER|MUSIC|APPLAUSE|SILENCE|PAUSE"
+    r"|BACKGROUND NOISE|OVERLAPPING|UNINTELLIGIBLE|FOREIGN LANGUAGE"
+    r"|inaudible|crosstalk|laughter|music|applause)\]",
+)
+
+# Speaker labels at line start: "SPEAKER NAME:", "DJ Rush:", "Interviewer:"
+# Captures 1-4 capitalized/mixed words followed by colon
+_SPEAKER_LABEL = re.compile(r"^[ \t]*[A-Z][A-Za-z'\-.]+(?:\s+[A-Za-z'\-.]+){0,3}\s*:\s*", re.MULTILINE)
+
+# Collapse 3+ newlines to double-newline (paragraph separator)
+_MULTI_NEWLINE = re.compile(r"\n{3,}")
+
+# Collapse 2+ spaces/tabs to single space
+_MULTI_SPACE = re.compile(r"[ \t]{2,}")
+
+
+def preprocess_transcript(text: str) -> str:
+    """Clean transcript text before chunking and embedding.
+
+    Removes timestamps, noise markers, and speaker labels that would
+    pollute semantic embeddings.  Speaker label removal inserts paragraph
+    breaks so the chunker creates natural boundaries at speaker turns.
+
+    Args:
+        text: Raw transcript text.
+
+    Returns:
+        Cleaned text suitable for chunking.
+    """
+    if not text:
+        return text
+
+    cleaned = text
+
+    # 1. Strip timestamps
+    cleaned = _BRACKET_TIMESTAMP.sub("", cleaned)
+    cleaned = _BARE_TIMESTAMP.sub("", cleaned)
+    cleaned = _PAREN_TIMESTAMP.sub("", cleaned)
+
+    # 2. Remove noise markers
+    cleaned = _NOISE_MARKER.sub("", cleaned)
+
+    # 3. Normalize speaker labels → paragraph break (preserves turn boundaries)
+    cleaned = _SPEAKER_LABEL.sub("\n\n", cleaned)
+
+    # 4. Collapse excessive whitespace
+    cleaned = _MULTI_NEWLINE.sub("\n\n", cleaned)
+    cleaned = _MULTI_SPACE.sub(" ", cleaned)
+
+    return cleaned.strip()

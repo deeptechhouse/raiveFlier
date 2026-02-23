@@ -333,15 +333,21 @@ class IngestionService:
                     return None
 
                 source_id = raw_chunks[0].source_id
+                _needs_preprocess = source_type in ("transcript", "interview")
                 all_chunks: list[DocumentChunk] = []
                 for rc in raw_chunks:
+                    text = rc.text
+                    if _needs_preprocess:
+                        from src.utils.text_normalizer import preprocess_transcript
+
+                        text = preprocess_transcript(text)
                     metadata = {
                         "source_id": rc.source_id,
                         "source_title": rc.source_title,
                         "source_type": rc.source_type,
                         "citation_tier": rc.citation_tier,
                     }
-                    chunks = self._chunker.chunk(rc.text, metadata)
+                    chunks = self._chunker.chunk(text, metadata)
                     all_chunks.extend(chunks)
 
                 return await self._tag_embed_store(
