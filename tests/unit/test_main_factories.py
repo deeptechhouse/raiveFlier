@@ -57,24 +57,24 @@ def _settings(**overrides) -> Settings:
 class TestBuildLLMProvider:
     """Tests for the _build_llm_provider factory — provider priority order."""
 
-    def test_anthropic_priority(self) -> None:
-        """When anthropic_api_key is set, return AnthropicLLMProvider
-        regardless of whether openai_api_key is also set."""
-        from src.main import _build_llm_provider
-        from src.providers.llm.anthropic_provider import AnthropicLLMProvider
-
-        s = _settings(anthropic_api_key="test-anthropic-key", openai_api_key="sk-also-set")
-        result = _build_llm_provider(s)
-        assert isinstance(result, AnthropicLLMProvider)
-
-    def test_openai_fallback(self) -> None:
-        """When only openai_api_key is set (no anthropic), return OpenAILLMProvider."""
+    def test_openai_priority(self) -> None:
+        """When openai_api_key is set, return OpenAILLMProvider
+        regardless of whether anthropic_api_key is also set."""
         from src.main import _build_llm_provider
         from src.providers.llm.openai_provider import OpenAILLMProvider
 
-        s = _settings(openai_api_key="sk-test-key")
+        s = _settings(anthropic_api_key="test-anthropic-key", openai_api_key="sk-also-set")
         result = _build_llm_provider(s)
         assert isinstance(result, OpenAILLMProvider)
+
+    def test_anthropic_fallback(self) -> None:
+        """When only anthropic_api_key is set (no openai), return AnthropicLLMProvider."""
+        from src.main import _build_llm_provider
+        from src.providers.llm.anthropic_provider import AnthropicLLMProvider
+
+        s = _settings(anthropic_api_key="test-anthropic-key")
+        result = _build_llm_provider(s)
+        assert isinstance(result, AnthropicLLMProvider)
 
     def test_ollama_default(self) -> None:
         """When no API keys are set, return OllamaLLMProvider as the default."""

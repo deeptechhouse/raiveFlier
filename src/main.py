@@ -104,12 +104,12 @@ _logger: structlog.BoundLogger = get_logger(__name__)
 def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
     """Select the first available LLM provider based on configured API keys.
 
-    Priority order: Anthropic -> OpenAI -> Ollama (always available).
+    Priority order: OpenAI/TogetherAI -> Anthropic -> Ollama (always available).
     """
-    if app_settings.anthropic_api_key:
-        return AnthropicLLMProvider(settings=app_settings)
     if app_settings.openai_api_key:
         return OpenAILLMProvider(settings=app_settings)
+    if app_settings.anthropic_api_key:
+        return AnthropicLLMProvider(settings=app_settings)
     return OllamaLLMProvider(settings=app_settings)
 
 
