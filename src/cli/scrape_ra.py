@@ -252,26 +252,37 @@ def _handle_status() -> int:
     statuses = service.get_scrape_status()
 
     print("RA Scrape Progress")
-    print("=" * 65)
-    print(f"{'City':<20} {'Area ID':>8} {'Events':>10} {'Last':>10} {'Done':>6}")
-    print("-" * 65)
+    print("=" * 78)
+    print(
+        f"{'City':<20} {'Area ID':>8} {'Events':>10}"
+        f" {'Range':<12} {'Last':>10} {'Done':>6}"
+    )
+    print("-" * 78)
 
+    seen_cities: set[str] = set()
     total_events = 0
     for s in statuses:
         city_key = str(s["city"])
         display = CITY_DISPLAY_NAMES.get(city_key, city_key)
         events = int(s["events"])
-        total_events += events
         last_year = int(s["last_year"])
         last_month = int(s["last_month"])
         complete = bool(s["complete"])
+        range_str = str(s.get("range", ""))
+
+        if city_key not in seen_cities:
+            seen_cities.add(city_key)
+            total_events += events
 
         last_str = f"{last_year}-{last_month:02d}" if last_year else "-"
         done_str = "YES" if complete else "no"
 
-        print(f"{display:<20} {s['area_id']:>8} {events:>10,} {last_str:>10} {done_str:>6}")
+        print(
+            f"{display:<20} {s['area_id']:>8} {events:>10,}"
+            f" {range_str:<12} {last_str:>10} {done_str:>6}"
+        )
 
-    print("-" * 65)
+    print("-" * 78)
     print(f"{'TOTAL':<20} {'':>8} {total_events:>10,}")
 
     return 0

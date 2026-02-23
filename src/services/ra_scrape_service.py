@@ -317,36 +317,63 @@ class RAScrapeService:
         )
         return corpus_path
 
-    def get_scrape_status(self) -> list[dict[str, str | int | bool]]:
+    def get_scrape_status(self) -> list[dict]:
         """Return scrape progress for all known cities.
+
+        Each city gets one entry per date-range progress file (Phase A,
+        Phase B, etc.).  Cities with no progress files appear once with
+        zeroed-out fields.
 
         Returns
         -------
         list[dict]
-            One dict per city with keys: ``city``, ``area_id``,
-            ``events``, ``last_year``, ``last_month``, ``complete``.
+            One dict per city/range with keys: ``city``, ``area_id``,
+            ``events``, ``range``, ``last_year``, ``last_month``,
+            ``complete``.
         """
-        status: list[dict[str, str | int | bool]] = []
+        status: list[dict] = []
         for city_key in RA_AREA_IDS:
-            progress = self._load_progress(city_key)
-            if progress:
+            area_id = RA_AREA_IDS[city_key]
+            pattern = f"ra_progress_{city_key}_*.json"
+            progress_files = sorted(self._checkpoint_dir.glob(pattern))
+
+            if not progress_files:
                 status.append({
                     "city": city_key,
-                    "area_id": progress.area_id,
-                    "events": progress.total_events_scraped,
-                    "last_year": progress.last_completed_year or 0,
-                    "last_month": progress.last_completed_month or 0,
-                    "complete": progress.is_complete,
-                })
-            else:
-                status.append({
-                    "city": city_key,
-                    "area_id": RA_AREA_IDS[city_key],
+                    "area_id": area_id,
                     "events": 0,
+                    "range": "",
                     "last_year": 0,
                     "last_month": 0,
                     "complete": False,
                 })
+                continue
+
+            event_count = len(self._load_events(city_key))
+
+            for pf in progress_files:
+                try:
+                    prog = RAScrapeProgress.model_validate_json(
+                        pf.read_text(encoding="utf-8")
+                    )
+                    status.append({
+                        "city": city_key,
+                        "area_id": area_id,
+                        "events": event_count,
+                        "range": (
+                            f"{prog.scrape_start_year}-"
+                            f"{prog.scrape_end_year}"
+                        ),
+                        "last_year": prog.last_completed_year or 0,
+                        "last_month": prog.last_completed_month or 0,
+                        "complete": prog.is_complete,
+                    })
+                except Exception:
+                    self._logger.warning(
+                        "ra_progress_parse_failed",
+                        city=city_key,
+                        path=str(pf),
+                    )
         return status
 
     # ------------------------------------------------------------------
