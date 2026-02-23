@@ -76,11 +76,16 @@ RUN grep -ivE 'easyocr|sentence.transformers' requirements.txt > requirements-de
 # ── Application code ─────────────────────────────────────────
 # Each COPY creates a separate layer. Order matters for cache efficiency:
 # source code changes most often, so it goes last.
-COPY src/ src/                                    # Python application code
-COPY frontend/ frontend/                          # Static HTML/CSS/JS frontend
-COPY config/ config/                              # YAML configuration files
-COPY data/reference_corpus/ data/reference_corpus/ # Curated RAG corpus text files
-COPY scripts/entrypoint.sh scripts/entrypoint.sh  # Docker entrypoint script
+# Python application code
+COPY src/ src/
+# Static HTML/CSS/JS frontend
+COPY frontend/ frontend/
+# YAML configuration files
+COPY config/ config/
+# Curated RAG corpus text files
+COPY data/reference_corpus/ data/reference_corpus/
+# Docker entrypoint script
+COPY scripts/entrypoint.sh scripts/entrypoint.sh
 
 # Create writable directories for runtime data.
 # On Render, /data is a persistent disk mount (survives redeploys).
