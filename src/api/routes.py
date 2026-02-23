@@ -110,6 +110,23 @@ def _get_feedback_provider(request: Request) -> Any:
 FeedbackDep = Annotated[Any, Depends(_get_feedback_provider)]
 
 
+def _js_simple_hash(s: str) -> str:
+    """Replicate the frontend ``Rating.simpleHash()`` — 32-bit DJB-style hash as 8-char hex."""
+    h = 0
+    for ch in s:
+        # JS << operates on signed Int32; convert before shifting to match.
+        h_signed = h if h < 0x80000000 else h - 0x100000000
+        h = (((h_signed << 5) & 0xFFFFFFFF) - h + ord(ch)) & 0xFFFFFFFF
+    # JS: Math.abs() on the signed 32-bit result
+    h_signed = h if h < 0x80000000 else h - 0x100000000
+    return format(abs(h_signed), "x").zfill(8)
+
+
+def _corpus_item_key(source_title: str, text: str) -> str:
+    """Build the same ``item_key`` the frontend uses for corpus rating widgets."""
+    return (source_title or "") + "::" + _js_simple_hash(text or "")
+
+
 # ---------------------------------------------------------------------------
 # Background task helpers
 # ---------------------------------------------------------------------------
@@ -662,6 +679,7 @@ async def corpus_search(
     body: CorpusSearchRequest,
     request: Request,
     vector_store: VectorStoreDep,
+    feedback: FeedbackDep,
 ) -> CorpusSearchResponse:
     """Perform semantic search against the RAG vector-store corpus.
 
@@ -710,6 +728,18 @@ async def corpus_search(
     for entries in source_chunks.values():
         entries.sort(key=lambda r: r.similarity_score, reverse=True)
         deduped.extend(entries[:_MAX_PER_SOURCE])
+
+    # Filter out results the user previously thumbs-downed.
+    if feedback is not None:
+        try:
+            negative_keys = await feedback.get_negative_item_keys("CORPUS", "")
+            if negative_keys:
+                deduped = [
+                    r for r in deduped
+                    if _corpus_item_key(r.source_title, r.text) not in negative_keys
+                ]
+        except Exception:
+            _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
     results = sorted(
         deduped,
@@ -789,4 +819,72 @@ async def get_recommendations(
         flier_artists=result.flier_artists,
         genres_analyzed=result.genres_analyzed,
         total=len(result.recommendations),
+        is_partial=False,
+    )
+
+
+@router.get(
+    "/fliers/{session_id}/recommendations/quick",
+    response_model=RecommendationsResponse,
+    responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    summary="Get fast label-mate recommendations (no LLM)",
+)
+async def get_recommendations_quick(
+    session_id: str,
+    request: Request,
+    session_states: SessionStatesDep,
+) -> RecommendationsResponse:
+    """Return label-mate recommendations only, without any LLM calls.
+
+    Designed for instant display while the full recommendation pipeline
+    runs in background.  Returns ``is_partial=True`` so the frontend
+    knows to backfill with the full endpoint.
+    """
+    recommendation_service = getattr(request.app.state, "recommendation_service", None)
+    if recommendation_service is None:
+        raise HTTPException(status_code=503, detail="Recommendation service not available")
+
+    state = session_states.get(session_id)
+    if state is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session not found: {session_id}. Sessions are cleared on server restart.",
+        )
+
+    if not state.research_results:
+        raise HTTPException(
+            status_code=404,
+            detail="No research data available yet. Wait for analysis to complete.",
+        )
+
+    entities = state.confirmed_entities or state.extracted_entities
+
+    try:
+        result = await recommendation_service.recommend_quick(
+            research_results=state.research_results,
+            entities=entities,
+        )
+    except Exception as exc:
+        _logger.error("quick_recommendation_failed", session_id=session_id, error=str(exc))
+        raise HTTPException(status_code=503, detail="Failed to generate quick recommendations") from exc
+
+    return RecommendationsResponse(
+        session_id=session_id,
+        recommendations=[
+            RecommendedArtistResponse(
+                artist_name=r.artist_name,
+                genres=r.genres,
+                reason=r.reason,
+                source_tier=r.source_tier,
+                connection_strength=r.connection_strength,
+                connected_to=r.connected_to,
+                label_name=r.label_name,
+                event_name=r.event_name,
+            )
+            for r in result.recommendations
+        ],
+        flier_artists=result.flier_artists,
+        genres_analyzed=result.genres_analyzed,
+        total=len(result.recommendations),
+        is_partial=True,
     )

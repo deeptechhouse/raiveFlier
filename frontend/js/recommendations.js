@@ -4,8 +4,12 @@
  * Renders a bottom-anchored, collapsible floating panel for displaying
  * artist recommendations based on flier analysis.
  *
- * Lazy-loads recommendations on first open via
- * GET /api/v1/fliers/{sessionId}/recommendations.
+ * Two-phase loading strategy:
+ *   Phase 1 (quick) — label-mate results from Discogs API, fetched
+ *     eagerly on init(). No LLM calls. Renders in 1-3 seconds.
+ *   Phase 2 (full)  — all tiers + LLM explanations, fetched in
+ *     background after quick results arrive. Silently replaces the
+ *     panel content when ready.
  *
  * Three-tier priority display: label-mates, shared-flier,
  * shared-lineup, LLM picks.
@@ -19,11 +23,16 @@ const Recommendations = (() => {
   // ------------------------------------------------------------------
 
   let _isOpen = false;
-  let _isLoading = false;
   let _sessionId = null;
   let _recommendations = [];
-  let _hasFetched = false;
   let _error = null;
+
+  // Two-phase fetch state
+  let _isLoadingQuick = false;
+  let _isLoadingFull = false;
+  let _hasFetchedQuick = false;
+  let _hasFetchedFull = false;
+  let _isPartial = true;
 
   // ------------------------------------------------------------------
   // Utility
@@ -110,8 +119,10 @@ const Recommendations = (() => {
     const retryBtn = document.getElementById("reco-retry");
     if (retryBtn) {
       retryBtn.addEventListener("click", () => {
-        _hasFetched = false;
-        _fetchRecommendations();
+        _hasFetchedQuick = false;
+        _hasFetchedFull = false;
+        _error = null;
+        _fetchQuickRecommendations();
       });
     }
   }
@@ -146,12 +157,31 @@ const Recommendations = (() => {
     return classes[tier] || "";
   }
 
+  /** Update the count badge on the collapsed toggle bar. */
+  function _updateCountBadge() {
+    const countEl = document.getElementById("reco-count");
+    if (!countEl) return;
+
+    const count = _recommendations.length;
+    if (count > 0) {
+      const suffix = _isPartial ? "+" : "";
+      countEl.textContent = `${count}${suffix} artists`;
+    } else {
+      countEl.textContent = "";
+    }
+  }
+
   /** Render the recommendation cards into the panel body. */
   function _renderResults() {
     const content = document.getElementById("reco-content");
     if (!content) return;
 
     if (!_recommendations.length) {
+      // No quick results yet — if full fetch is in progress, show spinner
+      if (_isLoadingFull) {
+        _renderLoading();
+        return;
+      }
       content.innerHTML = `
         <div class="reco-panel__empty">
           <p>No recommendations available yet.</p>
@@ -201,6 +231,16 @@ const Recommendations = (() => {
       `;
     });
 
+    // Backfill indicator when partial results are displayed and full fetch is running
+    if (_isPartial && _isLoadingFull) {
+      html += `
+        <div class="reco-panel__backfill-indicator">
+          <div class="spinner spinner--small" aria-hidden="true"></div>
+          <span>Loading additional recommendations&hellip;</span>
+        </div>
+      `;
+    }
+
     content.innerHTML = html;
 
     // Initialize rating widgets for each recommendation
@@ -214,31 +254,31 @@ const Recommendations = (() => {
       Rating.initWidgets(content, _sessionId);
     }
 
-    // Update count badge
-    const countEl = document.getElementById("reco-count");
-    if (countEl) {
-      countEl.textContent = `${_recommendations.length} artists`;
-    }
+    _updateCountBadge();
   }
 
   // ------------------------------------------------------------------
-  // API interaction
+  // API interaction — two-phase fetch
   // ------------------------------------------------------------------
 
   /**
-   * Fetch recommendations from the backend. Called on first panel open.
-   * Renders loading/error/results states automatically.
+   * Phase 1: Fetch quick label-mate recommendations (no LLM).
+   * Called eagerly from init(), not on panel open.
    */
-  async function _fetchRecommendations() {
-    if (_hasFetched || _isLoading || !_sessionId) return;
+  async function _fetchQuickRecommendations() {
+    if (_hasFetchedQuick || _isLoadingQuick || !_sessionId) return;
 
-    _isLoading = true;
+    _isLoadingQuick = true;
     _error = null;
-    _renderLoading();
+
+    // If panel is already open, show spinner
+    if (_isOpen) {
+      _renderLoading();
+    }
 
     try {
       const resp = await fetch(
-        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/recommendations`
+        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/recommendations/quick`
       );
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
@@ -246,13 +286,75 @@ const Recommendations = (() => {
       }
       const data = await resp.json();
       _recommendations = data.recommendations || [];
-      _hasFetched = true;
-      _renderResults();
+      _isPartial = data.is_partial !== false;
+      _hasFetchedQuick = true;
+
+      // Update count badge on collapsed bar
+      _updateCountBadge();
+
+      // If panel is open, render quick results immediately
+      if (_isOpen) {
+        _renderResults();
+      }
+
+      // Kick off background full fetch
+      _fetchFullRecommendations();
     } catch (err) {
       _error = err.message || "Failed to load recommendations";
-      _renderError(_error);
+      if (_isOpen) {
+        _renderError(_error);
+      }
+      // Still attempt full fetch — quick failure shouldn't block full
+      _fetchFullRecommendations();
     } finally {
-      _isLoading = false;
+      _isLoadingQuick = false;
+    }
+  }
+
+  /**
+   * Phase 2: Fetch full recommendations (all tiers + LLM).
+   * Runs in background after quick results are displayed.
+   * Failure is non-fatal — quick results remain visible.
+   */
+  async function _fetchFullRecommendations() {
+    if (_hasFetchedFull || _isLoadingFull || !_sessionId) return;
+
+    _isLoadingFull = true;
+
+    // If panel is open and we have partial results, re-render to show backfill indicator
+    if (_isOpen && _recommendations.length > 0) {
+      _renderResults();
+    }
+
+    try {
+      const resp = await fetch(
+        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/recommendations`
+      );
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        console.warn("Full recommendations fetch failed:", errData.detail || resp.status);
+        return;
+      }
+      const data = await resp.json();
+      _recommendations = data.recommendations || [];
+      _isPartial = false;
+      _hasFetchedFull = true;
+      _error = null;
+
+      _updateCountBadge();
+
+      if (_isOpen) {
+        _renderResults();
+      }
+    } catch (err) {
+      console.warn("Full recommendations background fetch failed:", err.message);
+      // Non-fatal: quick results remain visible
+    } finally {
+      _isLoadingFull = false;
+      // If panel is open and we were showing the backfill indicator, re-render to remove it
+      if (_isOpen && _isPartial) {
+        _renderResults();
+      }
     }
   }
 
@@ -262,21 +364,27 @@ const Recommendations = (() => {
 
   /**
    * Initialise the recommendation panel for a given session.
-   * Renders the shell (collapsed toggle bar) but does not fetch data
-   * until the panel is opened.
+   * Renders the shell (collapsed toggle bar) and eagerly starts
+   * the quick fetch for label-mate results.
    * @param {string} sessionId - The pipeline session UUID.
    */
   function init(sessionId) {
     _sessionId = sessionId;
     _isOpen = false;
-    _isLoading = false;
-    _hasFetched = false;
+    _isLoadingQuick = false;
+    _isLoadingFull = false;
+    _hasFetchedQuick = false;
+    _hasFetchedFull = false;
     _recommendations = [];
+    _isPartial = true;
     _error = null;
     _renderShell();
+
+    // Eagerly start quick fetch (label-mates only, no LLM)
+    _fetchQuickRecommendations();
   }
 
-  /** Expand the panel and trigger a lazy fetch on first open. */
+  /** Expand the panel and render available results. */
   function openPanel() {
     const panel = _getPanel();
     if (!panel) return;
@@ -285,8 +393,15 @@ const Recommendations = (() => {
     const toggle = document.getElementById("reco-toggle");
     if (toggle) toggle.setAttribute("aria-expanded", "true");
 
-    if (!_hasFetched && !_isLoading) {
-      _fetchRecommendations();
+    if (_hasFetchedQuick || _hasFetchedFull) {
+      // Results available — render them
+      _renderResults();
+    } else if (_isLoadingQuick) {
+      // Quick fetch in progress — show spinner
+      _renderLoading();
+    } else {
+      // Edge case: init wasn't called or fetch didn't start
+      _fetchQuickRecommendations();
     }
   }
 
