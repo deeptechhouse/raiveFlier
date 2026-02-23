@@ -2,6 +2,32 @@
 
 Orchestrates web search, article scraping, and LLM analysis to build a
 comprehensive research profile for a venue extracted from a rave flier.
+
+Research Strategy
+-----------------
+This module uses an **RA.co-first search strategy**: the initial web queries
+target ``site:ra.co/clubs`` to prioritise Resident Advisor's authoritative
+venue database.  General web queries act as a fallback for venues that
+pre-date RA or lack RA listings.
+
+The pipeline flows in five numbered steps (see ``research()``):
+
+    SEARCH  ->  SCRAPE  ->  LLM SYNTHESIS  ->  ARTICLE SEARCH  ->  BUILD
+
+LLM Synthesis Pattern
+---------------------
+The LLM call in ``_synthesize_venue_profile`` requests **structured output**
+with three labelled sections (``HISTORY``, ``NOTABLE_EVENTS``,
+``CULTURAL_SIGNIFICANCE``).  These headers act as lightweight delimiters that
+``_parse_venue_synthesis`` can regex-match without requiring JSON parsing,
+keeping the prompt simple and the output human-readable for debugging.
+
+Citation Tiers
+--------------
+Every ``ArticleReference`` is scored 1-6 via ``_CITATION_TIER_PATTERNS``.
+Tier 1 (RA, DJ Mag, Mixmag) is domain-authoritative for electronic music;
+tier 6 is the catch-all for unrecognised domains.  Downstream consumers can
+filter or weight references by tier.
 """
 
 from __future__ import annotations
@@ -26,11 +52,16 @@ from src.utils.logging import get_logger
 if TYPE_CHECKING:
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
+# -- Module-level constants ---------------------------------------------------
+# These guard resource usage: scraping and LLM calls are the most expensive
+# operations, so caps keep latency and cost predictable.
 _CACHE_TTL_SECONDS = 3600  # 1 hour
-_MAX_SCRAPE_RESULTS = 8
-_MAX_ARTICLE_RESULTS = 10
+_MAX_SCRAPE_RESULTS = 8  # max pages to actually fetch & extract text from
+_MAX_ARTICLE_RESULTS = 10  # max ArticleReference objects to build
 
-# URL patterns mapped to citation tiers (1 = highest authority)
+# Citation tier table: used by _assign_citation_tier() to score sources.
+# Tier 1 = gold-standard electronic-music outlets; tier 6 = unknown domain.
+# The ordering matters only for readability -- matching is first-hit.
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"residentadvisor\.net|ra\.co", re.IGNORECASE), 1),
     (re.compile(r"djmag\.com", re.IGNORECASE), 1),
@@ -69,11 +100,14 @@ class VenueResearcher:
         cache: ICacheProvider | None = None,
         vector_store: IVectorStoreProvider | None = None,
     ) -> None:
+        # All dependencies are interface-typed so concrete implementations
+        # (Google vs. Brave search, OpenAI vs. Anthropic LLM, etc.) can be
+        # swapped via the adapter pattern without touching this class.
         self._web_search = web_search
         self._article_scraper = article_scraper
         self._llm = llm
-        self._cache = cache
-        self._vector_store = vector_store
+        self._cache = cache  # optional -- degrades gracefully to no-cache
+        self._vector_store = vector_store  # optional -- RAG corpus enrichment
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -105,10 +139,12 @@ class VenueResearcher:
             city=city,
         )
 
+        # warnings and sources_consulted accumulate metadata across all steps
+        # so the final ResearchResult is self-documenting about data quality.
         warnings: list[str] = []
         sources_consulted: list[str] = []
 
-        # Step 1 — SEARCH for venue history
+        # Step 1 — SEARCH for venue history (RA.co-first strategy)
         history_results = await self._search_venue_history(venue_name, city)
         if history_results:
             sources_consulted.append("web_search_history")
@@ -116,10 +152,14 @@ class VenueResearcher:
             warnings.append("No web results found for venue history")
 
         # Step 2 — SCRAPE top results for historical context
+        # Only the top _MAX_SCRAPE_RESULTS are fetched to control latency.
         scraped_texts = await self._scrape_results(history_results[:_MAX_SCRAPE_RESULTS])
+        # Confidence scales linearly with scrape count, capped at 1.0
         scrape_confidence = min(1.0, len(scraped_texts) * 0.15) if scraped_texts else 0.0
 
-        # Step 3 — LLM SYNTHESIS of venue history and cultural significance
+        # Step 3 — LLM SYNTHESIS: scraped texts are concatenated and sent to
+        # the LLM with a structured-output prompt (HISTORY / NOTABLE_EVENTS /
+        # CULTURAL_SIGNIFICANCE sections).
         history, notable_events, cultural_significance = await self._synthesize_venue_profile(
             venue_name, city, scraped_texts
         )
@@ -138,7 +178,9 @@ class VenueResearcher:
             warnings.append("No press articles found for venue")
         article_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
 
-        # Step 4.5 — CORPUS RETRIEVAL (RAG)
+        # Step 4.5 — CORPUS RETRIEVAL (RAG): supplements web search with
+        # pre-indexed book/article chunks from the local vector store.
+        # Merged into `articles` with title-based dedup to avoid duplicates.
         corpus_refs = await self._retrieve_from_corpus(venue_name)
         if corpus_refs:
             sources_consulted.append("rag_corpus")
@@ -150,6 +192,9 @@ class VenueResearcher:
                     articles.append(ref)
 
         # Step 5 — BUILD Venue model and ResearchResult
+        # Weighted confidence aggregation: LLM synthesis (weight 3.0) is the
+        # strongest signal because it integrates all upstream data; article
+        # count (1.5) is weakest because presence != relevance.
         search_confidence = min(1.0, len(history_results) * 0.1) if history_results else 0.0
         overall_confidence = calculate_confidence(
             scores=[search_confidence, scrape_confidence, synthesis_confidence, article_confidence],
@@ -203,10 +248,12 @@ class VenueResearcher:
             self._logger.debug("Corpus retrieval failed", venue=venue_name, error=str(exc))
             return []
 
-        # Deduplicate by source_id — keep top 3 chunks per source (safety net)
+        # Deduplicate by source_id — keep top 3 chunks per source.
+        # Without this cap a single verbose book could dominate the results.
         _MAX_PER_SOURCE = 3
         source_chunks: dict[str, list[tuple[float, ArticleReference]]] = {}
         for chunk in chunks:
+            # 0.7 threshold filters out tangentially-related passages.
             if chunk.similarity_score < 0.7:
                 continue
             sid = chunk.chunk.source_id
@@ -235,11 +282,16 @@ class VenueResearcher:
         return refs
 
     async def _search_venue_history(self, venue_name: str, city: str | None) -> list[SearchResult]:
-        """Search the web for venue history and background information."""
+        """Search the web for venue history and background information.
+
+        Returns deduplicated results with RA.co site-scoped query first.
+        """
         city_clause = f" {city}" if city else ""
+        # Query ordering implements RA.co-first strategy: the site:-scoped
+        # query runs first so RA results appear at the top of the merged set.
         queries = [
-            f'site:ra.co/clubs "{venue_name}"',
-            f'"{venue_name}"{city_clause} venue history',
+            f'site:ra.co/clubs "{venue_name}"',  # primary: RA venue page
+            f'"{venue_name}"{city_clause} venue history',  # fallback: general web
         ]
         if city:
             queries.append(f'"{venue_name}" {city} nightclub events')
@@ -298,9 +350,13 @@ class VenueResearcher:
         if not scraped_texts:
             return None, [], None
 
+        # Join up to 6 scraped pages with a delimiter the LLM can recognise
+        # as a document boundary.  More than 6 risks blowing the context window.
         combined_text = "\n---\n".join(scraped_texts[:6])
         city_clause = f" in {city}" if city else ""
 
+        # The system prompt sets the LLM's "persona"; the user prompt contains
+        # the data and the structured-output schema (section headers).
         system_prompt = (
             "You are a music venue historian specializing in nightclub and rave culture. "
             "Given scraped web content about a venue, synthesize a comprehensive profile."
@@ -411,6 +467,11 @@ class VenueResearcher:
     def _parse_venue_synthesis(llm_text: str) -> tuple[str | None, list[str], str | None]:
         """Parse LLM venue synthesis response into structured components.
 
+        The regex strategy: each section header acts as a start anchor and
+        the *next* header (or end-of-string) acts as the stop anchor.  This
+        approach is resilient to minor formatting variations in LLM output
+        (extra whitespace, colons, blank lines).
+
         Returns
         -------
         tuple[str | None, list[str], str | None]
@@ -465,7 +526,11 @@ class VenueResearcher:
 
     @staticmethod
     def _extract_relevant_snippet(text: str, entity_name: str, max_length: int = 500) -> str:
-        """Extract the most relevant text snippet mentioning the entity."""
+        """Extract the most relevant text snippet mentioning the entity.
+
+        Prefers sentences that contain the entity name over a blind prefix
+        truncation, producing more useful preview text for the frontend.
+        """
         sentences = re.split(r"(?<=[.!?])\s+", text)
         name_lower = entity_name.lower()
 

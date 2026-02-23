@@ -1,4 +1,42 @@
 #!/usr/bin/env python3
+# =============================================================================
+# scripts/ingest_transcripts.py — Transcript Ingestion Script
+# =============================================================================
+#
+# Ingests existing RA Exchange transcripts into the ChromaDB vector store.
+# This is a companion script to transcribe_ra_exchange.py — it handles
+# just the ingestion step (chunk -> tag -> embed -> store) for transcripts
+# that have already been transcribed to disk.
+#
+# Use Case:
+#   When transcription and ingestion are done separately (e.g., transcription
+#   was run with --skip-ingest, or the ingestion step failed partway through),
+#   this script picks up where it left off.
+#
+# Concurrency Safety:
+#   This script is safe to run while transcribe_ra_exchange.py is still
+#   running. It reads the transcription progress file (_progress.json) to
+#   find completed transcripts, but tracks ingestion progress in a separate
+#   file (_ingest_progress.json) to avoid race conditions.
+#
+# Ingestion Pipeline per transcript:
+#   1. Read .txt file from disk
+#   2. Preprocess text (normalize whitespace, clean transcription artifacts)
+#   3. Chunk into ~512-token windows with overlap
+#   4. Tag chunks with semantic metadata via LLM
+#   5. Generate vector embeddings
+#   6. Store in ChromaDB as source_type="interview", citation_tier=3
+#
+# Embedding Provider Fallback:
+#   OpenAI-compatible API -> sentence-transformers (local) -> Nomic/Ollama
+#   Includes a connectivity check that tries embedding a test string.
+#
+# Usage:
+#   python scripts/ingest_transcripts.py
+#   python scripts/ingest_transcripts.py --batch-size 10
+#   python scripts/ingest_transcripts.py --transcript-dir transcripts/ra_exchange
+# =============================================================================
+
 """Ingest existing RA Exchange transcripts into ChromaDB.
 
 Reads the _progress.json to find completed-but-not-ingested transcripts
@@ -21,6 +59,7 @@ import sys
 import time
 from pathlib import Path
 
+# Add project root to sys.path for src/ imports.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config.settings import Settings
@@ -32,11 +71,23 @@ from src.models.rag import DocumentChunk
 
 
 async def build_ingestion_service() -> tuple[IngestionService, str]:
-    """Bootstrap the ingestion service from project settings."""
+    """Bootstrap the ingestion service from project settings.
+
+    This function has a more robust embedding provider fallback chain than
+    the CLI version: it includes sentence-transformers as a middle option
+    and performs an actual connectivity check (embed a test string) before
+    accepting the OpenAI provider. This is because this script may run for
+    hours processing hundreds of transcripts, and we want to catch provider
+    issues early rather than failing mid-batch.
+
+    Returns: (IngestionService instance, embedding provider name string)
+    """
     settings = Settings()
 
-    # Embedding provider — try OpenAI-compatible first, then local
-    # sentence-transformers (same model, no API needed), then Nomic/Ollama.
+    # Embedding provider fallback chain:
+    #   1. OpenAI-compatible (with connectivity check)
+    #   2. sentence-transformers (local, no API needed, same model)
+    #   3. Nomic/Ollama (local, requires Ollama running)
     embedding_provider = None
     if settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
@@ -108,7 +159,15 @@ async def ingest_transcript(
     file_path: str,
     title: str,
 ) -> tuple[int, int]:
-    """Ingest a single transcript into ChromaDB. Returns (chunks, tokens)."""
+    """Ingest a single transcript into ChromaDB. Returns (chunks, tokens).
+
+    Processing steps:
+      1. ArticleProcessor reads the .txt file and creates raw chunks
+      2. preprocess_transcript() normalizes the text (fixes common
+         transcription artifacts like double spaces, timestamps, etc.)
+      3. TextChunker splits into embedding-sized windows (~512 tokens)
+      4. _tag_embed_store() runs LLM tagging, embedding, and storage
+    """
     processor = ArticleProcessor()
     raw_chunks = processor.process_file(file_path, source_type="interview", tier=3)
     if not raw_chunks:
@@ -142,6 +201,15 @@ async def ingest_transcript(
 
 
 async def main() -> None:
+    """Main entry point: find un-ingested transcripts and process them.
+
+    Reads two progress files:
+      - _progress.json: Written by transcribe_ra_exchange.py (completed transcripts)
+      - _ingest_progress.json: Written by this script (ingested transcripts)
+
+    The difference between these two sets is the work to do. Using separate
+    files prevents race conditions when both scripts run concurrently.
+    """
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -171,8 +239,9 @@ async def main() -> None:
     transcribe_progress = json.loads(transcribe_progress_file.read_text())
     completed = transcribe_progress.get("completed", {})
 
-    # Use separate file for ingestion tracking to avoid race condition
-    # with the transcription script
+    # IMPORTANT: Use a SEPARATE file for ingestion tracking to avoid race
+    # conditions with the transcription script. If both scripts wrote to the
+    # same _progress.json, concurrent writes could corrupt the JSON file.
     if ingest_progress_file.exists():
         ingest_progress = json.loads(ingest_progress_file.read_text())
     else:

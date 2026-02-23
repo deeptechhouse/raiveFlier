@@ -1,3 +1,47 @@
+# =============================================================================
+# src/cli/ingest.py — CLI Ingest Command (RAG Corpus Management)
+# =============================================================================
+#
+# Standalone CLI for managing the raiveFlier RAG (Retrieval-Augmented Generation)
+# vector store corpus. The corpus is a ChromaDB collection of text chunks
+# from books, articles, web pages, and event listings about electronic music
+# history, rave culture, and the underground dance music scene.
+#
+# During the research phase (Phase 3) of the analysis pipeline, the system
+# queries this corpus to provide rich cultural context about artists, venues,
+# labels, and events found on a flier.
+#
+# Supported subcommands:
+#
+#   book      — Ingest a plain-text (.txt) book file
+#   pdf       — Ingest a PDF book or document
+#   epub      — Ingest an EPUB ebook
+#   article   — Ingest a web article by URL (auto-fetches and parses HTML)
+#   directory — Bulk-ingest all files in a directory
+#   purge     — Delete all chunks of a given source type (e.g., "interview")
+#   stats     — Display corpus statistics (chunk counts, source types)
+#
+# The ingestion pipeline for each document:
+#   1. Read/parse the document (text extraction for PDF/EPUB, HTTP fetch for URLs)
+#   2. Chunk the text into embedding-sized windows (~512 tokens)
+#   3. Extract metadata tags via LLM (artist names, genres, locations, eras)
+#   4. Generate vector embeddings (OpenAI text-embedding-3-small or Nomic)
+#   5. Store chunks + embeddings + metadata in ChromaDB
+#
+# Provider Selection:
+#   - Embedding: OpenAI (if key available and no custom base_url) -> Nomic/Ollama
+#   - LLM (for metadata tagging): Anthropic -> OpenAI -> Ollama
+#   - Vector Store: ChromaDB (always)
+#
+# Usage examples:
+#   python -m src.cli.ingest book --file /path/to/book.txt \
+#       --title "Energy Flash" --author "Simon Reynolds" --year 1998
+#   python -m src.cli.ingest article --url https://example.com/article
+#   python -m src.cli.ingest directory --path /path/to/articles/ --type article
+#   python -m src.cli.ingest stats
+#   python -m src.cli.ingest purge --type interview --yes
+# =============================================================================
+
 """Standalone CLI for building the raiveFlier RAG vector-store corpus.
 
 Usage::
@@ -20,18 +64,27 @@ import argparse
 import asyncio
 import sys
 
+# Settings is a Pydantic BaseSettings model that reads configuration from
+# environment variables and .env files. It provides all API keys, model
+# names, and directory paths needed to construct providers.
 from src.config.settings import Settings
 
 
 def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
+    This function implements a fallback chain for embedding providers:
+
     Priority: OpenAI (if real OpenAI key, not a custom base_url) ->
               Nomic/Ollama (if reachable).
 
     When ``openai_base_url`` is set (e.g. TogetherAI), the OpenAI
     embedding endpoint is unreachable with that key, so we fall through
-    to Nomic/Ollama instead.
+    to Nomic/Ollama instead. This is because TogetherAI uses a different
+    embedding API that is not compatible with the OpenAI embedding SDK.
+
+    Imports are deferred inside the function to avoid loading heavy
+    dependencies (httpx, openai SDK, etc.) unless actually needed.
 
     Returns
     -------
@@ -60,7 +113,14 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
 
 
 def _build_llm_provider(app_settings: Settings):  # noqa: ANN202
-    """Select the first available LLM provider for metadata extraction."""
+    """Select the first available LLM provider for metadata extraction.
+
+    The LLM is used during ingestion to auto-tag chunks with semantic
+    metadata (artist names, genres, geographic locations, time periods).
+    This metadata enables filtered vector search during the research phase.
+
+    Priority: Anthropic (Claude) -> OpenAI (GPT) -> Ollama (local/free).
+    """
     if app_settings.anthropic_api_key:
         from src.providers.llm.anthropic_provider import AnthropicLLMProvider
 
@@ -77,6 +137,15 @@ def _build_llm_provider(app_settings: Settings):  # noqa: ANN202
 
 def _build_ingestion_service(app_settings: Settings):  # noqa: ANN202
     """Construct the full ingestion service with all providers.
+
+    Assembles the complete ingestion pipeline by wiring together:
+      - TextChunker: Splits documents into ~512-token windows with overlap
+      - MetadataExtractor: Uses LLM to auto-tag chunks with semantic metadata
+      - EmbeddingProvider: Converts text chunks to vector embeddings
+      - ChromaDBProvider: Stores embeddings + metadata in the vector database
+
+    This is also called by scrape_ra.py's ingest command, so it serves as
+    the shared factory for the ingestion pipeline.
 
     Returns
     -------
@@ -222,7 +291,12 @@ async def _handle_directory(args: argparse.Namespace, service) -> int:  # noqa: 
 
 
 async def _handle_purge(args: argparse.Namespace, app_settings: Settings) -> int:
-    """Delete all chunks of a given source type."""
+    """Delete all chunks of a given source type.
+
+    This is a destructive operation — it removes all vector embeddings and
+    metadata for chunks matching the specified source_type (e.g., "interview",
+    "reference", "event_listing"). Requires confirmation unless --yes is passed.
+    """
     source_type = args.type
     print(f"Purging all chunks with source_type='{source_type}'")
 
@@ -366,7 +440,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """CLI entry point for the ingestion tool."""
+    """CLI entry point for the ingestion tool.
+
+    Parses the subcommand and arguments, initializes the Settings from
+    environment variables / .env file, and dispatches to the appropriate
+    handler function.
+
+    The "stats" and "purge" commands only need a vector store connection,
+    so they initialize fewer dependencies. All other commands require the
+    full ingestion service (chunker + metadata extractor + embedding + store).
+    """
     parser = _build_parser()
     args = parser.parse_args()
 
@@ -374,8 +457,11 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
+    # Load all configuration from environment variables and .env file.
     app_settings = Settings()
 
+    # Stats and purge are lightweight — they only need the vector store,
+    # not the full ingestion pipeline with LLM tagging.
     if args.command == "stats":
         exit_code = asyncio.run(_handle_stats(app_settings))
         sys.exit(exit_code)
@@ -384,7 +470,8 @@ def main() -> None:
         exit_code = asyncio.run(_handle_purge(args, app_settings))
         sys.exit(exit_code)
 
-    # All other commands require the full ingestion service.
+    # All other commands (book, pdf, epub, article, directory) require the
+    # full ingestion service with embedding provider, LLM, chunker, and store.
     service, status_msg = _build_ingestion_service(app_settings)
     if service is None:
         print(f"Error: {status_msg}", file=sys.stderr)

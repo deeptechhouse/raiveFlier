@@ -90,6 +90,11 @@ class LLMVisionOCRProvider(IOCRProvider):
     returns structured text that is parsed into an :class:`OCRResult`.
     Confidence is derived from the proportion of ``[?]`` uncertainty
     markers in the response.
+
+    This is the PRIMARY OCR provider because LLMs understand context —
+    they can infer "DJ SHADOW" even when the text is heavily distorted,
+    because they know DJ Shadow is a real artist name. Traditional OCR
+    engines like Tesseract have no such contextual knowledge.
     """
 
     def __init__(
@@ -97,7 +102,11 @@ class LLMVisionOCRProvider(IOCRProvider):
         llm_provider: ILLMProvider,
         preprocessor: ImagePreprocessor | None = None,
     ) -> None:
+        # This provider delegates to any ILLMProvider that supports vision.
+        # It's an "adapter of an adapter" — composing two provider interfaces.
         self._llm_provider = llm_provider
+        # Optional image preprocessor for enhancing low-quality images
+        # before sending to the vision model.
         self._preprocessor = preprocessor
         self._logger = get_logger(__name__)
 

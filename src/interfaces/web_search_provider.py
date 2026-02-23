@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from datetime import date
 
 
+# frozen=True makes dataclass instances immutable (like Pydantic's frozen=True).
+# We use a plain dataclass here instead of a Pydantic model because SearchResult
+# is a simple value object that doesn't need Pydantic's validation overhead.
 @dataclass(frozen=True)
 class SearchResult:
     """A single web-search result.
@@ -36,6 +39,9 @@ class SearchResult:
     date: date | None = None
 
 
+# Concrete implementation: DuckDuckGoSearchProvider (src/providers/search/)
+# DuckDuckGo is free and requires no API key. A paid alternative (Serper/Google)
+# could be added as a second implementation for production use.
 class IWebSearchProvider(ABC):
     """Contract for web-search services used during entity research.
 

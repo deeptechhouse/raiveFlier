@@ -13,6 +13,10 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
+# Concrete implementation: SQLiteFlierHistoryProvider (src/providers/flier_history/)
+# Stores flier metadata and artist co-appearances in flier_history.db.
+# Used by the recommendation service to discover co-appearing artists and
+# by the upload endpoint to detect duplicate fliers via perceptual hashing.
 class IFlierHistoryProvider(ABC):
     """Contract for flier-history persistence services.
 

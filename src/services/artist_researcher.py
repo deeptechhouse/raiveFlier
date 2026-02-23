@@ -3,6 +3,39 @@
 Orchestrates multiple data sources — music databases (Discogs, MusicBrainz),
 web search, article scraping, and LLM analysis — to build a comprehensive
 research profile for a single artist extracted from a rave flier.
+
+Architecture role: **Most complex researcher — multi-phase pipeline**
+----------------------------------------------------------------------
+Of the five researcher classes (artist, venue, promoter, date-context,
+event-name), this one is by far the largest because artist identity is
+inherently ambiguous (many DJs share names, use aliases, or change
+monikers).  The pipeline runs these phases:
+
+  1. IDENTIFY   — Search all injected music-database providers (Discogs,
+                   MusicBrainz, Bandcamp, Beatport, etc.) in parallel,
+                   fuzzy-match names, and cross-reference IDs.
+  2. DISCOGRAPHY — Fetch releases and labels from matched databases;
+                   supplement across providers; deduplicate by title.
+  3. FEEDBACK    — Filter out releases/labels previously thumbs-downed
+                   by users (cross-session learning via IFeedbackProvider).
+  4. CORPUS (RAG)— Query the vector store for historical articles/books
+                   mentioning the artist, if a vector store is configured.
+  5. SYNTHESIS   — If >= 2 data sources returned data, ask the LLM to
+                   produce a concise 2-3 sentence artist profile.
+  6. COMPILE     — Assemble everything into a ResearchResult with a
+                   weighted confidence score.
+
+Key design patterns:
+- **Multi-source search**: music DBs searched first (structured data),
+  then web search (unstructured), then RAG corpus (embedded knowledge).
+- **Adaptive deepening**: if initial search yields fewer results than a
+  threshold, additional queries are dispatched automatically.
+- **Citation tiers**: every source URL is classified into tiers 1-6 so
+  the frontend can display provenance badges.
+- **Feedback filtering**: user thumbs-down signals from past sessions
+  prune wrong-artist results without re-training anything.
+- **Dependency injection**: every external service (DB, search, scraper,
+  LLM, cache, vector store, feedback) is injected via interface.
 """
 
 from __future__ import annotations
@@ -39,14 +72,26 @@ if TYPE_CHECKING:
     from src.interfaces.feedback_provider import IFeedbackProvider
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
-_CACHE_TTL_SECONDS = 3600  # 1 hour
-_MAX_PRESS_ARTICLES = 15
-_GIG_SEARCH_LIMIT = 30
-_PRESS_SEARCH_LIMIT = 20
-_MIN_ADEQUATE_APPEARANCES = 3  # trigger deeper search if below this
-_MIN_ADEQUATE_ARTICLES = 2
+# ---------------------------------------------------------------------------
+# Tuning constants — control search breadth and adaptive deepening
+# ---------------------------------------------------------------------------
+_CACHE_TTL_SECONDS = 3600  # 1 hour — balances freshness vs. API quota
+_MAX_PRESS_ARTICLES = 15   # cap on articles to scrape per artist
+_GIG_SEARCH_LIMIT = 30     # max web search results per gig query
+_PRESS_SEARCH_LIMIT = 20   # max web search results per press query
 
-# Domains known to be music-related — results from these always pass relevance check
+# Adaptive deepening thresholds: if the primary search phase returns fewer
+# results than these minimums, a second round of broader queries fires
+# automatically.  This handles obscure artists who don't appear in the
+# first round of targeted queries.
+_MIN_ADEQUATE_APPEARANCES = 3  # trigger deeper gig search if below this
+_MIN_ADEQUATE_ARTICLES = 2     # trigger deeper press search if below this
+
+# ---------------------------------------------------------------------------
+# Relevance filters — separate signal from noise in web search results
+# ---------------------------------------------------------------------------
+# Domains known to be music-related — results from these always pass the
+# relevance check without needing keyword signals in the title/snippet.
 _MUSIC_DOMAINS = re.compile(
     r"ra\.co|residentadvisor|djmag\.com|mixmag\.net|xlr8r\.com|pitchfork\.com|"
     r"thequietus\.com|factmag\.com|factmagazine|discogs\.com|musicbrainz\.org|"
@@ -68,7 +113,15 @@ _MUSIC_RELEVANCE_TERMS = re.compile(
     re.IGNORECASE,
 )
 
-# URL patterns mapped to citation tiers (1 = highest authority)
+# ---------------------------------------------------------------------------
+# Citation tier assignment table
+# ---------------------------------------------------------------------------
+# Every source URL is classified into a tier (1 = most authoritative, 6 =
+# unknown).  Tiers drive two downstream behaviors:
+#   1. The frontend displays a provenance badge (gold/silver/bronze/etc.)
+#   2. When conflicting facts appear, higher-tier sources win.
+# Tier 1 sources (RA, DJ Mag, Mixmag) are considered primary authorities
+# for electronic music.  The table is checked in order; first match wins.
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"residentadvisor\.net|ra\.co", re.IGNORECASE), 1),
     (re.compile(r"djmag\.com", re.IGNORECASE), 1),
@@ -102,14 +155,17 @@ class ArtistResearcher:
 
     def __init__(
         self,
-        music_dbs: list[IMusicDatabaseProvider],
-        web_search: IWebSearchProvider,
-        article_scraper: IArticleProvider,
-        llm: ILLMProvider,
+        # All external services are injected as interface types (I-prefixed),
+        # so concrete implementations (Discogs API, SerpAPI, etc.) can be
+        # swapped without touching this class.
+        music_dbs: list[IMusicDatabaseProvider],   # Multiple DB adapters searched in parallel
+        web_search: IWebSearchProvider,             # Web search (SerpAPI, Brave, etc.)
+        article_scraper: IArticleProvider,          # HTML-to-text article extractor
+        llm: ILLMProvider,                          # LLM for extraction + synthesis
         text_normalizer: type | None = None,
-        cache: ICacheProvider | None = None,
-        vector_store: IVectorStoreProvider | None = None,
-        feedback: IFeedbackProvider | None = None,
+        cache: ICacheProvider | None = None,        # Optional caching layer (Redis, SQLite, etc.)
+        vector_store: IVectorStoreProvider | None = None,  # Optional RAG corpus
+        feedback: IFeedbackProvider | None = None,  # Optional cross-session feedback store
     ) -> None:
         self._music_dbs = list(music_dbs)
         self._web_search = web_search
@@ -148,6 +204,8 @@ class ArtistResearcher:
             discography, gig history, press references, confidence scores,
             and any warnings about data gaps.
         """
+        # Normalize the raw OCR name (lowercase, strip punctuation, collapse
+        # whitespace) so fuzzy matching works regardless of flier typography.
         normalized_name = normalize_artist_name(artist_name)
         self._logger.info(
             "Starting artist research",
@@ -158,7 +216,13 @@ class ArtistResearcher:
         warnings: list[str] = []
         sources_consulted: list[str] = []
 
-        # Step 1 — IDENTIFY
+        # ===================================================================
+        # PHASE 1 — IDENTIFY: search structured music databases
+        # ===================================================================
+        # All injected music-database providers are queried in parallel.
+        # Results are fuzzy-matched against the normalized name.  When
+        # multiple databases agree on identity, a cross-reference bonus
+        # boosts confidence (see _search_music_databases for details).
         discogs_id, musicbrainz_id, id_confidence, provider_ids = (
             await self._search_music_databases(normalized_name)
         )
@@ -166,26 +230,51 @@ class ArtistResearcher:
             warnings.append("Artist not found in music databases")
             self._logger.warning("Artist not found in any music database", artist=normalized_name)
 
-        # Step 2 — DISCOGRAPHY
+        # ===================================================================
+        # PHASE 2 — DISCOGRAPHY: fetch releases and labels
+        # ===================================================================
+        # Uses the IDs resolved in Phase 1 to pull structured release data.
+        # Discogs is tried first (richest metadata); MusicBrainz supplements;
+        # then any other matched providers (Bandcamp, Beatport) fill gaps.
+        # Releases are deduplicated by title (case-insensitive).
         releases, labels = await self._fetch_discography(
             normalized_name, discogs_id, musicbrainz_id, before_date, provider_ids
         )
         if discogs_id or musicbrainz_id or provider_ids:
             sources_consulted.append("music_databases")
 
-        # Step 2b — FEEDBACK FILTER (cross-session)
+        # ===================================================================
+        # PHASE 2b — FEEDBACK FILTER (cross-session learning)
+        # ===================================================================
+        # If a user previously thumbs-downed a release (e.g. wrong artist
+        # with the same name), it is excluded here.  This is a lightweight
+        # alternative to retraining: negative signals are stored by
+        # IFeedbackProvider and applied as a deny-list per artist name.
         releases, labels = await self._filter_by_feedback(
             normalized_name, releases, labels
         )
 
         disco_confidence = min(1.0, len(releases) * 0.1) if releases else 0.0
 
-        # Step 3 — CORPUS RETRIEVAL (RAG)
+        # ===================================================================
+        # PHASE 3 — CORPUS RETRIEVAL (RAG vector search)
+        # ===================================================================
+        # If a vector store is configured, query embedded historical
+        # articles/books for passages about this artist.  This is the
+        # "third source" in the multi-source strategy: structured DBs
+        # (Phase 1-2) + web search (gig/press methods) + RAG corpus.
         corpus_refs = await self._retrieve_from_corpus(normalized_name, before_date)
         if corpus_refs:
             sources_consulted.append("rag_corpus")
 
-        # Step 4 — PROFILE SYNTHESIS (only if at least 2 data sources)
+        # ===================================================================
+        # PHASE 4 — PROFILE SYNTHESIS (LLM-generated summary)
+        # ===================================================================
+        # Only triggered when >= 2 data sources contributed results.  This
+        # threshold prevents the LLM from hallucinating a profile from a
+        # single thin data point.  The LLM receives structured facts
+        # (releases, labels, events, articles) and produces a concise 2-3
+        # sentence bio placing the artist in electronic music context.
         profile_summary: str | None = None
         data_source_count = sum([
             bool(discogs_id or musicbrainz_id),
@@ -197,7 +286,12 @@ class ArtistResearcher:
                 normalized_name, releases, [], [], labels, city=city
             )
 
-        # Step 5 — COMPILE
+        # ===================================================================
+        # PHASE 5 — COMPILE: assemble final ResearchResult
+        # ===================================================================
+        # Weighted confidence combines identity resolution (weight 3) and
+        # discography depth (weight 2).  Identity is weighted more heavily
+        # because a wrong-artist match invalidates everything downstream.
         overall_confidence = calculate_confidence(
             scores=[id_confidence, disco_confidence],
             weights=[3.0, 2.0],
@@ -271,7 +365,9 @@ class ArtistResearcher:
         best_confidence = 0.0
         provider_ids: dict[str, str] = {}
 
-        # Search all music databases in parallel
+        # Search all music databases in parallel.  throttled_gather applies
+        # concurrency limits (e.g. max 5 simultaneous HTTP requests) to
+        # respect API rate limits while still parallelizing across providers.
         search_coros = [provider.search_artist(name) for provider in self._music_dbs]
         raw_results = await throttled_gather(search_coros, return_exceptions=True)
 
@@ -323,7 +419,12 @@ class ArtistResearcher:
             else:
                 best_confidence = max(best_confidence, effective_confidence)
 
-        # Cross-reference bonus: if multiple databases agree, boost confidence
+        # Cross-reference bonus: when multiple independent databases agree
+        # that this artist exists, it is strong evidence of correct identity
+        # resolution.  Each additional confirming provider adds +0.05 to
+        # confidence, capped at +0.20.  This rewards breadth of confirmation
+        # and helps disambiguate common names (e.g. multiple "DJ Shadow"
+        # entries across providers collapse to the one present in all).
         confirmed_count = sum(1 for _ in provider_ids)
         if confirmed_count >= 2:
             bonus = min(0.2, confirmed_count * 0.05)
@@ -366,7 +467,12 @@ class ArtistResearcher:
         seen_titles: set[str] = set()
         fetched_providers: set[str] = set()
 
-        # Try Discogs providers (API first, then scrape fallback)
+        # Multi-source search strategy for discography:
+        # 1. Discogs (API adapter first, then scrape-based fallback)
+        # 2. MusicBrainz (supplement — fills gaps Discogs may miss)
+        # 3. Additional providers (Bandcamp, Beatport, etc.)
+        # Each provider is tried independently; failures don't block others.
+        # Releases are deduplicated by lowercase title via `seen_titles`.
         discogs_providers = [
             p for p in self._music_dbs if "discogs" in p.get_provider_name().lower()
         ]
@@ -493,6 +599,11 @@ class ArtistResearcher:
         Handles the 'wrong artist with same name' problem: when a user
         thumbs-downs a release belonging to a different artist, it is
         excluded from future research results for the same artist name.
+
+        Key design: feedback keys are composite strings like
+        ``"DJ Rush::release::Warp Factor"`` so negative signals are
+        scoped to a specific (artist, item) pair and don't bleed across
+        different artists or item types.
         """
         if self._feedback is None:
             return releases, labels
@@ -549,7 +660,12 @@ class ArtistResearcher:
         disambiguation. Performs deeper follow-up searches if initial
         results are sparse.
         """
-        # Phase 1: Primary queries — RA.co first, then general
+        # Phase 1 — Primary queries (targeted, high-precision)
+        # RA.co (Resident Advisor) is queried first via site: operator
+        # because it is the most authoritative source for electronic music
+        # event listings.  General queries follow for broader coverage.
+        # If a city hint is available, a city-qualified query is inserted
+        # to help disambiguate common DJ names in a specific scene.
         primary_queries = [
             f'site:ra.co/dj "{name}"',
             f'site:ra.co/events "{name}"',
@@ -576,7 +692,11 @@ class ArtistResearcher:
                 seen_urls.add(result.url)
                 unique_results.append(result)
 
-        # Phase 2: Deepen search if results are thin
+        # Phase 2 — Adaptive deepening: if the primary search returned fewer
+        # results than _MIN_ADEQUATE_APPEARANCES (default 3), fire a second
+        # round of broader queries targeting festivals, major clubs, and
+        # biography pages.  This ensures obscure or emerging artists still
+        # get reasonable coverage rather than returning empty results.
         if len(unique_results) < _MIN_ADEQUATE_APPEARANCES:
             deeper_queries = [
                 f'"{name}" resident advisor event',
@@ -605,7 +725,9 @@ class ArtistResearcher:
         if not unique_results:
             return []
 
-        # Prioritize RA.co results first in the snippet list
+        # Prioritize RA.co results first in the snippet list passed to the
+        # LLM.  Since RA is the most authoritative source for event data,
+        # placing these first biases the LLM toward higher-quality extractions.
         ra_results = [r for r in unique_results if "ra.co" in r.url or "residentadvisor" in r.url]
         other_results = [r for r in unique_results if r not in ra_results]
         ordered = ra_results + other_results
@@ -650,6 +772,15 @@ class ArtistResearcher:
         """Retrieve relevant passages from the RAG corpus for this artist.
 
         Returns an empty list if no vector store is configured or available.
+
+        This is the third leg of the multi-source strategy:
+          structured DBs (Phase 1-2) + web search + RAG corpus.
+        The vector store holds pre-embedded historical content (books,
+        archived articles, scene histories) that may not be indexed by
+        web search engines.  Results below a similarity threshold of 0.7
+        are discarded to avoid noise.  Per-source deduplication caps at
+        3 chunks per source document to prevent a single verbose source
+        from dominating the results.
         """
         if not self._vector_store or not self._vector_store.is_available():
             return []
@@ -733,7 +864,11 @@ class ArtistResearcher:
                 seen_urls.add(r.url)
                 all_results.append(r)
 
-        # Phase 2: Deepen if results are thin
+        # Phase 2 — Adaptive deepening for press: same concept as gig
+        # search deepening.  If fewer than _MIN_ADEQUATE_ARTICLES (default 2)
+        # came back, broaden to additional music publications and generic
+        # queries.  This handles artists who may not appear in RA/DJ Mag
+        # but have coverage in niche outlets.
         if len(all_results) < _MIN_ADEQUATE_ARTICLES:
             deeper_queries = [
                 f'"{name}" XLR8R OR Pitchfork OR "Fact Magazine" OR Mixmag',
@@ -761,7 +896,10 @@ class ArtistResearcher:
         if not all_results:
             return []
 
-        # Filter out results that are clearly not about music/electronic music
+        # Relevance filter: removes results about non-music topics (e.g. an
+        # artist who shares a name with a politician or athlete).  Known
+        # music domains pass automatically; other domains must contain at
+        # least one music-related keyword in the title or snippet.
         relevant_results = [r for r in all_results if self._is_music_relevant(r)]
 
         if len(relevant_results) < len(all_results):
@@ -776,7 +914,10 @@ class ArtistResearcher:
         if not relevant_results:
             return []
 
-        # Prioritize RA.co and tier-1 sources for scraping
+        # Sort results so tier-1 sources (RA, DJ Mag, Mixmag) are scraped
+        # first.  Since we cap at _MAX_PRESS_ARTICLES, this ensures the
+        # highest-authority content is always included even when there are
+        # more results than the cap allows.
         def _sort_key(r: SearchResult) -> int:
             url = r.url.lower()
             if "ra.co" in url or "residentadvisor" in url:
@@ -837,14 +978,20 @@ class ArtistResearcher:
         )
 
     def _assign_citation_tier(self, source_url: str) -> int:
-        """Assign a citation authority tier (1–6) based on URL domain patterns.
+        """Assign a citation authority tier (1-6) based on URL domain patterns.
+
+        The tier system serves two purposes:
+        1. **Frontend display**: badges indicate source authority to users.
+        2. **Conflict resolution**: when data from different sources
+           disagrees (e.g. different release dates), higher-tier sources
+           are preferred by downstream services.
 
         Tier 1: Major music publications (RA, DJ Mag, Mixmag)
         Tier 2: Specialist music press (XLR8R, Pitchfork, Fact)
         Tier 3: Music databases (Discogs, MusicBrainz, Bandcamp)
         Tier 4: Media platforms (YouTube, SoundCloud, Wikipedia)
         Tier 5: Social media and forums (Reddit, Facebook, etc.)
-        Tier 6: Unknown / uncategorized sources
+        Tier 6: Unknown / uncategorized sources (default fallback)
         """
         for pattern, tier in _CITATION_TIER_PATTERNS:
             if pattern.search(source_url):
@@ -942,8 +1089,10 @@ class ArtistResearcher:
     ) -> tuple[str | None, str | None, str | None]:
         """Determine the artist's primary geographic base from appearance data.
 
-        Uses a heuristic: if >= 50% of appearances with a known city share
-        the same city, return that city.  Otherwise returns ``(None, None, None)``.
+        Uses a majority-vote heuristic: if >= 50% of appearances with a
+        known city share the same city, that city is returned as the
+        artist's likely home base.  This is imperfect but works well for
+        resident DJs who play most of their gigs in one city.
 
         Returns
         -------
@@ -978,7 +1127,18 @@ class ArtistResearcher:
         labels: list[Label],
         city: str | None = None,
     ) -> str | None:
-        """Use LLM to synthesize a 2-3 sentence artist profile summary."""
+        """Use LLM to synthesize a 2-3 sentence artist profile summary.
+
+        Profile synthesis is the final creative step: the LLM receives
+        structured facts gathered from all prior phases and produces a
+        human-readable bio.  Key safeguards:
+        - Only runs when >= 2 data sources contributed (prevents thin
+          single-source hallucination).
+        - Low temperature (0.3) keeps output factual rather than creative.
+        - max_tokens=300 prevents runaway generation.
+        - Failures are swallowed (returns None) since the profile is
+          supplementary — the research result is still valid without it.
+        """
         # Build context from available data
         context_parts: list[str] = []
 
@@ -1034,6 +1194,9 @@ class ArtistResearcher:
             return None
 
     # -- Cache helpers ---------------------------------------------------------
+    # The cache is optional (injected as ICacheProvider or None).  All cache
+    # operations are wrapped in try/except so a cache failure (e.g. Redis
+    # down) never breaks the research pipeline — it just runs slower.
 
     async def _cache_get(self, key: str) -> Any | None:
         """Retrieve a value from cache if a cache provider is configured."""

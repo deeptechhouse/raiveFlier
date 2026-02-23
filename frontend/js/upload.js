@@ -1,20 +1,48 @@
 /**
  * upload.js — Drag-and-drop file upload for raiveFlier.
  *
- * Handles drag-over visual feedback, file selection (drop + input),
- * client-side validation (type, size), image preview, and
- * POST to /api/v1/fliers/upload.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * This module handles the first step of the pipeline: getting a flier image from
+ * the user and sending it to the backend for OCR processing. It covers:
+ *   - Drag-and-drop with visual feedback (CSS class toggling)
+ *   - Click-to-browse file selection (delegating to a hidden <input type="file">)
+ *   - Client-side validation (MIME type and file size checks)
+ *   - Image preview via FileReader API
+ *   - POST to /api/v1/fliers/upload with the image as multipart FormData
+ *   - Duplicate detection handling (perceptual hash match from backend)
+ *   - Navigation to the confirm view on success
+ *
+ * DATA FLOW
+ * =========
+ * 1. User drops/selects file -> _handleFileSelect() validates and previews it
+ * 2. User clicks "Analyze Flier" -> _submitFlier() POSTs to /api/v1/fliers/upload
+ * 3. Backend returns FlierUploadResponse JSON with:
+ *    - session_id: UUID for this analysis pipeline
+ *    - extracted_entities: OCR results (artists, venue, date, etc.)
+ *    - duplicate_match: optional match if a similar flier was seen before
+ * 4. If duplicate detected: show warning, user can proceed or cancel
+ * 5. On proceed: App.setSessionId(id), delegate to Confirmation module, switch view
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Calls App.setSessionId() and App.showView() for navigation
+ * - Calls Confirmation.populateConfirmView() to pass upload data to next step
+ * - Called by App.initApp() to bootstrap
  */
 
 "use strict";
 
 const Upload = (() => {
+  // Client-side validation constants — must match backend accepted types
   const _ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-  const _MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+  const _MAX_SIZE = 10 * 1024 * 1024; // 10 MB limit
 
+  // The currently selected File object, or null if nothing is selected
   let _selectedFile = null;
 
-  // DOM references (resolved once during init)
+  // DOM references — resolved once during _cacheDom() at init time.
+  // Caching avoids repeated getElementById calls during event handlers.
   let _dropZone = null;
   let _dropContent = null;
   let _previewArea = null;
@@ -30,7 +58,8 @@ const Upload = (() => {
   let _duplicateAnalyzeBtn = null;
   let _duplicateCancelBtn = null;
 
-  /** Cached upload response when a duplicate is detected. */
+  // When the backend detects a duplicate flier, we store the full upload
+  // response here so the user can choose "Analyze Anyway" to proceed.
   let _pendingDuplicateData = null;
 
   /** Bind all DOM references. */
@@ -51,14 +80,20 @@ const Upload = (() => {
     _duplicateCancelBtn = document.getElementById("duplicate-cancel-btn");
   }
 
-  /** Set up all event listeners. */
+  /** Set up all event listeners.
+   *  The drop zone supports three input methods:
+   *  1. Drag and drop (dragover/dragleave/drop events)
+   *  2. Click to open file picker (click event -> triggers hidden input)
+   *  3. Keyboard activation (Enter/Space -> triggers hidden input)
+   */
   function _bindEvents() {
-    // Drag-and-drop
+    // Drag-and-drop — three events handle the full D&D lifecycle
     _dropZone.addEventListener("dragover", _handleDragOver);
     _dropZone.addEventListener("dragleave", _handleDragLeave);
     _dropZone.addEventListener("drop", _handleDrop);
 
-    // Click / keyboard on the drop zone opens file picker
+    // Click / keyboard on the drop zone opens file picker.
+    // The drop zone has tabindex="0" in the HTML, making it focusable.
     _dropZone.addEventListener("click", () => _fileInput.click());
     _dropZone.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -172,7 +207,20 @@ const Upload = (() => {
   }
 
   /**
-   * POST the file to the upload endpoint.
+   * POST the file to the backend upload endpoint via multipart FormData.
+   *
+   * API: POST /api/v1/fliers/upload
+   * Request: multipart/form-data with a single "file" field
+   * Response: FlierUploadResponse JSON containing:
+   *   - session_id: UUID for the pipeline session
+   *   - extracted_entities: { artists: [], venue: {}, date: {}, ... }
+   *   - ocr_confidence: float 0-1
+   *   - duplicate_match: optional object if perceptual hash matches
+   *
+   * Flow after response:
+   *   - If duplicate_match present -> show warning, pause for user decision
+   *   - Otherwise -> proceed directly to confirm view
+   *
    * @param {File} file
    */
   async function _submitFlier(file) {
@@ -217,7 +265,15 @@ const Upload = (() => {
 
   /**
    * Continue to the confirm view with the upload response data.
-   * @param {object} data — FlierUploadResponse
+   * This is the main success path — called after a clean upload or after the
+   * user clicks "Analyze Anyway" on a duplicate warning.
+   *
+   * Three things happen:
+   * 1. Store the session ID globally so all modules can reference it
+   * 2. Delegate to Confirmation module to build the entity review UI
+   * 3. Switch the visible view from upload to confirm
+   *
+   * @param {object} data — FlierUploadResponse JSON from the API
    */
   function _proceedToConfirm(data) {
     App.setSessionId(data.session_id);

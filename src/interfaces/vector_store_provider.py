@@ -14,6 +14,10 @@ from typing import Any
 from src.models.rag import CorpusStats, DocumentChunk, RetrievedChunk
 
 
+# Concrete implementation: ChromaDBProvider (src/providers/vector_store/)
+# ChromaDB is a free, open-source vector database. Data persists to disk at
+# CHROMADB_PERSIST_DIR (default: /data/chromadb on Render's persistent disk).
+# Could be swapped for Qdrant, Pinecone, or Weaviate via this interface.
 class IVectorStoreProvider(ABC):
     """Contract for vector-store services used by the RAG pipeline.
 

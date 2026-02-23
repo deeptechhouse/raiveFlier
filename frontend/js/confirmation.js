@@ -1,9 +1,39 @@
 /**
- * confirmation.js — Entity review and editing UI for the Phase 3 gate.
+ * confirmation.js — Entity review and editing UI (the human-in-the-loop gate).
  *
- * Renders editable entity cards from the FlierUploadResponse,
- * allows the user to edit, add, or remove entities, then submits
- * the confirmed entities to kick off the research pipeline.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * This module is the second step in the pipeline. After OCR extracts entities from
+ * the flier image, this view lets the user review, edit, add, or remove them before
+ * kicking off the deep research phase. This is critical because OCR can misread text,
+ * and wrong entities would lead to irrelevant research results.
+ *
+ * DATA FLOW
+ * =========
+ * 1. Upload module calls Confirmation.populateConfirmView(uploadResponse)
+ * 2. This module dynamically builds editable cards for each entity type:
+ *    - Artists (multiple, can add/remove)
+ *    - Venue, Date, Promoter, Event Name (single each)
+ *    - Genre tags (chips, can add/remove)
+ *    - Ticket price (text input)
+ * 3. User edits entities and clicks "Confirm & Start Research"
+ * 4. handleConfirm() collects all edited values from the DOM and POSTs to
+ *    /api/v1/fliers/{session_id}/confirm
+ * 5. On success: switches to progress view and opens WebSocket for live updates
+ *
+ * DOM MANIPULATION PATTERN
+ * ========================
+ * Builds all HTML as a string via template literals, then sets innerHTML on
+ * #confirm-view. After innerHTML is set, _bindConfirmEvents() attaches click
+ * handlers to the dynamically created buttons. Some buttons use inline onclick
+ * attributes that call Confirmation.removeEntity() and Confirmation.removeGenre()
+ * — these are public methods specifically for this purpose.
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Called by Upload._populateConfirmView() with the upload response
+ * - Calls App.getSessionId() and App.showView("progress")
+ * - Calls Progress.connectProgress() to start the WebSocket
  */
 
 "use strict";
@@ -317,8 +347,19 @@ const Confirmation = (() => {
   }
 
   /**
-   * Collect confirmed entities and POST to the confirm endpoint.
-   * On success, switch to progress view and open WebSocket.
+   * Collect confirmed entities from the DOM and POST to the confirm endpoint.
+   *
+   * API: POST /api/v1/fliers/{session_id}/confirm
+   * Request body (ConfirmEntitiesRequest):
+   *   { artists: [{name, entity_type}], venue: {name, entity_type}, ... }
+   *
+   * This function reads values from DOM inputs rather than from stored data,
+   * because the user may have edited entity names after the initial rendering.
+   * It queries the DOM for each entity type using CSS selectors like:
+   *   .entity-card[data-entity-type="ARTIST"] .entity-card__input
+   *
+   * On success: transitions to progress view and opens a WebSocket for
+   * real-time pipeline updates.
    */
   async function handleConfirm() {
     const sessionId = App.getSessionId();

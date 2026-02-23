@@ -1,30 +1,60 @@
 /**
  * websocket.js — Real-time pipeline progress tracking via WebSocket.
  *
- * Connects to the server's WebSocket endpoint to receive progress
- * updates and renders a 5-phase pipeline visualization with an
- * animated progress bar and status messages.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * This module handles the third step: showing live progress while the backend
+ * processes the flier through its research pipeline. It:
+ *   1. Builds a 5-phase pipeline visualization (numbered steps + connectors)
+ *   2. Opens a WebSocket to ws://.../ws/progress/{session_id}
+ *   3. Receives JSON messages with { phase, progress, message }
+ *   4. Updates the UI in real-time (progress bar, phase indicators, status text)
+ *   5. On 100% completion, auto-transitions to the results view
+ *
+ * WEBSOCKET PROTOCOL
+ * ==================
+ * - Endpoint: ws(s)://{host}/ws/progress/{session_id}
+ * - Messages: JSON objects with fields:
+ *     phase: string — one of the 5 pipeline phase keys
+ *     progress: float — 0-100 completion percentage
+ *     message: string — human-readable status text
+ * - Non-JSON messages (like keep-alive pings) are silently ignored
+ *
+ * RETRY LOGIC
+ * ===========
+ * On connection error or unexpected close, the module automatically retries
+ * up to 3 times with a 2-second delay between attempts. After exhausting
+ * retries, it shows a manual "Retry" button. Intentional closes (e.g., on
+ * pipeline completion) bypass retry by nullifying the onclose handler first.
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Called by Confirmation.handleConfirm() after successful confirm POST
+ * - Calls App.showView("results") on pipeline completion
+ * - Calls Results.fetchAndDisplayResults() to load final data
  */
 
 "use strict";
 
 const Progress = (() => {
-  /** @type {WebSocket|null} */
+  /** @type {WebSocket|null} Active WebSocket connection */
   let _socket = null;
 
-  /** @type {number} Current retry count */
+  /** @type {number} Current retry attempt count */
   let _retryCount = 0;
 
-  /** @type {number} Maximum retries before showing manual refresh */
+  /** @type {number} Maximum retries before requiring manual intervention */
   const _MAX_RETRIES = 3;
 
-  /** @type {number} Retry delay in milliseconds */
+  /** @type {number} Delay between retry attempts in milliseconds */
   const _RETRY_DELAY = 2000;
 
-  /** @type {string|null} Current session ID */
+  /** @type {string|null} Current session ID for the WebSocket URL */
   let _sessionId = null;
 
-  /** Pipeline phase metadata — ordered sequence */
+  /** Pipeline phase metadata — ordered sequence matching the backend pipeline.
+   *  The `key` field matches the phase names sent in WebSocket messages.
+   *  Used to build the visual step indicators and map progress to descriptions. */
   const _PHASES = [
     { key: "OCR",                 label: "OCR",              description: "Extracting text from flier" },
     { key: "ENTITY_EXTRACTION",   label: "Entities",         description: "Identifying artists, venue, date..." },
@@ -220,7 +250,9 @@ const Progress = (() => {
     });
   }
 
-  /** Handle pipeline completion: close socket, fetch results, switch view. */
+  /** Handle pipeline completion: close socket, fetch results, switch view.
+   *  Adds a brief 800ms delay so the user can see the 100% state before
+   *  the view transitions to results. This prevents a jarring instant switch. */
   async function _onComplete() {
     disconnectProgress();
 
@@ -298,7 +330,9 @@ const Progress = (() => {
     if (errorEl) errorEl.hidden = true;
   }
 
-  /** Cleanly close the WebSocket connection. */
+  /** Cleanly close the WebSocket connection.
+   *  Nullifies event handlers BEFORE calling close() to prevent the onclose
+   *  handler from triggering retry logic on this intentional disconnection. */
   function disconnectProgress() {
     if (_socket) {
       _socket.onclose = null; // prevent retry on intentional close

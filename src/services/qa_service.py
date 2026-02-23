@@ -13,6 +13,32 @@ Design decisions
 - Uses the cache provider to avoid re-asking identical questions.
 - Generates 3-4 related facts in a single LLM call
   (not a separate call) to minimise latency.
+
+Architecture overview for junior developers
+--------------------------------------------
+This module powers the interactive Q&A feature on the frontend.  After
+the pipeline finishes analyzing a flier (extraction -> research ->
+interconnection), the user can ask follow-up questions like "What label
+did Artist X release on?" or "How are these two DJs connected?"
+
+The data flow follows a classic RAG (Retrieval-Augmented Generation)
+pattern:
+  1. CACHE CHECK  -- Hash the question + session to see if we already
+                     answered it.  Avoids duplicate LLM calls.
+  2. CONTEXT BUILD -- Summarize the session's analysis (artists, venue,
+                      research results, interconnection narrative) into
+                      compact text the LLM can consume.
+  3. RAG RETRIEVE -- Query the vector store for book/article passages
+                     relevant to the question.  Filter by similarity
+                     threshold (0.6) and deduplicate by source.
+  4. LLM SYNTHESIS -- Send context + retrieved passages + question to
+                      the LLM.  The LLM returns structured JSON with
+                      an answer, citations, and 3-4 related facts.
+  5. CACHE STORE  -- Cache the result for future identical questions.
+
+When RAG is unavailable (no vector store injected), the service falls
+back to LLM-only mode using only the session context -- degraded but
+still functional.
 """
 
 from __future__ import annotations
@@ -53,6 +79,10 @@ class QAResponse:
         citations: list[dict[str, Any]],
         related_facts: list[dict[str, Any]],
     ) -> None:
+        # Internal state is stored in private fields; access is through
+        # read-only @property methods below.  The lists are copied on
+        # input AND on output (defensive copies) to enforce encapsulation
+        # -- callers cannot mutate our internal state.
         self._answer = answer
         self._citations = list(citations)
         self._related_facts = list(related_facts)
@@ -117,6 +147,9 @@ class QAService:
         "Never invent facts about unrelated people, places, or topics."
     )
 
+    # Minimum cosine similarity score for a RAG passage to be included in
+    # the LLM prompt.  Below this threshold, passages are likely noise and
+    # would dilute the answer quality.  Tuned empirically.
     _RAG_SIMILARITY_THRESHOLD = 0.6
 
     def __init__(
@@ -159,7 +192,9 @@ class QAService:
         QAResponse
             The generated answer, citations, and related facts.
         """
-        # Check cache first
+        # CACHE CHECK -- deterministic SHA-256 hash of (question, entity_type,
+        # entity_name, session_id).  The session_id scoping ensures answers
+        # from one flier analysis do not leak into another.
         cache_key = self._cache_key(
             question, entity_type, entity_name, session_context.get("session_id", "")
         )
@@ -174,12 +209,15 @@ class QAService:
                     related_facts=data.get("related_facts", data.get("suggested_questions", [])),
                 )
 
-        # Build context summary from session analysis
+        # BUILD CONTEXT -- summarize the completed analysis (entities, research
+        # results, interconnection narrative) into a compact text block.
         context_summary = self._build_context_summary(
             session_context, entity_type, entity_name
         )
 
-        # Retrieve from RAG corpus if available
+        # RAG RETRIEVE -- query the vector store for relevant passages from
+        # the indexed corpus (books, articles, prior analyses).  Returns
+        # formatted text plus citation metadata for the LLM to reference.
         rag_context = ""
         rag_citations: list[dict[str, Any]] = []
         if self._vector_store is not None:
@@ -201,7 +239,10 @@ class QAService:
             session_context,
         )
 
-        # Call LLM
+        # LLM SYNTHESIS -- send context + RAG passages + question to the LLM.
+        # Temperature 0.3 allows slight creativity for natural language while
+        # staying factual.  The response is structured JSON with answer,
+        # citations, and related facts.
         try:
             raw_response = await self._llm.complete(
                 system_prompt=self._SYSTEM_PROMPT,
@@ -212,7 +253,8 @@ class QAService:
 
             response = self._parse_response(raw_response, rag_citations)
 
-            # Cache the result
+            # CACHE STORE -- persist the answer so repeated identical
+            # questions skip the LLM entirely.
             if self._cache:
                 cache_data = json.dumps({
                     "answer": response.answer,
@@ -349,7 +391,10 @@ class QAService:
                 filters=filters if filters else None,
             )
 
-            # Deduplicate by source_id — keep top 3 chunks per source (safety net)
+            # Deduplicate by source_id -- keep top 3 chunks per source.
+            # Without this cap, a single long book could dominate the entire
+            # RAG context, crowding out other sources.  3 chunks per source
+            # is a balance between depth and breadth.
             _MAX_PER_SOURCE = 3
             source_chunks: dict[str, list[tuple[float, str, dict[str, Any]]]] = {}
 
@@ -408,8 +453,9 @@ class QAService:
         parts.append(context_summary)
 
         if rag_context:
-            # Enforce token budget: ~4 chars/token, reserve ~10K tokens for
-            # context summary + question + response generation
+            # Token budget guard: at ~4 chars/token, 80K chars is ~20K tokens.
+            # We reserve the remaining context window for the session summary,
+            # question, system prompt, and response generation.
             max_rag_chars = 80_000
             if len(rag_context) > max_rag_chars:
                 logger.info(
@@ -426,8 +472,9 @@ class QAService:
                 f"\n## Focus Entity\nType: {entity_type}\nName: {entity_name}"
             )
 
-        # Provide an explicit list of entity names so the LLM anchors
-        # its related facts to actual flier content.
+        # Provide an explicit list of entity names so the LLM anchors its
+        # "related facts" to actual flier content.  Without this constraint,
+        # the LLM tends to invent facts about unrelated artists/venues.
         entity_names = self._extract_entity_names(session_context)
         if entity_names:
             parts.append(
@@ -503,7 +550,9 @@ class QAService:
             # Support both new key and legacy key for transitional compatibility
             facts = data.get("related_facts", data.get("suggested_questions", []))
 
-            # Merge RAG citations with LLM-mentioned citations
+            # Merge RAG citations (from the vector store) with any citations
+            # the LLM itself mentioned in its answer.  Deduplicate by text
+            # to avoid showing the same citation twice in the UI.
             all_citations = list(rag_citations)
             for citation in llm_citations:
                 if isinstance(citation, dict) and citation.get("text"):
@@ -542,6 +591,12 @@ class QAService:
         entity_name: str | None,
         session_id: str,
     ) -> str:
-        """Generate a deterministic cache key for a Q&A query."""
+        """Generate a deterministic cache key for a Q&A query.
+
+        The key is scoped by session_id so answers from one flier analysis
+        never collide with another.  The question is lowercased to treat
+        "Who is DJ X?" and "who is dj x?" as identical queries.  SHA-256
+        truncated to 32 hex chars keeps keys short while avoiding collisions.
+        """
         raw = f"qa:{session_id}:{entity_type}:{entity_name}:{question.lower().strip()}"
         return hashlib.sha256(raw.encode()).hexdigest()[:32]

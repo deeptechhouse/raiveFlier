@@ -1,16 +1,61 @@
 /**
  * rating.js — raiveFlier rating widget module.
  *
- * Provides a reusable thumbs up/down rating bar that can be injected
- * into any result card, Q&A message, or corpus search result.
- * Persists ratings to the backend via POST /api/v1/fliers/{session_id}/rate.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * A utility module that provides reusable thumbs up/down rating functionality.
+ * Rating widgets appear on every piece of research output: artist cards, venue
+ * cards, releases, labels, relationships, patterns, Q&A answers, corpus search
+ * results, and artist recommendations. This user feedback helps assess the
+ * quality and accuracy of the AI-generated research.
+ *
+ * ARCHITECTURE PATTERN
+ * ====================
+ * This module uses a "render HTML string + event delegation" pattern:
+ *   1. renderWidget(itemType, itemKey) returns an HTML string with data attributes
+ *   2. The calling module inserts that HTML via innerHTML or insertAdjacentHTML
+ *   3. initWidgets(container, sessionId) attaches a single click event listener
+ *      on the container using event delegation (not per-button listeners)
+ *   4. Clicks on .rating-btn bubble up to the delegated handler
+ *
+ * Event delegation is used because widgets are frequently created and destroyed
+ * (e.g., when results are re-rendered). A single container-level listener avoids
+ * the overhead of attaching/detaching per-widget handlers.
+ *
+ * CACHING & PERSISTENCE
+ * =====================
+ * - Ratings are cached locally in a Map for instant UI updates
+ * - loadRatings(sessionId) fetches existing ratings from the backend and
+ *   populates the cache, then refreshes all rendered widget visuals
+ * - _submitRating() optimistically updates the UI, then POSTs to the backend.
+ *   On failure, it reverts to the previous state (optimistic UI pattern).
+ *
+ * VISUAL EFFECTS
+ * ==============
+ * - Thumbs up: green highlight when active
+ * - Thumbs down: red highlight when active, AND dims the parent list item
+ *   (for releases and labels) with strikethrough text. This "dimming" behavior
+ *   is achieved by _applyItemDimming() which adds a CSS class to the parent.
+ *
+ * API INTERACTION
+ * ===============
+ * - GET /api/v1/fliers/{session_id}/ratings — Load existing ratings
+ * - POST /api/v1/fliers/{session_id}/rate — Submit a new rating
+ *   Body: { item_type, item_key, rating: 1|-1 }
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Used by results.js, corpus.js, qa.js, recommendations.js
+ * - No dependencies on other modules (standalone utility)
  */
 
 "use strict";
 
 const Rating = (() => {
-  // Cache of ratings: Map<string, number>  where key = "itemType::itemKey"
+  // Local cache of ratings. Key format: "itemType::itemKey", value: 1 or -1.
+  // This allows instant visual updates without waiting for the backend response.
   const _cache = new Map();
+  // Tracks whether loadRatings() has been called for the current session.
   let _loaded = false;
 
   /** Escape HTML special characters to prevent XSS. */
@@ -104,12 +149,18 @@ const Rating = (() => {
   }
 
   /**
-   * Submit a rating to the backend and update the widget visuals.
-   * @param {string}      sessionId
-   * @param {string}      itemType
-   * @param {string}      itemKey
-   * @param {number}      rating   +1 or -1
-   * @param {HTMLElement}  widgetEl The .rating-widget container
+   * Submit a rating to the backend using the optimistic UI pattern:
+   *   1. Immediately update the local cache and widget visuals
+   *   2. POST to the backend in the background
+   *   3. If the POST fails, revert to the previous rating state
+   *
+   * This makes the UI feel instant even on slow connections.
+   *
+   * @param {string}      sessionId — Pipeline session UUID
+   * @param {string}      itemType  — e.g., "ARTIST", "RELEASE", "CONNECTION"
+   * @param {string}      itemKey   — Natural key identifying the rated item
+   * @param {number}      rating    — +1 (thumbs up) or -1 (thumbs down)
+   * @param {HTMLElement}  widgetEl  — The .rating-widget container DOM element
    */
   async function _submitRating(sessionId, itemType, itemKey, rating, widgetEl) {
     var cacheKey = itemType + "::" + itemKey;
@@ -194,8 +245,13 @@ const Rating = (() => {
 
   /**
    * Attach event delegation for all rating widgets inside a container.
-   * @param {HTMLElement} container
-   * @param {string}      sessionId
+   * Uses a SINGLE click listener on the container element that checks if
+   * the click target is (or is inside) a .rating-btn. This is more efficient
+   * than attaching individual listeners to every button, especially when
+   * the results view can have dozens of rating widgets.
+   *
+   * @param {HTMLElement} container — Parent element containing rating widgets
+   * @param {string}      sessionId — Pipeline session UUID for the API call
    */
   function initWidgets(container, sessionId) {
     container.addEventListener("click", function (e) {

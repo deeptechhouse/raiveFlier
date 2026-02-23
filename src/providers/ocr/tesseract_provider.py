@@ -21,6 +21,11 @@ from src.utils.logging import get_logger
 from src.utils.ocr_helpers import merge_pass_results
 from src.utils.text_normalizer import correct_ocr_errors
 
+# Graceful import: pytesseract is an optional dependency. On the Docker
+# production image, Tesseract binary is installed via apt but the Python
+# wrapper might not be present. This try/except lets the app start even
+# without pytesseract — is_available() will return False, and the OCR
+# service will skip this provider and use the next one in the priority chain.
 try:
     import pytesseract
 
@@ -79,8 +84,11 @@ class TesseractOCRProvider(IOCRProvider):
                     )
                     return None
 
-            # Tesseract spawns subprocesses, so threads give real
-            # parallelism without GIL contention.
+            # Tesseract spawns external C++ subprocesses (not Python code),
+            # so threads give REAL parallelism here — the Python GIL (Global
+            # Interpreter Lock) doesn't apply to subprocess I/O. This is why
+            # ThreadPoolExecutor works well despite Python's GIL limitation.
+            # We cap at 4 workers to avoid overloading the CPU.
             with ThreadPoolExecutor(max_workers=min(4, len(passes))) as pool:
                 all_results = list(pool.map(_run_pass, passes))
 

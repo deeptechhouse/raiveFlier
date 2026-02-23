@@ -12,6 +12,8 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
+# Concrete implementation: SQLiteFeedbackProvider (src/providers/feedback/)
+# Stores ratings in feedback.db on the persistent /data disk (Render).
 class IFeedbackProvider(ABC):
     """Contract for user-feedback persistence services.
 

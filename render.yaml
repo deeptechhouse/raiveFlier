@@ -1,69 +1,112 @@
-# ──────────────────────────────────────────────────────────────
-# Render Blueprint — raiveFlier
-# ──────────────────────────────────────────────────────────────
-# Deploy: connect your GitHub repo on Render, or click
-# "New > Blueprint" and point to this file.
+# =============================================================================
+# render.yaml — Render.com Deployment Blueprint
+# =============================================================================
 #
-# Starter plan ($7/mo): 512 MB RAM, no spin-down, persistent
-# disk at /data for ChromaDB corpus and SQLite feedback.
-# Reference corpus is auto-ingested on first startup.
-# ──────────────────────────────────────────────────────────────
+# This file defines the Render.com infrastructure-as-code configuration for
+# deploying raiveFlier. Render reads this file to provision and configure
+# the web service automatically.
+#
+# Deployment Options:
+#   1. Connect your GitHub repo on Render Dashboard and auto-detect this file
+#   2. Click "New > Blueprint" in Render and point to this file
+#   3. Push to the `main` branch triggers auto-deploy (if configured)
+#
+# Infrastructure:
+#   - Plan: Starter ($7/mo) — 512 MB RAM, 0.5 CPU, always-on (no spin-down)
+#   - Runtime: Docker (uses ./Dockerfile)
+#   - Persistent Disk: 1 GB mounted at /data
+#     - /data/chromadb/     — ChromaDB vector store (RAG corpus)
+#     - /data/feedback.db   — User feedback SQLite database
+#     - /data/session_state.db — Pipeline session state SQLite database
+#   - Health Check: GET /api/v1/health (Render restarts if it fails)
+#
+# IMPORTANT: The persistent disk at /data survives redeploys. Without it,
+# the ChromaDB corpus (~154 MB) would need to be re-downloaded on every
+# deploy, and all user feedback would be lost.
+#
+# Environment Variables:
+#   - sync: false means the value is manually set in Render's dashboard
+#     (secrets like API keys should never be in this file)
+#   - Variables with a `value:` key are non-secret defaults baked into config
+# =============================================================================
 
 services:
-  - type: web
-    name: raiveflier
-    runtime: docker
-    repo: https://github.com/deeptechhouse/raiveFlier
-    branch: main
-    plan: starter
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/v1/health
+  - type: web                                  # Render service type (web = HTTP server)
+    name: raiveflier                           # Service name shown in Render dashboard
+    runtime: docker                            # Use Dockerfile instead of native buildpacks
+    repo: https://github.com/deeptechhouse/raiveFlier  # Source repository
+    branch: main                               # Branch to deploy from (auto-deploy on push)
+    plan: starter                              # Starter plan: 512 MB RAM, $7/mo, no spin-down
+    dockerfilePath: ./Dockerfile               # Path to Dockerfile relative to repo root
+    healthCheckPath: /api/v1/health            # Render pings this endpoint to verify the app is alive
+
+    # -- Persistent Disk --
+    # Mounted at /data inside the container. This is the ONLY storage that
+    # persists across redeploys on Render. The container filesystem is
+    # ephemeral — anything not on /data is lost when the container restarts.
     disk:
-      name: raiveflier-data
-      mountPath: /data
-      sizeGB: 1
+      name: raiveflier-data                    # Disk identifier in Render dashboard
+      mountPath: /data                         # Mount point inside the container
+      sizeGB: 1                                # 1 GB is enough for ChromaDB + SQLite DBs
+
     envVars:
       # === LLM Provider (at least one required) ===
+      # The application needs at least one LLM for entity extraction, research
+      # synthesis, and interconnection analysis. Anthropic is preferred for
+      # quality; OpenAI is the fallback.
       - key: ANTHROPIC_API_KEY
-        sync: false
+        sync: false                            # Set manually in Render dashboard (secret)
       - key: OPENAI_API_KEY
-        sync: false
-      # Optional: point to an OpenAI-compatible API
+        sync: false                            # Set manually in Render dashboard (secret)
+
+      # Optional: redirect OpenAI SDK calls to a compatible API (e.g., TogetherAI).
+      # When set, the application uses this base URL for all OpenAI-SDK calls,
+      # allowing cheaper or self-hosted LLM backends.
       - key: OPENAI_BASE_URL
         sync: false
       - key: OPENAI_TEXT_MODEL
-        sync: false
+        sync: false                            # Override the default text model name
       - key: OPENAI_VISION_MODEL
-        sync: false
+        sync: false                            # Override the default vision model name
       - key: OPENAI_EMBEDDING_MODEL
-        sync: false
+        sync: false                            # Override the default embedding model name
 
       # === Music Databases ===
+      # Discogs API credentials for looking up artist discographies, labels,
+      # and release history during the research phase (Phase 3).
       - key: DISCOGS_CONSUMER_KEY
         sync: false
       - key: DISCOGS_CONSUMER_SECRET
         sync: false
+      # MusicBrainz requires a contact email in the User-Agent header per their
+      # API terms of service (rate limit: 1 req/sec).
       - key: MUSICBRAINZ_CONTACT
         sync: false
 
       # === Corpus Download (private repo) ===
+      # GitHub personal access token used by entrypoint.sh to download the
+      # pre-built ChromaDB corpus from a private GitHub release. Without this,
+      # the app falls back to auto-ingesting the small reference corpus on boot.
       - key: GITHUB_TOKEN
         sync: false
 
-      # === App Config ===
+      # === App Config (non-secret defaults) ===
       - key: APP_ENV
-        value: production
+        value: production                      # Activates JSON logging, INFO level
       - key: APP_HOST
-        value: "0.0.0.0"
+        value: "0.0.0.0"                      # Bind to all interfaces (required for Render)
       - key: LOG_LEVEL
-        value: INFO
+        value: INFO                            # Production log level (no DEBUG noise)
 
-      # === RAG (enabled — persistent disk at /data) ===
+      # === RAG Configuration (persistent disk paths) ===
+      # RAG_ENABLED activates the vector store retrieval pipeline. When true,
+      # the app queries ChromaDB for relevant context during research (Phase 3).
       - key: RAG_ENABLED
         value: "true"
+      # All paths below point to /data (persistent disk) so data survives redeploys.
       - key: CHROMADB_PERSIST_DIR
-        value: /data/chromadb
+        value: /data/chromadb                  # ChromaDB vector store directory
       - key: FEEDBACK_DB_PATH
-        value: /data/feedback.db
+        value: /data/feedback.db               # User feedback SQLite database
       - key: SESSION_DB_PATH
-        value: /data/session_state.db
+        value: /data/session_state.db          # Pipeline session state database

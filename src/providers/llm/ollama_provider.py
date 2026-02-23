@@ -2,12 +2,22 @@
 
 Wraps a local Ollama server via its OpenAI-compatible API endpoint.
 Uses the ``openai`` client library pointed at the Ollama base URL.
+
+Ollama is a free, open-source tool for running LLMs locally. This adapter
+enables raiveFlier to work completely offline with no API costs. The trade-off
+is that local models (llama3.1, llava) are typically less capable than
+cloud models (GPT-4o, Claude) for entity extraction and analysis.
+
+Setup: Install Ollama (https://ollama.ai), then ``ollama pull llama3.1``
+and ``ollama pull llava`` for vision. Set OLLAMA_BASE_URL=http://localhost:11434
 """
 
 from __future__ import annotations
 
 import base64
 
+# httpx is an async HTTP client (like requests but async-native).
+# Used here only for validate_credentials() to check if Ollama is running.
 import httpx
 import openai
 import structlog
@@ -20,7 +30,9 @@ logger = structlog.get_logger(logger_name=__name__)
 
 
 def _detect_media_type(image_bytes: bytes) -> str:
-    """Detect the MIME type of an image from its magic bytes."""
+    """Detect the MIME type of an image from its magic bytes.
+    Same logic as openai_provider.py — see that file for detailed comments.
+    """
     if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
         return "image/png"
     if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
@@ -36,16 +48,26 @@ class OllamaLLMProvider(ILLMProvider):
     Ollama exposes an OpenAI-compatible ``/v1`` API, so this adapter
     reuses the ``openai.AsyncOpenAI`` client pointed at the local URL.
     Defaults to ``llama3.1`` for text and ``llava`` for vision.
+
+    This is clever reuse — instead of writing a separate HTTP client for
+    Ollama's native API, we leverage the fact that Ollama supports the
+    OpenAI protocol and reuse the same openai SDK with a different base_url.
     """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        # OLLAMA_BASE_URL env var, typically "http://localhost:11434".
         self._base_url = settings.ollama_base_url
+        # Point the OpenAI client at Ollama's /v1 endpoint.
         self._client = openai.AsyncOpenAI(
             base_url=f"{self._base_url.rstrip('/')}/v1",
-            api_key="ollama",  # Ollama ignores the key but the client requires one
+            # Ollama doesn't require an API key, but the openai SDK requires
+            # the parameter to be non-empty. "ollama" is a dummy value.
+            api_key="ollama",
         )
+        # Default local models — user can pull different ones with `ollama pull`.
         self._text_model = "llama3.1"
+        # llava is a vision-language model that can process images locally.
         self._vision_model = "llava"
 
     # ------------------------------------------------------------------
@@ -129,10 +151,17 @@ class OllamaLLMProvider(ILLMProvider):
         return bool(self._base_url)
 
     async def validate_credentials(self) -> bool:
-        """Try listing models from the Ollama server."""
+        """Try listing models from the Ollama server.
+
+        Unlike OpenAI/Anthropic which verify API keys, this checks that
+        the Ollama server is actually running and reachable at the configured URL.
+        The /api/tags endpoint lists installed models without running inference.
+        """
         if not self.is_available():
             return False
         try:
+            # Use httpx directly (not the openai client) to hit Ollama's
+            # native /api/tags endpoint which lists installed models.
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(f"{self._base_url.rstrip('/')}/api/tags")
                 return response.status_code == 200

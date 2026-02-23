@@ -37,6 +37,15 @@ class ArtistSearchResult:
     confidence: float = 0.0
 
 
+# Concrete implementations (5 adapters in src/providers/music_db/):
+#   DiscogsAPIProvider    — official Discogs API (requires consumer key/secret)
+#   DiscogsScrapeProvider — Discogs web scraping fallback (no API key needed)
+#   MusicBrainzProvider   — MusicBrainz open API (requires contact email)
+#   BandcampProvider      — Bandcamp web scraping (no API, scrapes HTML)
+#   BeatportProvider      — Beatport web scraping (no API, scrapes HTML)
+#
+# The artist_researcher tries these in priority order defined in config.yaml
+# and uses the first provider that returns results with sufficient confidence.
 class IMusicDatabaseProvider(ABC):
     """Contract for music-database services used for artist research.
 

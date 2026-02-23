@@ -1,9 +1,22 @@
 """Text chunking with overlapping windows and paragraph boundary preservation.
 
 Splits source text into :class:`~src.models.rag.DocumentChunk` objects sized
-for embedding models (~500 tokens each with 100-token overlap).  Paragraph
-boundaries are preserved so no chunk starts or ends mid-thought.  When a
-single paragraph exceeds the chunk budget, it is split at sentence boundaries.
+for embedding models (~500 tokens each with 100-token overlap).
+
+The chunking strategy has two key design goals:
+
+1. **Paragraph-preserving** -- Chunk boundaries align with paragraph breaks
+   (double newlines) so no chunk starts or ends mid-thought.  This produces
+   more coherent embeddings and better retrieval quality.
+
+2. **Overlapping windows** -- Consecutive chunks share ~100 tokens of context
+   so that concepts spanning a boundary are captured in at least one chunk.
+   Without overlap, a sentence like "Carl Cox played at Berghain" could be
+   split across two chunks, making neither retrievable for a query about Cox.
+
+When a single paragraph exceeds the chunk budget (rare but possible with
+lengthy interview transcripts), it is split at sentence boundaries using an
+abbreviation-aware splitter that avoids breaking on "Dr.", "vs.", etc.
 """
 
 from __future__ import annotations
@@ -22,6 +35,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(logger_name=__name__)
 
 # Common abbreviations that should NOT trigger a sentence split.
+# "Dr. Smith" should remain one sentence, not split at the period.
 _ABBREVIATIONS = frozenset(
     {
         "Dr",
@@ -53,6 +67,11 @@ _ABBREVIATIONS = frozenset(
 class TextChunker:
     """Splits text into overlapping chunks preserving paragraph boundaries.
 
+    The chunking algorithm works in two phases:
+    1. Split text into paragraphs (double-newline boundaries)
+    2. Accumulate paragraphs into chunks until the token budget is reached,
+       then start a new chunk with overlap from the tail of the previous one
+
     Parameters
     ----------
     chunk_size:
@@ -64,6 +83,7 @@ class TextChunker:
     def __init__(self, chunk_size: int = 500, overlap: int = 100) -> None:
         self._chunk_size = chunk_size
         self._overlap = overlap
+        # Try to load a real tokenizer; falls back to len//4 heuristic.
         self._tokenizer = self._load_tokenizer()
 
     # ------------------------------------------------------------------
@@ -193,7 +213,12 @@ class TextChunker:
     # ------------------------------------------------------------------
 
     def _accumulate_chunks(self, paragraphs: list[str]) -> list[str]:
-        """Accumulate paragraphs into chunks respecting *chunk_size* and *overlap*."""
+        """Accumulate paragraphs into chunks respecting *chunk_size* and *overlap*.
+
+        This is the core chunking loop.  It greedily packs paragraphs into
+        the current chunk until adding the next paragraph would exceed the
+        token budget, then flushes and starts a new chunk with overlap.
+        """
         chunks: list[str] = []
         current_parts: list[tuple[str, int]] = []  # (text, token_count)
         current_tokens = 0
@@ -201,9 +226,10 @@ class TextChunker:
         for para in paragraphs:
             para_tokens = self._count_tokens(para)
 
-            # If a single paragraph exceeds the budget, split it by sentence.
+            # Edge case: if a single paragraph exceeds the budget,
+            # fall back to sentence-level splitting.
             if para_tokens > self._chunk_size:
-                # Flush anything accumulated so far.
+                # Flush anything accumulated so far before switching strategy.
                 if current_parts:
                     chunks.append("\n\n".join(t for t, _ in current_parts))
                     current_parts = []
@@ -213,17 +239,19 @@ class TextChunker:
                 chunks.extend(sentence_chunks)
                 continue
 
-            # Would adding this paragraph exceed the limit?
+            # Would adding this paragraph exceed the token budget?
             if current_tokens + para_tokens > self._chunk_size and current_parts:
+                # Flush the current chunk.
                 chunks.append("\n\n".join(t for t, _ in current_parts))
 
-                # Start next chunk with overlap from the tail of the previous.
+                # Start the next chunk with tail paragraphs from the previous
+                # chunk (up to _overlap tokens) for contextual continuity.
                 current_parts, current_tokens = self._build_overlap(current_parts)
 
             current_parts.append((para, para_tokens))
             current_tokens += para_tokens
 
-        # Flush remaining content.
+        # Flush any remaining accumulated content as the final chunk.
         if current_parts:
             chunks.append("\n\n".join(t for t, _ in current_parts))
 

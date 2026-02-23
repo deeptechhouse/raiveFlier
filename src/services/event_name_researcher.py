@@ -3,6 +3,40 @@
 Orchestrates web search, article scraping, RAG corpus retrieval, and
 LLM analysis to discover historical instances of a named event, group
 them by promoter, and detect promoter name changes over time.
+
+Research Strategy
+-----------------
+Many rave events are **recurring series** (e.g. "Berghain Klubnacht",
+"fabric") that span years and sometimes change promoter.  This module
+reconstructs that history by:
+
+    1. Searching for individual event instances (RA.co-first, then general).
+    2. Asking the LLM to extract **structured JSON** records (one per
+       instance) with event_name, promoter, venue, city, date, source_url.
+    3. Grouping those instances by promoter (``_group_by_promoter``).
+    4. Feeding the promoter groups back to the LLM to detect **name
+       changes** -- cases where different promoter names actually refer
+       to the same entity that rebranded over time.
+
+Instance Grouping
+-----------------
+``_group_by_promoter`` is a simple dict-keyed partition.  Instances whose
+promoter is unknown are bucketed under ``"Unknown Promoter"`` so they can
+still be displayed alongside identified groups.
+
+Name Change Detection
+---------------------
+``_detect_promoter_name_changes`` only fires when there are 2+ distinct
+promoter groups.  It builds a compact activity summary (event counts,
+date ranges, venues) and asks the LLM to identify plausible connections
+(abbreviations, rebrandings, overlapping timeframes).
+
+JSON Parsing
+------------
+Both ``_parse_event_instances`` and ``_parse_name_changes`` tolerate LLM
+output wrapped in markdown fences (``\\`\\`\\`json ... \\`\\`\\``) or preceded by
+commentary text.  They fall back to bracket-matching (``[...]``) when the
+output does not start with ``[``.
 """
 
 from __future__ import annotations
@@ -33,11 +67,12 @@ from src.utils.logging import get_logger
 if TYPE_CHECKING:
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
+# -- Module-level constants ---------------------------------------------------
 _CACHE_TTL_SECONDS = 3600  # 1 hour
 _MAX_SCRAPE_RESULTS = 8
 _MAX_ARTICLE_RESULTS = 10
 
-# URL patterns mapped to citation tiers (1 = highest authority)
+# Citation tier table: shared ranking system across all researchers.
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"residentadvisor\.net|ra\.co", re.IGNORECASE), 1),
     (re.compile(r"djmag\.com", re.IGNORECASE), 1),
@@ -56,6 +91,8 @@ _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"facebook\.com|instagram\.com|twitter\.com|x\.com", re.IGNORECASE), 5),
 ]
 
+# Matches markdown code fences (```json ... ```) so we can unwrap LLM output
+# that is wrapped in formatting rather than returned as raw JSON.
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
 
 
@@ -79,11 +116,12 @@ class EventNameResearcher:
         cache: ICacheProvider | None = None,
         vector_store: IVectorStoreProvider | None = None,
     ) -> None:
+        # Adapter-pattern DI -- same interface-typed deps as the other researchers.
         self._web_search = web_search
         self._article_scraper = article_scraper
         self._llm = llm
         self._cache = cache
-        self._vector_store = vector_store
+        self._vector_store = vector_store  # optional RAG corpus
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -121,7 +159,7 @@ class EventNameResearcher:
         warnings: list[str] = []
         sources_consulted: list[str] = []
 
-        # Step 1 — SEARCH for event instances
+        # Step 1 — SEARCH: RA.co-first, with optional promoter-scoped queries
         search_results = await self._search_event_instances(event_name, promoter_name)
         if search_results:
             sources_consulted.append("web_search_event")
@@ -132,7 +170,10 @@ class EventNameResearcher:
         scraped_texts = await self._scrape_results(search_results[:_MAX_SCRAPE_RESULTS])
         scrape_confidence = min(1.0, len(scraped_texts) * 0.15) if scraped_texts else 0.0
 
-        # Step 3 — LLM EXTRACTION of event instances
+        # Step 3 — LLM EXTRACTION: unlike the header-delimited approach in
+        # other researchers, this module requests **structured JSON** because
+        # event instances are tabular records (name, promoter, venue, city,
+        # date, source_url) that map naturally to a JSON array of objects.
         instances = await self._extract_event_instances(event_name, scraped_texts)
         extraction_confidence = 0.0
         if instances:
@@ -146,10 +187,14 @@ class EventNameResearcher:
         if corpus_refs:
             sources_consulted.append("rag_corpus")
 
-        # Step 4 — GROUP by promoter
+        # Step 4 — GROUP by promoter: partition instances into buckets keyed
+        # by promoter name.  This enables per-promoter timelines in the UI
+        # and feeds the name-change detection in the next step.
         promoter_groups = self._group_by_promoter(instances)
 
-        # Step 5 — DETECT promoter name changes (if multiple promoters found)
+        # Step 5 — DETECT promoter name changes: only fires when 2+ distinct
+        # promoter names exist.  The LLM analyses activity patterns
+        # (overlapping venues/dates) to infer rebranding or aliases.
         promoter_name_changes: list[str] = []
         if len(promoter_groups) > 1:
             promoter_name_changes = await self._detect_promoter_name_changes(
@@ -186,7 +231,8 @@ class EventNameResearcher:
             weights=[2.0, 2.0, 3.0, 1.5],
         )
 
-        # Serialize promoter_groups for the model (dict[str, list[EventInstance]])
+        # Pass-through assignment -- the dict is already correctly typed, but
+        # this explicit step signals intent for future serialisation needs.
         serialized_groups: dict[str, list[EventInstance]] = {}
         for pname, insts in promoter_groups.items():
             serialized_groups[pname] = insts
@@ -276,12 +322,16 @@ class EventNameResearcher:
         Prioritizes Resident Advisor (ra.co) for authoritative event
         listings with linked artist and venue data.
         """
+        # Base queries: RA.co events first (authoritative event listings),
+        # then general web with genre keywords to filter irrelevant namesakes.
         queries = [
             f'site:ra.co/events "{event_name}"',
             f'"{event_name}" rave OR club OR electronic music event',
             f'"{event_name}" party night lineup promoter',
         ]
 
+        # When a known promoter is supplied, add targeted co-occurrence
+        # queries to surface instances that mention both names together.
         if promoter_name:
             queries.append(f'"{event_name}" "{promoter_name}"')
             queries.append(f'site:ra.co "{event_name}" "{promoter_name}"')
@@ -301,7 +351,9 @@ class EventNameResearcher:
                 seen_urls.add(r.url)
                 all_results.append(r)
 
-        # Deepen if thin results
+        # Adaptive deepening: fire broader queries when initial results are
+        # sparse.  Threshold is lower (3) than the promoter researcher (4)
+        # because event names tend to be more specific.
         if len(all_results) < 3:
             deeper = [
                 f'"{event_name}" event history past editions',
@@ -382,15 +434,22 @@ class EventNameResearcher:
 
     @staticmethod
     def _parse_event_instances(llm_text: str) -> list[EventInstance]:
-        """Parse LLM response into a list of EventInstance objects."""
+        """Parse LLM response into a list of EventInstance objects.
+
+        Tolerates three common LLM output formats:
+          1. Clean JSON array
+          2. JSON wrapped in ```json ... ``` fences
+          3. JSON preceded by commentary text (bracket-match fallback)
+        Returns an empty list on parse failure rather than raising.
+        """
         text = llm_text.strip()
 
-        # Try to extract JSON from markdown fences first
+        # Strategy 1: unwrap markdown code fences
         fence_match = _JSON_FENCE_RE.search(text)
         if fence_match:
             text = fence_match.group(1).strip()
 
-        # Fallback: find the first [ ... ] block
+        # Strategy 2: bracket-match fallback for commentary-preceded output
         if not text.startswith("["):
             bracket_start = text.find("[")
             bracket_end = text.rfind("]")
@@ -424,7 +483,11 @@ class EventNameResearcher:
 
     @staticmethod
     def _group_by_promoter(instances: list[EventInstance]) -> dict[str, list[EventInstance]]:
-        """Group event instances by promoter name."""
+        """Group event instances by promoter name.
+
+        Instances with no promoter are bucketed under a sentinel key so
+        they remain visible in the output rather than being silently dropped.
+        """
         groups: dict[str, list[EventInstance]] = {}
         for inst in instances:
             key = inst.promoter or "Unknown Promoter"
@@ -438,12 +501,18 @@ class EventNameResearcher:
         event_name: str,
         promoter_groups: dict[str, list[EventInstance]],
     ) -> list[str]:
-        """Use LLM to detect if different promoter names are the same entity."""
+        """Use LLM to detect if different promoter names are the same entity.
+
+        This is a second-pass LLM call that runs only when the instance
+        grouping produced 2+ distinct promoter keys.  It feeds a compact
+        activity summary (counts, sample dates, sample venues) to the LLM
+        and asks for connection hypotheses returned as a JSON string array.
+        """
         promoter_names = list(promoter_groups.keys())
         if len(promoter_names) < 2:
             return []
 
-        # Build a summary of each promoter's activity
+        # Build a compact activity summary per promoter for the LLM prompt
         summary_lines: list[str] = []
         for pname, insts in promoter_groups.items():
             dates = [i.date for i in insts if i.date]
@@ -489,7 +558,11 @@ class EventNameResearcher:
 
     @staticmethod
     def _parse_name_changes(llm_text: str) -> list[str]:
-        """Parse LLM response for promoter name change detections."""
+        """Parse LLM response for promoter name change detections.
+
+        Same three-strategy JSON extraction as _parse_event_instances
+        (fence unwrap -> bracket match -> direct parse).
+        """
         text = llm_text.strip()
 
         fence_match = _JSON_FENCE_RE.search(text)

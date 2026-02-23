@@ -1,35 +1,73 @@
+# =============================================================================
+# config/config.yaml — Application Configuration Defaults
+# =============================================================================
+#
+# Central configuration file for the raiveFlier application. Defines default
+# values for all major subsystems. These can be overridden by environment
+# variables at runtime (see src/config/settings.py for the mapping).
+#
+# This file is baked into the Docker image (COPY config/ config/) and read
+# at startup by the Settings loader. It should contain safe defaults that
+# work for both local development and production.
+#
+# IMPORTANT: Do NOT put secrets (API keys, tokens) here. Use .env or
+# environment variables for anything sensitive.
+# =============================================================================
+
+# -- Application metadata and network binding --
 app:
   name: raiveFlier
   version: 0.1.0
-  host: 0.0.0.0
-  port: 8000
+  host: 0.0.0.0           # Bind to all interfaces (required for Docker/Render)
+  port: 8000               # Default port; Render overrides via $PORT env var
 
+# -- OCR (Optical Character Recognition) configuration --
+# The pipeline tries providers in priority order until one succeeds.
+# In production (Docker), EasyOCR is excluded because it pulls PyTorch (~2GB),
+# which exceeds the 512MB RAM limit on Render Starter. LLM Vision (API-based)
+# is the primary provider; Tesseract is the local fallback.
 ocr:
   provider_priority:
-    - llm_vision
-    - easyocr
-    - tesseract
-  min_confidence: 0.3
+    - llm_vision           # API-based: uses the configured LLM's vision endpoint
+    - easyocr              # Local ML: requires PyTorch (dev-only, excluded in Docker)
+    - tesseract            # Local binary: lightweight, installed via apt in Docker
+  min_confidence: 0.3      # Minimum confidence score to accept OCR results (0.0-1.0)
 
+# -- LLM (Large Language Model) configuration --
+# Used for entity extraction (Phase 2), research synthesis (Phase 3),
+# interconnection analysis (Phase 4), and RAG metadata tagging.
 llm:
-  default_provider: openai
-  temperature: 0.1
-  max_tokens: 6000
+  default_provider: openai # Which LLM provider to use (openai, anthropic, ollama)
+  temperature: 0.1         # Low temperature for deterministic, factual output
+  max_tokens: 6000         # Max response tokens per LLM call
 
+# -- Music database provider priority --
+# Used during the research phase (Phase 3) to look up artist discographies,
+# labels, and release history. The pipeline queries primary first, falls back
+# to scraping if API fails, and supplements with MusicBrainz for cross-reference.
 music_db:
-  primary: discogs_api
-  fallback: discogs_scrape
-  complementary: musicbrainz
+  primary: discogs_api     # Discogs REST API (requires DISCOGS_CONSUMER_KEY)
+  fallback: discogs_scrape # HTML scraping fallback when API quota is exhausted
+  complementary: musicbrainz  # MusicBrainz for additional metadata (free, rate-limited)
 
+# -- Web search provider priority --
+# Used during research phase to find supplementary context about artists,
+# venues, and events that aren't in music databases.
 search:
-  primary: duckduckgo
-  secondary: serper
+  primary: duckduckgo      # Free, no API key required
+  secondary: serper        # Paid Google search API (optional, requires SERPER_API_KEY)
 
+# -- Rate limiting for external API calls --
+# Prevents hitting provider rate limits. The pipeline's HTTP clients enforce
+# these delays between requests to each provider.
 rate_limits:
-  discogs: 60       # requests per minute
-  musicbrainz: 1    # requests per second
-  duckduckgo: 20    # requests per minute
+  discogs: 60              # requests per minute (Discogs allows 60/min with auth)
+  musicbrainz: 1           # requests per second (MusicBrainz hard limit)
+  duckduckgo: 20           # requests per minute (conservative to avoid blocking)
 
+# -- Response cache configuration --
+# Caches external API responses (Discogs, MusicBrainz, search) to reduce
+# redundant calls and speed up re-analysis of similar fliers.
 cache:
   enabled: true
-  ttl: 3600          # seconds (1 hour)
+  ttl: 3600                # seconds (1 hour) — cached responses expire after this

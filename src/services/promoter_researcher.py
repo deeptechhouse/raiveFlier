@@ -2,6 +2,33 @@
 
 Orchestrates web search, article scraping, and LLM analysis to build a
 comprehensive research profile for a promoter extracted from a rave flier.
+
+Research Strategy
+-----------------
+Promoter names are often generic words (e.g. "Body & Soul", "Shelter").
+To combat false positives the search pipeline uses **city-qualified queries
+first** when a city hint is available, placing city-scoped RA.co searches
+before general web queries.  An **adaptive deepening** phase fires
+additional queries when initial results are sparse (< ``_MIN_ADEQUATE_RESULTS``).
+
+LLM Extraction Pattern
+-----------------------
+``_extract_promoter_profile`` asks the LLM to emit four labelled sections:
+
+    BASED_IN  /  EVENT_HISTORY  /  AFFILIATED_ARTISTS  /  AFFILIATED_VENUES
+
+Geography Extraction
+~~~~~~~~~~~~~~~~~~~~
+The ``BASED_IN`` section uses a single-line ``CITY, REGION, COUNTRY``
+format.  ``_parse_promoter_extraction`` splits on commas and maps the
+positional parts to ``based_city``, ``based_region``, ``based_country``.
+This lightweight approach avoids JSON for a single structured datum while
+staying easy to parse.
+
+Citation Tiers
+--------------
+Identical 1-6 tier system as the venue researcher.  RA / DJ Mag / Mixmag
+at tier 1; social media and Reddit at tier 5; unknown domains default to 6.
 """
 
 from __future__ import annotations
@@ -26,12 +53,16 @@ from src.utils.logging import get_logger
 if TYPE_CHECKING:
     from src.interfaces.vector_store_provider import IVectorStoreProvider
 
+# -- Module-level constants ---------------------------------------------------
 _CACHE_TTL_SECONDS = 3600  # 1 hour
 _MAX_SCRAPE_RESULTS = 10
 _MAX_ARTICLE_RESULTS = 12
+# Threshold below which adaptive deepening kicks in (additional queries fire).
+# Promoter names are often generic words, so initial results can be sparse.
 _MIN_ADEQUATE_RESULTS = 4
 
-# URL patterns mapped to citation tiers (1 = highest authority)
+# Citation tier table: identical ranking system shared across all researchers.
+# Tier 1 = RA/DJ Mag/Mixmag; tier 6 = unrecognised domains.
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"residentadvisor\.net|ra\.co", re.IGNORECASE), 1),
     (re.compile(r"djmag\.com", re.IGNORECASE), 1),
@@ -71,11 +102,12 @@ class PromoterResearcher:
         cache: ICacheProvider | None = None,
         vector_store: IVectorStoreProvider | None = None,
     ) -> None:
+        # Adapter-pattern DI: swap providers without touching business logic.
         self._web_search = web_search
         self._article_scraper = article_scraper
         self._llm = llm
-        self._cache = cache
-        self._vector_store = vector_store
+        self._cache = cache  # optional -- no-ops if None
+        self._vector_store = vector_store  # optional RAG corpus
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -104,10 +136,12 @@ class PromoterResearcher:
         """
         self._logger.info("Starting promoter research", promoter=promoter_name, city=city)
 
+        # warnings / sources_consulted accumulate across all steps so the
+        # final ResearchResult is self-documenting about data quality.
         warnings: list[str] = []
         sources_consulted: list[str] = []
 
-        # Step 1 — SEARCH for promoter activity
+        # Step 1 — SEARCH for promoter activity (city-qualified + RA.co-first)
         search_results = await self._search_promoter_activity(promoter_name, city=city)
         if search_results:
             sources_consulted.append("web_search_promoter")
@@ -118,13 +152,17 @@ class PromoterResearcher:
         scraped_texts = await self._scrape_results(search_results[:_MAX_SCRAPE_RESULTS])
         scrape_confidence = min(1.0, len(scraped_texts) * 0.15) if scraped_texts else 0.0
 
-        # Step 3 — LLM EXTRACTION of affiliations and event history
+        # Step 3 — LLM EXTRACTION: four structured sections are extracted in
+        # one LLM call (BASED_IN / EVENT_HISTORY / AFFILIATED_ARTISTS /
+        # AFFILIATED_VENUES).  The geography triple (city/region/country)
+        # comes from parsing the BASED_IN section's comma-separated format.
         extraction_result = await self._extract_promoter_profile(
             promoter_name, scraped_texts, city=city
         )
         event_history = extraction_result["event_history"]
         affiliated_artists = extraction_result["affiliated_artists"]
         affiliated_venues = extraction_result["affiliated_venues"]
+        # Geography fields may be None if the LLM returned "NONE"
         based_city = extraction_result.get("based_city")
         based_region = extraction_result.get("based_region")
         based_country = extraction_result.get("based_country")
@@ -160,6 +198,8 @@ class PromoterResearcher:
 
         article_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
 
+        # Weighted aggregation: extraction (3.0) is the strongest signal
+        # because it integrates all upstream data through the LLM.
         overall_confidence = calculate_confidence(
             scores=[
                 search_confidence,
@@ -270,7 +310,8 @@ class PromoterResearcher:
         to improve disambiguation for common-word promoter names.
         Performs adaptive deepening if initial results are sparse.
         """
-        # Phase 0 — City-qualified queries (disambiguation)
+        # Phase 0 — City-qualified queries run first to disambiguate common
+        # promoter names (e.g. "Movement" could be Detroit or Torino).
         queries: list[str] = []
         if city:
             queries.extend([
@@ -279,7 +320,8 @@ class PromoterResearcher:
                 f'"{promoter_name}" "{city}" rave club night',
             ])
 
-        # Phase 1 — RA.co-first + general queries (always included as fallback)
+        # Phase 1 — RA.co-first + general queries (always included as fallback
+        # when city is absent or city-scoped results are too few).
         queries.extend([
             f'site:ra.co/promoters "{promoter_name}"',
             f'site:ra.co/events "{promoter_name}"',
@@ -303,7 +345,8 @@ class PromoterResearcher:
                 seen_urls.add(result.url)
                 unique.append(result)
 
-        # Phase 2 — Adaptive deepening if sparse results
+        # Phase 2 — Adaptive deepening: when the merged set is below threshold,
+        # fire broader queries to rescue obscure or pre-internet promoters.
         if len(unique) < _MIN_ADEQUATE_RESULTS:
             self._logger.info(
                 "Sparse promoter results, deepening search",
@@ -326,7 +369,8 @@ class PromoterResearcher:
                     seen_urls.add(r.url)
                     unique.append(r)
 
-        # Sort: RA.co results first
+        # Sort: RA.co results first -- downstream scraping and article building
+        # will process these first, prioritising authoritative data.
         ra_results = [r for r in unique if "ra.co" in r.url]
         other_results = [r for r in unique if "ra.co" not in r.url]
         return ra_results + other_results
@@ -375,6 +419,8 @@ class PromoterResearcher:
 
         combined_text = "\n---\n".join(scraped_texts[:6])
 
+        # When a city hint exists, prepend it as a context line so the LLM
+        # can infer geography even if the scraped text does not mention it.
         city_context = f"The event flier is from {city}.\n" if city else ""
 
         system_prompt = (
@@ -491,6 +537,8 @@ class PromoterResearcher:
         based_region: str | None = None
         based_country: str | None = None
 
+        # Reusable helper: strips list-item markers (-, bullet, asterisk) and
+        # filters out the sentinel "NONE" value the LLM writes for empty sections.
         def _extract_list(section_text: str) -> list[str]:
             items: list[str] = []
             for line in section_text.strip().splitlines():
@@ -499,7 +547,9 @@ class PromoterResearcher:
                     items.append(line.strip())
             return items
 
-        # Parse BASED_IN section
+        # -- Parse BASED_IN: comma-split positional extraction.
+        # LLM format: "BASED_IN: London, England, United Kingdom"
+        # Index 0 -> city, 1 -> region, 2 -> country.  Missing parts stay None.
         based_match = re.search(
             r"BASED_IN\s*:?\s*\n?(.*?)(?=EVENT_HISTORY|AFFILIATED_ARTISTS|AFFILIATED_VENUES|\Z)",
             llm_text,

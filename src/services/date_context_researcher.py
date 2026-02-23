@@ -2,8 +2,38 @@
 
 Orchestrates web search, article scraping, and LLM analysis to build a
 comprehensive cultural/historical context for a date extracted from a rave
-flier — what was happening in the scene, the city, and the broader culture
+flier -- what was happening in the scene, the city, and the broader culture
 around that time.
+
+Research Strategy
+-----------------
+Unlike the entity-centric researchers (venue, promoter, event), this module
+researches a **point in time**.  It uses a **dual search context** approach:
+
+    1. **Scene context** (``_search_scene_context``) -- local electronic
+       music activity around the date: who was playing, what genres were
+       trending, what venues were active.
+    2. **Cultural context** (``_search_cultural_context``) -- broader
+       forces that shaped the scene: legislation (e.g. the Criminal
+       Justice Act 1994), media coverage, social attitudes.
+
+Both search phases merge into a single scrape pool before LLM synthesis.
+
+LLM Synthesis Pattern
+---------------------
+The LLM outputs four labelled sections:
+
+    SCENE_CONTEXT  /  CITY_CONTEXT  /  CULTURAL_CONTEXT  /  NEARBY_EVENTS
+
+``SCENE_CONTEXT`` and ``CULTURAL_CONTEXT`` correspond to the dual search
+phases above.  ``CITY_CONTEXT`` is a city-specific refinement (only
+populated when a city hint is available).  ``NEARBY_EVENTS`` captures
+individual happenings that are too granular for a narrative summary.
+
+Caching
+-------
+``_CACHE_TTL_SECONDS`` is set to 2 hours (vs. 1 hour for the other
+researchers) because historical date context changes less frequently.
 """
 
 from __future__ import annotations
@@ -26,11 +56,13 @@ from src.utils.confidence import calculate_confidence
 from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
 
-_CACHE_TTL_SECONDS = 7200  # 2 hours (date context changes less frequently)
+# -- Module-level constants ---------------------------------------------------
+# Longer TTL than other researchers because historical facts rarely change.
+_CACHE_TTL_SECONDS = 7200  # 2 hours (vs. 1 hour for venue/promoter)
 _MAX_SCRAPE_RESULTS = 10
 _MAX_ARTICLE_RESULTS = 12
 
-# URL patterns mapped to citation tiers (1 = highest authority)
+# Citation tier table: shared ranking system (see venue_researcher.py docstring).
 _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"residentadvisor\.net|ra\.co", re.IGNORECASE), 1),
     (re.compile(r"djmag\.com", re.IGNORECASE), 1),
@@ -50,7 +82,8 @@ _CITATION_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
     (re.compile(r"facebook\.com|instagram\.com|twitter\.com|x\.com", re.IGNORECASE), 5),
 ]
 
-# Month names for search queries
+# Month names for search queries -- index 0 is empty so event_date.month
+# (1-based) maps directly without an off-by-one adjustment.
 _MONTH_NAMES = [
     "",
     "January",
@@ -87,6 +120,8 @@ class DateContextResearcher:
         llm: ILLMProvider,
         cache: ICacheProvider | None = None,
     ) -> None:
+        # No vector_store param: date context is too broad for RAG retrieval
+        # (a date is not an entity with a compact embedding neighbourhood).
         self._web_search = web_search
         self._article_scraper = article_scraper
         self._llm = llm
@@ -129,21 +164,27 @@ class DateContextResearcher:
         warnings: list[str] = []
         sources_consulted: list[str] = []
 
-        # Step 1 — SEARCH for scene context around the date
+        # --- Dual search context approach ---
+        # The pipeline fires TWO independent search phases and merges results
+        # before handing them to the LLM.  This ensures the LLM sees both
+        # micro-level scene data and macro-level cultural forces.
+
+        # Phase A — SCENE CONTEXT: local electronic music activity
         scene_results = await self._search_scene_context(year, month_name, city)
         if scene_results:
             sources_consulted.append("web_search_scene")
         else:
             warnings.append("No web results found for scene context")
 
-        # Step 2 — SEARCH for cultural/historical context
+        # Phase B — CULTURAL CONTEXT: legislation, media, social attitudes
         cultural_results = await self._search_cultural_context(year, month_name)
         if cultural_results:
             sources_consulted.append("web_search_cultural")
         else:
             warnings.append("No web results found for cultural context")
 
-        # Combine and scrape all results
+        # Merge both search phases into a single pool for scraping and
+        # deduplication.  The LLM will see content from both streams.
         all_search_results = scene_results + cultural_results
 
         # Deduplicate by URL
@@ -157,7 +198,9 @@ class DateContextResearcher:
         scraped_texts = await self._scrape_results(unique_results[:_MAX_SCRAPE_RESULTS])
         scrape_confidence = min(1.0, len(scraped_texts) * 0.15) if scraped_texts else 0.0
 
-        # Step 3 — LLM SYNTHESIS of date context
+        # Step 3 — LLM SYNTHESIS: four labelled sections map to the dual
+        # search phases (SCENE_CONTEXT from phase A, CULTURAL_CONTEXT from
+        # phase B, plus CITY_CONTEXT and NEARBY_EVENTS as refinements).
         scene_context, city_context, cultural_context, nearby_events = (
             await self._synthesize_date_context(event_date, year, month_name, city, scraped_texts)
         )
@@ -175,6 +218,9 @@ class DateContextResearcher:
         article_confidence = min(1.0, len(articles) * 0.12) if articles else 0.0
 
         # Step 4 — BUILD DateContext and ResearchResult
+        # Synthesis weight (3.5) is higher here than in other researchers (3.0)
+        # because the LLM's ability to contextualise a time period is more
+        # critical than raw search hit count.
         search_confidence = min(1.0, len(unique_results) * 0.08) if unique_results else 0.0
         overall_confidence = calculate_confidence(
             scores=[search_confidence, scrape_confidence, synthesis_confidence, article_confidence],
@@ -190,6 +236,8 @@ class DateContextResearcher:
             sources=articles,
         )
 
+        # entity_name is a human-readable label for this research result.
+        # "San Francisco -- June 1997" reads better than an ISO date.
         entity_name = f"{month_name} {year}"
         if city:
             entity_name = f"{city} — {entity_name}"
@@ -222,11 +270,14 @@ class DateContextResearcher:
     ) -> list[SearchResult]:
         """Search the web for electronic music scene context around the date.
 
-        Uses RA.co as the primary source for scene context.
+        Uses RA.co as the primary source for scene context.  When a city is
+        known, city-scoped queries run first for local relevance.
         """
         queries: list[str] = []
 
-        # RA.co-first queries
+        # City-aware queries produce local scene context (e.g. "Berlin
+        # electronic music January 1995"); fallback queries cover the
+        # global scene when no city is available.
         if city:
             queries.append(f'site:ra.co "{city}" {year}')
             queries.append(f"{city} rave scene {year}")
@@ -257,7 +308,13 @@ class DateContextResearcher:
         return unique
 
     async def _search_cultural_context(self, year: int, month_name: str) -> list[SearchResult]:
-        """Search for broader cultural and historical context around the date."""
+        """Search for broader cultural and historical context around the date.
+
+        Intentionally city-agnostic: legislation and media coverage tend to
+        be national/global rather than city-specific.
+        """
+        # The "rave legislation law" query targets era-defining legal events
+        # like the UK Criminal Justice Act 1994 or US RAVE Act 2003.
         queries = [
             f"site:ra.co features {year}",
             f"electronic music history {year}",
@@ -419,6 +476,10 @@ class DateContextResearcher:
         llm_text: str,
     ) -> tuple[str | None, str | None, str | None, list[str]]:
         """Parse LLM date context synthesis response into structured components.
+
+        Uses the same header-delimited regex strategy as the other researchers.
+        Four sections are extracted in document order; each section's regex
+        uses the next header as a stop anchor.
 
         Returns
         -------

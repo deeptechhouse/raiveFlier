@@ -30,11 +30,17 @@ class EasyOCRProvider(IOCRProvider):
     model loading at import time.  Multi-pass preprocessing (standard,
     inverted, per-channel, CLAHE, denoised, saturation, Otsu) is applied
     and results are merged across all passes.
+
+    Note: EasyOCR requires PyTorch (~500MB+), which is why it's excluded
+    from the Docker production build (Render Starter has 512MB RAM total).
+    In development, it's the best traditional OCR option for stylized text.
     """
 
     def __init__(self, preprocessor: ImagePreprocessor) -> None:
         self._preprocessor = preprocessor
         self._logger = get_logger(__name__)
+        # Lazy initialization — the EasyOCR Reader loads ~100MB of neural
+        # network weights on first use. We defer this cost until actually needed.
         self.__reader = None  # Lazy — loaded on first extract_text call
 
     # ------------------------------------------------------------------

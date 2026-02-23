@@ -8,6 +8,27 @@ response into an :class:`InterconnectionMap`.
 Every relationship claim returned by the LLM is verified against the
 research data via citation validation — claims without a traceable source
 are discarded.
+
+Architecture overview for junior developers
+--------------------------------------------
+This module is the "relationship discovery" brain of the pipeline. It takes
+all the raw research gathered about every entity on a rave flier (artists,
+venues, promoters) and asks an LLM to find connections between them.
+
+The four-step pipeline is:
+  1. COMPILE  -- Assemble all research into a numbered-source text block.
+  2. PROMPT   -- Send a 13-point synthesis prompt to the LLM asking it to
+                 identify specific relationship types (shared labels,
+                 lineups, geographic patterns, genre alignment, etc.).
+  3. VALIDATE -- Every claim the LLM returns must cite a real source from
+                 the research data.  Claims without valid citations are
+                 discarded.  This is the key trust mechanism.
+  4. ENRICH   -- Confidence scores are penalised for uncertain language
+                 (the LLM flags these with [UNCERTAIN]) and for geographic
+                 mismatches (e.g., linking artists from different cities).
+
+The output is an InterconnectionMap: a graph of EntityNodes (vertices) and
+RelationshipEdges (edges) plus higher-level PatternInsights and a narrative.
 """
 
 from __future__ import annotations
@@ -34,8 +55,16 @@ from src.services.citation_service import CitationService
 from src.utils.errors import LLMError
 from src.utils.logging import get_logger
 
+# Regex to extract JSON from an LLM response wrapped in ```json ... ``` fences.
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
+
+# The LLM is instructed to flag weak claims with this tag in its output.
+# See the synthesis prompt's "STRICT RULES" section.
 _UNCERTAIN_TAG = "[UNCERTAIN]"
+
+# How much to subtract from a relationship's confidence when [UNCERTAIN] is
+# present.  A 0.3 penalty on a default 0.5 confidence produces 0.2 -- near
+# the 0.15 discard threshold, making uncertain claims barely survive.
 _UNCERTAIN_CONFIDENCE_PENALTY = 0.3
 
 
@@ -74,6 +103,10 @@ class InterconnectionService:
         vector_store:
             Optional vector store for cross-entity RAG context retrieval.
         """
+        # All dependencies are injected (adapter pattern).  The LLM and
+        # vector store are behind interfaces so the concrete provider (OpenAI,
+        # Anthropic, Pinecone, Chroma, etc.) can be swapped without touching
+        # this service.
         self._llm = llm_provider
         self._citation_service = citation_service
         self._vector_store = vector_store
@@ -113,16 +146,23 @@ class InterconnectionService:
             artist_count=len(entities.artists),
         )
 
-        # Step 1 — build context
+        # Step 1 — build context: flatten all research into a single text
+        # block with numbered source references ([1], [2], ...) so the LLM
+        # can produce inline citations.
         compiled_context = self._compile_research_context(research_results)
 
-        # Step 1.5 — RAG cross-entity context augmentation
+        # Step 1.5 — RAG cross-entity context augmentation: query the vector
+        # store for passages that mention MULTIPLE entities from the flier.
+        # This surfaces connections the per-entity research may have missed.
         rag_context = await self._retrieve_cross_entity_context(entities)
         if rag_context:
             compiled_context += "\n\n=== CORPUS CONTEXT (from indexed books/articles) ===\n"
             compiled_context += rag_context
 
-        # Step 2 — LLM analysis
+        # Step 2 — LLM analysis.  The system prompt establishes a strict
+        # factual persona.  The user prompt (built below) contains the
+        # 13-point synthesis framework and all compiled research data.
+        # Temperature is kept very low (0.1) to minimise creative invention.
         system_prompt = (
             "You are a factual music research analyst.  You report only "
             "verified facts from the data provided, with inline source "
@@ -149,10 +189,14 @@ class InterconnectionService:
                 provider_name=self._llm.get_provider_name(),
             ) from exc
 
-        # Step 3 — parse + validate
+        # Step 3 — parse + validate.  This is the trust gate: every
+        # relationship the LLM claims must cite a source that exists in
+        # the original research data.  Unsupported claims are discarded.
         parsed = self._parse_analysis_response(response)
 
         raw_relationships = parsed.get("relationships", [])
+        # Citation validation: cross-reference each claim's source_citation
+        # field against known source strings from the research results.
         validated_relationships = self._validate_citations(raw_relationships, research_results)
 
         edges = self._build_edges(validated_relationships)
@@ -160,13 +204,19 @@ class InterconnectionService:
         nodes = self._build_nodes(research_results, entities)
         narrative: str | None = parsed.get("narrative")
 
-        # Step 4 — enrich: penalise uncertain relationships
+        # Step 4 — enrich: confidence penalty pipeline.
+        # Two independent penalty passes run in sequence:
+        #   a) Uncertain language: -0.3 for edges containing [UNCERTAIN]
+        #   b) Geographic mismatch: -0.4 if both entities have different
+        #      cities, -0.2 if one entity's city differs from the venue city.
+        # Penalties stack if both apply.
         edges = self._penalise_uncertain(edges)
 
-        # Step 4.5 — penalise geographic mismatches
         edges = self._penalise_geographic_mismatch(edges, research_results)
 
-        # Step 4.6 — discard edges with very low confidence after all penalties
+        # Final threshold: edges below 0.15 confidence are noise and are
+        # dropped.  This catches cases where multiple penalties compound
+        # (e.g., uncertain + geographic mismatch = near-zero confidence).
         edges = [e for e in edges if e.confidence >= 0.15]
 
         all_citations = self._collect_all_citations(edges, patterns)
@@ -209,7 +259,10 @@ class InterconnectionService:
             Multi-section text block with a source index appended.
         """
         sections: list[str] = []
-        # Global source index: maps source_key → (index, display_label, url)
+        # Global source index: maps source_key -> (index, display_label, url).
+        # Every citable fact gets tagged with [n] so the LLM can produce
+        # inline citations.  The index is appended at the end of the
+        # compiled context as "=== SOURCE INDEX ===" for reference.
         source_index: dict[str, tuple[int, str, str | None]] = {}
 
         def _ref(label: str, url: str | None = None) -> str:
@@ -400,6 +453,10 @@ class InterconnectionService:
         if not entity_names:
             return ""
 
+        # The query concatenates ALL entity names plus relationship keywords.
+        # This biases the vector search toward passages that mention multiple
+        # entities from the same flier -- exactly the kind of cross-entity
+        # context the interconnection analysis needs.
         cross_query = " ".join(entity_names) + " connection relationship scene"
 
         try:
@@ -411,7 +468,9 @@ class InterconnectionService:
         if not chunks:
             return ""
 
-        # Budget: approximate token count (chars / 4), stay within limit
+        # Token budget guard: the compiled context + RAG context both go into
+        # the LLM prompt, so we cap RAG at ~30K tokens (~120K chars) to leave
+        # room for the synthesis prompt and the LLM's response.
         max_chars = 30000 * 4  # ~30K tokens
         parts: list[str] = []
         current_chars = 0
@@ -451,6 +510,31 @@ class InterconnectionService:
 
         The prompt requests a strictly fact-based chronicle with inline
         numbered citations — no generated story or speculation.
+
+        THE 13-POINT SYNTHESIS FRAMEWORK
+        ---------------------------------
+        The prompt asks the LLM to analyze 13 specific relationship
+        dimensions.  Each point targets a different axis of connection:
+
+         1. Shared Labels          -- Record labels where multiple flier
+                                      artists released music
+         2. Shared Lineups         -- Previous events with overlapping artists
+         3. Promoter-Artist Links  -- How the promoter connects to each act
+         4. Venue-Scene Connections -- The venue's role in the scene
+         5. Geographic Patterns    -- Same city/region alignments
+         6. Temporal Patterns      -- Career timeline positioning
+         7. Scene Context          -- Movement or subgenre classification
+         8. Release Format         -- Vinyl-first vs digital-first strategies
+         9. Performance Style      -- DJ vs live act classification
+        10. Touring & Venue Overlap -- Shared booking circuits
+        11. Label Ecosystem Depth  -- Parent labels, sister imprints, A&R
+        12. Career Stage           -- Emerging vs veteran dynamic
+        13. Genre & Style Alignment -- Niche cohesion vs deliberate spread
+
+        This breadth ensures the LLM does not fixate on one dimension
+        (e.g., only shared labels) and instead maps the full relationship
+        space.  The output is structured JSON with relationships, patterns,
+        and a narrative.
 
         Parameters
         ----------
@@ -662,7 +746,12 @@ class InterconnectionService:
         list[dict]
             Only relationships whose citations map to real research data.
         """
-        # Build a set of known source strings for fast lookup
+        # Build a set of known source strings for fast lookup.
+        # This is the "ground truth" corpus: every label name, release title,
+        # article title, article URL, and sources-consulted entry across all
+        # research results.  If a citation from the LLM cannot be matched to
+        # any string in this set (using bidirectional substring matching),
+        # the relationship is discarded as unverifiable.
         known_sources: set[str] = set()
         for result in research_data:
             for src in result.sources_consulted:
@@ -705,7 +794,9 @@ class InterconnectionService:
                 discarded_count += 1
                 continue
 
-            # Check if the citation text matches any known source
+            # Bidirectional substring match: the LLM's citation text may be
+            # a superset ("Discogs: Artist X") or subset ("Artist X") of
+            # the known source string.  Either direction counts as a match.
             is_valid = any(
                 citation_text in ks or ks in citation_text
                 for ks in known_sources
@@ -842,6 +933,11 @@ class InterconnectionService:
         -------
         list[EntityNode]
         """
+        # Build graph nodes using a two-pass approach:
+        #   Pass 1: Create nodes from research results (rich metadata).
+        #   Pass 2: Backfill any extracted entities that the research phase
+        #           did not cover (minimal metadata, just name + confidence).
+        # The seen_names set prevents duplicates across both passes.
         nodes: list[EntityNode] = []
         seen_names: set[str] = set()
 
@@ -958,7 +1054,8 @@ class InterconnectionService:
         list[RelationshipEdge]
             Edges with confidence adjusted for geographic mismatches.
         """
-        # Build a city lookup from research results
+        # Build a city lookup from research results.  The venue's city is
+        # stored separately as a reference point for single-entity mismatches.
         city_map: dict[str, str] = {}
         venue_city: str | None = None
 
@@ -977,6 +1074,12 @@ class InterconnectionService:
             source_city = city_map.get(edge.source.lower())
             target_city = city_map.get(edge.target.lower())
 
+            # Penalty logic:
+            #   - Both entities have known, different cities: -0.4
+            #     (strong signal of a false geographic link)
+            #   - Only one entity has a known city, and it differs from the
+            #     venue city: -0.2 (weaker signal, benefit of the doubt)
+            #   - Cities match OR no city data: no penalty
             penalty = 0.0
             if source_city and target_city:
                 if source_city != target_city:

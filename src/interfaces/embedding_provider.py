@@ -12,6 +12,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 
+# Concrete implementations:
+#   FastEmbedEmbeddingProvider  — lightweight ONNX (no PyTorch), default for Docker
+#   OpenAIEmbeddingProvider     — text-embedding-3-small (requires API key)
+#   SentenceTransformerEmbeddingProvider — all-MiniLM-L6-v2 (local, needs PyTorch)
+#   NomicEmbeddingProvider      — nomic-embed-text via Ollama (local)
+# Located in: src/providers/embedding/
 class IEmbeddingProvider(ABC):
     """Contract for text-embedding services used by the RAG pipeline.
 

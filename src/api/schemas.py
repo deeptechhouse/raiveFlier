@@ -2,6 +2,23 @@
 
 Defines the public contract for all REST endpoints — upload, confirmation,
 status polling, full results, health, and provider listing.
+
+# ─── HOW SCHEMAS WORK (Junior Developer Guide) ────────────────────────
+#
+# These Pydantic models define the *shape* of every HTTP request body
+# and response body in the API.  FastAPI uses them for:
+#
+#   1. **Validation** — Incoming JSON is automatically validated against
+#      the schema.  Invalid requests get a 422 error with details.
+#   2. **Serialization** — Outgoing objects are automatically converted
+#      to JSON matching the schema (via response_model=...).
+#   3. **Documentation** — FastAPI generates OpenAPI/Swagger docs from
+#      these schemas automatically (visible at /docs).
+#
+# Convention: Request schemas end with "Request", response schemas
+# end with "Response".  Field(...) adds constraints (min_length, ge/le)
+# and descriptions for the API docs.
+# ──────────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
@@ -15,7 +32,11 @@ from src.models.flier import ExtractedEntities
 
 
 class EntityInput(BaseModel):
-    """A single entity submitted by the user during confirmation."""
+    """A single entity submitted by the user during confirmation.
+
+    This is the frontend's representation of an entity — just a name
+    and type string.  Simpler than the internal ExtractedEntity model.
+    """
 
     name: str
     entity_type: str

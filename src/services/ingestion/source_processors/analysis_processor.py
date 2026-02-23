@@ -1,7 +1,18 @@
 """Source processor that converts completed pipeline analysis results into chunks.
 
 Enables the **feedback loop**: every finished flier analysis is re-ingested
-into the vector store so that future analyses benefit from accumulated knowledge.
+into the vector store so that future analyses benefit from accumulated
+knowledge about artists, venues, and promoters.
+
+For example, if the pipeline researches "DJ Rush" for Flier A and learns
+about his Chicago roots and Tresor residency, that knowledge becomes
+available as RAG context when a future Flier B also mentions DJ Rush --
+producing richer, faster analysis without redundant web research.
+
+Quality gates ensure only useful content enters the corpus:
+- Artists below a minimum confidence threshold (0.3) are skipped
+- LLM "not found" responses are detected via negative-pattern matching
+  and excluded to avoid polluting the knowledge base with non-information
 """
 
 from __future__ import annotations
@@ -20,9 +31,12 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(logger_name=__name__)
 
 # Minimum artist confidence score required to ingest into the corpus.
+# Below this threshold, the research data is too unreliable to feed back.
 _MIN_ARTIST_CONFIDENCE = 0.3
 
-# Phrases that indicate the LLM could not find useful information.
+# Regex patterns that detect LLM "not found" responses.  These appear when
+# web research fails to corroborate an OCR-extracted artist name -- ingesting
+# them would add noise to the knowledge base.
 _NEGATIVE_PROFILE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(p, re.IGNORECASE)
     for p in (

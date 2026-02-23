@@ -1,4 +1,34 @@
 #!/usr/bin/env python3
+# =============================================================================
+# scripts/batch_ingest.py — Bulk Book Ingestion Script
+# =============================================================================
+#
+# Batch-ingests all PDF and EPUB files from a directory into the ChromaDB
+# vector store. Designed for one-time corpus building when you have a
+# collection of ebooks about electronic music, rave culture, DJ history, etc.
+#
+# The script automatically parses metadata (title, author, year) from
+# Anna's Archive filename format, which follows this pattern:
+#   "Title -- Author -- Edition/Location, Year -- Publisher -- ISBN -- Hash -- Anna's Archive.pdf"
+#
+# For files not matching this pattern, it falls back to using the filename
+# stem as the title with placeholder author and year values.
+#
+# Ingestion pipeline per book:
+#   1. Parse metadata from filename
+#   2. Extract text (PDF: page-by-page, EPUB: chapter-by-chapter)
+#   3. Chunk text into ~512-token windows with overlap
+#   4. Tag chunks with semantic metadata via LLM
+#   5. Generate vector embeddings
+#   6. Store in ChromaDB
+#
+# Usage:
+#   python scripts/batch_ingest.py /path/to/books/
+#
+# Environment: Requires .env with at least one embedding provider key
+# (OPENAI_API_KEY or OLLAMA_BASE_URL) and one LLM provider key.
+# =============================================================================
+
 """Batch ingest all PDF and EPUB files from a directory.
 
 Automatically extracts title, author, and year from Anna's Archive
@@ -16,7 +46,9 @@ import re
 import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path
+# Add the project root to sys.path so we can import from src/.
+# This is necessary because this script lives in scripts/ and is run
+# directly (not as a module via python -m).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config.settings import Settings
@@ -26,7 +58,12 @@ from src.services.ingestion.metadata_extractor import MetadataExtractor
 
 
 def _build_embedding_provider(app_settings: Settings):
-    """Select the first available embedding provider."""
+    """Select the first available embedding provider.
+
+    Same fallback chain as src/cli/ingest.py: OpenAI -> Nomic/Ollama.
+    Note: This duplicates the logic from the CLI module because scripts
+    run standalone and cannot easily share the CLI's factory functions.
+    """
     if app_settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
@@ -60,35 +97,49 @@ def _build_llm_provider(app_settings: Settings):
 def parse_annas_archive_filename(filename: str) -> dict:
     """Parse Anna's Archive filename format into metadata.
 
-    Format: Title -- Author -- Edition/Location, Year -- Publisher -- ISBN -- Hash -- Anna's Archive.ext
+    Anna's Archive uses a double-dash delimited filename format:
+      "Title -- Author -- Edition/Location, Year -- Publisher -- ISBN -- Hash -- Anna's Archive.ext"
+
+    This function extracts title, author, and publication year from that pattern.
+
+    Cleaning steps:
+      1. Strip the "-- Anna's Archive" suffix
+      2. Split on " -- " delimiter
+      3. Clean title: replace underscores with spaces, collapse whitespace
+      4. Clean author: remove parenthetical descriptions, trailing punctuation
+      5. Search all parts for a 4-digit year (1900-2099 range)
+
+    Falls back to year=2000 if no year is found (provides a reasonable default
+    for the vector store metadata without breaking the ingestion pipeline).
+
+    Returns: dict with keys "title", "author", "year"
     """
     stem = Path(filename).stem
-    # Remove "-- Anna's Archive" suffix
+    # Remove the "-- Anna's Archive" suffix that appears on all downloaded files.
     stem = re.sub(r"\s*--\s*Anna'?s Archive$", "", stem)
 
+    # Split filename into parts on the " -- " delimiter.
     parts = [p.strip() for p in stem.split(" -- ")]
 
+    # Part 1: Title (always the first segment)
     title = parts[0] if parts else stem
-    # Clean up title: underscores to spaces, fix colons
-    title = re.sub(r"_", " ", title).strip()
-    # Collapse multiple spaces to single, fix ": " patterns
-    title = re.sub(r"\s{2,}", ": ", title).strip()
-    # Remove trailing commas or colons
-    title = title.rstrip(",:").strip()
+    title = re.sub(r"_", " ", title).strip()       # Underscores to spaces
+    title = re.sub(r"\s{2,}", ": ", title).strip()  # Multiple spaces -> colon
+    title = title.rstrip(",:").strip()               # Clean trailing punctuation
 
     author = ""
     year = 0
 
+    # Part 2: Author (second segment if present)
     if len(parts) >= 2:
         author = parts[1]
-        # Clean underscores in author name
         author = re.sub(r"_", " ", author).strip()
-        # Remove parenthetical descriptions like "(Psychologist)"
+        # Remove parenthetical like "(Psychologist)" or "(Editor)"
         author = re.sub(r"\s*\(.*?\)\s*", " ", author).strip()
-        # Remove trailing commas
         author = author.rstrip(",").strip()
 
-    # Search all parts for a 4-digit year
+    # Search ALL parts for a 4-digit year (not just the author field).
+    # The year often appears in the third part with edition/location info.
     for part in parts:
         year_match = re.search(r"\b(19\d{2}|20\d{2})\b", part)
         if year_match:
@@ -96,12 +147,19 @@ def parse_annas_archive_filename(filename: str) -> dict:
             break
 
     if not year:
-        year = 2000  # fallback
+        year = 2000  # Fallback: prevents null year in vector store metadata
 
     return {"title": title, "author": author, "year": year}
 
 
 async def main() -> None:
+    """Main entry point: discovers books, builds ingestion service, processes each.
+
+    The script processes books sequentially (not in parallel) to avoid
+    overwhelming the embedding API with concurrent requests and to provide
+    clear progress output. Each book is try/except wrapped so a single
+    failure does not abort the entire batch.
+    """
     if len(sys.argv) < 2:
         print("Usage: python scripts/batch_ingest.py /path/to/books/")
         sys.exit(1)
@@ -111,7 +169,7 @@ async def main() -> None:
         print(f"Error: {book_dir} is not a directory")
         sys.exit(1)
 
-    # Collect all PDF and EPUB files
+    # Collect all PDF and EPUB files. Sorted for deterministic processing order.
     files = sorted(book_dir.glob("*.pdf")) + sorted(book_dir.glob("*.epub"))
     if not files:
         print(f"No PDF or EPUB files found in {book_dir}")
@@ -160,7 +218,7 @@ async def main() -> None:
     print("=" * 60)
     print()
 
-    # Ingest each book
+    # Ingest each book sequentially with per-book error handling.
     total_chunks = 0
     total_tokens = 0
     succeeded = 0

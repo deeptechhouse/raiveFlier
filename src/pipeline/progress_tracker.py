@@ -4,6 +4,26 @@ Tracks the current phase and progress percentage for each pipeline session
 and broadcasts updates to registered listener callbacks.  Listeners are
 keyed by session ID so multiple pipelines can run concurrently without
 cross-talk.
+
+# ─── HOW PROGRESS TRACKING WORKS (Junior Developer Guide) ─────────────
+#
+# This implements the Observer pattern:
+#
+#   Pipeline ──update()──→ ProgressTracker ──callback()──→ WebSocket handler
+#                                                        ──→ (any other listener)
+#
+# Data flow:
+#   1. The orchestrator calls tracker.update(session_id, phase, progress, msg)
+#   2. ProgressTracker stores the snapshot and calls all registered listeners
+#   3. The WebSocket handler (registered as a listener) pushes JSON to the browser
+#   4. The frontend updates the progress bar in real time
+#
+# Key design decisions:
+#   - Listeners are keyed by session_id → no cross-talk between sessions
+#   - Listener errors are caught and logged → one broken listener can't
+#     block the pipeline or crash other listeners
+#   - Both sync and async callbacks are supported (asyncio.iscoroutine check)
+# ──────────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
@@ -20,7 +40,11 @@ from src.utils.logging import get_logger
 
 @dataclass
 class _SessionStatus:
-    """Internal snapshot of a single session's progress."""
+    """Internal snapshot of a single session's progress.
+
+    This is a simple dataclass (mutable, not Pydantic) because it's
+    internal-only — never serialized or exposed to the API.
+    """
 
     phase: PipelinePhase = PipelinePhase.UPLOAD
     progress: float = 0.0
@@ -37,7 +61,9 @@ class ProgressTracker:
     """
 
     def __init__(self) -> None:
+        # Per-session progress snapshots
         self._statuses: dict[str, _SessionStatus] = {}
+        # Per-session list of listener callbacks (Observer pattern)
         self._listeners: dict[str, list[Callable]] = {}
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
@@ -168,6 +194,12 @@ class ProgressTracker:
 
         Listeners that raise exceptions are logged and silently skipped
         so a single faulty listener cannot block progress updates.
+
+        # JUNIOR DEV NOTE — Defensive callback invocation
+        # The try/except inside the loop ensures that a broken WebSocket
+        # connection (or any other listener error) doesn't crash the
+        # entire pipeline.  This is critical for real-time systems
+        # where network disconnects are expected.
         """
         listeners = self._listeners.get(session_id, [])
         if not listeners:
@@ -175,6 +207,8 @@ class ProgressTracker:
 
         for callback in listeners:
             try:
+                # Callbacks can be either sync or async — we check at runtime.
+                # If the callback returns a coroutine, we await it.
                 result = callback(session_id, phase, progress, message)
                 if asyncio.iscoroutine(result):
                     await result

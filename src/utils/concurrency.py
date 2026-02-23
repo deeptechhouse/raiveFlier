@@ -3,6 +3,17 @@
 Provides a global search semaphore that all researchers share to limit
 concurrent web search requests, preventing rate-limiting from DuckDuckGo
 and other search providers while still allowing parallel execution.
+
+Two main patterns are exposed:
+
+1. **throttled_gather** -- A drop-in replacement for ``asyncio.gather`` that
+   wraps each awaitable in a semaphore acquire/release.  Used when you have
+   a list of arbitrary coroutines to run with bounded concurrency.
+
+2. **parallel_search** -- A higher-level convenience function for the
+   fan-out-then-merge pattern used by every researcher module: dispatch
+   N search queries in parallel, collect results, log failures, and return
+   a flat list of all successful results.
 """
 
 from __future__ import annotations
@@ -16,9 +27,11 @@ from src.utils.logging import get_logger
 
 _T = TypeVar("_T")
 
-# Global semaphore limiting concurrent web search requests across all
-# researchers.  Value of 5 allows significant parallelism while staying
-# well under DuckDuckGo's rate-limit threshold (~20 req/min).
+# Global semaphore limiting concurrent web search requests across ALL
+# researcher instances.  A value of 5 allows meaningful parallelism
+# while staying well under DuckDuckGo's rate-limit threshold (~20 req/min).
+# This is shared (not per-researcher) so that bursts from multiple
+# researchers running simultaneously don't stack up and trip rate limits.
 _SEARCH_SEMAPHORE = asyncio.Semaphore(5)
 
 _logger: structlog.BoundLogger = get_logger(__name__)
@@ -30,6 +43,10 @@ async def throttled_gather(
     return_exceptions: bool = True,
 ) -> list[_T | BaseException]:
     """Run awaitables concurrently with optional semaphore throttling.
+
+    Each coroutine is wrapped so it acquires the semaphore before executing
+    and releases it afterward, ensuring at most ``semaphore._value``
+    coroutines run simultaneously.
 
     Parameters
     ----------
@@ -51,9 +68,12 @@ async def throttled_gather(
         semaphore = _SEARCH_SEMAPHORE
 
     async def _wrapped(coro: Awaitable[_T]) -> _T:
+        # The semaphore context manager blocks here until a slot opens.
         async with semaphore:
             return await coro
 
+    # All tasks are created immediately but only ``semaphore._value``
+    # will actually be executing at any moment.
     tasks = [_wrapped(c) for c in coros]
     return await asyncio.gather(*tasks, return_exceptions=return_exceptions)
 
@@ -66,8 +86,10 @@ async def parallel_search(
 ) -> list[Any]:
     """Execute multiple search queries in parallel with throttling.
 
-    A convenience wrapper that fans out search queries through the shared
-    semaphore, collects results, and handles errors gracefully.
+    Implements the **fan-out / merge** pattern used by every researcher:
+    1. Fan out -- dispatch each query dict as ``search_fn(**query)``
+    2. Throttle -- all calls share the global semaphore
+    3. Merge -- flatten successful results into one list; log failures
 
     Parameters
     ----------
@@ -89,15 +111,18 @@ async def parallel_search(
     if logger is None:
         logger = _logger
 
+    # Build coroutines by splatting each query dict as kwargs.
     coros = [search_fn(**q) for q in queries]
     raw_results = await throttled_gather(coros, return_exceptions=True)
 
+    # Post-processing: separate successes from failures and flatten lists.
     all_results: list[Any] = []
     for idx, result in enumerate(raw_results):
         if isinstance(result, BaseException):
+            # Log the failure but don't abort -- partial results are valuable.
             logger.warning(error_msg, query=queries[idx], error=str(result))
         elif isinstance(result, list):
-            all_results.extend(result)
+            all_results.extend(result)  # Flatten list results
         else:
             all_results.append(result)
 

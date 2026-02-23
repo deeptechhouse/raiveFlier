@@ -1,9 +1,14 @@
 """Source processor for EPUB book files.
 
-Reads EPUB files using ebooklib, extracts text from each document item
-(typically one per chapter), and returns logical sections as
-:class:`~src.models.rag.DocumentChunk` objects with ``source_type = "book"``
-and ``citation_tier = 1``.
+Reads EPUB files using ebooklib, iterates over the spine's XHTML document
+items (typically one per chapter), strips HTML tags via BeautifulSoup, and
+returns one :class:`~src.models.rag.DocumentChunk` per chapter with
+``source_type = "book"`` and ``citation_tier = 1``.
+
+EPUB is the most common format for electronic music history books available
+through digital libraries.  The processor extracts chapter titles from
+h1-h3 heading tags when present, and filters out short items (< 100 chars)
+that typically represent table-of-contents or copyright pages.
 """
 
 from __future__ import annotations
@@ -23,9 +28,9 @@ from src.models.rag import DocumentChunk
 
 logger = structlog.get_logger(logger_name=__name__)
 
-# Regex to collapse excessive whitespace while preserving paragraph breaks.
-_MULTI_NEWLINE = re.compile(r"\n{3,}")
-_MULTI_SPACE = re.compile(r"[ \t]{2,}")
+# Whitespace normalization patterns applied after HTML stripping.
+_MULTI_NEWLINE = re.compile(r"\n{3,}")  # Collapse 3+ newlines to paragraph break
+_MULTI_SPACE = re.compile(r"[ \t]{2,}")  # Collapse 2+ spaces to single space
 
 
 class EPUBProcessor:

@@ -6,6 +6,26 @@ structured logging, and mounts static files for the single-page frontend.
 
 Also retains the standalone ``build_pipeline`` / ``run_pipeline`` helpers
 for CLI or scripting usage outside the web server.
+
+# ─── HOW THIS FILE WORKS (Junior Developer Guide) ─────────────────────
+#
+# This is the "composition root" — the single place where every provider,
+# service, and pipeline component is created and wired together via
+# **dependency injection (DI)**.  No service in the codebase creates its
+# own dependencies; they are all constructed here and passed in.
+#
+# Key concepts:
+#   1. **Provider selection** — The app picks the best available LLM,
+#      OCR, embedding, and music-DB provider based on which API keys
+#      are configured in the environment (.env).
+#   2. **Lifespan context** — FastAPI's `lifespan` hook runs at startup
+#      and shutdown.  Startup wires everything; shutdown cleans up.
+#   3. **app.state** — All singletons are stored on `app.state` so
+#      route handlers can retrieve them via FastAPI Depends().
+#   4. **Two usage modes** — The same DI logic powers both:
+#        • The web server (create_app → uvicorn)
+#        • The CLI / scripting path (build_pipeline → run_pipeline)
+# ──────────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
@@ -24,6 +44,11 @@ from fastapi import FastAPI, WebSocket
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+# ── Application layers ────────────────────────────────────────────────
+# Imports are grouped by layer: middleware → config → interfaces →
+# models → pipeline → providers → services → utils.  This ordering
+# mirrors the dependency graph (lower layers first).
+# ──────────────────────────────────────────────────────────────────────
 from src.api.middleware import (
     ErrorHandlingMiddleware,
     RequestLoggingMiddleware,
@@ -56,8 +81,12 @@ from src.providers.music_db.musicbrainz_provider import MusicBrainzProvider
 from src.providers.ocr.llm_vision_provider import LLMVisionOCRProvider
 from src.providers.ocr.tesseract_provider import TesseractOCRProvider
 
+# ── Conditional import: EasyOCR ──────────────────────────────────────
 # EasyOCR is optional — it pulls in PyTorch (~2 GB) which exceeds RAM on
 # lightweight deployments (e.g. Render free tier 512 MB).
+# The try/except "graceful import" pattern lets the app start without it;
+# the _EASYOCR_AVAILABLE flag is checked later when building the OCR
+# provider chain so EasyOCR is only added if importable.
 try:
     from src.providers.ocr.easyocr_provider import EasyOCRProvider
 
@@ -82,15 +111,21 @@ from src.utils.logging import configure_logging, get_logger
 # Constants
 # ---------------------------------------------------------------------------
 
+# Resolve the frontend/ directory relative to *this file* (src/main.py),
+# going up one level to the project root, then into "frontend/".
 _FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 # ---------------------------------------------------------------------------
 # Module-level settings & logging
 # ---------------------------------------------------------------------------
 
+# Settings() reads .env + environment variables automatically via
+# pydantic-settings.  config loads config/config.yaml with env overrides.
+# Both are created once at module import time (singleton pattern).
 settings = Settings()
 config = load_config()
 
+# Structured logging: human-readable in dev, JSON in production.
 configure_logging(
     log_level=settings.log_level,
     json_output=(settings.app_env == "production"),
@@ -107,11 +142,24 @@ def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
     """Select the first available LLM provider based on configured API keys.
 
     Priority order: OpenAI/TogetherAI -> Anthropic -> Ollama (always available).
+
+    # JUNIOR DEV NOTE — Provider Priority Chain
+    # ------------------------------------------
+    # This is a common "fallback chain" pattern:
+    #   1. Check if the user has an OpenAI key → use OpenAI (or a compatible
+    #      API like TogetherAI via OPENAI_BASE_URL override).
+    #   2. Else check Anthropic key → use Claude.
+    #   3. Else default to Ollama (runs locally, no API key needed).
+    #
+    # Every provider implements ILLMProvider, so the rest of the code
+    # doesn't care which one was selected.  This is the Strategy pattern.
     """
     if app_settings.openai_api_key:
         return OpenAILLMProvider(settings=app_settings)
     if app_settings.anthropic_api_key:
         return AnthropicLLMProvider(settings=app_settings)
+    # Ollama is the "always available" local fallback — no API key required,
+    # but the user must have the Ollama server running at ollama_base_url.
     return OllamaLLMProvider(settings=app_settings)
 
 
@@ -119,12 +167,28 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
     Priority: OpenAI/OpenAI-compatible (if API key set and reachable) ->
-              SentenceTransformer (local, free, no API needed) ->
+              FastEmbed (ONNX, lightweight) ->
+              SentenceTransformer (local, PyTorch-based) ->
               Nomic/Ollama (if reachable).
     Returns ``None`` if no embedding provider is available.
+
+    # JUNIOR DEV NOTE — Why so many fallbacks?
+    # -----------------------------------------
+    # Embeddings convert text → numeric vectors for similarity search (RAG).
+    # Different environments have different constraints:
+    #   - Cloud (Render 512 MB)   → FastEmbed (~50 MB) is the sweet spot
+    #   - Local with GPU           → SentenceTransformer gives best quality
+    #   - API-only (no local model)→ OpenAI embedding endpoint
+    #   - Ollama running locally   → Nomic via Ollama
+    #
+    # Imports are deferred (inside the function) to avoid ImportError if
+    # an optional dependency (fastembed, sentence-transformers) isn't installed.
+    # Each provider's is_available() check verifies that its dependencies
+    # actually exist before we try to use it.
     """
     from src.interfaces.embedding_provider import IEmbeddingProvider
 
+    # --- Tier 1: OpenAI embedding API (best quality, costs money) ---
     if app_settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
@@ -133,6 +197,8 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
         provider: IEmbeddingProvider = OpenAIEmbeddingProvider(settings=app_settings)
         if provider.is_available():
             try:
+                # Smoke-test: embed a single word to verify the API key and
+                # endpoint are actually reachable before committing to this provider.
                 await provider.embed_single("test")
                 return provider
             except Exception as exc:
@@ -142,7 +208,8 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
                     msg="Falling back to local embedding provider.",
                 )
 
-    # Local ONNX embedding via fastembed — no PyTorch, lightweight
+    # --- Tier 2: FastEmbed (ONNX, no PyTorch, ~50 MB) ---
+    # Default for Docker production — lightweight and fast.
     from src.providers.embedding.fastembed_embedding_provider import (
         FastEmbedEmbeddingProvider,
     )
@@ -151,7 +218,8 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     if fe_provider.is_available():
         return fe_provider
 
-    # Local sentence-transformer (requires PyTorch) — heavier fallback
+    # --- Tier 3: SentenceTransformer (PyTorch, ~500 MB) ---
+    # Better quality than FastEmbed but too heavy for Render's free tier.
     from src.providers.embedding.sentence_transformer_embedding_provider import (
         SentenceTransformerEmbeddingProvider,
     )
@@ -160,6 +228,7 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     if st_provider.is_available():
         return st_provider
 
+    # --- Tier 4: Nomic via Ollama (free, local, requires Ollama server) ---
     from src.providers.embedding.nomic_embedding_provider import (
         NomicEmbeddingProvider,
     )
@@ -168,6 +237,7 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     if provider.is_available():
         return provider
 
+    # All providers exhausted — RAG will be disabled.
     return None
 
 
@@ -179,16 +249,28 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
 async def _build_all(app_settings: Settings) -> dict[str, Any]:
     """Construct every provider and service instance for the application.
 
+    This is the **Composition Root** — the single function that wires
+    together the entire dependency graph for the web server.  Every
+    provider and service is instantiated here, then stored on
+    ``app.state`` so route handlers can access them via FastAPI Depends().
+
     Returns a flat dict of named components to be stored on ``app.state``.
     """
     # -- Shared resources --
+    # A single httpx client is shared across all providers that make
+    # outbound HTTP calls (Bandcamp, Beatport, Discogs scrape, Wayback,
+    # web scraper).  Reusing one client = connection pooling + one
+    # cleanup point at shutdown.
     http_client = httpx.AsyncClient(timeout=30.0)
     preprocessor = ImagePreprocessor()
 
     # -- LLM --
+    # Select the best available LLM based on configured API keys.
     primary_llm = _build_llm_provider(app_settings)
 
     # -- LLM provider metadata --
+    # Build a list of *all* available providers (not just the primary one)
+    # for the /providers endpoint.  This lets the frontend show what's configured.
     llm_meta: list[dict[str, Any]] = []
     if app_settings.anthropic_api_key:
         llm_meta.append({"name": "anthropic", "type": "llm", "available": True})
@@ -197,6 +279,11 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     llm_meta.append({"name": "ollama", "type": "llm", "available": True})
 
     # -- OCR providers (ordered by priority) --
+    # The list order determines the OCR fallback chain:
+    #   1. LLM Vision — most context-aware (reads stylized rave text)
+    #   2. EasyOCR    — PyTorch-based, good accuracy (if installed)
+    #   3. Tesseract  — always available, good baseline
+    # OCRService tries each provider in order until one succeeds.
     ocr_providers = []
     if primary_llm.supports_vision():
         ocr_providers.append(
@@ -207,6 +294,13 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     ocr_providers.append(TesseractOCRProvider(preprocessor=preprocessor))
 
     # -- Music DB providers --
+    # Each provider queries a different music database.  Researchers try
+    # them in order and aggregate results across all sources.
+    #   - DiscogsAPI:     Official API (requires consumer key/secret)
+    #   - DiscogsScrape:  HTML scraping fallback (no key needed)
+    #   - MusicBrainz:    Open database (rate-limited, no key needed)
+    #   - Bandcamp:       Artist page scraping
+    #   - Beatport:       DJ/electronic-focused catalog scraping
     music_dbs = []
     if app_settings.discogs_consumer_key and app_settings.discogs_consumer_secret:
         music_dbs.append(DiscogsAPIProvider(settings=app_settings))
@@ -216,22 +310,39 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     music_dbs.append(BeatportProvider(http_client=http_client))
 
     # -- Search providers --
+    # DuckDuckGo is the only search provider (free, no API key).
+    # To add Google/Bing, create a new IWebSearchProvider implementation.
     primary_search = DuckDuckGoSearchProvider()
 
     # -- Article providers --
+    # WebScraperProvider fetches and extracts text from web pages.
+    # WaybackProvider queries the Internet Archive for historical versions.
     primary_article = WebScraperProvider(http_client=http_client)
     _wayback = WaybackProvider(http_client=http_client)  # noqa: F841
 
     # -- Cache --
+    # In-memory TTL cache — avoids redundant API calls within a session.
+    # Not shared across processes; swap for Redis in multi-worker deploys.
     cache = MemoryCacheProvider()
 
     # -- RAG components (only when RAG_ENABLED=True) --
+    # RAG = Retrieval-Augmented Generation.  When enabled, the app can
+    # search a curated reference corpus (books, articles, interviews about
+    # rave culture) and inject relevant excerpts into LLM prompts for
+    # richer, citation-backed analysis.
+    #
+    # The RAG pipeline requires TWO components:
+    #   1. An embedding provider (to convert text → vectors)
+    #   2. A vector store (ChromaDB — stores and searches those vectors)
+    # If either is unavailable, RAG is silently disabled.
     vector_store = None
     ingestion_service = None
 
     if app_settings.rag_enabled:
         embedding_provider = await _build_embedding_provider(app_settings)
         if embedding_provider is not None and embedding_provider.is_available():
+            # Deferred imports — these pull in chromadb and fastembed,
+            # which we don't want to load unless RAG is actually enabled.
             from src.providers.vector_store.chromadb_provider import ChromaDBProvider
             from src.services.ingestion.chunker import TextChunker
             from src.services.ingestion.ingestion_service import IngestionService
@@ -243,6 +354,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
                 collection_name=app_settings.chromadb_collection,
             )
 
+            # The ingestion pipeline: text → chunks → metadata → embeddings → store
             chunker = TextChunker()
             metadata_extractor = MetadataExtractor(llm=primary_llm)
             ingestion_service = IngestionService(
@@ -285,10 +397,23 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     await flier_history.initialize()
 
     # -- Services --
+    # Services are the business-logic layer.  Each service receives its
+    # dependencies (providers) via constructor injection — never via globals.
+    # This makes testing easy: inject mocks instead of real providers.
+
+    # OCR: orchestrates the OCR fallback chain, filtering results below
+    # min_confidence (default 0.7 = 70%).
     ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
     ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
+
+    # Entity Extraction: uses the LLM to parse OCR text into structured
+    # entities (artists, venue, promoter, date, event name).
     entity_extractor = EntityExtractor(llm_provider=primary_llm)
 
+    # --- Researchers: one per entity type ---
+    # Each researcher uses web search + article scraping + music DBs + LLM
+    # to build a rich profile.  The vector_store param enables RAG-enhanced
+    # research; pass None to disable RAG for that researcher.
     artist_researcher = ArtistResearcher(
         music_dbs=music_dbs,
         web_search=primary_search,
@@ -325,6 +450,9 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         cache=cache,
         vector_store=vector_store,
     )
+
+    # ResearchService is a facade that dispatches to the correct
+    # researcher based on entity type (artist → ArtistResearcher, etc.)
     research_service = ResearchService(
         artist_researcher=artist_researcher,
         venue_researcher=venue_researcher,
@@ -333,7 +461,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         event_name_researcher=event_name_researcher,
     )
 
+    # CitationService formats source references into academic-style citations.
     citation_service = CitationService()
+    # InterconnectionService uses the LLM to discover relationships between
+    # the researched entities (e.g., "Artist X has released on Venue Y's label").
     interconnection_service = InterconnectionService(
         llm_provider=primary_llm,
         citation_service=citation_service,
@@ -351,6 +482,12 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     )
 
     # -- Persistent session stores (survive container restarts) --
+    # PersistentSessionStore implements MutableMapping[str, PipelineState]
+    # backed by SQLite.  Two separate tables:
+    #   • "sessions"         — completed/in-progress pipeline states (72h TTL)
+    #   • "pending_sessions" — states waiting for user confirmation (24h TTL)
+    # This means if Render's container restarts, users can resume where
+    # they left off (within the TTL window).
     session_store = PersistentSessionStore(
         db_path=app_settings.session_db_path,
         table_name="sessions",
@@ -364,9 +501,13 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     session_store.initialize()
     pending_store.initialize()
 
+    # ProgressTracker pushes phase/percent updates to WebSocket listeners.
     progress_tracker = ProgressTracker()
+    # ConfirmationGate manages the human-in-the-loop pause point between
+    # Phase 1 (OCR + extraction) and Phase 2 (research).
     confirmation_gate = ConfirmationGate(pending_store=pending_store)
 
+    # The pipeline orchestrator runs the 5 analysis phases in order.
     pipeline = FlierAnalysisPipeline(
         ocr_service=ocr_service,
         entity_extractor=entity_extractor,
@@ -378,6 +519,8 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     )
 
     # -- Provider registry for /health --
+    # Simple bool map: "is this capability available?"  Used by the
+    # /health endpoint to report "healthy", "degraded", or "unhealthy".
     provider_registry: dict[str, bool] = {
         "llm": True,
         "ocr": len(ocr_providers) > 0,
@@ -389,6 +532,8 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     }
 
     # -- Provider list for /providers --
+    # Detailed list of every concrete provider and its type, used by the
+    # /providers endpoint for debugging / frontend display.
     provider_list: list[dict[str, Any]] = list(llm_meta)
     for ocr_p in ocr_providers:
         provider_list.append({"name": type(ocr_p).__name__, "type": "ocr", "available": True})
@@ -524,6 +669,12 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
     Phases: UPLOAD -> OCR -> ENTITY_EXTRACTION -> RESEARCH ->
     INTERCONNECTION -> OUTPUT.
 
+    # JUNIOR DEV NOTE — CLI vs Web pipeline
+    # This function runs all phases sequentially with NO human-in-the-loop
+    # confirmation step.  It's the CLI shortcut — upload a flier, get results.
+    # The web path (routes.py) splits this into two calls with a user-review
+    # pause between Phase 1 and Phase 2 (see ConfirmationGate).
+
     Parameters
     ----------
     flier:
@@ -540,12 +691,15 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
     state = PipelineState(session_id=session_id, flier=flier)
 
     # -- Phase 1: OCR --
+    # Extract raw text from the flier image using the OCR fallback chain.
     _logger.info("pipeline_phase", phase="OCR", session=session_id)
     state = state.model_copy(update={"current_phase": PipelinePhase.OCR})
     ocr_result = await services["ocr_service"].extract_text(flier)
     state = state.model_copy(update={"ocr_result": ocr_result})
 
     # -- Phase 2: Entity Extraction --
+    # Use the LLM to parse raw OCR text into structured entities.
+    # In CLI mode, extracted_entities == confirmed_entities (no user review).
     _logger.info("pipeline_phase", phase="ENTITY_EXTRACTION", session=session_id)
     state = state.model_copy(update={"current_phase": PipelinePhase.ENTITY_EXTRACTION})
     extracted = await services["entity_extractor"].extract(ocr_result, flier)
@@ -557,6 +711,10 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
     )
 
     # -- Phase 3: Research (parallel) --
+    # Research ALL entities concurrently using asyncio.gather.
+    # Each entity type gets its own researcher, and all run in parallel
+    # for speed.  Failures in one researcher don't block the others
+    # (return_exceptions=True captures them instead of raising).
     _logger.info("pipeline_phase", phase="RESEARCH", session=session_id)
     state = state.model_copy(update={"current_phase": PipelinePhase.RESEARCH})
 
@@ -586,6 +744,8 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
             )
         )
 
+    # asyncio.gather runs all tasks concurrently and returns results in order.
+    # return_exceptions=True means exceptions are returned as values (not raised).
     raw_research = await asyncio.gather(*research_tasks, return_exceptions=True)
     research_results: list[ResearchResult] = []
     for raw in raw_research:
@@ -630,6 +790,9 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
 # Auto-ingest reference corpus on first boot
 # ---------------------------------------------------------------------------
 
+# Path to the curated reference corpus — books, articles, interviews about
+# rave culture and electronic music history.  These are plain-text files
+# that get chunked, embedded, and stored in ChromaDB at first boot.
 _REFERENCE_CORPUS_DIR = Path(__file__).resolve().parent.parent / "data" / "reference_corpus"
 
 
@@ -639,6 +802,13 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
     Runs once on startup.  If the vector store already has data (e.g. from
     a persistent disk), this is a no-op.  The ``ingest_directory`` method
     also deduplicates by ``source_id``, so re-runs are safe.
+
+    # JUNIOR DEV NOTE — Idempotent startup
+    # This function is safe to call on every boot because:
+    #   1. It checks if the vector store already has chunks → skips if so.
+    #   2. Even if it runs, ingest_directory deduplicates by source_id.
+    # This pattern is called "idempotent" — running it multiple times
+    # produces the same result as running it once.
     """
     ingestion_service = getattr(application.state, "ingestion_service", None)
     vector_store = getattr(application.state, "vector_store", None)
@@ -696,9 +866,24 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
 
 @asynccontextmanager
 async def _lifespan(application: FastAPI):  # noqa: ANN201
-    """Initialise all providers and services on startup, clean up on shutdown."""
+    """Initialise all providers and services on startup, clean up on shutdown.
+
+    # JUNIOR DEV NOTE — FastAPI Lifespan
+    # -----------------------------------
+    # This is an async context manager that FastAPI calls once:
+    #   STARTUP:  everything before `yield` runs when the server starts
+    #   SHUTDOWN: everything after `yield` runs when the server stops
+    #
+    # The `yield` line is the boundary — the server is running between
+    # startup and shutdown.  This replaces the older @app.on_event("startup")
+    # / @app.on_event("shutdown") pattern.
+    """
+    # --- STARTUP ---
+    # Build the entire dependency graph and attach to app.state.
     components = await _build_all(settings)
 
+    # Attach every component to app.state so route handlers can access
+    # them via FastAPI's Depends() mechanism (see routes.py).
     for key, value in components.items():
         setattr(application.state, key, value)
 
@@ -731,7 +916,12 @@ async def _lifespan(application: FastAPI):  # noqa: ANN201
 
 
 def create_app() -> FastAPI:
-    """Build and configure the FastAPI application."""
+    """Build and configure the FastAPI application.
+
+    This is the **application factory** — it creates a new FastAPI instance,
+    attaches middleware, routes, WebSocket handlers, and static file mounts.
+    Called once at module load to create the ``app`` singleton below.
+    """
     application = FastAPI(
         title="raiveFlier API",
         version="0.1.0",
@@ -740,12 +930,18 @@ def create_app() -> FastAPI:
             "via OCR and LLM analysis, then deep-research every entity with "
             "citations from music databases, web search, and article scraping."
         ),
-        lifespan=_lifespan,
+        lifespan=_lifespan,  # ← hooks _build_all at startup, cleanup at shutdown
     )
 
     # -- Middleware (order matters: last added = first executed) --
+    # Starlette processes middleware as a stack (LIFO), so:
+    #   Request  → RequestLogging → ErrorHandling → route handler
+    #   Response ← RequestLogging ← ErrorHandling ← route handler
     application.add_middleware(ErrorHandlingMiddleware)
     application.add_middleware(RequestLoggingMiddleware)
+
+    # In production, restrict CORS to the deployed domain only.
+    # In development, allow all origins for local testing.
     if settings.app_env == "production":
         configure_cors(application, allowed_origins=[
             "https://raiveflier.onrender.com",
@@ -754,14 +950,21 @@ def create_app() -> FastAPI:
         configure_cors(application)
 
     # -- API routes --
+    # All REST endpoints are defined in src/api/routes.py under /api/v1.
     application.include_router(api_router)
 
     # -- WebSocket --
+    # Real-time progress updates pushed to the frontend during analysis.
+    # The frontend opens a WebSocket to /ws/progress/{session_id} and
+    # receives JSON messages with phase/progress/message on each update.
     @application.websocket("/ws/progress/{session_id}")
     async def ws_progress(websocket: WebSocket, session_id: str) -> None:
         await websocket_progress(websocket, session_id)
 
     # -- Frontend static files --
+    # Mount the vanilla JS/CSS/HTML frontend as static files.
+    # Each subdirectory (css/, js/, assets/) is mounted separately so
+    # FastAPI can serve them at the matching URL path.
     if _FRONTEND_DIR.exists():
         if (_FRONTEND_DIR / "css").exists():
             application.mount(
@@ -782,6 +985,8 @@ def create_app() -> FastAPI:
                 name="assets",
             )
 
+        # Serve the SPA entry point at the root URL.
+        # include_in_schema=False hides this from the OpenAPI docs.
         @application.get("/", include_in_schema=False)
         async def serve_index() -> FileResponse:
             return FileResponse(str(_FRONTEND_DIR / "index.html"))
@@ -789,16 +994,22 @@ def create_app() -> FastAPI:
     return application
 
 
+# Create the singleton FastAPI app at module load time.
+# Uvicorn references this as "src.main:app".
 app = create_app()
 
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+# When run directly (python -m src.main), start the Uvicorn dev server.
+# In production, Uvicorn is started by the entrypoint script instead.
 if __name__ == "__main__":
     uvicorn.run(
         "src.main:app",
         host=settings.app_host,
         port=settings.app_port,
+        # Hot-reload enabled in dev — Uvicorn watches for file changes
+        # and restarts the server automatically.
         reload=(settings.app_env == "development"),
     )

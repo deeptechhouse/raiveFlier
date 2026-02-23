@@ -1,4 +1,23 @@
-"""YAML configuration loader with environment variable overrides."""
+"""YAML configuration loader with environment variable overrides.
+
+# ─── CONFIGURATION HIERARCHY (Junior Developer Guide) ──────────────────
+#
+# Configuration is loaded in layers (later layers override earlier):
+#
+#   1. config/config.yaml  — Static defaults checked into the repo
+#   2. .env file           — Local developer overrides (not committed)
+#   3. Environment vars    — Set in Docker/Render at deploy time
+#
+# The load_config() function reads the YAML file first, then deep-merges
+# environment-based values on top.  This means you can set a default in
+# config.yaml and override it per-environment via env vars.
+#
+# The _deep_merge helper does recursive dict merging:
+#   base = {"ocr": {"min_confidence": 0.5}}
+#   overrides = {"ocr": {"provider": "tesseract"}}
+#   result = {"ocr": {"min_confidence": 0.5, "provider": "tesseract"}}
+# ──────────────────────────────────────────────────────────────────────
+"""
 
 from pathlib import Path
 
@@ -21,10 +40,14 @@ def load_config(path: str = "config/config.yaml") -> dict:
     config_path = Path(path)
     if config_path.exists():
         with open(config_path) as f:
+            # yaml.safe_load prevents arbitrary code execution from YAML.
+            # Always use safe_load, never load() — security best practice.
             yaml_config = yaml.safe_load(f) or {}
     else:
         yaml_config = {}
 
+    # Build env-based overrides from the pydantic-settings Settings object.
+    # Settings reads from .env and environment variables automatically.
     settings = Settings()
     env_overrides = {
         "app": {

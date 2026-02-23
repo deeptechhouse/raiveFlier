@@ -22,10 +22,17 @@ from src.utils.errors import ResearchError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import normalize_artist_name
 
+# --- Rate-limit and pagination constants ---
+# Discogs requires a user-agent header identifying the app.
 _USER_AGENT = "raiveFlier/0.1.0"
+# Discogs allows 60 authenticated requests per minute. Setting 1.0 second
+# between requests ensures we stay safely under this limit.
 _MIN_REQUEST_INTERVAL = 1.0  # seconds — 60 requests per minute
+# Cap search results to avoid excessive API calls.
 _MAX_SEARCH_RESULTS = 10
+# Maximum releases to fetch per artist to keep response times reasonable.
 _MAX_RELEASES_PER_FETCH = 100
+# Maximum label lookups for label-mate discovery (finding artists on shared labels).
 _MAX_LABEL_LOOKUPS = 10
 
 

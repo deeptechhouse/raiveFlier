@@ -5,6 +5,28 @@ that encodes rave flier conventions (headliner positioning, date formats,
 artist separator tokens like b2b / vs / &).  The JSON response is parsed,
 post-processed (artist name splitting), and mapped into immutable Pydantic
 models.
+
+Architecture: LLM-as-Parser with Two-Pass Retry
+-------------------------------------------------
+OCR text from rave fliers is messy, stylized, and full of domain jargon
+(e.g. "b2b", stacked DJ names, promoter logos rendered as text).  Rule-based
+extraction would require constant maintenance.  Instead, we delegate
+parsing to an LLM via a domain-aware prompt, then validate + post-process
+the JSON output.
+
+The two-pass retry strategy balances accuracy with resilience:
+  - **Pass 1** sends a detailed prompt with rave-flier layout heuristics and
+    asks for a rich JSON schema.  This produces the best results when the LLM
+    cooperates.
+  - **Pass 2** (activated only if Pass 1 returns unparseable JSON) uses a
+    stripped-down prompt with lower temperature, reducing the chance of the
+    LLM producing creative but malformed output.
+
+The final ``ExtractedEntities`` model feeds directly into the **confirmation
+gate** -- a downstream step where the user reviews and corrects entities
+before they are committed to the event database.  This means imperfect
+extractions are acceptable as long as they are structured; the user is
+always the last line of defence.
 """
 
 from __future__ import annotations
@@ -25,6 +47,9 @@ from src.utils.errors import EntityExtractionError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import normalize_artist_name, split_artist_names
 
+# Matches markdown code fences (```json ... ``` or ``` ... ```) that LLMs
+# frequently wrap around JSON output despite being asked not to.  The
+# DOTALL flag lets the inner capture group span multiple lines.
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
 
 
@@ -58,7 +83,13 @@ class EntityExtractor:
             Optional override for the artist-name splitting callable.
             Defaults to :func:`split_artist_names`.
         """
+        # LLM provider is injected via the IOCRProvider interface, so the
+        # extractor is agnostic about whether the backend is OpenAI, Anthropic,
+        # a local model, etc.
         self._llm = llm_provider
+        # The split function is injectable for testing (pass a mock that
+        # returns the name unchanged) and for future locale-specific splitting
+        # rules.  Default handles "b2b", "vs", "&", and "," separators.
         self._split_fn = text_normalizer_split or split_artist_names
         self._logger = get_logger(__name__)
 
@@ -104,7 +135,12 @@ class EntityExtractor:
             llm_provider=provider_name,
         )
 
-        # ----- Primary attempt -----
+        # ----- Pass 1: Detailed domain-aware prompt -----
+        # Uses a rich system prompt that primes the LLM with rave-flier layout
+        # conventions (headliner positioning, date placement, separator tokens).
+        # Temperature 0.2 keeps output focused while allowing slight creativity
+        # for ambiguous text.  4000 max_tokens accommodates fliers with long
+        # lineups.
         prompt = self._build_extraction_prompt(raw_text)
         try:
             response = await self._llm.complete(
@@ -115,6 +151,8 @@ class EntityExtractor:
             )
             parsed = self._parse_llm_response(response)
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
+            # Parse failure on the primary attempt is not fatal -- we fall
+            # through to the simpler retry prompt below.
             self._logger.warning(
                 "primary_extraction_failed",
                 error=str(exc),
@@ -122,7 +160,13 @@ class EntityExtractor:
             )
             parsed = None
 
-        # ----- Retry with simpler prompt -----
+        # ----- Pass 2: Simplified fallback prompt -----
+        # If Pass 1 returned malformed JSON (common when the LLM "hallucinates"
+        # extra commentary or truncates the object), this retry uses:
+        #   - A minimal system prompt (less room for the LLM to go off-script)
+        #   - Lower temperature (0.1) for more deterministic output
+        #   - Smaller max_tokens (2000) to reduce the chance of runaway generation
+        # If this also fails, we raise -- there is no Pass 3.
         if parsed is None:
             self._logger.info("retrying_with_simple_prompt", provider=provider_name)
             simple_prompt = self._build_simple_prompt(raw_text)
@@ -145,6 +189,10 @@ class EntityExtractor:
                     provider_name=provider_name,
                 ) from exc
 
+        # Convert the validated dict into an immutable Pydantic model.
+        # This is the boundary between "unstructured LLM output" and
+        # "typed domain objects" -- after this point, the rest of the pipeline
+        # works with strongly-typed ExtractedEntities.
         entities = self._build_entities(parsed, ocr_result)
         self._logger.info(
             "entity_extraction_complete",
@@ -153,6 +201,8 @@ class EntityExtractor:
             has_date=entities.date is not None,
             genre_tags=len(entities.genre_tags),
         )
+        # The returned ExtractedEntities feeds into the confirmation gate,
+        # where a user reviews each entity before it enters the event DB.
         return entities
 
     # ------------------------------------------------------------------
@@ -285,12 +335,20 @@ class EntityExtractor:
         """
         text = response.strip()
 
-        # Try to extract JSON from markdown fences first
+        # --- Strategy 1: Strip markdown code fences ---
+        # Despite explicit instructions to return bare JSON, most LLMs
+        # (GPT-4, Claude, Mistral) wrap output in ```json ... ``` fences.
+        # _JSON_FENCE_RE captures the content inside the fences so we can
+        # parse it directly.
         fence_match = _JSON_FENCE_RE.search(text)
         if fence_match:
             text = fence_match.group(1).strip()
 
-        # Fallback: find the first { ... } block
+        # --- Strategy 2: Brace extraction ---
+        # If the LLM returned preamble text before the JSON object (e.g.
+        # "Here is the extracted data: { ... }"), locate the outermost
+        # brace pair.  Uses rfind for the closing brace to handle nested
+        # objects correctly.
         if not text.startswith("{"):
             brace_start = text.find("{")
             brace_end = text.rfind("}")
@@ -299,6 +357,9 @@ class EntityExtractor:
 
         parsed = json.loads(text)
 
+        # Minimal schema validation -- we only require a dict with an
+        # "artists" key.  Finer-grained validation happens in _build_entities
+        # where each field is handled with safe .get() defaults.
         if not isinstance(parsed, dict):
             raise ValueError("LLM response is not a JSON object")
 
@@ -332,14 +393,25 @@ class EntityExtractor:
         ExtractedEntities
         """
         # --- Artists ---
+        # Artist processing is the most complex entity type because rave
+        # fliers routinely list multiple artists on one line using separator
+        # tokens:  "Carl Cox b2b Joseph Capriati", "Bicep & Hammer",
+        # "DJ EZ vs Todd Terry".  The LLM often returns these as a single
+        # artist entry, so we must split them into individual names.
         artists: list[ExtractedEntity] = []
         for entry in parsed.get("artists", []):
             raw_name = entry.get("name", "").strip()
+            # Default confidence 0.5 (coin-flip) when the LLM omits the field.
             confidence = float(entry.get("confidence", 0.5))
             if not raw_name:
                 continue
 
-            # Split multi-artist entries (e.g. "Artist1 b2b Artist2")
+            # Split multi-artist entries on domain-specific separators
+            # (b2b, vs, &, comma).  Each resulting name is then normalised
+            # (case-corrected, whitespace-cleaned, common OCR artifacts removed)
+            # via normalize_artist_name.  Both functions live in
+            # src/utils/text_normalizer to keep this class focused on
+            # orchestration rather than string manipulation.
             individual_names = self._split_fn(raw_name)
             for name in individual_names:
                 normalised = normalize_artist_name(name)
@@ -406,6 +478,12 @@ class EntityExtractor:
             if price_str:
                 ticket_price = price_str
 
+        # Build the immutable Pydantic model that represents everything we
+        # extracted from this flier.  The raw_ocr field preserves the original
+        # OCR output so the confirmation gate UI can display it alongside the
+        # parsed entities for user verification.  Each ExtractedEntity carries
+        # its own confidence score, enabling the gate to highlight low-confidence
+        # items that need human review.
         return ExtractedEntities(
             artists=artists,
             venue=venue,

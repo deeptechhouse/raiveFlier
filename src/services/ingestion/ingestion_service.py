@@ -1,11 +1,20 @@
 """Orchestrator for the full document ingestion pipeline.
 
-Pipeline stages: **process → chunk → tag → embed → store**.
+Pipeline stages: **process -> chunk -> tag -> embed -> store**.
 
-The :class:`IngestionService` coordinates source processors, the text
-chunker, the metadata extractor, the embedding provider, and the vector
-store to ingest books, articles, completed analyses, and bulk directories
-into the RAG knowledge base.
+The :class:`IngestionService` implements the **Orchestrator pattern**: it
+coordinates five collaborators (source processors, chunker, metadata
+extractor, embedding provider, vector store) without any of them knowing
+about each other.  Each public ``ingest_*`` method follows the same flow:
+
+    1. Source Processor -- reads the raw format, returns chapter-level chunks
+    2. TextChunker -- splits chapters into ~500-token overlapping windows
+    3. MetadataExtractor -- LLM-tags each chunk with entities/places/genres
+    4. IEmbeddingProvider -- generates dense vector embeddings
+    5. IVectorStoreProvider -- persists embedded chunks to Qdrant
+
+All dependencies are injected via constructor (Dependency Injection), so
+providers can be swapped (e.g. OpenAI -> Ollama) without changing this class.
 """
 
 from __future__ import annotations
@@ -20,6 +29,7 @@ import structlog
 from src.models.rag import CorpusStats, DocumentChunk, IngestionResult
 from src.services.ingestion.chunker import TextChunker
 from src.services.ingestion.metadata_extractor import MetadataExtractor
+# Source processors -- one per supported input format.
 from src.services.ingestion.source_processors.analysis_processor import (
     AnalysisProcessor,
 )
@@ -31,6 +41,8 @@ from src.services.ingestion.source_processors.epub_processor import EPUBProcesso
 from src.services.ingestion.source_processors.pdf_processor import PDFProcessor
 
 if TYPE_CHECKING:
+    # TYPE_CHECKING-only imports avoid circular dependencies at runtime;
+    # these interfaces are only needed for type annotations.
     from src.interfaces.article_provider import IArticleProvider
     from src.interfaces.embedding_provider import IEmbeddingProvider
     from src.interfaces.vector_store_provider import IVectorStoreProvider
@@ -40,7 +52,11 @@ logger = structlog.get_logger(logger_name=__name__)
 
 
 class IngestionService:
-    """Orchestrates the full ingestion pipeline: process → chunk → tag → embed → store.
+    """Orchestrates the full ingestion pipeline: process -> chunk -> tag -> embed -> store.
+
+    This class is the central coordinator (Orchestrator pattern).  It owns
+    instances of every source processor and delegates to injected providers
+    for embedding and storage, keeping each component decoupled.
 
     Parameters
     ----------
@@ -64,11 +80,14 @@ class IngestionService:
         vector_store: IVectorStoreProvider,
         article_scraper: IArticleProvider | None = None,
     ) -> None:
+        # Injected collaborators -- all behind interfaces for swappability.
         self._chunker = chunker
         self._metadata_extractor = metadata_extractor
         self._embedding_provider = embedding_provider
         self._vector_store = vector_store
         self._article_scraper = article_scraper
+        # Source processors -- one per input format, instantiated directly
+        # since they have no external dependencies to inject.
         self._book_processor = BookProcessor()
         self._pdf_processor = PDFProcessor()
         self._epub_processor = EPUBProcessor()
@@ -382,18 +401,23 @@ class IngestionService:
         title: str,
         start: float,
     ) -> IngestionResult:
-        """Run the tag → embed → store stages and return an :class:`IngestionResult`."""
+        """Run the tag -> embed -> store stages and return an :class:`IngestionResult`.
+
+        This is the shared tail of every ``ingest_*`` method.  After format-specific
+        processing and chunking, all paths converge here for the final three stages.
+        """
         if not chunks:
             return self._empty_result(title=title, source_id=source_id)
 
-        # Step 3: metadata extraction (LLM tagging).
+        # Step 3: metadata extraction -- LLM tags each chunk with entities,
+        # geographic locations, and music genres for filtered retrieval.
         tagged_chunks = await self._metadata_extractor.extract_batch(chunks)
 
-        # Step 4: generate embeddings.
+        # Step 4: generate dense vector embeddings for semantic search.
         texts = [c.text for c in tagged_chunks]
         embeddings = await self._embedding_provider.embed(texts)
 
-        # Step 5: store in vector DB.
+        # Step 5: persist embedded chunks to the vector database (Qdrant).
         stored = await self._vector_store.add_chunks(tagged_chunks, embeddings)
 
         elapsed = time.monotonic() - start

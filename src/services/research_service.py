@@ -3,6 +3,26 @@
 Accepts extracted entities (artists, venue, promoter, date) and dispatches
 concurrent research tasks via ``asyncio.gather``, collecting results from
 all four domain-specific researchers in parallel.
+
+Architecture role: **Facade / Dispatcher**
+-------------------------------------------
+This module sits between the pipeline controller (which hands us a bag of
+OCR-extracted entities) and the domain-specific researcher classes (artist,
+venue, promoter, date-context, event-name).  Its job is purely
+*coordination*: it does NOT contain domain research logic itself.  Instead
+it (1) fans out one asyncio task per entity, (2) runs them concurrently via
+``asyncio.gather``, and (3) collects results, wrapping any exception into a
+zero-confidence placeholder so that callers never have to handle partial
+failures.
+
+Design decisions worth noting:
+- Each researcher is injected via constructor (dependency inversion),
+  making the service testable with mocks and swappable per CLAUDE.md §6.
+- The ``return_exceptions=True`` flag on ``asyncio.gather`` prevents one
+  failing researcher from cancelling every other in-flight task.
+- Date parsing lives here (not in its own module) because it is only
+  needed at this orchestration layer, to resolve the event_date that
+  several researchers accept as an optional context parameter.
 """
 
 from __future__ import annotations
@@ -24,8 +44,15 @@ from src.services.promoter_researcher import PromoterResearcher
 from src.services.venue_researcher import VenueResearcher
 from src.utils.logging import get_logger
 
-# Attempt to use python-dateutil for flexible date parsing; fall back to
-# manual parsing if the package is not installed.
+# ---------------------------------------------------------------------------
+# Flexible date parsing: two-tier strategy
+# ---------------------------------------------------------------------------
+# Rave fliers use wildly inconsistent date formats ("Saturday March 15th 1997",
+# "03/15/97", "15.03.1997", etc.).  We prefer python-dateutil's fuzzy parser
+# because it handles most formats out of the box.  If dateutil is missing from
+# the environment (e.g. minimal Docker image), the _manual_date_parse fallback
+# covers the most common patterns with explicit regexes.  This graceful
+# degradation keeps the service functional even without optional dependencies.
 try:
     from dateutil import parser as dateutil_parser
 
@@ -33,7 +60,9 @@ try:
 except ImportError:  # pragma: no cover
     _HAS_DATEUTIL = False
 
-# Ordinal suffix pattern used during manual date parsing
+# Ordinal suffix pattern used during manual date parsing.
+# Strips "st", "nd", "rd", "th" from day numbers so "15th" becomes "15",
+# which both dateutil and the manual parser can handle cleanly.
 _ORDINAL_RE = re.compile(r"(\d+)(st|nd|rd|th)\b", re.IGNORECASE)
 
 
@@ -109,10 +138,15 @@ class ResearchService:
         )
 
         # -- Build task list --------------------------------------------------
+        # We maintain parallel lists: `tasks` (the coroutines) and
+        # `task_labels` (human-readable identifiers like "artist:DJ Rush").
+        # The labels are used later to construct placeholder results when a
+        # task raises an exception, so the caller always receives one
+        # ResearchResult per submitted entity regardless of success/failure.
         tasks: list[asyncio.Task[ResearchResult]] = []
         task_labels: list[str] = []
 
-        # 1. One task per artist
+        # 1. One task per artist — each artist gets its own concurrent task
         for artist_entity in entities.artists:
             tasks.append(
                 asyncio.ensure_future(
@@ -179,9 +213,21 @@ class ResearchService:
             return []
 
         # -- Execute all tasks concurrently -----------------------------------
+        # Fan-out pattern: asyncio.gather runs every task on the event loop
+        # simultaneously.  ``return_exceptions=True`` is critical — without it,
+        # the first exception would cancel all other in-flight tasks.  With
+        # it, exceptions are returned as values in `raw_results`, allowing
+        # the collection loop below to wrap each failure into a zero-
+        # confidence placeholder instead of losing successful research.
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # -- Collect results --------------------------------------------------
+        # Error-wrapping strategy: any task that raised an exception is
+        # converted into a ResearchResult with confidence=0.0 and a warning
+        # message.  This guarantees that the returned list has exactly one
+        # result per submitted entity.  Downstream consumers (e.g. the
+        # citation builder) can check ``result.confidence == 0`` to detect
+        # failed lookups without needing try/except logic of their own.
         results: list[ResearchResult] = []
         for idx, raw in enumerate(raw_results):
             label = task_labels[idx]
@@ -193,8 +239,8 @@ class ResearchService:
                     error=str(raw),
                     error_type=type(raw).__name__,
                 )
-                # Build a fallback ResearchResult so callers always get an
-                # entry for every entity that was submitted.
+                # Parse the label back into entity_type + entity_name so
+                # the placeholder result identifies which entity failed.
                 entity_type, entity_name = label.split(":", 1)
                 results.append(
                     ResearchResult(
@@ -250,18 +296,28 @@ class ResearchService:
         # Remove ordinal suffixes (1st → 1, 2nd → 2, etc.)
         cleaned = _ORDINAL_RE.sub(r"\1", cleaned)
 
-        # Attempt dateutil first
+        # Tier 1: dateutil (fuzzy=True handles "around March 15 1997" etc.)
+        # contextlib.suppress swallows any parse failure so we fall through
+        # to the manual regex tier without raising.
         if _HAS_DATEUTIL:
             with contextlib.suppress(Exception):
                 parsed = dateutil_parser.parse(cleaned, fuzzy=True)
                 return parsed.date()
 
-        # Manual fallback — try several patterns
+        # Tier 2: manual regex fallback — covers the five most common flier
+        # date formats.  See _manual_date_parse for the pattern list.
         return self._manual_date_parse(cleaned)
 
     @staticmethod
     def _manual_date_parse(text: str) -> date | None:
-        """Attempt to parse a date string using common format patterns."""
+        """Attempt to parse a date string using common format patterns.
+
+        This is the Tier 2 fallback when python-dateutil is unavailable.
+        Each regex pattern is tried in order; the first successful parse
+        wins.  contextlib.suppress(ValueError) around each date()
+        constructor protects against impossible dates (e.g. Feb 30).
+        """
+        # Full and abbreviated month names mapped to numeric month values.
         month_map: dict[str, int] = {
             "january": 1,
             "february": 2,
@@ -307,6 +363,9 @@ class ResearchService:
                     return date(int(year_str), month, int(day_str))
 
         # Pattern: MM/DD/YY or MM/DD/YYYY
+        # Two-digit year heuristic: >50 means 1900s, <=50 means 2000s.
+        # This is a rave-flier-era assumption: most fliers are 1988–2010,
+        # so "97" → 1997 and "03" → 2003.
         match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2,4})", text)
         if match:
             m_str, d_str, y_str = match.groups()
@@ -338,6 +397,10 @@ class ResearchService:
 
         Many flier venues include the city after a comma or dash:
         ``"The Warehouse, Chicago"`` → ``"Chicago"``.
+
+        The extracted city is passed as a context hint to researchers so
+        they can add city-qualified search queries for disambiguation
+        (e.g. distinguishing "Fabric, London" from a fabric store).
         """
         for separator in [",", " - ", " — ", " – "]:
             if separator in venue_text:

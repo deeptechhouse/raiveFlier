@@ -1,4 +1,41 @@
 #!/usr/bin/env python3
+# =============================================================================
+# scripts/rebuild_corpus.py — Full Corpus Rebuild Utility
+# =============================================================================
+#
+# Rebuilds the entire RAG vector store corpus from scratch. This is the
+# "nuclear option" for corpus management — it re-ingests all source material
+# in a deterministic order, producing a fresh ChromaDB database.
+#
+# Use Cases:
+#   - Embedding model changed (must re-embed all chunks with new dimensions)
+#   - Chunking strategy changed (different window size or overlap)
+#   - Metadata schema changed (new tags or citation tiers)
+#   - Corpus corruption or data migration
+#   - Initial setup on a new machine
+#
+# Ingestion Order (3 phases):
+#   1. Reference corpus (data/reference_corpus/*.txt)
+#      Curated text files about rave history, scenes, labels, and culture.
+#      Small but high-quality — forms the foundation of the corpus.
+#
+#   2. RA Exchange transcripts (transcripts/ra_exchange/*.txt)
+#      Podcast interview transcripts. First-person accounts from artists
+#      and scene figures. Ingested as source_type="interview", tier=3.
+#
+#   3. Books (optional, from a user-specified directory)
+#      PDF and EPUB books about electronic music, rave culture, etc.
+#      Uses Anna's Archive filename parsing for metadata extraction.
+#
+# This script does NOT delete the existing ChromaDB — it adds to it. If you
+# need a clean slate, delete the ChromaDB directory first:
+#   rm -rf data/chromadb && python scripts/rebuild_corpus.py /path/to/books/
+#
+# Usage:
+#   python scripts/rebuild_corpus.py /path/to/books/
+#   python scripts/rebuild_corpus.py   # skip books if no path given
+# =============================================================================
+
 """Rebuild the entire RAG corpus from scratch.
 
 Ingests all source material in order:
@@ -19,7 +56,8 @@ import sys
 import time
 from pathlib import Path
 
-# Ensure project root is on sys.path
+# PROJECT_ROOT is used throughout to resolve relative paths to corpus
+# directories (data/reference_corpus, transcripts/ra_exchange).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -62,7 +100,11 @@ def _build_llm_provider(app_settings: Settings):
 
 
 def parse_annas_archive_filename(filename: str) -> dict:
-    """Parse Anna's Archive filename format into metadata."""
+    """Parse Anna's Archive filename format into metadata.
+
+    Same logic as batch_ingest.py — see that file for detailed comments.
+    Duplicated here because rebuild_corpus.py is a standalone script.
+    """
     stem = Path(filename).stem
     stem = re.sub(r"\s*--\s*Anna'?s Archive$", "", stem)
     parts = [p.strip() for p in stem.split(" -- ")]
@@ -94,7 +136,11 @@ def parse_annas_archive_filename(filename: str) -> dict:
 
 
 def build_ingestion_service() -> tuple[IngestionService, str]:
-    """Bootstrap the ingestion service from project settings."""
+    """Bootstrap the ingestion service from project settings.
+
+    Returns the service and the ChromaDB persist directory path (used
+    in the final summary to tell the operator where the data lives).
+    """
     settings = Settings()
 
     embedding_provider = _build_embedding_provider(settings)
@@ -130,7 +176,13 @@ def build_ingestion_service() -> tuple[IngestionService, str]:
 
 
 async def ingest_reference_corpus(service: IngestionService) -> int:
-    """Ingest the curated reference text files."""
+    """Ingest the curated reference text files.
+
+    The reference corpus lives at data/reference_corpus/ and contains
+    hand-curated text files covering rave history, scene overviews,
+    label histories, and cultural context. This is the smallest but
+    highest-quality tier of the corpus.
+    """
     corpus_dir = PROJECT_ROOT / "data" / "reference_corpus"
     if not corpus_dir.is_dir():
         print(f"  Skipping — {corpus_dir} not found")
@@ -146,7 +198,12 @@ async def ingest_reference_corpus(service: IngestionService) -> int:
 
 
 async def ingest_transcripts(service: IngestionService) -> int:
-    """Ingest all RA Exchange transcripts."""
+    """Ingest all RA Exchange transcripts.
+
+    Processes transcripts in batches of 10 to avoid overwhelming the
+    embedding API with concurrent requests. Each transcript is individually
+    processed (read -> preprocess -> chunk -> tag -> embed -> store).
+    """
     transcript_dir = PROJECT_ROOT / "transcripts" / "ra_exchange"
     if not transcript_dir.is_dir():
         print(f"  Skipping — {transcript_dir} not found")
@@ -178,7 +235,12 @@ async def ingest_transcripts(service: IngestionService) -> int:
 
 
 async def _ingest_single_transcript(service, file_path: Path):
-    """Ingest a single transcript file as an interview source."""
+    """Ingest a single transcript file as an interview source.
+
+    Uses preprocess_transcript() to clean common transcription artifacts
+    (double spaces, timestamps, speaker labels) before chunking. Metadata
+    is inherited from the raw chunks produced by ArticleProcessor.
+    """
     from src.services.ingestion.source_processors.article_processor import ArticleProcessor
     from src.models.rag import DocumentChunk
 
@@ -211,7 +273,12 @@ async def _ingest_single_transcript(service, file_path: Path):
 
 
 async def ingest_books(service: IngestionService, book_dir: Path) -> int:
-    """Ingest all PDF and EPUB books from a directory."""
+    """Ingest all PDF and EPUB books from a directory.
+
+    Processes books sequentially with per-book error handling. Each book's
+    metadata (title, author, year) is parsed from the Anna's Archive
+    filename format. Hidden files (starting with '.') are skipped.
+    """
     if not book_dir.is_dir():
         print(f"  Skipping — {book_dir} not found")
         return 0
@@ -249,6 +316,11 @@ async def ingest_books(service: IngestionService, book_dir: Path) -> int:
 
 
 async def main() -> None:
+    """Main entry point: run all 3 ingestion phases in order.
+
+    Accepts an optional command-line argument for the book directory.
+    If no directory is provided, Phase 3 (books) is skipped.
+    """
     book_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
     print("=" * 60)

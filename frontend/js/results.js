@@ -1,9 +1,51 @@
 /**
  * results.js — raiveFlier results display module.
  *
- * Fetches completed analysis data and renders the full results view:
- * event summary, artist cards, venue/promoter, date context,
- * interconnection graph, and citations.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * This is the largest and most complex frontend module. It renders the final
+ * analysis results after the pipeline completes. Responsibilities:
+ *
+ *   1. Fetch completed results from /api/v1/fliers/{session_id}/results
+ *   2. Normalize the API response (handles two possible JSON shapes)
+ *   3. Render six content sections via HTML string building:
+ *      - Event Summary: header with flier thumbnail and metadata tags
+ *      - Artist Cards: expandable cards with releases, labels, external links
+ *      - Venue & Promoter: expandable research cards
+ *      - Event History: past instances of the same event series
+ *      - Date & Context: scene, city, and cultural context panels
+ *      - Interconnections: narrative prose + relationship list + SVG graph
+ *   4. Initialize interactive behaviors after rendering:
+ *      - Expandable card toggles (accordion pattern)
+ *      - SVG graph hover/focus highlighting
+ *      - Connection dismiss buttons (POST to dismiss-connection endpoint)
+ *      - Q&A trigger buttons (open the QA drawer)
+ *      - Rating widgets (thumbs up/down)
+ *      - Recommendations panel initialization
+ *      - JSON export functionality
+ *
+ * DATA NORMALIZATION
+ * ==================
+ * The backend can return data in two shapes:
+ *   1. FlierAnalysisResponse (raw API format with research_results array)
+ *   2. OutputFormatter shape (pre-normalized with research.artists array)
+ * The _normalizeApiResponse() function detects which shape it received and
+ * transforms it into a consistent display-ready format.
+ *
+ * DOM MANIPULATION PATTERN
+ * ========================
+ * All HTML is built as strings via template literals, then set via innerHTML.
+ * After innerHTML, separate init functions attach event listeners using
+ * addEventListener (not inline onclick) for better separation of concerns.
+ * The exception is "Ask about this" buttons, which use the QA module directly.
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Called by Progress._onComplete() after pipeline finishes
+ * - Calls App.showView("results") and App.getSessionId()
+ * - Calls QA.openPanel() when "Ask about this" buttons are clicked
+ * - Calls Rating.renderWidget() and Rating.initWidgets() for feedback UI
+ * - Calls Recommendations.init() to start artist recommendation fetching
  */
 
 "use strict";
@@ -13,6 +55,8 @@ const Results = (() => {
   // Constants
   // ------------------------------------------------------------------
 
+  // Human-readable names for the 6-tier citation hierarchy.
+  // Tier 1 (published books) is most authoritative; tier 6 (community archives) is least.
   const TIER_NAMES = {
     1: "Published Books",
     2: "Press & Magazines",
@@ -22,19 +66,23 @@ const Results = (() => {
     6: "Community Archives",
   };
 
+  // Color mapping for SVG graph nodes — each entity type gets a distinct color
+  // from the design system. These reference CSS custom properties for consistency.
   const NODE_COLORS = {
-    ARTIST: "var(--color-accent)",
-    VENUE: "var(--color-verdigris)",
-    PROMOTER: "var(--color-amber)",
-    LABEL: "var(--color-info)",
-    DATE: "var(--color-warning-text)",
+    ARTIST: "var(--color-accent)",       // Amethyst purple
+    VENUE: "var(--color-verdigris)",      // Teal green
+    PROMOTER: "var(--color-amber)",      // Gold amber
+    LABEL: "var(--color-info)",          // Blue
+    DATE: "var(--color-warning-text)",   // Amber text
   };
 
   // ------------------------------------------------------------------
   // Private state
   // ------------------------------------------------------------------
 
+  // The raw (un-normalized) API response, kept for JSON export
   let _rawData = null;
+  // The current session ID, used for API calls (dismiss, Q&A, ratings)
   let _sessionId = null;
 
   // ------------------------------------------------------------------
@@ -96,8 +144,18 @@ const Results = (() => {
   // ------------------------------------------------------------------
 
   /**
-   * Transform either the FlierAnalysisResponse (raw API) or
-   * OutputFormatter shape into the display-ready format.
+   * Transform the API response into a consistent display-ready format.
+   *
+   * WHY: The backend can return data in two different shapes depending on
+   * whether the OutputFormatter service was used or the raw research results
+   * are returned directly. This function detects which shape was received
+   * and normalizes it so the rendering functions always work with the same
+   * predictable structure.
+   *
+   * Output shape:
+   *   { session_id, entities, research: { artists, venue, promoter, date_context },
+   *     interconnections: { relationships, patterns, narrative, nodes },
+   *     citations, completed_at }
    */
   function _normalizeApiResponse(raw) {
     // If already in OutputFormatter shape, augment and return
@@ -1014,8 +1072,19 @@ const Results = (() => {
   // ------------------------------------------------------------------
 
   /**
-   * Render a simple force-directed-style graph using SVG.
-   * Nodes placed in circular layout, lines between connected nodes.
+   * Render an entity relationship graph as an SVG element.
+   *
+   * LAYOUT: Nodes are placed in a circular arrangement (not force-directed,
+   * despite the comment — this is a simpler circular layout). Each node is
+   * positioned at equal angular intervals around a circle centered in the SVG.
+   *
+   * VISUAL ENCODING:
+   *   - Node color = entity type (artist=amethyst, venue=teal, promoter=amber)
+   *   - Edge thickness = confidence score (higher confidence = thicker line)
+   *   - Labels are truncated to 14 characters to prevent overlap
+   *
+   * INTERACTIVITY: After rendering, _initGraphInteractions() adds hover/focus
+   * handlers that highlight connected edges and dim unrelated ones.
    */
   function renderRelationshipGraph(relationships, nodes) {
     if (!nodes || nodes.length === 0) return "";
@@ -1119,6 +1188,14 @@ const Results = (() => {
   // Dismiss connection handler
   // ------------------------------------------------------------------
 
+  /**
+   * Send a dismiss request to the backend for an incorrect relationship.
+   * The backend marks the connection as dismissed so it is excluded from
+   * future outputs. On success, the list item fades out and is removed.
+   *
+   * API: POST /api/v1/fliers/{session_id}/dismiss-connection
+   * Body: { source, target, relationship_type }
+   */
   async function _dismissConnection(source, target, type, listItemEl) {
     const sessionId = App.getSessionId();
     if (!sessionId) return;
@@ -1227,9 +1304,12 @@ const Results = (() => {
   }
 
   // ------------------------------------------------------------------
-  // Export
+  // Export — Download the raw analysis data as a JSON file
   // ------------------------------------------------------------------
 
+  /** Create a downloadable JSON file from the raw API response.
+   *  Uses the Blob API + URL.createObjectURL pattern to trigger a download
+   *  without any server interaction. The temporary link is cleaned up after click. */
   function _exportJson() {
     if (!_rawData) return;
 
@@ -1328,6 +1408,21 @@ const Results = (() => {
 
   /**
    * Render the full results view from normalised data.
+   *
+   * This is the main rendering orchestrator. It calls each section renderer
+   * in order, concatenates their HTML strings, sets innerHTML once (for
+   * performance — single DOM write), then initializes all interactive behaviors.
+   *
+   * The initialization sequence after innerHTML:
+   *   1. _initExpandables() — accordion click handlers
+   *   2. _initGraphInteractions() — SVG hover/focus highlighting
+   *   3. _initDismissHandlers() — connection dismiss buttons
+   *   4. _initQATriggers() — "Ask about this" buttons
+   *   5. Rating.loadRatings() — fetch cached ratings from backend
+   *   6. Rating.initWidgets() — event delegation for thumbs up/down
+   *   7. Recommendations.init() — start background recommendation fetch
+   *   8. Export button click handler
+   *
    * @param {Object} data — Normalised analysis data.
    */
   function renderResults(data) {

@@ -1,9 +1,37 @@
 /**
  * corpus.js — raiveFlier corpus search sidebar module.
  *
- * Renders a resizable, collapsible left sidebar for semantic search
- * against the RAG knowledge base. Available at any time, independent
- * of analysis sessions.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * A standalone sidebar for searching the RAG (Retrieval-Augmented Generation)
+ * knowledge base. This is INDEPENDENT of the analysis pipeline — it is always
+ * available, even before uploading a flier. It lets users explore rave culture
+ * knowledge (books, articles, interviews) via semantic search.
+ *
+ * FEATURES
+ * ========
+ * - Resizable sidebar (drag the right edge to adjust width)
+ * - Collapsible with toggle button (fixed bottom-left of viewport)
+ * - Search with 300ms debounce (auto-searches after 3+ characters)
+ * - Filterable by source type, entity tag, and geographic location
+ * - Results show: source title, citation tier, excerpt text, similarity score,
+ *   entity/geo/genre tags, and rating widgets
+ * - Click-to-expand on result text (reveals full excerpt)
+ * - Width and collapsed state persisted to localStorage
+ *
+ * API INTERACTIONS
+ * ================
+ * - GET /api/v1/corpus/stats — Check if RAG is available and get corpus size
+ * - POST /api/v1/corpus/search — Semantic search with query + optional filters
+ *   Request: { query, top_k, source_type?, entity_tag?, geographic_tag? }
+ *   Response: { results: [{ text, source_title, citation_tier, similarity_score, ... }] }
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Initialized by App.initApp() at startup
+ * - Uses Rating module for per-result thumbs up/down (optional)
+ * - Toggled via the #corpus-toggle button in the HTML
+ * - Closes on Escape key
  */
 
 "use strict";
@@ -13,22 +41,22 @@ const Corpus = (() => {
   // Private state
   // ------------------------------------------------------------------
 
-  let _isOpen = false;
-  let _isLoading = false;
-  let _width = 360;
-  let _results = [];
-  let _lastQuery = "";
-  let _ragAvailable = false;
-  let _corpusStats = null;
-  let _filtersOpen = false;
-  let _debounceTimer = null;
+  let _isOpen = false;        // Whether the sidebar is currently visible
+  let _isLoading = false;     // Whether a search request is in flight
+  let _width = 360;           // Current sidebar width in pixels
+  let _results = [];          // Array of search result objects from the API
+  let _lastQuery = "";        // The most recent search query (for empty-state messaging)
+  let _ragAvailable = false;  // Whether the backend has a corpus loaded
+  let _corpusStats = null;    // { total_chunks, total_sources } from /corpus/stats
+  let _filtersOpen = false;   // Whether the filter panel is expanded
+  let _debounceTimer = null;  // Timer ID for search input debouncing
 
-  // Resize state
+  // Resize state — managed by mouse event listeners on the drag handle
   let _isResizing = false;
-  const _MIN_WIDTH = 280;
-  const _MAX_WIDTH = 600;
+  const _MIN_WIDTH = 280;     // Minimum sidebar width (pixels)
+  const _MAX_WIDTH = 600;     // Maximum sidebar width (pixels)
 
-  // localStorage keys
+  // localStorage keys for persisting user preferences across sessions
   const _LS_WIDTH = "corpus_sidebar_width";
   const _LS_COLLAPSED = "corpus_sidebar_collapsed";
 
@@ -346,7 +374,9 @@ const Corpus = (() => {
   }
 
   // ------------------------------------------------------------------
-  // Search
+  // Search — Debounced input triggers automatic search after 300ms pause.
+  // The debounce prevents firing a request on every keystroke, reducing
+  // unnecessary API calls. Minimum 3 characters required before auto-search.
   // ------------------------------------------------------------------
 
   function _handleInputDebounce() {
@@ -427,7 +457,11 @@ const Corpus = (() => {
   }
 
   // ------------------------------------------------------------------
-  // Resize (drag handle)
+  // Resize (drag handle) — Lets the user resize the sidebar by dragging
+  // the right edge. Uses three mouse events:
+  //   mousedown on handle: start resizing, change cursor
+  //   mousemove on document: update width based on mouse X position
+  //   mouseup on document: stop resizing, save new width to localStorage
   // ------------------------------------------------------------------
 
   function _initDragHandle() {

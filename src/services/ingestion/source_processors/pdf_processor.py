@@ -2,8 +2,14 @@
 
 Reads PDF files using PyMuPDF (fitz), extracts text page-by-page, detects
 chapter boundaries, and returns logical sections as
-:class:`~src.models.rag.DocumentChunk` objects.  Supports both text-based
-and scanned PDFs (PyMuPDF handles embedded text layers from OCR'd PDFs).
+:class:`~src.models.rag.DocumentChunk` objects with ``citation_tier = 1``.
+
+Supports both text-based PDFs and scanned PDFs with embedded OCR text layers.
+When no chapter headings are detected (e.g. scanned documents without structure),
+pages are grouped into fixed-size ~10-page sections as a fallback.
+
+Like BookProcessor, this returns chapter-level chunks for downstream
+fine-grained splitting by TextChunker.
 """
 
 from __future__ import annotations
@@ -13,14 +19,14 @@ import re
 import uuid
 from datetime import date
 
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF -- the "fitz" import name is a PyMuPDF convention
 import structlog
 
 from src.models.rag import DocumentChunk
 
 logger = structlog.get_logger(logger_name=__name__)
 
-# Regex patterns for detecting chapter boundaries in extracted text.
+# Same chapter-detection patterns as BookProcessor for consistency.
 _CHAPTER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^Chapter\s+\d+", re.IGNORECASE),
     re.compile(r"^PART\s+[IVXLCDM\d]+", re.IGNORECASE),

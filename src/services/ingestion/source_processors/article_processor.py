@@ -1,7 +1,18 @@
 """Source processor for web articles and local HTML/text article files.
 
 Fetches or reads article content and wraps it in :class:`~src.models.rag.DocumentChunk`
-objects with source type and citation tier inferred from URL patterns.
+objects with source type and citation tier **automatically inferred from URL domain**.
+
+The URL classification system maps known electronic-music publications to
+appropriate source types and citation tiers:
+  - Tier 2 (press): RA, Mixmag, DJ Mag, Pitchfork, FACT, XLR8R, etc.
+  - Tier 3 (interview): RBMA, Boiler Room
+  - Tier 4 (reference): Wikipedia, Discogs, MusicBrainz
+  - Tier 6 (forum): Reddit, generic forums
+  - Tier 5 (default): any unrecognized domain
+
+This tier system ensures that higher-authority sources are weighted more
+heavily during RAG retrieval and citation generation.
 """
 
 from __future__ import annotations
@@ -21,8 +32,10 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(logger_name=__name__)
 
 # URL-to-source-type and citation tier mapping.
-# More specific patterns are checked first.
+# Each tuple is (domain_pattern, source_type, citation_tier).
+# Checked in order -- first match wins.
 _URL_TIER_MAP: list[tuple[re.Pattern[str], str, int]] = [
+    # Tier 2: Music press -- authoritative electronic music publications
     (re.compile(r"residentadvisor\.net", re.IGNORECASE), "press", 2),
     (re.compile(r"ra\.co", re.IGNORECASE), "press", 2),
     (re.compile(r"mixmag\.net", re.IGNORECASE), "press", 2),
@@ -33,12 +46,15 @@ _URL_TIER_MAP: list[tuple[re.Pattern[str], str, int]] = [
     (re.compile(r"thefader\.com", re.IGNORECASE), "press", 2),
     (re.compile(r"xlr8r\.com", re.IGNORECASE), "press", 2),
     (re.compile(r"electronicbeats\.net", re.IGNORECASE), "press", 2),
+    # Tier 3: Interviews -- long-form artist conversations
     (re.compile(r"redbullmusicacademy\.", re.IGNORECASE), "interview", 3),
     (re.compile(r"rbma\.", re.IGNORECASE), "interview", 3),
     (re.compile(r"boilerroom\.", re.IGNORECASE), "interview", 3),
+    # Tier 4: Reference databases -- structured factual data
     (re.compile(r"wikipedia\.org", re.IGNORECASE), "reference", 4),
     (re.compile(r"discogs\.com", re.IGNORECASE), "reference", 4),
     (re.compile(r"musicbrainz\.org", re.IGNORECASE), "reference", 4),
+    # Tier 6: Forums -- user-generated, lower reliability
     (re.compile(r"reddit\.com", re.IGNORECASE), "forum", 6),
     (re.compile(r"forums?\.", re.IGNORECASE), "forum", 6),
 ]

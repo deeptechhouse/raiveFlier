@@ -1,18 +1,50 @@
 /**
  * recommendations.js — raiveFlier recommendation panel module.
  *
- * Renders a bottom-anchored, collapsible floating panel for displaying
- * artist recommendations based on flier analysis.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * A bottom-anchored, collapsible floating panel that displays artist
+ * recommendations derived from the flier analysis. This is the discovery
+ * feature — it helps users find new artists related to the ones on the flier.
  *
- * Two-phase loading strategy:
- *   Phase 1 (quick) — label-mate results from Discogs API, fetched
+ * TWO-PHASE LOADING STRATEGY
+ * ==========================
+ * Uses progressive enhancement to show results as fast as possible:
+ *
+ *   Phase 1 (quick) — Label-mate results from Discogs API, fetched
  *     eagerly on init(). No LLM calls. Renders in 1-3 seconds.
- *   Phase 2 (full)  — all tiers + LLM explanations, fetched in
- *     background after quick results arrive. Silently replaces the
- *     panel content when ready.
+ *     Endpoint: GET /api/v1/fliers/{session_id}/recommendations/quick
  *
- * Three-tier priority display: label-mates, shared-flier,
- * shared-lineup, LLM picks.
+ *   Phase 2 (full)  — All tiers + LLM-generated explanations, fetched
+ *     in background after quick results arrive. Silently replaces the
+ *     panel content when ready. A "backfill indicator" (small spinner)
+ *     shows at the bottom of the card list while Phase 2 loads.
+ *     Endpoint: GET /api/v1/fliers/{session_id}/recommendations
+ *
+ * Phase 2 failure is non-fatal — quick results remain visible. This
+ * ensures the user always sees something even if the LLM is slow/down.
+ *
+ * THREE-TIER PRIORITY DISPLAY
+ * ===========================
+ * Recommendations are categorized by how the connection was discovered:
+ *   - label_mate: Artists on the same record label (strongest signal)
+ *   - shared_flier: Artists who appeared on other fliers with these artists
+ *   - shared_lineup: Artists from the same event lineups
+ *   - llm_suggestion: LLM-identified connections (weakest signal, most creative)
+ *
+ * Each tier gets a distinct CSS color via BEM modifier classes.
+ *
+ * DOM STRUCTURE
+ * =============
+ * Targets #reco-panel (defined in index.html). Builds its own inner HTML:
+ *   .reco-panel__toggle-bar — Collapsed bar with title, count badge, chevron
+ *   .reco-panel__body       — Expandable container for recommendation cards
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Called by Results.fetchAndDisplayResults() via Recommendations.init()
+ * - Uses Rating module for per-recommendation thumbs up/down
+ * - No outbound calls to other modules (leaf node in the dependency graph)
  */
 
 "use strict";
@@ -22,17 +54,19 @@ const Recommendations = (() => {
   // Private state
   // ------------------------------------------------------------------
 
-  let _isOpen = false;
-  let _sessionId = null;
-  let _recommendations = [];
-  let _error = null;
+  // Panel UI state
+  let _isOpen = false;            // Whether the panel body is expanded
+  let _sessionId = null;          // Pipeline session UUID for API calls
+  let _recommendations = [];      // Array of recommendation objects from the API
+  let _error = null;              // Last error message, if any
 
-  // Two-phase fetch state
-  let _isLoadingQuick = false;
-  let _isLoadingFull = false;
-  let _hasFetchedQuick = false;
-  let _hasFetchedFull = false;
-  let _isPartial = true;
+  // Two-phase fetch state — these flags coordinate the progressive loading
+  // strategy so the UI knows which phase is active and what to display.
+  let _isLoadingQuick = false;    // Phase 1 (label-mates) fetch in flight
+  let _isLoadingFull = false;     // Phase 2 (all tiers + LLM) fetch in flight
+  let _hasFetchedQuick = false;   // Phase 1 completed successfully
+  let _hasFetchedFull = false;    // Phase 2 completed successfully
+  let _isPartial = true;          // True until Phase 2 completes — controls "+" suffix on count badge
 
   // ------------------------------------------------------------------
   // Utility
@@ -61,6 +95,11 @@ const Recommendations = (() => {
   /**
    * Render the toggle bar and empty body into #reco-panel.
    * The panel becomes visible but stays collapsed until toggled.
+   *
+   * The toggle bar acts as an always-visible "peek" element at the bottom
+   * of the viewport. It shows a count badge (e.g., "5+ artists") so the
+   * user knows recommendations are available without needing to open the panel.
+   * Clicking the bar expands the body to reveal the recommendation cards.
    */
   function _renderShell() {
     const panel = _getPanel();
@@ -129,8 +168,10 @@ const Recommendations = (() => {
 
   /**
    * Map a source_tier value to a human-readable label.
-   * @param {string} tier
-   * @returns {string}
+   * These labels appear as badge text on each recommendation card's header,
+   * telling the user how the recommendation was discovered.
+   * @param {string} tier — API value: "label_mate" | "shared_flier" | "shared_lineup" | "llm_suggestion"
+   * @returns {string} Display label for the UI
    */
   function _tierLabel(tier) {
     const labels = {
@@ -144,8 +185,10 @@ const Recommendations = (() => {
 
   /**
    * Map a source_tier value to the appropriate CSS modifier class.
-   * @param {string} tier
-   * @returns {string}
+   * Each tier gets a distinct visual treatment (color coding) defined
+   * in style.css via BEM modifier classes on the tier badge element.
+   * @param {string} tier — API value
+   * @returns {string} BEM modifier class name for CSS styling
    */
   function _tierClass(tier) {
     const classes = {
@@ -157,7 +200,12 @@ const Recommendations = (() => {
     return classes[tier] || "";
   }
 
-  /** Update the count badge on the collapsed toggle bar. */
+  /**
+   * Update the count badge on the collapsed toggle bar.
+   * Shows "5+ artists" when only Phase 1 results are available (_isPartial=true),
+   * or "8 artists" when Phase 2 has completed with the final count.
+   * The "+" suffix signals to the user that more results may be coming.
+   */
   function _updateCountBadge() {
     const countEl = document.getElementById("reco-count");
     if (!countEl) return;
@@ -171,11 +219,31 @@ const Recommendations = (() => {
     }
   }
 
-  /** Render the recommendation cards into the panel body. */
+  /**
+   * Render the recommendation cards into the panel body.
+   *
+   * This is a full re-render: it builds the entire card list from the
+   * _recommendations array, sets innerHTML, then post-processes by
+   * injecting Rating widgets into each card's footer placeholder.
+   *
+   * Called multiple times during the two-phase lifecycle:
+   *   1. After Phase 1 completes — shows quick results + backfill spinner
+   *   2. While Phase 2 loads — re-renders to show/hide the backfill indicator
+   *   3. After Phase 2 completes — final render with all tiers, no spinner
+   *
+   * Each recommendation card displays:
+   *   - Rank number + artist name + tier badge (header)
+   *   - Genre tags (optional)
+   *   - Reason text explaining the connection
+   *   - Connected-to line with label or event context (optional)
+   *   - Connection strength bar (0-100% fill)
+   *   - Rating widget (thumbs up/down via Rating module)
+   */
   function _renderResults() {
     const content = document.getElementById("reco-content");
     if (!content) return;
 
+    // Edge case: no results yet — show appropriate fallback
     if (!_recommendations.length) {
       // No quick results yet — if full fetch is in progress, show spinner
       if (_isLoadingFull) {
@@ -190,19 +258,25 @@ const Recommendations = (() => {
       return;
     }
 
+    // Build card HTML for each recommendation
     let html = "";
     _recommendations.forEach((rec, i) => {
       const rank = i + 1;
+
+      // Genre tags — rendered as inline chip elements
       const genreTags = (rec.genres || [])
         .map((g) => `<span class="reco-card__genre">${_esc(g)}</span>`)
         .join("");
 
+      // Connected-to — which flier artists this recommendation links to
       const connectedTo = (rec.connected_to || [])
         .map((a) => `<strong>${_esc(a)}</strong>`)
         .join(", ");
 
+      // Connection strength as percentage for the fill bar width
       const strengthPct = Math.round((rec.connection_strength || 0.5) * 100);
 
+      // Context detail — shows "via [label]" for label-mates or "at [event]" for shared events
       let connectionDetail = "";
       if (rec.label_name) {
         connectionDetail = ` via <strong>${_esc(rec.label_name)}</strong>`;
@@ -210,7 +284,8 @@ const Recommendations = (() => {
         connectionDetail = ` at <strong>${_esc(rec.event_name)}</strong>`;
       }
 
-      // Rating widget placeholder
+      // Rating widget placeholder — Rating.renderWidget() HTML will be injected here
+      // after innerHTML is set, because Rating needs actual DOM elements to attach to.
       const ratingId = `reco-rating-${rank}`;
 
       html += `
@@ -231,7 +306,9 @@ const Recommendations = (() => {
       `;
     });
 
-    // Backfill indicator when partial results are displayed and full fetch is running
+    // Backfill indicator — shown at the bottom of the card list when Phase 1 results
+    // are displayed but Phase 2 is still loading. Gives visual feedback that more
+    // recommendations are on the way without blocking the existing results.
     if (_isPartial && _isLoadingFull) {
       html += `
         <div class="reco-panel__backfill-indicator">
@@ -243,7 +320,10 @@ const Recommendations = (() => {
 
     content.innerHTML = html;
 
-    // Initialize rating widgets for each recommendation
+    // Post-render: inject Rating widgets into each card's footer placeholder.
+    // Uses the same two-step pattern as other modules:
+    //   1. Rating.renderWidget() returns an HTML string (inserted via innerHTML)
+    //   2. Rating.initWidgets() attaches a single delegated click listener on the container
     if (typeof Rating !== "undefined" && _sessionId) {
       _recommendations.forEach((rec, i) => {
         const container = document.getElementById(`reco-rating-${i + 1}`);
@@ -251,6 +331,7 @@ const Recommendations = (() => {
           container.innerHTML = Rating.renderWidget("RECOMMENDATION", rec.artist_name);
         }
       });
+      // Single delegated listener on the panel body covers all rating buttons
       Rating.initWidgets(content, _sessionId);
     }
 
@@ -263,15 +344,27 @@ const Recommendations = (() => {
 
   /**
    * Phase 1: Fetch quick label-mate recommendations (no LLM).
-   * Called eagerly from init(), not on panel open.
+   *
+   * Called eagerly from init() — NOT on panel open. This means the data
+   * starts loading as soon as the results view renders, so if the user
+   * clicks the toggle bar a few seconds later, results are already available.
+   *
+   * API: GET /api/v1/fliers/{session_id}/recommendations/quick
+   * Response: { recommendations: [...], is_partial: true }
+   *
+   * On success, immediately kicks off Phase 2 (_fetchFullRecommendations)
+   * in the background. On failure, still attempts Phase 2 — the quick
+   * endpoint failing doesn't necessarily mean the full endpoint will fail
+   * (they may use different backend services).
    */
   async function _fetchQuickRecommendations() {
+    // Guard against duplicate fetches — idempotent by design
     if (_hasFetchedQuick || _isLoadingQuick || !_sessionId) return;
 
     _isLoadingQuick = true;
     _error = null;
 
-    // If panel is already open, show spinner
+    // If the user already opened the panel before results arrived, show spinner
     if (_isOpen) {
       _renderLoading();
     }
@@ -286,18 +379,18 @@ const Recommendations = (() => {
       }
       const data = await resp.json();
       _recommendations = data.recommendations || [];
-      _isPartial = data.is_partial !== false;
+      _isPartial = data.is_partial !== false;  // Default to partial unless explicitly false
       _hasFetchedQuick = true;
 
-      // Update count badge on collapsed bar
+      // Update count badge on the collapsed bar (visible even when panel is closed)
       _updateCountBadge();
 
-      // If panel is open, render quick results immediately
+      // If panel is already open, render quick results immediately
       if (_isOpen) {
         _renderResults();
       }
 
-      // Kick off background full fetch
+      // Kick off Phase 2 in background — this will silently upgrade the results
       _fetchFullRecommendations();
     } catch (err) {
       _error = err.message || "Failed to load recommendations";
@@ -312,16 +405,29 @@ const Recommendations = (() => {
   }
 
   /**
-   * Phase 2: Fetch full recommendations (all tiers + LLM).
-   * Runs in background after quick results are displayed.
-   * Failure is non-fatal — quick results remain visible.
+   * Phase 2: Fetch full recommendations (all tiers + LLM explanations).
+   *
+   * Runs in the background after Phase 1 results are displayed. This is
+   * a "silent upgrade" — the user sees quick results immediately, and
+   * the full results seamlessly replace them when ready.
+   *
+   * API: GET /api/v1/fliers/{session_id}/recommendations
+   * Response: { recommendations: [...] }  (is_partial is always false here)
+   *
+   * IMPORTANT: Failure is non-fatal. If this fetch fails, the Phase 1
+   * quick results remain visible and the user can still interact with them.
+   * Errors are logged to console.warn, not shown to the user.
+   * This graceful degradation is a deliberate UX choice — partial results
+   * are better than an error message replacing working results.
    */
   async function _fetchFullRecommendations() {
+    // Guard against duplicate fetches — idempotent by design
     if (_hasFetchedFull || _isLoadingFull || !_sessionId) return;
 
     _isLoadingFull = true;
 
-    // If panel is open and we have partial results, re-render to show backfill indicator
+    // If panel is open and we have partial results, re-render to show the
+    // backfill indicator (small spinner at the bottom of the card list)
     if (_isOpen && _recommendations.length > 0) {
       _renderResults();
     }
@@ -336,22 +442,26 @@ const Recommendations = (() => {
         return;
       }
       const data = await resp.json();
+
+      // Replace the entire recommendations array — full results are a superset
+      // of quick results, so this is a complete replacement, not a merge.
       _recommendations = data.recommendations || [];
-      _isPartial = false;
+      _isPartial = false;          // Removes "+" suffix from count badge
       _hasFetchedFull = true;
-      _error = null;
+      _error = null;               // Clear any Phase 1 error since Phase 2 succeeded
 
       _updateCountBadge();
 
       if (_isOpen) {
-        _renderResults();
+        _renderResults();          // Silent upgrade — replaces quick results with full set
       }
     } catch (err) {
       console.warn("Full recommendations background fetch failed:", err.message);
-      // Non-fatal: quick results remain visible
+      // Non-fatal: quick results remain visible — no user-facing error
     } finally {
       _isLoadingFull = false;
       // If panel is open and we were showing the backfill indicator, re-render to remove it
+      // (whether the fetch succeeded or failed, the spinner should go away)
       if (_isOpen && _isPartial) {
         _renderResults();
       }
@@ -363,12 +473,22 @@ const Recommendations = (() => {
   // ------------------------------------------------------------------
 
   /**
-   * Initialise the recommendation panel for a given session.
-   * Renders the shell (collapsed toggle bar) and eagerly starts
-   * the quick fetch for label-mate results.
+   * Initialize the recommendation panel for a given session.
+   *
+   * Called by Results.fetchAndDisplayResults() after the results view renders.
+   * This is the entry point for the entire recommendation lifecycle:
+   *   1. Resets all private state to clean defaults
+   *   2. Renders the collapsed toggle bar (shell) into #reco-panel
+   *   3. Eagerly kicks off Phase 1 fetch (label-mates, no LLM)
+   *
+   * The eager fetch means data starts loading immediately, not when the
+   * user opens the panel. By the time they notice and click the toggle bar,
+   * Phase 1 results are usually already available.
+   *
    * @param {string} sessionId - The pipeline session UUID.
    */
   function init(sessionId) {
+    // Full state reset — supports re-initialization for new sessions
     _sessionId = sessionId;
     _isOpen = false;
     _isLoadingQuick = false;
@@ -380,11 +500,18 @@ const Recommendations = (() => {
     _error = null;
     _renderShell();
 
-    // Eagerly start quick fetch (label-mates only, no LLM)
+    // Eagerly start Phase 1 fetch (label-mates only, no LLM)
+    // Phase 2 will be triggered automatically when Phase 1 completes
     _fetchQuickRecommendations();
   }
 
-  /** Expand the panel and render available results. */
+  /**
+   * Expand the panel and render available results.
+   * Handles three possible states when opened:
+   *   1. Data available (most common) — renders results immediately
+   *   2. Phase 1 in flight — shows loading spinner
+   *   3. Neither fetched nor loading — triggers fetch (safety fallback)
+   */
   function openPanel() {
     const panel = _getPanel();
     if (!panel) return;
@@ -429,11 +556,16 @@ const Recommendations = (() => {
     return _isOpen;
   }
 
+  // ------------------------------------------------------------------
+  // Public API — exposed via the Revealing Module Pattern.
+  // Only these 5 methods are accessible outside the IIFE closure.
+  // All internal state and helper functions remain private.
+  // ------------------------------------------------------------------
   return {
-    init,
-    openPanel,
-    closePanel,
-    togglePanel,
-    isOpen,
+    init,          // Called by Results module to bootstrap the panel
+    openPanel,     // Expand the panel body
+    closePanel,    // Collapse the panel body
+    togglePanel,   // Toggle between open/closed (used by the toggle bar click handler)
+    isOpen,        // Query current panel state
   };
 })();

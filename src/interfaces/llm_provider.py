@@ -9,9 +9,15 @@ call-site provider-agnostic.
 
 from __future__ import annotations
 
+# ABC = Abstract Base Class — Python's way of defining interfaces.
+# abstractmethod marks methods that MUST be overridden by concrete classes.
+# If a concrete class forgets to implement an abstractmethod, Python raises
+# TypeError when you try to instantiate it. This catches bugs at startup.
 from abc import ABC, abstractmethod
 
 
+# Concrete implementations: AnthropicLLMProvider, OpenAILLMProvider, OllamaLLMProvider
+# Located in: src/providers/llm/
 class ILLMProvider(ABC):
     """Contract for LLM services used throughout the raiveFlier pipeline.
 

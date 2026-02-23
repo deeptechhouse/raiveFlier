@@ -38,6 +38,9 @@ class ArticleContent:
     url: str = ""
 
 
+# Concrete implementations: WebScraperProvider, WaybackProvider (src/providers/article/)
+# WebScraperProvider extracts from live URLs; WaybackProvider tries the Wayback Machine
+# as a fallback for pages that are no longer online.
 class IArticleProvider(ABC):
     """Contract for services that extract readable content from web URLs.
 

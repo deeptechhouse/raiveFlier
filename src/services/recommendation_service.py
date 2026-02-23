@@ -7,6 +7,38 @@ slots up to ten total.
 
 All candidates receive an LLM-generated explanation pass that produces
 a 2-3 sentence reason describing WHY each artist was recommended.
+
+Architecture overview for junior developers
+--------------------------------------------
+This module answers "Who else should I listen to?"  It produces up to 10
+artist recommendations using a three-tier strategy:
+
+  TIER 1 (data-driven, highest trust):
+    a) shared_flier  -- Artists who appeared on OTHER fliers alongside the
+                        current flier's artists (from the flier history DB).
+                        Priority 0 (highest) because co-billing is the
+                        strongest signal of scene proximity.
+    b) label_mate    -- Artists on the same record labels as flier artists,
+                        discovered via Discogs/MusicBrainz.  Priority 1.
+    c) shared_lineup -- Artists found in RAG corpus passages about events
+                        involving flier artists.  Priority 2.
+
+  TIER 2 (LLM fill):
+    d) llm           -- If Tier 1 produces fewer than 10 candidates, the
+                        LLM fills the remaining slots based on genre, style,
+                        label, and scene context.  Priority 3 (lowest).
+
+  EXPLANATION PASS (all tiers):
+    After candidates are selected, a single LLM call generates a 2-3
+    sentence "reason" for each recommendation.  If the LLM call fails,
+    a template-based fallback reason is used instead.
+
+Two public methods expose different speed/depth tradeoffs:
+  - recommend()       -- Full pipeline (all tiers + LLM explanation).
+                         Slower but comprehensive.
+  - recommend_quick() -- Label-mates only, no LLM calls.  Returns in
+                         1-3 seconds for immediate display while the
+                         full pipeline runs in the background.
 """
 
 from __future__ import annotations
@@ -40,11 +72,14 @@ _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
 _MAX_RECOMMENDATIONS = 10
 
 # Source tier priority ordering (lower number = higher priority).
+# When two sources recommend the same artist, the higher-priority source
+# wins.  This ordering reflects trust: co-billing on a real flier is the
+# strongest signal; LLM inference is the weakest.
 _TIER_PRIORITY = {
-    "shared_flier": 0,
-    "label_mate": 1,
-    "shared_lineup": 2,
-    "llm": 3,
+    "shared_flier": 0,   # Appeared on another flier with these artists
+    "label_mate": 1,     # Released on the same record label
+    "shared_lineup": 2,  # Found in RAG corpus event/lineup passages
+    "llm": 3,            # LLM-generated based on style/genre reasoning
 }
 
 
@@ -120,7 +155,10 @@ class RecommendationService:
             artist_count=len(entities.artists),
         )
 
-        # Step 1 — build exclusion set
+        # Step 1 -- build exclusion set.  We never want to recommend an
+        # artist who is ALREADY on the flier.  The exclusion set includes
+        # all known names plus aliases (e.g., an artist's real name and
+        # their DJ alias).
         exclusion_set = self._build_exclusion_set(research_results, entities)
         self._logger.debug(
             "exclusion_set_built",
@@ -130,7 +168,10 @@ class RecommendationService:
         # Collect artist names for shared-flier and shared-lineup queries
         artist_names = [e.text for e in entities.artists]
 
-        # Step 2-4 — execute Tier 1 sources in parallel
+        # Steps 2-4 -- execute all three Tier 1 data-driven discovery methods
+        # in parallel via asyncio.gather.  This is a major latency win: each
+        # method queries a different external source (Discogs, flier history
+        # DB, RAG vector store) and they have no interdependencies.
         label_mates_task = self._discover_label_mates(
             research_results, exclusion_set,
         )
@@ -154,12 +195,16 @@ class RecommendationService:
             shared_lineup=len(shared_lineup),
         )
 
-        # Step 5 — merge and deduplicate Tier 1
+        # Step 5 -- merge and deduplicate Tier 1.  When the same artist
+        # appears in multiple sources (e.g., both a label-mate AND a shared-
+        # flier artist), the highest-priority source wins per _TIER_PRIORITY.
         tier1_candidates = self._merge_tier1_candidates(
             label_mates, shared_flier, shared_lineup,
         )
 
-        # Step 6 — LLM fill if needed
+        # Step 6 -- LLM fill: if Tier 1 produced fewer than 10 candidates,
+        # ask the LLM to suggest additional artists based on genre, style,
+        # and scene context.  This ensures we always return a full slate.
         if len(tier1_candidates) < _MAX_RECOMMENDATIONS:
             llm_candidates = await self._generate_llm_recommendations(
                 research_results,
@@ -179,7 +224,10 @@ class RecommendationService:
                 provider_name=self._llm.get_provider_name(),
             )
 
-        # Step 7 — LLM explanation pass
+        # Step 7 -- LLM explanation pass.  A single LLM call generates a
+        # 2-3 sentence "reason" for EVERY candidate in one batch, rather
+        # than making one call per candidate (which would be N calls).
+        # If the LLM fails, fallback template reasons are used.
         research_context = self._compile_research_summary(research_results)
         recommendations = await self._generate_explanations(
             tier1_candidates, research_context,
@@ -214,6 +262,14 @@ class RecommendationService:
         entities: ExtractedEntities,
     ) -> RecommendationResult:
         """Run the fast label-mate-only recommendation pass (no LLM calls).
+
+        This is the "quick path" -- it skips shared-flier lookup, RAG
+        retrieval, and ALL LLM calls.  The only external dependency is
+        the Discogs/MusicBrainz label-release query, which typically
+        completes in 1-3 seconds.
+
+        The frontend calls this first for immediate display, then replaces
+        results with the full `recommend()` output when it finishes.
 
         Returns label-mate candidates with fallback reasons generated from
         source metadata.  Designed to complete in 1-3 seconds for immediate
@@ -413,7 +469,10 @@ class RecommendationService:
                         candidate_map[normalized]["label_names"]
                     )
 
-        # Convert to list and sort
+        # Convert to list and sort.  Connection strength is a linear formula:
+        #   strength = min(1.0, shared_label_count * 0.3 + 0.2)
+        # One shared label yields 0.5; two yields 0.8; three caps at 1.0.
+        # The 0.2 base ensures even a single shared label has meaningful weight.
         results: list[dict[str, Any]] = []
         for _key, data in candidate_map.items():
             strength = min(1.0, data["shared_label_count"] * 0.3 + 0.2)
@@ -503,6 +562,11 @@ class RecommendationService:
             if not name or name.strip().lower() in exclusion_set:
                 continue
 
+            # Connection strength for shared-flier candidates:
+            #   strength = min(1.0, times_seen * 0.2 + 0.3)
+            # Seen once yields 0.5; twice yields 0.7; four times caps at 1.0.
+            # The higher base (0.3 vs 0.2 for label-mates) reflects that
+            # co-billing is a stronger signal than shared-label association.
             times_seen = int(co.get("times_seen", 1))
             strength = min(1.0, times_seen * 0.2 + 0.3)
 
@@ -561,6 +625,11 @@ class RecommendationService:
             )
             return []
 
+        # Two-phase approach: (1) RAG retrieval to find event/lineup passages
+        # mentioning each flier artist, then (2) LLM extraction to pull
+        # other artist names from those passages.  This is necessary because
+        # artist names in free-text lineup descriptions are too varied for
+        # regex extraction.
         all_chunks: list[str] = []
         chunk_artist_map: dict[int, str] = {}
 
@@ -586,8 +655,9 @@ class RecommendationService:
         if not all_chunks:
             return []
 
-        # Use LLM to extract artist/DJ names from chunks
-        chunk_text = "\n---\n".join(all_chunks[:20])  # Budget cap
+        # Phase 2: Use LLM to extract artist/DJ names from the retrieved
+        # passages.  Cap at 20 chunks to stay within the LLM token budget.
+        chunk_text = "\n---\n".join(all_chunks[:20])
 
         system_prompt = (
             "You are a music data extraction engine. You extract artist and "
@@ -685,7 +755,11 @@ class RecommendationService:
         """
         seen: dict[str, dict[str, Any]] = {}
 
-        # Process in priority order: shared_flier first, then label_mate, then shared_lineup
+        # Process in priority order: shared_flier first (priority 0), then
+        # label_mate (priority 1), then shared_lineup (priority 2).
+        # Because we process highest-priority first and skip duplicates,
+        # the first occurrence wins -- giving us automatic priority-based
+        # deduplication.
         for candidate_list in [shared_flier, label_mates, shared_lineup]:
             for candidate in candidate_list:
                 name = candidate["artist_name"]
@@ -704,7 +778,10 @@ class RecommendationService:
                     if new_priority < existing_priority:
                         seen[normalized] = candidate
 
-        # Sort by: source priority, then connection_strength
+        # Sort by composite key: (source priority ASC, strength DESC, times
+        # seen DESC).  This puts shared_flier candidates first, then label-
+        # mates, then shared-lineup.  Within each tier, stronger connections
+        # and more frequent co-appearances rank higher.
         merged = list(seen.values())
         merged.sort(
             key=lambda x: (
@@ -985,6 +1062,12 @@ class RecommendationService:
     @staticmethod
     def _build_fallback_reason(candidate: dict[str, Any]) -> str:
         """Build a fallback explanation when the LLM explanation pass fails.
+
+        Uses template strings that incorporate the candidate's metadata
+        (label name, times seen, connected artist names) to produce a
+        meaningful reason without any LLM call.  This is the safety net
+        for both recommend_quick() (which never calls the LLM) and the
+        full pipeline when the explanation LLM call fails.
 
         Produces a source-specific reason string based on the candidate's
         tier and connection metadata.

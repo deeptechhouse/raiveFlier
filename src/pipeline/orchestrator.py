@@ -4,17 +4,49 @@ Coordinates OCR, entity extraction, user confirmation, research,
 interconnection analysis, and citation ranking into a coherent pipeline.
 Each phase updates a frozen :class:`PipelineState` via ``model_copy``
 and broadcasts progress through the injected :class:`ProgressTracker`.
+
+ARCHITECTURE NOTE (for junior developers):
+    This orchestrator follows the "Pipeline" pattern — it coordinates
+    multiple services in a fixed sequence, passing data from one phase
+    to the next through the immutable PipelineState object.
+
+    The pipeline is split into TWO entry points:
+        - run_phase_1()         → OCR + Entity Extraction (automatic)
+        - run_phases_2_through_5() → Research + Interconnection + Output
+
+    This split exists because of the HUMAN-IN-THE-LOOP step: after Phase 1
+    extracts entities, the user gets a chance to review and edit them before
+    the expensive research phase begins. The API layer (routes.py) manages
+    this pause/resume flow.
+
+    Each phase follows the same pattern:
+        1. Update state with new phase + progress percentage
+        2. Broadcast progress via ProgressTracker (WebSocket to frontend)
+        3. Call the appropriate service
+        4. Update state with results
+        5. Handle errors (recoverable vs. fatal)
+
+    The frozen state pattern: instead of mutating state, each phase creates
+    a NEW PipelineState via model_copy(update={...}). This means any
+    intermediate state can be serialized for crash recovery without worrying
+    about partially-mutated objects.
 """
 
 from __future__ import annotations
 
 import contextlib
 from datetime import date, datetime, timezone
+# TYPE_CHECKING is a special constant that is False at runtime but True
+# when type checkers (mypy) analyze the code. Imports inside this block
+# are only used for type annotations and don't cause circular imports.
 from typing import TYPE_CHECKING
 
 import structlog
 
 from src.models.flier import ExtractedEntities
+# Aliased import: PipelineError (the Pydantic model for error records stored
+# in state) vs PipelineError (the exception class used for flow control).
+# The model is aliased as PipelineErrorModel to avoid name collision.
 from src.models.pipeline import (
     PipelineError as PipelineErrorModel,
 )
@@ -28,10 +60,15 @@ from src.services.entity_extractor import EntityExtractor
 from src.services.interconnection_service import InterconnectionService
 from src.services.ocr_service import OCRService
 from src.services.research_service import ResearchService
+# PipelineError (the exception) is raised to signal fatal pipeline failures
+# that should stop the pipeline. NOT the same as PipelineErrorModel above.
 from src.utils.errors import PipelineError
 from src.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    # IngestionService is only imported for type hints to avoid a circular
+    # dependency — the ingestion service depends on models that the pipeline
+    # also depends on.
     from src.services.ingestion.ingestion_service import IngestionService
 
 
@@ -61,13 +98,15 @@ class FlierAnalysisPipeline:
         progress_tracker: ProgressTracker,
         ingestion_service: IngestionService | None = None,
     ) -> None:
-        self._ocr_service = ocr_service
-        self._entity_extractor = entity_extractor
-        self._research_service = research_service
-        self._interconnection_service = interconnection_service
-        self._citation_service = citation_service
-        self._progress_tracker = progress_tracker
-        self._ingestion_service = ingestion_service
+        # All services are injected — the orchestrator never creates them.
+        # This makes testing easy: inject mocks for any service.
+        self._ocr_service = ocr_service               # Phase 1a: text extraction
+        self._entity_extractor = entity_extractor       # Phase 1b: entity parsing
+        self._research_service = research_service       # Phase 2: music DB + web research
+        self._interconnection_service = interconnection_service  # Phase 3: relationship mapping
+        self._citation_service = citation_service       # Phase 4: citation verification
+        self._progress_tracker = progress_tracker       # WebSocket broadcast
+        self._ingestion_service = ingestion_service     # Phase 5: RAG feedback (optional)
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # ------------------------------------------------------------------
@@ -102,6 +141,10 @@ class FlierAnalysisPipeline:
         errors: list[PipelineErrorModel] = list(state.errors)
 
         # --- OCR ---
+        # model_copy(update={...}) creates a NEW frozen PipelineState with
+        # the specified fields changed. The original state is untouched.
+        # This is the functional/immutable state management pattern used
+        # throughout the pipeline — no state mutation, only new copies.
         state = state.model_copy(
             update={
                 "current_phase": PipelinePhase.OCR,
@@ -313,6 +356,10 @@ class FlierAnalysisPipeline:
             raise PipelineError(message=f"Research phase failed: {exc}") from exc
 
         # --- Phase 3: Interconnection ---
+        # This phase uses an LLM to discover relationships BETWEEN entities —
+        # e.g. "Artist X released on a label run by Promoter Y" or "all three
+        # artists have played at this venue." Errors here are recoverable
+        # because the core research results are already complete.
         state = state.model_copy(
             update={
                 "current_phase": PipelinePhase.INTERCONNECTION,
@@ -417,6 +464,9 @@ class FlierAnalysisPipeline:
             )
 
         # --- Phase 5: RAG Feedback Loop (if enabled) ---
+        # If RAG is enabled, the completed analysis itself is ingested into
+        # the vector store as a new source document. This means future flier
+        # analyses can reference past analyses — a self-improving knowledge base.
         if self._ingestion_service is not None:
             try:
                 ingestion_result = await self._ingestion_service.ingest_analysis(state)

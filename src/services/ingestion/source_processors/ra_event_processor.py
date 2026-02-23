@@ -1,13 +1,18 @@
 """Source processor that converts RA.co event data into DocumentChunks.
 
 Generates structured text from :class:`~src.models.ra_event.RAEvent` models
-and wraps them in :class:`~src.models.rag.DocumentChunk` objects suitable
-for the ingestion pipeline.  Events are grouped into batches of ~8 per
-chunk to stay within the ~500-token target for embedding.
+(scraped via the RA CLI) and wraps them in :class:`~src.models.rag.DocumentChunk`
+objects.  Events are sorted by date and grouped into batches of ~8 per chunk
+to stay within the ~500-token embedding target.
 
-Entity tags (artist names, venue names, promoter names) and geographic
-tags (city) are pre-extracted from the structured data, so the expensive
-LLM metadata-tagging step can be skipped with ``--skip-tagging``.
+Key optimization: Because RA events are already structured data (not free text),
+entity tags (artist names, venue names, promoter names) and geographic tags
+(city) are **pre-extracted directly from the model fields** -- no LLM call
+needed.  This allows the expensive MetadataExtractor tagging step to be
+skipped with ``--skip-tagging`` during bulk event ingestion.
+
+Events are assigned ``citation_tier = 3`` (event listings) and
+``source_type = "event_listing"``.
 """
 
 from __future__ import annotations
@@ -22,6 +27,7 @@ from src.models.rag import DocumentChunk
 
 logger = structlog.get_logger(logger_name=__name__)
 
+# Number of events per document chunk -- tuned to produce ~500-token chunks.
 _EVENTS_PER_CHUNK = 8
 
 

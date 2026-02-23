@@ -4,6 +4,32 @@ Provides REST endpoints for flier upload, entity confirmation, progress
 polling, result retrieval, health checks, and provider listing.  Service
 dependencies are resolved from ``app.state`` via FastAPI's ``Depends``
 using the ``Annotated`` pattern.
+
+# ─── API ROUTE MAP (Junior Developer Guide) ───────────────────────────
+#
+# Endpoint                              Method  Description
+# ─────────────────────────────────────────────────────────────────────
+# /api/v1/fliers/upload                 POST    Upload flier → OCR → extraction
+# /api/v1/fliers/{sid}/confirm          POST    Confirm entities → start research
+# /api/v1/fliers/{sid}/status           GET     Poll pipeline progress
+# /api/v1/fliers/{sid}/results          GET     Fetch full analysis results
+# /api/v1/fliers/{sid}/ask              POST    Ask Q&A about results (RAG)
+# /api/v1/fliers/{sid}/dismiss-connection POST   Dismiss bad interconnection edge
+# /api/v1/fliers/{sid}/rate             POST    Submit thumbs up/down rating
+# /api/v1/fliers/{sid}/ratings          GET     Get all ratings for session
+# /api/v1/fliers/{sid}/recommendations  GET     Full artist recommendations
+# /api/v1/fliers/{sid}/recommendations/quick GET  Fast label-mate recs (no LLM)
+# /api/v1/ratings/summary               GET     Aggregate rating stats
+# /api/v1/health                        GET     Health check + provider status
+# /api/v1/providers                     GET     List all configured providers
+# /api/v1/corpus/stats                  GET     RAG corpus statistics
+# /api/v1/corpus/search                 POST    Semantic search of RAG corpus
+#
+# DEPENDENCY INJECTION PATTERN:
+# Each route function declares its dependencies as type-annotated params.
+# FastAPI resolves these via Depends() which calls helper functions that
+# read from app.state (populated at startup in main.py's _build_all).
+# ──────────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
@@ -52,10 +78,18 @@ from src.utils.logging import get_logger
 
 _logger: structlog.BoundLogger = get_logger(__name__)
 
+# All routes in this file are prefixed with /api/v1.
+# Example: @router.post("/fliers/upload") → POST /api/v1/fliers/upload
 router = APIRouter(prefix="/api/v1")
 
+# --- Upload validation constants ---
+# frozenset is an immutable set — perfect for constants that should never change.
 _ALLOWED_CONTENT_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+# Perceptual hash duplicate threshold: Hamming distance ≤ 10 means the
+# images look visually similar.  Lower = stricter (0 = pixel-identical).
+# A threshold of 10 allows for minor cropping, compression, color shifts.
 _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
 
 
@@ -80,6 +114,17 @@ def _compute_perceptual_hash(image_data: bytes) -> str | None:
 # ---------------------------------------------------------------------------
 # Dependency injection helpers — resolve singletons from app.state
 # ---------------------------------------------------------------------------
+# JUNIOR DEV NOTE — FastAPI Dependency Injection
+# -----------------------------------------------
+# FastAPI uses Depends() to inject services into route handlers.
+# The pattern:
+#   1. Write a helper function that extracts a service from app.state
+#   2. Create an Annotated type alias: XDep = Annotated[XType, Depends(helper)]
+#   3. Declare XDep as a route param → FastAPI calls helper() automatically
+#
+# This avoids importing app.state directly in route functions, making
+# them easier to test (just pass mock objects as params).
+# ---------------------------------------------------------------------------
 
 
 def _get_pipeline(request: Request) -> FlierAnalysisPipeline:
@@ -102,7 +147,9 @@ def _get_session_states(request: Request) -> dict[str, PipelineState]:
     return request.app.state.session_states
 
 
-# Annotated dependency types (avoids B008 / function-call-in-default-argument)
+# Annotated dependency types.  PEP 593 Annotated[T, Depends(fn)] is the
+# modern FastAPI pattern — avoids B008 linter warnings about function
+# calls in default argument values.
 PipelineDep = Annotated[FlierAnalysisPipeline, Depends(_get_pipeline)]
 GateDep = Annotated[ConfirmationGate, Depends(_get_confirmation_gate)]
 TrackerDep = Annotated[ProgressTracker, Depends(_get_progress_tracker)]
@@ -140,7 +187,14 @@ FlierHistoryDep = Annotated[Any, Depends(_get_flier_history)]
 
 
 def _js_simple_hash(s: str) -> str:
-    """Replicate the frontend ``Rating.simpleHash()`` — 32-bit DJB-style hash as 8-char hex."""
+    """Replicate the frontend ``Rating.simpleHash()`` — 32-bit DJB-style hash as 8-char hex.
+
+    # JUNIOR DEV NOTE — Why replicate a JS hash in Python?
+    # The frontend generates item_key values using a simple hash function
+    # in rating.js.  The backend needs to match those keys exactly when
+    # filtering out negatively-rated corpus items.  The bit manipulation
+    # mimics JavaScript's signed 32-bit integer overflow behavior.
+    """
     h = 0
     for ch in s:
         # JS << operates on signed Int32; convert before shifting to match.
@@ -167,7 +221,14 @@ async def _run_phases_2_through_5(
     session_states: dict[str, PipelineState],
     flier_history: Any | None = None,
 ) -> None:
-    """Execute research-through-output phases and persist the final state."""
+    """Execute research-through-output phases and persist the final state.
+
+    # JUNIOR DEV NOTE — BackgroundTasks
+    # This function runs as a FastAPI BackgroundTask, meaning it executes
+    # AFTER the HTTP response has been sent to the client.  The user gets
+    # an instant "research_started" response, then this runs in the
+    # background while the frontend polls /status or listens on WebSocket.
+    """
     try:
         result = await pipeline.run_phases_2_through_5(state)
         session_states[result.session_id] = result
@@ -214,7 +275,7 @@ async def upload_flier(
     flier_history: FlierHistoryDep,
 ) -> FlierUploadResponse:
     """Accept a flier image, run OCR + entity extraction, and return results for review."""
-    # --- Validate content type ---
+    # --- Validate content type (security: reject non-image files) ---
     content_type = file.content_type or ""
     if content_type not in _ALLOWED_CONTENT_TYPES:
         raise HTTPException(
@@ -268,7 +329,10 @@ async def upload_flier(
         image_hash=image_hash,
         image_phash=image_phash,
     )
-    # Attach raw bytes to the private attr on a frozen model
+    # Attach raw image bytes to the PrivateAttr on the frozen Pydantic model.
+    # PrivateAttr fields bypass Pydantic's immutability checks, allowing us
+    # to store the binary data without it appearing in serialization (JSON).
+    # This is a deliberate workaround for frozen models that need internal state.
     flier_image.__pydantic_private__["_image_data"] = image_data
 
     # --- Register perceptual hash for future duplicate detection ---

@@ -1,10 +1,46 @@
 /**
  * qa.js — raiveFlier interactive Q&A module.
  *
- * Renders a slide-in drawer panel where users can ask follow-up questions
- * about analysis results. Answers are powered by RAG retrieval + LLM.
- * Related facts are displayed as clickable chips that expand into
- * contextual explanations of how they relate to the analysis.
+ * ROLE IN THE APPLICATION
+ * =======================
+ * A slide-in drawer panel on the right side of the viewport that lets users
+ * ask follow-up questions about analysis results. Answers come from the backend
+ * RAG pipeline (retrieval from the knowledge corpus + LLM generation).
+ *
+ * OPENING THE DRAWER
+ * ==================
+ * Opened by clicking "Ask about this" buttons on result cards. Each button
+ * carries data-entity-type and data-entity-name attributes, which scope the
+ * Q&A context to a specific entity (e.g., "ARTIST" + "Jeff Mills").
+ * The results.js module attaches click handlers that call QA.openPanel().
+ *
+ * CHAT PATTERN
+ * ============
+ * - Maintains a local conversation history (_history) as an array of
+ *   { role: "user"|"assistant", content, citations, suggestions } objects
+ * - Each assistant response may include:
+ *   - Citations: source references with tier badges
+ *   - Related facts: clickable chips that auto-generate follow-up questions
+ * - Clicking a fact chip calls _buildFactQuery() to create a contextual query
+ *   like "Tell me how this relates to the analysis of Jeff Mills: ..."
+ *
+ * INITIAL FACT CHIPS
+ * ==================
+ * When the drawer opens for a specific entity, _getInitialFacts() generates
+ * contextual starter chips (e.g., for an artist: "label history", "notable
+ * releases", "connected collaborators", "place in the scene"). These give
+ * the user quick starting points without needing to type.
+ *
+ * API INTERACTION
+ * ===============
+ * POST /api/v1/fliers/{session_id}/ask
+ * Body: { question, entity_type?, entity_name? }
+ * Response: { answer, citations: [], related_facts: [] }
+ *
+ * MODULE COMMUNICATION
+ * ====================
+ * - Called by results.js via QA.openPanel() when "Ask about this" is clicked
+ * - Uses Rating module for per-answer thumbs up/down (optional)
  */
 
 "use strict";
@@ -14,12 +50,14 @@ const QA = (() => {
   // Private state
   // ------------------------------------------------------------------
 
-  let _sessionId = null;
-  let _isOpen = false;
-  let _isLoading = false;
+  let _sessionId = null;           // Pipeline session UUID for API calls
+  let _isOpen = false;             // Whether the drawer is currently visible
+  let _isLoading = false;          // Whether an answer request is in flight
+  // Conversation history — re-rendered in full on each update via _renderAllMessages().
+  // This "re-render everything" approach is simple and avoids DOM diffing complexity.
   let _history = []; // Array of {role: "user"|"assistant", content: string, citations: [], suggestions: []}
-  let _currentEntityType = null;
-  let _currentEntityName = null;
+  let _currentEntityType = null;   // Scoped entity type (e.g., "ARTIST") or null for general
+  let _currentEntityName = null;   // Scoped entity name (e.g., "Jeff Mills") or null
 
   // ------------------------------------------------------------------
   // Utility
@@ -151,7 +189,10 @@ const QA = (() => {
     return '<div class="qa-message qa-message--loading"><span class="qa-loading-dots"><span></span><span></span><span></span></span></div>';
   }
 
-  /** Build a relational query from a clicked fact chip. */
+  /** Build a relational query from a clicked fact chip.
+   *  The generated question asks the LLM to explain how the fact relates
+   *  to the current analysis context, making the response more relevant
+   *  than just answering the fact in isolation. */
   function _buildFactQuery(factText) {
     const contextLabel = _currentEntityName
       ? `the analysis of ${_currentEntityName}`
@@ -348,7 +389,11 @@ const QA = (() => {
     _isOpen = false;
   }
 
-  /** Generate contextual starter fact chips for the drawer opening. */
+  /** Generate contextual starter fact chips for the drawer opening.
+   *  Returns an array of fact objects with text, category, and entity_name.
+   *  These give the user pre-built questions to click on, tailored to the
+   *  entity type. For example, an ARTIST gets chips about label history,
+   *  discography, collaborators, and scene context. */
   function _getInitialFacts(entityType, entityName) {
     if (!entityType || !entityName) return [];
 

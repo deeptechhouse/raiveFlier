@@ -1,4 +1,25 @@
-"""Application settings loaded from environment variables via pydantic-settings."""
+"""Application settings loaded from environment variables via pydantic-settings.
+
+# ─── HOW SETTINGS WORK (Junior Developer Guide) ───────────────────────
+#
+# This class uses pydantic-settings to automatically read configuration
+# from TWO sources (in priority order):
+#
+#   1. **Environment variables** — e.g., OPENAI_API_KEY=sk-abc123
+#      (highest priority — always wins)
+#   2. **.env file** — key=value lines in the project root .env file
+#      (lower priority — used for local development)
+#
+# The mapping is automatic: field name `openai_api_key` maps to env var
+# `OPENAI_API_KEY` (pydantic-settings uppercases and matches).
+#
+# Default values (the `= ""` or `= "development"`) are used when neither
+# an env var nor .env entry exists for that field.
+#
+# SECURITY: The .env file is in .gitignore — never committed to the repo.
+# Use .env.example as a template showing what variables are available.
+# ──────────────────────────────────────────────────────────────────────
+"""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,16 +30,19 @@ class Settings(BaseSettings):
     Environment variables override defaults. Loaded from .env file when present.
     """
 
+    # SettingsConfigDict tells pydantic-settings where to find the .env file.
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # === LLM Providers ===
+    # Empty string = "not configured" → the provider selection logic in
+    # main.py skips providers with empty keys and falls through to the next.
     openai_api_key: str = ""
     openai_base_url: str = ""  # Custom base URL for OpenAI-compatible APIs (TogetherAI, etc.)
     openai_text_model: str = ""  # Override text model (e.g. meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo)
     openai_vision_model: str = ""  # Override vision model (leave empty to disable vision)
     openai_embedding_model: str = ""  # Override embedding model (e.g. BAAI/bge-base-en-v1.5 for TogetherAI)
     anthropic_api_key: str = ""
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = "http://localhost:11434"  # Ollama always has a default URL
 
     # === Music Databases ===
     discogs_consumer_key: str = ""

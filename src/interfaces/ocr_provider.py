@@ -13,6 +13,10 @@ from abc import ABC, abstractmethod
 from src.models.flier import FlierImage, OCRResult
 
 
+# Concrete implementations: LLMVisionOCRProvider, EasyOCRProvider, TesseractOCRProvider
+# Located in: src/providers/ocr/
+# The OCR service (src/services/ocr_service.py) tries providers in priority order
+# defined in config/config.yaml and uses the first one that meets the confidence threshold.
 class IOCRProvider(ABC):
     """Contract for OCR services that extract text from flier images.
 

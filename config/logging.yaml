@@ -1,24 +1,56 @@
-version: 1
+# =============================================================================
+# config/logging.yaml — Structured Logging Configuration
+# =============================================================================
+#
+# Configures structlog, the structured logging library used throughout the
+# application. structlog outputs machine-readable JSON logs in production
+# and human-friendly colored console output in development.
+#
+# The application reads this config at startup (src/config/logging_config.py)
+# and initializes structlog's processor chain accordingly.
+#
+# Environment Detection:
+#   - APP_ENV=development -> colored console output, DEBUG level
+#   - APP_ENV=production  -> JSON output, INFO level (for log aggregation)
+#   - APP_ENV=testing     -> minimal output, WARNING level only
+#
+# Log Format (production JSON example):
+#   {"timestamp": "2026-02-23T12:00:00Z", "level": "info", "event": "pipeline_complete", ...}
+# =============================================================================
+
+version: 1                 # Config file format version (for future compatibility)
 
 structlog:
+  # -- Processor chain --
+  # Processors run in order on every log event, enriching it with context.
+  # Each processor adds or transforms fields before the renderer serializes output.
   processors:
-    - structlog.contextvars.merge_contextvars
-    - structlog.processors.add_log_level
-    - structlog.processors.StackInfoRenderer
-    - structlog.dev.set_exc_info
-    - structlog.processors.TimeStamper(fmt="iso")
+    - structlog.contextvars.merge_contextvars   # Merge thread-local context (e.g., session_id)
+    - structlog.processors.add_log_level        # Add "level" field (debug/info/warn/error)
+    - structlog.processors.StackInfoRenderer    # Render stack traces when stack_info=True
+    - structlog.dev.set_exc_info                # Auto-attach exception info on error-level logs
+    - structlog.processors.TimeStamper(fmt="iso")  # Add ISO-8601 timestamp to every log event
 
+  # -- Renderers (environment-specific output format) --
+  # Only one renderer is active at a time, selected by APP_ENV.
   renderers:
     development:
-      factory: structlog.dev.ConsoleRenderer
+      factory: structlog.dev.ConsoleRenderer    # Pretty-printed, human-readable output
       options:
-        colors: true
+        colors: true                            # ANSI color codes for terminal readability
     production:
-      factory: structlog.processors.JSONRenderer
+      factory: structlog.processors.JSONRenderer  # Machine-readable JSON for log aggregation
 
+  # -- Filtering wrapper --
+  # Wraps the logger to filter out messages below the configured log level.
+  # This is more efficient than filtering at the handler level because
+  # it prevents processor chain execution for filtered messages.
   wrapper_class: structlog.make_filtering_bound_logger
 
+  # -- Log levels per environment --
+  # Controls which severity levels are emitted. Messages below the threshold
+  # are silently discarded before any processing occurs.
   log_levels:
-    development: DEBUG
-    production: INFO
-    testing: WARNING
+    development: DEBUG     # Show everything during local development
+    production: INFO       # Skip debug noise in production (saves log storage)
+    testing: WARNING       # Only show warnings and errors during test runs

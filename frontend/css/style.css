@@ -1,10 +1,54 @@
 /* ============================================================
    STYLE.CSS — raiveFlier Design System
-   Dark underground rave aesthetic
-   Bunker palette + Amethyst accent
+   ============================================================
+
+   DESIGN AESTHETIC
+   ================
+   Dark underground rave aesthetic inspired by warehouse parties,
+   photocopied zines, and nightclub culture. The visual language
+   evokes dimly-lit bunkers and neon-lit dancefloors.
+
+   COLOR SYSTEM — "Bunker Palette"
+   ================================
+   - Primary surface: Near-black tones (--bunker-900 through --bunker-500)
+   - Text: Warm parchment tones (--bunker-100: #d8d5cd)
+   - Primary accent: Amethyst purple (#6a4a8a) — used for interactive elements
+   - Secondary accent: Verdigris teal (#4a8a7a) — used for venue-related content
+   - Tertiary accent: Amber gold (#b89a50) — used for promoter-related content
+   - All accent text colors are WCAG AA compliant (>= 4.5:1 contrast ratio)
+
+   TYPOGRAPHY — Three-Family System
+   =================================
+   - --font-display (Space Grotesk): Bold geometric sans for titles and headings
+   - --font-body (Inter): Clean humanist sans for body text and UI elements
+   - --font-mono (IBM Plex Mono): Monospaced for captions, badges, and technical labels
+   - Type scale uses Major Third ratio (1.25x per step)
+
+   COMPONENT ARCHITECTURE
+   =======================
+   Styles are organized into these major sections:
+     1. Base Reset & Design Tokens (CSS custom properties)
+     2. Layout (container, header, footer)
+     3. Upload View (drop zone, preview, buttons)
+     4. Confirm View (entity cards, genre chips)
+     5. Progress View (phase pipeline, progress bar)
+     6. Results View (artist/venue/promoter cards, interconnections, citations)
+     7. Expandable Cards (shared accordion pattern)
+     8. Text Utilities & Accessibility
+     9. Film Grain Overlay (decorative)
+    10. Q&A Drawer (right slide-in panel)
+    11. Corpus Sidebar (left slide-in panel)
+    12. Rating Widgets (thumbs up/down)
+    13. Recommendations Panel (bottom-anchored)
+    14. Responsive Breakpoints & Print Styles
+
+   NAMING CONVENTION
+   =================
+   BEM-like: .block__element--modifier (e.g., .drop-zone__content, .phase-step--active)
    ============================================================ */
 
 /* ---- Base Reset ---- */
+/* Universal box-sizing + margin/padding reset for predictable layouts */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -39,9 +83,13 @@ ul, ol {
   list-style: none;
 }
 
-/* ---- Design Tokens ---- */
+/* ---- Design Tokens ----
+   All visual properties are defined as CSS custom properties on :root.
+   This makes the entire design system themeable — change a token value here
+   and it propagates everywhere. Organized into: palette, semantics, typography,
+   spacing, motion, and layout categories. */
 :root {
-  /* Bunker Palette (Primary Dark System) */
+  /* Bunker Palette (Primary Dark System) — Numbered from darkest (900) to lightest (100) */
   --bunker-900: #0a0a0c;
   --bunker-800: #14141a;
   --bunker-700: #1e1e24;
@@ -98,7 +146,8 @@ ul, ol {
   --font-body: 'Inter', 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
-  /* Type Scale — Major Third (1.25) */
+  /* Type Scale — Major Third (1.25)
+     Each step is 1.25x the previous: 0.64 -> 0.8 -> 1 -> 1.25 -> 1.563 -> ... */
   --text-xs:   0.64rem;
   --text-sm:   0.8rem;
   --text-base: 1rem;
@@ -131,7 +180,10 @@ ul, ol {
   --space-7:  3rem;
   --space-8:  4rem;
 
-  /* Motion */
+  /* Motion — Custom easing curves for natural-feeling transitions.
+     ease-out is used for most UI transitions (elements settling into place).
+     Durations are tiered: fast (150ms) for micro-interactions, normal (300ms)
+     for view transitions, slow (600ms) for dramatic reveals. */
   --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
   --duration-fast:   150ms;
@@ -200,7 +252,12 @@ body {
 }
 
 
-/* ---- Views ---- */
+/* ---- Views ----
+   The SPA view switching pattern: all views are <section class="view"> inside <main>.
+   App.showView() sets the hidden attribute on all views except the active one.
+   The .view[hidden] rule ensures hidden views are display:none (the HTML hidden
+   attribute alone only suggests hiding — this CSS enforces it). Each visible
+   view fades in via the fadeIn keyframe animation. */
 .view {
   animation: fadeIn var(--duration-normal) var(--ease-out);
 }
@@ -210,7 +267,12 @@ body {
 }
 
 
-/* ---- Drop Zone ---- */
+/* ---- Drop Zone ----
+   The main interactive area of the upload view. Supports three interaction states:
+   - Default: dashed border, dark surface background
+   - Hover / focus: amethyst accent border + muted background
+   - Drag-over: glowing amethyst border with inset glow (set via JS class .drag-over)
+   The drop zone also functions as a click target (opens file picker via JS). */
 .drop-zone {
   position: relative;
   border: 2px dashed var(--color-border);
@@ -532,7 +594,11 @@ body {
 }
 
 
-/* ---- Entity Cards (confirm view — G2) ---- */
+/* ---- Entity Cards (Confirm View) ----
+   Editable cards for reviewing OCR-extracted entities (artists, venue, date, etc.).
+   Each card contains a header (entity type label + confidence badge + optional remove
+   button) and a text input for editing the entity value. Built dynamically by
+   confirmation.js via _entityCardHTML(). */
 .entity-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -587,7 +653,10 @@ body {
 }
 
 
-/* ---- Confidence Badges ---- */
+/* ---- Confidence Badges ----
+   Color-coded inline badges showing OCR/research confidence scores.
+   Three tiers: high (green, >= 80%), medium (amber, >= 50%), low (red, < 50%).
+   Used across entity cards, artist cards, and relationship items. */
 .confidence-badge {
   display: inline-block;
   font-family: var(--font-mono);
@@ -618,7 +687,9 @@ body {
 }
 
 
-/* ---- Progress Bar (progress view — G2) ---- */
+/* ---- Progress Bar (Progress View) ----
+   Thin horizontal bar showing pipeline completion percentage.
+   The fill width is updated dynamically by websocket.js via inline style. */
 .progress-bar {
   width: 100%;
   height: 4px;
@@ -947,7 +1018,10 @@ body {
   transition: background-color var(--duration-normal) var(--ease-out);
 }
 
-/* Phase states */
+/* Phase states — Three visual states applied by websocket.js:
+   --active: current phase (amethyst fill + glow + pulse animation)
+   --completed: past phase (green fill)
+   --pending: future phase (hollow, muted text) */
 .phase-step--active .phase-step__number {
   border-color: var(--color-accent);
   background: var(--color-accent);
@@ -1050,7 +1124,11 @@ body {
 
 
 /* ============================================================
-   RESULTS VIEW — G3
+   RESULTS VIEW
+   The main output display. Contains multiple sections rendered
+   by results.js: event summary, artist cards (expandable),
+   venue/promoter cards, event history, date context panels,
+   interconnection graph, citations, and export.
    ============================================================ */
 
 /* ---- Results Summary (Section 1) ---- */
@@ -1160,7 +1238,16 @@ body {
 }
 
 
-/* ---- Expandable Cards ---- */
+/* ---- Expandable Cards ----
+   A shared accordion/disclosure pattern used by artist cards, venue cards,
+   promoter cards, and event history groups. The pattern works like this:
+   1. .expandable wraps the card (outer container)
+   2. .expandable__trigger is a full-width <button> that toggles open/close
+   3. .expandable__content is hidden (display:none) by default
+   4. When the JS adds .expandable--open to the card:
+      - .expandable__content becomes display:block
+      - .expandable__chevron rotates 180 degrees
+   results.js attaches click handlers via _initExpandables(). */
 .expandable__trigger {
   display: flex;
   align-items: center;
@@ -1202,7 +1289,11 @@ body {
 }
 
 
-/* ---- Artist Cards (Section 2) ---- */
+/* ---- Artist Cards (Section 2) ----
+   Primary result cards, one per researched artist. Left border uses the
+   amethyst accent color. Contains expandable content with profile summary,
+   releases, labels, external links (Discogs, MusicBrainz, Bandcamp, Beatport),
+   Q&A trigger button, and rating widget. */
 .artist-cards {
   display: flex;
   flex-direction: column;
@@ -1325,7 +1416,10 @@ body {
 }
 
 
-/* ---- Venue & Promoter Cards (Section 3) ---- */
+/* ---- Venue & Promoter Cards (Section 3) ----
+   Side-by-side grid cards for venue and promoter research. Left border uses
+   verdigris teal for both (venue and promoter share the secondary accent).
+   Both use the expandable pattern from above. */
 .venue-promoter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1452,7 +1546,10 @@ body {
 }
 
 
-/* ---- Narrative Prose (Section 5) ---- */
+/* ---- Narrative Prose (Section 5: Interconnections) ----
+   A styled text block for the LLM-generated interconnection narrative.
+   Uses wider line spacing (--leading-loose) for readability. Inline [n] citation
+   references are converted to styled superscripts (.cite-ref) by results.js. */
 .narrative-prose {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1613,7 +1710,11 @@ body {
 }
 
 
-/* ---- Relationship Graph (SVG) ---- */
+/* ---- Relationship Graph (SVG) ----
+   A circular-layout SVG graph rendered by results.js renderRelationshipGraph().
+   Nodes are colored by entity type (amethyst=artist, verdigris=venue, amber=promoter).
+   Edges are lines between connected nodes, thickness proportional to confidence.
+   Interactive: hover/focus on a node highlights its connections and dims others. */
 .relationship-graph {
   margin-top: var(--space-5);
   background: var(--color-surface);
@@ -1670,7 +1771,10 @@ body {
 }
 
 
-/* ---- Citation List (Section 6) ---- */
+/* ---- Citation List (Section 6) ----
+   Citations grouped by tier (1-6). Higher tiers (1-2) have gold/silver left borders.
+   Each citation item shows: accessibility status icon, text, source name, and link.
+   Tier badges use the same pattern as confidence badges but with tier-specific colors. */
 .citation-tier-group {
   margin-bottom: var(--space-5);
 }
@@ -1870,7 +1974,12 @@ body {
 }
 
 
-/* ---- Film Grain Overlay ---- */
+/* ---- Film Grain Overlay ----
+   Decorative noise texture overlaid on the entire page at very low opacity (0.04).
+   Uses an inline SVG with feTurbulence filter to generate fractal noise, then
+   animates its position in discrete steps to simulate film grain flicker.
+   The mix-blend-mode: overlay blends it with the page content.
+   Completely non-interactive (pointer-events: none) and hidden from screen readers. */
 .grain-overlay {
   position: fixed;
   inset: 0;
@@ -1908,7 +2017,10 @@ body {
 }
 
 
-/* ---- Reduced Motion ---- */
+/* ---- Reduced Motion ----
+   WCAG 2.1 compliance: Respects the user's OS-level preference for reduced motion.
+   All animations and transitions are effectively disabled (0.01ms duration).
+   The grain overlay animation is fully removed. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

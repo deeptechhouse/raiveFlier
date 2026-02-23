@@ -1,4 +1,50 @@
 #!/usr/bin/env python3
+# =============================================================================
+# scripts/transcribe_ra_exchange.py — RA Exchange Podcast Transcription
+# =============================================================================
+#
+# Transcribes RA Exchange podcast episodes (Resident Advisor's long-form
+# interview series with DJs, producers, and scene figures) and ingests the
+# transcripts into the ChromaDB vector store for RAG retrieval.
+#
+# RA Exchange is one of the most important interview series in electronic
+# music. These transcripts provide rich first-person context about artists,
+# labels, scenes, and cultural movements — invaluable for enriching flier
+# analysis with quotes and biographical detail.
+#
+# Architecture:
+#   EpisodeDiscovery    — Discovers episodes from SoundCloud via yt-dlp
+#   TranscriptionService — Sends audio to TogetherAI's Whisper API
+#   ProgressTracker     — Tracks completed/failed/ingested state (JSON file)
+#   DBIngestor          — Chunks, tags, embeds, and stores transcripts
+#   RAExchangeTranscriber — Orchestrates the full pipeline in batches
+#
+# Pipeline per batch:
+#   1. Discover all episodes from SoundCloud (yt-dlp --flat-playlist)
+#   2. Filter out already-completed episodes (via _progress.json)
+#   3. For each episode in the batch:
+#      a. Download audio to temp dir (yt-dlp -x --audio-format mp3)
+#      b. Send audio to TogetherAI Whisper for transcription
+#      c. Save transcript as .txt file
+#      d. Auto-delete the audio file (temp dir cleanup)
+#   4. Ingest all batch transcripts into ChromaDB
+#
+# Cost: ~$0.0015/min of audio via TogetherAI Whisper. A typical episode
+# is ~50 minutes, so ~$0.075/episode. Full corpus (~500 episodes) ~$37.50.
+#
+# External Dependencies:
+#   - yt-dlp: CLI tool for downloading audio from SoundCloud
+#   - TogetherAI API: OpenAI-compatible Whisper endpoint for transcription
+#   - Project .env: Embedding provider keys for ChromaDB ingestion
+#
+# Usage:
+#   python scripts/transcribe_ra_exchange.py --dry-run      # Cost estimate only
+#   TOGETHER_API_KEY=key python scripts/transcribe_ra_exchange.py
+#   TOGETHER_API_KEY=key python scripts/transcribe_ra_exchange.py --batch-size 10
+#   TOGETHER_API_KEY=key python scripts/transcribe_ra_exchange.py --skip-ingest
+#   TOGETHER_API_KEY=key python scripts/transcribe_ra_exchange.py --retry-failed
+# =============================================================================
+
 """Transcribe all RA Exchange podcast episodes via TogetherAI.
 
 Downloads audio from SoundCloud using yt-dlp, sends to TogetherAI's
@@ -44,24 +90,48 @@ import tempfile
 import time
 from pathlib import Path
 
-# Ensure project root is on sys.path for src imports
+# Add project root to sys.path so we can import from src/ when running
+# this script directly (not as a module).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# We use the OpenAI SDK to talk to TogetherAI's Whisper endpoint because
+# TogetherAI provides an OpenAI-compatible API. This means we just change
+# the base_url and api_key — no new SDK needed.
 from openai import OpenAI
 
 
 class EpisodeDiscovery:
-    """Discovers RA Exchange episodes from SoundCloud via yt-dlp."""
+    """Discovers RA Exchange episodes from SoundCloud via yt-dlp.
 
+    Uses yt-dlp's --flat-playlist mode to list episodes without downloading
+    any audio. This is fast (~10-30 seconds) and gives us URLs, titles, and
+    durations for all episodes.
+
+    The primary source is the main RA Exchange SoundCloud account. Optional
+    playlist sources can pick up episodes that were posted under the main
+    Resident Advisor account instead.
+    """
+
+    # Primary SoundCloud account for RA Exchange episodes.
     PRIMARY_SOURCE = "https://soundcloud.com/ra-exchange"
 
+    # Additional playlists that may contain episodes not on the main account.
+    # These are only scanned if --include-playlists is passed.
     PLAYLIST_SOURCES = [
         "https://soundcloud.com/resident-advisor/sets/ra-exchange",
         "https://soundcloud.com/resident-advisor/sets/ra-exchange-podcast",
     ]
 
     def discover(self, include_playlists: bool = False) -> list[dict]:
-        """Return deduplicated list of episodes with url, title, duration."""
+        """Return deduplicated list of episodes with url, title, duration.
+
+        Episodes are deduplicated by normalized URL (lowercase, no query params,
+        no trailing slash) to prevent duplicate transcriptions when the same
+        episode appears in both the main account and playlists.
+
+        Results are sorted by episode number (EX.NNN) when available, then
+        alphabetically for episodes without standard numbering.
+        """
         episodes: dict[str, dict] = {}
 
         print(f"  Scanning: {self.PRIMARY_SOURCE}")
@@ -90,7 +160,12 @@ class EpisodeDiscovery:
         return sorted(episodes.values(), key=self._sort_key)
 
     def _scan_source(self, url: str) -> list[dict]:
-        """Use yt-dlp --flat-playlist to list episodes without downloading."""
+        """Use yt-dlp --flat-playlist to list episodes without downloading.
+
+        yt-dlp outputs one JSON object per line, each containing the episode
+        URL, title, and duration. We parse each line individually to handle
+        partial output (some lines may be malformed).
+        """
         result = subprocess.run(
             ["yt-dlp", "--flat-playlist", "--dump-json", "--no-warnings", url],
             capture_output=True,
@@ -143,10 +218,15 @@ class EpisodeDiscovery:
 
 
 class TranscriptionService:
-    """Transcribes audio files via TogetherAI's Whisper API."""
+    """Transcribes audio files via TogetherAI's Whisper API.
 
-    MODEL = "openai/whisper-large-v3"
-    COST_PER_MINUTE = 0.0015
+    Uses the OpenAI SDK with a custom base_url pointing to TogetherAI.
+    The model is Whisper Large V3, which provides high-quality English
+    transcription at $0.0015/minute (~$0.075 per 50-minute episode).
+    """
+
+    MODEL = "openai/whisper-large-v3"  # TogetherAI model identifier
+    COST_PER_MINUTE = 0.0015           # USD per minute of audio
 
     def __init__(self, api_key: str):
         self._client = OpenAI(
@@ -166,7 +246,17 @@ class TranscriptionService:
 
 
 class ProgressTracker:
-    """Tracks which episodes have been transcribed and ingested."""
+    """Tracks which episodes have been transcribed and ingested.
+
+    Persists state to a JSON file (_progress.json) in the transcript output
+    directory. This enables resumable operation — if the script is interrupted,
+    re-running it will skip already-completed episodes.
+
+    State categories:
+      - completed: Transcription finished, transcript file saved
+      - failed: Transcription or download failed (with error message)
+      - ingested: Transcript has been chunked and stored in ChromaDB
+    """
 
     def __init__(self, progress_file: Path):
         self._file = progress_file
@@ -220,7 +310,15 @@ class ProgressTracker:
 
 
 class DBIngestor:
-    """Ingests transcript text files into the ChromaDB vector store."""
+    """Ingests transcript text files into the ChromaDB vector store.
+
+    Lazy-initializes the full ingestion pipeline (embedding provider, LLM,
+    chunker, vector store) on first use. This avoids loading heavy
+    dependencies if --skip-ingest is used.
+
+    Transcripts are ingested as source_type="interview" with citation_tier=3
+    (primary source — first-person accounts from artists and scene figures).
+    """
 
     def __init__(self):
         self._service = None
@@ -338,7 +436,17 @@ class DBIngestor:
 
 
 class RAExchangeTranscriber:
-    """Orchestrates the full RA Exchange transcription + ingestion pipeline."""
+    """Orchestrates the full RA Exchange transcription + ingestion pipeline.
+
+    This is the top-level coordinator that runs the 3-phase pipeline:
+      Phase 1: Discover episodes from SoundCloud
+      Phase 2: Estimate cost and display summary
+      Phase 3: Batch transcribe + ingest (configurable batch size)
+
+    Each batch follows the pattern: transcribe N episodes -> ingest N transcripts.
+    This batching strategy provides regular progress updates and limits the
+    blast radius of failures (a bad batch does not lose prior work).
+    """
 
     def __init__(
         self,
@@ -512,7 +620,18 @@ class RAExchangeTranscriber:
         print("=" * 60)
 
     def _download_and_transcribe(self, episode: dict) -> str:
-        """Download audio to temp dir, transcribe, auto-delete audio."""
+        """Download audio to temp dir, transcribe, auto-delete audio.
+
+        Uses a TemporaryDirectory so the downloaded audio file is automatically
+        cleaned up after transcription completes, preventing disk space
+        accumulation when processing hundreds of episodes.
+
+        yt-dlp flags:
+          -x: Extract audio only (no video)
+          --audio-format mp3: Convert to mp3 (Whisper compatible)
+          --audio-quality 5: Medium quality (smaller file, faster upload)
+          --no-playlist: Download single track only
+        """
         with tempfile.TemporaryDirectory(prefix="ra_exchange_") as tmpdir:
             tmp_path = Path(tmpdir)
 
@@ -559,6 +678,14 @@ class RAExchangeTranscriber:
 
 
 def main() -> None:
+    """CLI entry point: parse arguments, resolve API key, run the pipeline.
+
+    The API key resolution chain:
+      1. TOGETHER_API_KEY environment variable
+      2. OPENAI_API_KEY environment variable
+      3. TOGETHER_API_KEY or OPENAI_API_KEY from .env file
+    The key is required for transcription but not for --dry-run mode.
+    """
     import argparse
 
     parser = argparse.ArgumentParser(

@@ -1,4 +1,26 @@
-"""Image preprocessing utilities for OCR extraction from rave flier images."""
+"""Image preprocessing utilities for OCR extraction from rave flier images.
+
+Rave fliers present a uniquely challenging OCR problem: neon/bright text on
+dark backgrounds, heavy stylization, creative fonts, rotation, and mixed
+colour schemes.  Standard OCR engines (Tesseract, EasyOCR) perform poorly
+on raw flier photos.
+
+This module implements a **multi-pass preprocessing strategy** that generates
+7 different image variants from a single input, each targeting a different
+failure mode:
+
+    Pass 1 - "standard"    : Contrast boost + adaptive binarization + deskew
+    Pass 2 - "inverted"    : Colour inversion (catches light-on-dark text)
+    Pass 3 - "channel_*"   : Individual R/G/B channels (isolates neon text)
+    Pass 4 - "clahe"       : CLAHE adaptive contrast (handles uneven lighting)
+    Pass 5 - "denoised"    : Bilateral denoising (phone camera noise)
+    Pass 6 - "saturation"  : HSV saturation channel (neon text mask)
+    Pass 7 - "otsu"        : Otsu global binarization (bimodal histograms)
+
+OCR providers run all passes and merge results via ``ocr_helpers.merge_pass_results``
+to maximise text recovery.  Results are cached by image content hash so
+multiple providers sharing the same image avoid redundant computation.
+"""
 
 import hashlib
 import io
@@ -12,15 +34,17 @@ class ImagePreprocessor:
     """Prepares rave flier images for OCR by enhancing text readability.
 
     Rave fliers typically feature neon/bright text on dark backgrounds,
-    heavy stylization, and varying orientations — all of which degrade
+    heavy stylization, and varying orientations -- all of which degrade
     standard OCR accuracy.
     """
 
     def __init__(self) -> None:
+        # Cache: maps image content MD5 -> list of preprocessed passes.
+        # Only the most recent image is cached to limit memory usage.
         self._pass_cache: dict[str, list[tuple[str, Image.Image]]] = {}
 
     def build_ocr_passes(self, original: Image.Image) -> list[tuple[str, Image.Image]]:
-        """Build all common OCR preprocessing passes for an image.
+        """Build all 7 OCR preprocessing passes for an image.
 
         Results are cached by image content hash so that multiple providers
         (e.g. Tesseract fallback to EasyOCR) share the same preprocessed
@@ -28,45 +52,58 @@ class ImagePreprocessor:
 
         Returns a list of (pass_name, preprocessed_image) tuples.
         """
+        # Content-based cache key avoids reprocessing the same image bytes.
         img_hash = hashlib.md5(original.tobytes()).hexdigest()
         if img_hash in self._pass_cache:
             return self._pass_cache[img_hash]
 
         passes: list[tuple[str, Image.Image]] = []
 
-        # Shared base: resized (with upscaling for small images)
+        # Shared base: resize to OCR-friendly dimensions (upscale small images,
+        # downscale huge ones) so all passes work from the same resolution.
         resized = self.resize_for_ocr(original)
 
-        # 1. Standard contrast-enhanced binarized image
+        # --- Pass 1: Standard contrast + adaptive binarization + deskew ---
+        # This is the baseline pass that works for well-lit, well-oriented fliers.
         enhanced = self.enhance_contrast(resized)
         enhanced_gray = np.array(enhanced.convert("L"))
         binarized = self.binarize(enhanced, gray_array=enhanced_gray)
 
-        # Compute skew angle once on the standard binarized image and reuse
+        # Compute skew angle ONCE on the standard pass and reuse across all
+        # passes -- saves expensive Hough transform computation.
         binarized_gray = np.array(binarized.convert("L"))
         skew_angle = self.detect_skew_angle(binarized, gray_array=binarized_gray)
 
         deskewed = self.apply_deskew(binarized, skew_angle)
         passes.append(("standard", deskewed))
 
-        # 2. Inverted (light text on dark background)
+        # --- Pass 2: Inverted (catches light text on dark backgrounds) ---
+        # Many rave fliers have white/neon text on black -- inverting makes
+        # this look like standard black-on-white for the OCR engine.
         inverted = ImageOps.invert(deskewed.convert("RGB"))
         passes.append(("inverted", inverted))
 
-        # 3. Individual color channels (isolate neon text)
+        # --- Pass 3: Individual R/G/B color channels (isolate neon text) ---
+        # Neon pink text shows up strongly in the red channel; neon green in
+        # the green channel, etc.  Isolating channels improves contrast for
+        # specific colour schemes.
         channels = self.separate_color_channels(resized)
         channel_names = ["red", "green", "blue"]
         for ch_name, channel in zip(channel_names, channels, strict=True):
             passes.append((f"channel_{ch_name}", channel.convert("RGB")))
 
-        # 4. CLAHE — localized adaptive contrast
+        # --- Pass 4: CLAHE (Contrast Limited Adaptive Histogram Equalization) ---
+        # Handles uneven lighting from phone-camera flash or ambient light.
+        # Operates in LAB colour space so only lightness is equalized.
         clahe_enhanced = self.enhance_contrast_clahe(resized)
         clahe_gray = np.array(clahe_enhanced.convert("L"))
         clahe_binarized = self.binarize(clahe_enhanced, gray_array=clahe_gray)
         clahe_deskewed = self.apply_deskew(clahe_binarized, skew_angle)
         passes.append(("clahe", clahe_deskewed))
 
-        # 5. Denoised
+        # --- Pass 5: Denoised (bilateral filter preserves text edges) ---
+        # Phone cameras in dark clubs produce noisy images; bilateral filtering
+        # smooths noise while keeping letter edges sharp.
         denoised = self.denoise(resized)
         denoised_enhanced = self.enhance_contrast(denoised)
         denoised_gray = np.array(denoised_enhanced.convert("L"))
@@ -74,21 +111,25 @@ class ImagePreprocessor:
         denoised_deskewed = self.apply_deskew(denoised_binarized, skew_angle)
         passes.append(("denoised", denoised_deskewed))
 
-        # 6. HSV saturation channel
+        # --- Pass 6: HSV saturation channel (neon text mask) ---
+        # Neon text has very high saturation; dark backgrounds have near-zero.
+        # This produces a cleaner text/background separation than RGB splitting.
         saturation = self.extract_saturation_channel(resized)
         sat_rgb = saturation.convert("RGB")
         sat_gray = np.array(sat_rgb.convert("L"))
         sat_binarized = self.binarize(sat_rgb, gray_array=sat_gray)
         passes.append(("saturation", sat_binarized))
 
-        # 7. Otsu binarization
+        # --- Pass 7: Otsu binarization (automatic global threshold) ---
+        # Best for images with a clear bimodal histogram (bright text on dark
+        # background).  Complements the adaptive threshold in Pass 1.
         otsu_enhanced = self.enhance_contrast(resized)
         otsu_gray = np.array(otsu_enhanced.convert("L"))
         otsu_binarized = self.binarize_otsu(otsu_enhanced, gray_array=otsu_gray)
         otsu_deskewed = self.apply_deskew(otsu_binarized, skew_angle)
         passes.append(("otsu", otsu_deskewed))
 
-        # Cache (keep only the most recent to limit memory)
+        # Cache only the most recent image to limit memory footprint.
         self._pass_cache.clear()
         self._pass_cache[img_hash] = passes
 

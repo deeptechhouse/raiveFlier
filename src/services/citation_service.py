@@ -6,6 +6,29 @@ from URLs, and async link verification via HTTP HEAD requests.
 
 Tier 1 is the highest authority (published books, first-hand accounts);
 tier 6 is the lowest (community forums).
+
+Architecture overview for junior developers
+--------------------------------------------
+This service implements a six-tier citation authority system used across
+the entire pipeline.  Every source (URL, book, article, forum post) is
+assigned a numerical tier from 1 (most authoritative) to 6 (least):
+
+    Tier 1 -- Book / Academic   (published books, first-hand accounts)
+    Tier 2 -- Press             (DJ Mag, Resident Advisor, Mixmag, etc.)
+    Tier 3 -- Flier / Archive   (19hz.info, flyer archives -- the flier itself)
+    Tier 4 -- Database          (Discogs, MusicBrainz -- structured metadata)
+    Tier 5 -- Web               (Wikipedia, general websites)
+    Tier 6 -- Forum             (Reddit, Discogs forums, community discussion)
+
+Tier assignment uses two strategies, checked in order:
+  1. URL pattern matching -- regex patterns mapped to known domains
+  2. Source-type keyword fallback -- e.g., "book" -> tier 1
+
+The service also provides async URL verification: it sends an HTTP HEAD
+request to check if a citation's URL is still live.  If the URL is dead,
+it falls back to the Wayback Machine availability API to check for an
+archived snapshot.  This two-step verification ensures citations remain
+valid even when original pages go offline.
 """
 
 from __future__ import annotations
@@ -25,7 +48,10 @@ _VERIFY_TIMEOUT = 5.0
 # Wayback Machine availability API endpoint
 _WAYBACK_API = "https://archive.org/wayback/available"
 
-# Source type keywords mapped to tiers (used when no URL is available)
+# Source type keywords mapped to tiers (used when no URL is available).
+# This is the fallback lookup when URL pattern matching does not apply
+# (e.g., the source is a book with no URL).  The keyword comes from the
+# source_type field on a Citation model instance.
 _SOURCE_TYPE_TIERS: dict[str, int] = {
     "book": 1,
     "academic": 1,
@@ -56,6 +82,11 @@ class CitationService:
     """
 
     # -- Citation tier hierarchy (class constant) -----------------------------
+    # The canonical tier map.  Lower number = higher authority.
+    # Why this ordering?  Books and first-hand interviews are primary sources
+    # that cannot be edited after publication; press articles are reviewed;
+    # flier archives are physical evidence; databases are crowd-sourced but
+    # moderated; general web is unmoderated; forums are ephemeral opinion.
     TIER_MAP: dict[str, int] = {
         "book": 1,
         "press": 2,
@@ -66,10 +97,12 @@ class CitationService:
     }
 
     # Compiled URL patterns mapped to tier values for automatic assignment.
-    # More specific patterns (e.g. ``discogs.com/forum``) appear before
-    # their broader parent domain pattern to ensure correct matching.
+    # ORDERING MATTERS: more specific patterns (e.g. ``discogs.com/forum``)
+    # appear BEFORE their broader parent domain (``discogs.com``) to ensure
+    # the first match wins correctly.  A forum thread on Discogs is tier 6,
+    # not tier 4.
     URL_TIER_PATTERNS: list[tuple[re.Pattern[str], int]] = [
-        # Tier 2 — established music press
+        # Tier 2 -- established music press (editorially reviewed content)
         (re.compile(r"djmag\.com", re.IGNORECASE), 2),
         (re.compile(r"residentadvisor\.net", re.IGNORECASE), 2),
         (re.compile(r"mixmag\.net", re.IGNORECASE), 2),
@@ -77,16 +110,18 @@ class CitationService:
         (re.compile(r"thequietus\.com", re.IGNORECASE), 2),
         (re.compile(r"pitchfork\.com", re.IGNORECASE), 2),
         (re.compile(r"factmag\.com", re.IGNORECASE), 2),
-        # Tier 3 — event / flier archives
+        # Tier 3 -- event / flier archives (physical evidence of events)
         (re.compile(r"19hz\.info", re.IGNORECASE), 3),
         (re.compile(r"flyerarchive", re.IGNORECASE), 3),
-        # Tier 6 — forums (must precede broader domain matches below)
+        # Tier 6 -- forums.  NOTE: discogs.com/forum MUST come before the
+        # broader discogs.com pattern below, otherwise forums would be
+        # misclassified as tier 4 database content.
         (re.compile(r"discogs\.com/forum", re.IGNORECASE), 6),
         (re.compile(r"reddit\.com", re.IGNORECASE), 6),
-        # Tier 4 — music databases
+        # Tier 4 -- music databases (structured, crowd-sourced, moderated)
         (re.compile(r"discogs\.com", re.IGNORECASE), 4),
         (re.compile(r"musicbrainz\.org", re.IGNORECASE), 4),
-        # Tier 5 — general web
+        # Tier 5 -- general web (unmoderated or loosely moderated)
         (re.compile(r"wikipedia\.org", re.IGNORECASE), 5),
     ]
 
@@ -111,9 +146,11 @@ class CitationService:
         """
 
         def _sort_key(c: Citation) -> tuple[int, int]:
-            # For date: negate ordinal so newer dates come first.
-            # Citations without a date get a very low value (0) so they
-            # sort after dated citations within the same tier.
+            # Composite sort: (tier ASC, date DESC within each tier).
+            # Negating the date ordinal makes newer dates sort first.
+            # Citations without a date get 0, placing them after dated
+            # citations within the same tier (since negative ordinals
+            # are always less than 0).
             date_val = -c.source_date.toordinal() if c.source_date else 0
             return (c.tier, date_val)
 
@@ -168,19 +205,27 @@ class CitationService:
         int
             Citation tier between 1 (highest) and 6 (lowest).
         """
+        # Strategy 1: URL pattern matching (preferred -- most specific signal).
+        # If the URL matches a known domain, use that tier.  The default
+        # return from assign_tier_from_url is 5 ("general web"), so we only
+        # accept the result if it is NOT 5 (meaning a specific pattern hit).
         if source_url:
             tier = self.assign_tier_from_url(source_url)
             if tier != 5:
                 return tier
 
+        # Strategy 2: source-type keyword lookup (fallback when URL is
+        # unknown or matched as generic "web").
         if source_type:
             normalised = source_type.strip().lower().replace(" ", "_")
             if normalised in _SOURCE_TYPE_TIERS:
                 return _SOURCE_TYPE_TIERS[normalised]
 
+        # If we have a URL but no keyword match, default to tier 5 (web).
         if source_url:
             return 5
 
+        # No URL, no recognized type -- lowest possible authority.
         return 6
 
     def build_citation(
@@ -258,9 +303,12 @@ class CitationService:
             ``True`` if the original URL or a Wayback Machine snapshot
             responded with a success/redirect status.
         """
+        # No URL means nothing to verify -- return immediately.
         if not citation.source_url:
             return (citation, False)
 
+        # Step 1: Try the original URL with an HTTP HEAD request.
+        # HEAD is used (not GET) to avoid downloading large page bodies.
         accessible = await self._head_check(citation.source_url)
         if accessible:
             self._logger.debug(
@@ -269,7 +317,10 @@ class CitationService:
             )
             return (citation, True)
 
-        # Original URL is down — try Wayback Machine
+        # Step 2: Original URL is down -- fall back to the Wayback Machine.
+        # The Internet Archive's availability API checks if an archived
+        # snapshot exists.  This is crucial for rave history research where
+        # many original pages from the 90s/2000s no longer exist.
         wayback_ok = await self._check_wayback(citation.source_url)
         if wayback_ok:
             self._logger.debug(
@@ -307,6 +358,9 @@ class CitationService:
         if not citations:
             return []
 
+        # Semaphore-based concurrency limiter: prevents flooding external
+        # servers with too many simultaneous HEAD requests.  Default of 10
+        # balances throughput with politeness.
         semaphore = asyncio.Semaphore(max_concurrent)
 
         async def _limited_verify(
@@ -441,6 +495,9 @@ class CitationService:
                 )
                 if response.status_code != 200:
                     return False
+                # The Wayback Machine API returns a JSON structure like:
+                # {"archived_snapshots": {"closest": {"available": true, ...}}}
+                # We check the "available" flag on the closest snapshot.
                 data = response.json()
                 snapshot = data.get("archived_snapshots", {}).get("closest", {})
                 return snapshot.get("available", False) is True

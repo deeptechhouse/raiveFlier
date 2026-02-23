@@ -1,9 +1,16 @@
 """Source processor for plain-text book files.
 
-Reads a UTF-8 text file, detects chapter boundaries, and returns logical
-sections as :class:`~src.models.rag.DocumentChunk` objects with ``source_type
-= "book"`` and ``citation_tier = 1``.  Actual chunking into embedding-sized
-windows happens downstream in :class:`~src.services.ingestion.chunker.TextChunker`.
+Reads a UTF-8 text file, detects chapter boundaries using heading patterns,
+and returns one :class:`~src.models.rag.DocumentChunk` per chapter/section
+with ``source_type = "book"`` and ``citation_tier = 1`` (highest authority).
+
+Books are the most authoritative source in the raiveFlier citation hierarchy.
+They provide deep historical context on electronic music culture, venues,
+and artists that cannot be found in shorter articles or web content.
+
+Note: This processor returns chapter-sized chunks, NOT embedding-sized
+windows.  The actual token-level splitting happens downstream in
+:class:`~src.services.ingestion.chunker.TextChunker`.
 """
 
 from __future__ import annotations
@@ -18,15 +25,17 @@ from src.models.rag import DocumentChunk
 
 logger = structlog.get_logger(logger_name=__name__)
 
-# Regex patterns for detecting chapter boundaries.
+# Regex patterns for detecting chapter boundaries in plain-text books.
+# Multiple patterns handle different formatting conventions.
 _CHAPTER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^Chapter\s+\d+", re.IGNORECASE),  # "Chapter 1", "chapter 12"
     re.compile(r"^PART\s+[IVXLCDM\d]+", re.IGNORECASE),  # "PART I", "PART 3"
-    re.compile(r"^\d+\.\s+\S"),  # "1. Introduction"
-    re.compile(r"^[A-Z][A-Z\s]{4,}$"),  # ALL-CAPS heading lines
+    re.compile(r"^\d+\.\s+\S"),  # "1. Introduction" (numbered headings)
+    re.compile(r"^[A-Z][A-Z\s]{4,}$"),  # ALL-CAPS heading lines (5+ chars)
 ]
 
 # Regex for inline page markers like [p.142] or [page 42].
+# These markers are preserved in digitized texts and used for citation references.
 _PAGE_MARKER = re.compile(r"\[p(?:age)?\.?\s*(\d+)\]", re.IGNORECASE)
 
 

@@ -13,6 +13,9 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
+# Concrete implementation: MemoryCacheProvider (src/providers/cache/)
+# Currently uses an in-memory dict with TTL expiry. Could be swapped for
+# Redis or Memcached for multi-process deployments without changing callers.
 class ICacheProvider(ABC):
     """Contract for key-value cache services.
 

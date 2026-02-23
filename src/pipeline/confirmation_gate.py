@@ -3,6 +3,27 @@
 After Phase 1 (OCR + Entity Extraction), the pipeline pauses so the user
 can review, edit, and confirm the extracted entities before research begins.
 This module manages the pending session state during that pause.
+
+# ─── HOW THE CONFIRMATION GATE WORKS (Junior Developer Guide) ─────────
+#
+# The pipeline has a "human-in-the-loop" design:
+#
+#   Phase 1 (OCR + Extraction) ──→ PAUSE (user reviews) ──→ Phase 2-5 (Research)
+#                                       ↑
+#                                  ConfirmationGate
+#
+# Workflow:
+#   1. Pipeline Phase 1 completes → state is stored via submit_for_review()
+#   2. Frontend displays extracted entities → user can edit/delete/add
+#   3. User clicks "Confirm" → API calls confirm() with edited entities
+#   4. ConfirmationGate returns updated state → pipeline resumes at Phase 2
+#
+# The gate also supports cancel() if the user abandons the analysis.
+#
+# Storage: The pending_store is a MutableMapping (dict-like). In production,
+# it's a PersistentSessionStore (SQLite-backed) so pending sessions survive
+# container restarts.  In tests, pass a plain dict.
+# ──────────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
@@ -29,6 +50,9 @@ class ConfirmationGate:
         self,
         pending_store: MutableMapping[str, PipelineState] | None = None,
     ) -> None:
+        # Accept any dict-like object — this is the "Dependency Inversion"
+        # principle: we depend on the MutableMapping abstraction, not on
+        # PersistentSessionStore directly.  In tests, pass a plain {}.
         self._pending_sessions: MutableMapping[str, PipelineState] = (
             pending_store if pending_store is not None else {}
         )
@@ -121,6 +145,9 @@ class ConfirmationGate:
             )
             raise KeyError(f"No pending session found for ID: {session_id}")
 
+        # model_copy(update={...}) creates a NEW PipelineState with the
+        # confirmed entities and advances the phase to RESEARCH.
+        # The original `state` is unchanged (frozen/immutable model).
         confirmed_state = state.model_copy(
             update={
                 "confirmed_entities": confirmed_entities,
