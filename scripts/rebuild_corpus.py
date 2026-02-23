@@ -187,16 +187,19 @@ async def _ingest_single_transcript(service, file_path: Path):
     if not raw_chunks:
         return None
 
+    from src.utils.text_normalizer import preprocess_transcript
+
     source_id = raw_chunks[0].source_id
     all_chunks: list[DocumentChunk] = []
     for rc in raw_chunks:
+        text = preprocess_transcript(rc.text)
         metadata = {
             "source_id": rc.source_id,
             "source_title": rc.source_title,
             "source_type": rc.source_type,
             "citation_tier": rc.citation_tier,
         }
-        chunks = service._chunker.chunk(rc.text, metadata)
+        chunks = service._chunker.chunk(text, metadata)
         all_chunks.extend(chunks)
 
     if not all_chunks:
