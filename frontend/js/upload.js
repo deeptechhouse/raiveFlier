@@ -263,7 +263,7 @@ const Upload = (() => {
       _showError(err.message || "Upload failed. Please try again.");
     } finally {
       _loadingOverlay.hidden = true;
-      _submitBtn.disabled = _selectedFile === null;
+      _submitBtn.disabled = _selectedFile === null || !_duplicateWarning.hidden;
     }
   }
 
