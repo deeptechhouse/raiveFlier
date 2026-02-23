@@ -282,3 +282,164 @@ class TestCorpusSearchEndpoint:
         data = resp.json()
         assert data["total_results"] == 0
         assert data["results"] == []
+
+    # -----------------------------------------------------------------------
+    # Single-artist filtering (non-artist queries)
+    # -----------------------------------------------------------------------
+
+    def test_non_artist_query_filters_single_entity_chunks(self) -> None:
+        """Chunks with exactly 1 entity tag are dropped for non-artist queries."""
+        single_entity = DocumentChunk(
+            chunk_id="chunk-single",
+            text="Carl Cox biography and career overview.",
+            token_count=40,
+            source_id="src-bio",
+            source_title="DJ Mag Profile",
+            source_type="article",
+            author="Staff",
+            citation_tier=4,
+            entity_tags=["Carl Cox"],         # single entity → filtered
+            geographic_tags=["London"],
+            genre_tags=["techno"],
+        )
+        multi_entity = DocumentChunk(
+            chunk_id="chunk-multi",
+            text="The Detroit-Berlin axis shaped techno globally.",
+            token_count=45,
+            source_id="src-history",
+            source_title="Energy Flash",
+            source_type="book",
+            author="Simon Reynolds",
+            citation_tier=1,
+            entity_tags=["Juan Atkins", "Tresor"],  # 2 entities → kept
+            geographic_tags=["Detroit", "Berlin"],
+            genre_tags=["techno"],
+        )
+        no_entity = DocumentChunk(
+            chunk_id="chunk-none",
+            text="Warehouse parties defined the 1990s rave scene.",
+            token_count=35,
+            source_id="src-scene",
+            source_title="Rave Culture",
+            source_type="book",
+            author="Unknown",
+            citation_tier=2,
+            entity_tags=[],                    # no entity → kept
+            geographic_tags=[],
+            genre_tags=["rave"],
+        )
+
+        mock_store = AsyncMock()
+        mock_store.query = AsyncMock(return_value=[
+            RetrievedChunk(chunk=single_entity, similarity_score=0.95,
+                           formatted_citation="DJ Mag Profile [T4]"),
+            RetrievedChunk(chunk=multi_entity, similarity_score=0.85,
+                           formatted_citation="Energy Flash [T1]"),
+            RetrievedChunk(chunk=no_entity, similarity_score=0.80,
+                           formatted_citation="Rave Culture [T2]"),
+        ])
+
+        app = _create_test_app(rag_enabled=True, vector_store=mock_store)
+        client = TestClient(app)
+
+        resp = client.post(
+            "/api/v1/corpus/search",
+            json={"query": "techno in the 90s"},  # NOT an artist query
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        titles = [r["source_title"] for r in data["results"]]
+        # Single-entity "DJ Mag Profile" should be filtered out
+        assert "DJ Mag Profile" not in titles
+        # Multi-entity and no-entity results should remain
+        assert "Energy Flash" in titles
+        assert "Rave Culture" in titles
+        assert data["total_results"] == 2
+
+    def test_artist_query_keeps_single_entity_chunks(self) -> None:
+        """Chunks with exactly 1 entity tag are kept for artist queries."""
+        single_entity = DocumentChunk(
+            chunk_id="chunk-single",
+            text="Carl Cox biography and career overview.",
+            token_count=40,
+            source_id="src-bio",
+            source_title="DJ Mag Profile",
+            source_type="article",
+            author="Staff",
+            citation_tier=4,
+            entity_tags=["Carl Cox"],
+            geographic_tags=["London"],
+            genre_tags=["techno"],
+        )
+
+        mock_store = AsyncMock()
+        mock_store.query = AsyncMock(return_value=[
+            RetrievedChunk(chunk=single_entity, similarity_score=0.95,
+                           formatted_citation="DJ Mag Profile [T4]"),
+        ])
+
+        app = _create_test_app(rag_enabled=True, vector_store=mock_store)
+        client = TestClient(app)
+
+        resp = client.post(
+            "/api/v1/corpus/search",
+            json={"query": "artists similar to Jeff Mills"},  # IS an artist query
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_results"] == 1
+        assert data["results"][0]["source_title"] == "DJ Mag Profile"
+
+    def test_non_artist_query_keeps_no_entity_and_multi_entity(self) -> None:
+        """No-entity and multi-entity chunks pass through for any query."""
+        no_entity = DocumentChunk(
+            chunk_id="chunk-none",
+            text="The origins of acid house.",
+            token_count=30,
+            source_id="src-a",
+            source_title="Acid Primer",
+            source_type="article",
+            author="Staff",
+            citation_tier=3,
+            entity_tags=[],
+            geographic_tags=["Chicago"],
+            genre_tags=["acid house"],
+        )
+        three_entities = DocumentChunk(
+            chunk_id="chunk-three",
+            text="Knuckles, Hardy, and Jefferson laid the groundwork.",
+            token_count=40,
+            source_id="src-b",
+            source_title="House Origins",
+            source_type="book",
+            author="Author",
+            citation_tier=1,
+            entity_tags=["Frankie Knuckles", "Ron Hardy", "Marshall Jefferson"],
+            geographic_tags=["Chicago"],
+            genre_tags=["house"],
+        )
+
+        mock_store = AsyncMock()
+        mock_store.query = AsyncMock(return_value=[
+            RetrievedChunk(chunk=no_entity, similarity_score=0.90,
+                           formatted_citation="Acid Primer [T3]"),
+            RetrievedChunk(chunk=three_entities, similarity_score=0.85,
+                           formatted_citation="House Origins [T1]"),
+        ])
+
+        app = _create_test_app(rag_enabled=True, vector_store=mock_store)
+        client = TestClient(app)
+
+        resp = client.post(
+            "/api/v1/corpus/search",
+            json={"query": "house music chicago"},  # NOT an artist query
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_results"] == 2
+        titles = [r["source_title"] for r in data["results"]]
+        assert "Acid Primer" in titles
+        assert "House Origins" in titles
