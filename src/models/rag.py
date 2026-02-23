@@ -96,6 +96,17 @@ class DocumentChunk(BaseModel):
         default_factory=list,
         description="Musical genres and sub-genres referenced in this chunk.",
     )
+    entity_types: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Parallel list of entity type classifications — one per entity_tag. "
+            "Values: ARTIST, VENUE, LABEL, EVENT, COLLECTIVE. Empty for legacy chunks."
+        ),
+    )
+    time_period: str | None = Field(
+        default=None,
+        description="Decade or year range referenced in the text, e.g. '1990s', '1987-1989'.",
+    )
 
 
 # ---------------------------------------------------------------------------

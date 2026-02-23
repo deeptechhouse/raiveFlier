@@ -192,8 +192,10 @@ class CorpusSearchChunk(BaseModel):
     similarity_score: float = 0.0
     formatted_citation: str = ""
     entity_tags: list[str] = Field(default_factory=list)
+    entity_types: list[str] = Field(default_factory=list)
     geographic_tags: list[str] = Field(default_factory=list)
     genre_tags: list[str] = Field(default_factory=list)
+    time_period: str | None = None
 
 
 class CorpusSearchResponse(BaseModel):

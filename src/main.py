@@ -552,6 +552,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "provider_registry": provider_registry,
         "provider_list": provider_list,
         "primary_llm_name": primary_llm.get_provider_name(),
+        "primary_llm": primary_llm,
         "ingestion_service": ingestion_service,
         "vector_store": vector_store,
         "rag_enabled": app_settings.rag_enabled and vector_store is not None,

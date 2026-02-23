@@ -178,6 +178,14 @@ def _get_feedback_provider(request: Request) -> Any:
 FeedbackDep = Annotated[Any, Depends(_get_feedback_provider)]
 
 
+def _get_llm_provider(request: Request) -> Any:
+    """Return the LLM provider from application state, or ``None``."""
+    return getattr(request.app.state, "primary_llm", None)
+
+
+LLMProviderDep = Annotated[Any, Depends(_get_llm_provider)]
+
+
 def _get_flier_history(request: Request) -> Any:
     """Return the flier history provider from application state, or ``None``."""
     return getattr(request.app.state, "flier_history", None)
@@ -802,13 +810,124 @@ _ARTIST_QUERY_RE = re.compile(
     | \bsimilar\s+to\b
     | \bsounds?\s+like\b
     | \bwho\s+(?:play|plays|perform|performs|spins?)\b
+    | \bwho\s+is\b
+    | \btell\s+me\s+about\b
+    | \bbiography\b
+    | \bprofile\s+of\b
+    | \bcareer\s+of\b
     """,
 )
 
+# Cached set of known artist names — populated lazily on first search.
+_artist_name_cache: set[str] | None = None
+
+
+def _build_artist_name_cache() -> set[str]:
+    """Build (or return cached) set of known artist names from the alias table."""
+    global _artist_name_cache  # noqa: PLW0603
+    if _artist_name_cache is not None:
+        return _artist_name_cache
+    try:
+        from src.config.domain_knowledge import get_all_artist_names
+        _artist_name_cache = {n.lower() for n in get_all_artist_names()}
+    except ImportError:
+        _artist_name_cache = set()
+    return _artist_name_cache
+
 
 def _is_artist_query(query: str) -> bool:
-    """Return *True* when the query is explicitly asking for artists."""
-    return _ARTIST_QUERY_RE.search(query) is not None
+    """Return *True* when the query is explicitly asking for artists.
+
+    Uses both regex pattern matching and a lookup against known artist
+    names from the alias table.
+    """
+    if _ARTIST_QUERY_RE.search(query):
+        return True
+    # Check if query matches a known artist name (exact or substring).
+    query_lower = query.strip().lower()
+    for name in _build_artist_name_cache():
+        if name == query_lower or (len(name) > 4 and name in query_lower):
+            return True
+    return False
+
+
+_EXPAND_SYSTEM_PROMPT = "You are a rave and electronic music culture search assistant."
+_EXPAND_USER_PROMPT = (
+    "Expand this search query with 2-3 related terms from electronic/dance music culture. "
+    "Return ONLY the expanded query on a single line, no explanation.\n\nQuery: {query}"
+)
+# LRU cache for query expansions -- avoids repeated LLM calls for identical queries.
+_expansion_cache: dict[str, str] = {}
+_EXPANSION_CACHE_MAX = 128
+
+
+async def _expand_query(llm: Any, query: str) -> str:
+    """Use the LLM to expand a short query with related rave/electronic music terms.
+
+    Skips expansion for long queries (>80 chars) or when LLM is unavailable.
+    Results are cached in an LRU dict to avoid repeated LLM round-trips.
+    """
+    if llm is None or len(query) > 80:
+        return query
+    if query in _expansion_cache:
+        return _expansion_cache[query]
+    try:
+        expanded = await llm.complete(
+            system_prompt=_EXPAND_SYSTEM_PROMPT,
+            user_prompt=_EXPAND_USER_PROMPT.format(query=query),
+            temperature=0.3,
+            max_tokens=100,
+        )
+        result = expanded.strip() if expanded else query
+    except Exception:
+        _logger.debug("query_expansion_failed", query_preview=query[:50])
+        result = query
+    # LRU eviction: remove oldest entry if cache is full.
+    if len(_expansion_cache) >= _EXPANSION_CACHE_MAX:
+        _expansion_cache.pop(next(iter(_expansion_cache)))
+    _expansion_cache[query] = result
+    return result
+
+
+def _semantic_dedup(
+    results: list[CorpusSearchChunk],
+    threshold: float = 0.85,
+) -> list[CorpusSearchChunk]:
+    """Remove near-duplicate chunks based on word-level Jaccard similarity.
+
+    Compares each candidate against already-kept results.  If the token
+    overlap exceeds *threshold*, the candidate is dropped (the kept result
+    already covers the same content and has a better score/tier).
+
+    Parameters
+    ----------
+    results:
+        Chunks pre-sorted by score (best first).
+    threshold:
+        Jaccard similarity above which two chunks are considered duplicates.
+    """
+    if len(results) <= 1:
+        return results
+
+    kept: list[CorpusSearchChunk] = [results[0]]
+    for candidate in results[1:]:
+        c_tokens = set(candidate.text.lower().split())
+        if not c_tokens:
+            kept.append(candidate)
+            continue
+        is_dup = False
+        for existing in kept:
+            e_tokens = set(existing.text.lower().split())
+            if not e_tokens:
+                continue
+            intersection = len(c_tokens & e_tokens)
+            union = len(c_tokens | e_tokens)
+            if union > 0 and intersection / union > threshold:
+                is_dup = True
+                break
+        if not is_dup:
+            kept.append(candidate)
+    return kept
 
 
 @router.post(
@@ -822,6 +941,7 @@ async def corpus_search(
     request: Request,
     vector_store: VectorStoreDep,
     feedback: FeedbackDep,
+    llm: LLMProviderDep,
 ) -> CorpusSearchResponse:
     """Perform semantic search against the RAG vector-store corpus.
 
@@ -840,8 +960,30 @@ async def corpus_search(
     if body.geographic_tag:
         filters["geographic_tags"] = {"$contains": body.geographic_tag}
 
+    # --- Pre-query processing: expand query for better retrieval ---
+    query_text = body.query
+
+    # Alias expansion: if query matches a known alias, append canonical + all names
+    try:
+        from src.config.domain_knowledge import get_canonical_name, expand_aliases
+        canonical = get_canonical_name(query_text.strip())
+        if canonical:
+            all_names = expand_aliases(canonical)
+            query_text = f"{query_text} ({' '.join(all_names)})"
+        # Also expand entity_tag filter if it matches an alias
+        if body.entity_tag:
+            tag_canonical = get_canonical_name(body.entity_tag)
+            if tag_canonical:
+                # Rewrite entity filter to use canonical name
+                filters["entity_tags"] = {"$contains": tag_canonical}
+    except ImportError:
+        pass  # domain_knowledge not yet available
+
+    # HyDE-lite: expand short/vague queries with LLM
+    query_text = await _expand_query(llm, query_text)
+
     chunks = await vector_store.query(
-        query_text=body.query,
+        query_text=query_text,
         top_k=body.top_k,
         filters=filters if filters else None,
     )
@@ -861,8 +1003,10 @@ async def corpus_search(
             similarity_score=round(c.similarity_score, 3),
             formatted_citation=c.formatted_citation,
             entity_tags=c.chunk.entity_tags,
+            entity_types=c.chunk.entity_types,
             geographic_tags=c.chunk.geographic_tags,
             genre_tags=c.chunk.genre_tags,
+            time_period=c.chunk.time_period,
         )
         source_chunks.setdefault(sid, []).append(candidate)
 
@@ -883,40 +1027,122 @@ async def corpus_search(
         except Exception:
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
+    # --- Score boosting: domain-aware re-ranking ---
+    # Each boost is small and additive so cosine similarity remains the
+    # dominant signal.  Boosted scores are stored in a parallel dict keyed
+    # by ``id(result)`` because CorpusSearchChunk is a Pydantic model and
+    # we avoid mutating it.
+    try:
+        from src.config.domain_knowledge import (
+            detect_temporal_signal,
+            extract_query_genres,
+            get_adjacent_genres,
+            get_scene_geographies,
+            temporal_overlap,
+        )
+        _dk_available = True
+    except ImportError:
+        _dk_available = False
+
+    boosted: dict[int, float] = {}
+    query_temporal = detect_temporal_signal(body.query) if _dk_available else None
+    query_geos = get_scene_geographies(body.query) if _dk_available else set()
+    query_genres = extract_query_genres(body.query) if _dk_available else set()
+
+    for r in deduped:
+        boost = 0.0
+
+        # #8 Citation tier boost: T1 → +0.10 … T6 → 0.00
+        boost += max(0.0, (6 - r.citation_tier) * 0.02)
+
+        if _dk_available:
+            # #4 Genre adjacency boost
+            if query_genres and r.genre_tags:
+                for qg in query_genres:
+                    adjacent = get_adjacent_genres(qg)
+                    for rtag in r.genre_tags:
+                        if rtag.lower() == qg.lower():
+                            boost += 0.05
+                            break
+                        if rtag.lower() in adjacent:
+                            boost += 0.03
+                            break
+
+            # #5 Temporal boost
+            if query_temporal:
+                if r.time_period and temporal_overlap(query_temporal, r.time_period):
+                    boost += 0.04
+
+            # #6 Geographic scene boost (soft)
+            if query_geos and r.geographic_tags:
+                for geo in r.geographic_tags:
+                    if geo in query_geos:
+                        boost += 0.03
+                        break
+
+        boosted[id(r)] = min(1.0, r.similarity_score + boost)
+
+    def _score(r: CorpusSearchChunk) -> float:
+        return boosted.get(id(r), r.similarity_score)
+
+    # --- Diversification: entity-type-aware caps ---
     # When the query is NOT explicitly asking for artists, diversify results
-    # so a single entity doesn't dominate (max 2 results per entity tag)
-    # and drop chunks focused on a single artist (exactly 1 entity tag).
+    # so no single entity dominates.  Entity type metadata (if available)
+    # controls per-type caps; legacy chunks without types use the old
+    # single-entity-tag heuristic.
     if not _is_artist_query(body.query):
-        _MAX_PER_ENTITY = 2
+        _CAP_BY_TYPE = {"ARTIST": 2, "VENUE": 4, "LABEL": 4, "EVENT": 4, "COLLECTIVE": 3}
+        _DEFAULT_CAP = 2
         entity_counts: dict[str, int] = {}
         diversified: list[CorpusSearchChunk] = []
-        # Process in similarity order so we keep the best hits per entity.
-        deduped.sort(key=lambda r: r.similarity_score, reverse=True)
+        deduped.sort(key=_score, reverse=True)
+
         for r in deduped:
             if not r.entity_tags:
                 diversified.append(r)
                 continue
-            # Skip single-entity chunks — these are artist-focused results
-            # that should only appear when the user asks for artists.
-            if len(r.entity_tags) == 1:
-                continue
-            # A chunk can have multiple entity tags; gate on the most-seen one.
-            capped = False
-            for tag in r.entity_tags:
-                if entity_counts.get(tag, 0) >= _MAX_PER_ENTITY:
-                    capped = True
-                    break
-            if not capped:
-                diversified.append(r)
+
+            has_types = r.entity_types and len(r.entity_types) == len(r.entity_tags)
+
+            if has_types:
+                # Single-entity check: only skip if the sole entity is an ARTIST
+                if len(r.entity_tags) == 1 and r.entity_types[0] == "ARTIST":
+                    continue
+                # Per-type capping
+                capped = False
+                for tag, etype in zip(r.entity_tags, r.entity_types):
+                    cap = _CAP_BY_TYPE.get(etype, _DEFAULT_CAP)
+                    if entity_counts.get(tag, 0) >= cap:
+                        capped = True
+                        break
+                if not capped:
+                    diversified.append(r)
+                    for tag in r.entity_tags:
+                        entity_counts[tag] = entity_counts.get(tag, 0) + 1
+            else:
+                # Fallback for legacy chunks without entity_types
+                if len(r.entity_tags) == 1:
+                    continue
+                capped = False
                 for tag in r.entity_tags:
-                    entity_counts[tag] = entity_counts.get(tag, 0) + 1
+                    if entity_counts.get(tag, 0) >= _DEFAULT_CAP:
+                        capped = True
+                        break
+                if not capped:
+                    diversified.append(r)
+                    for tag in r.entity_tags:
+                        entity_counts[tag] = entity_counts.get(tag, 0) + 1
+
         deduped = diversified
 
     results = sorted(
         deduped,
-        key=lambda r: r.similarity_score,
+        key=_score,
         reverse=True,
     )
+
+    # Remove near-duplicate chunks across different sources.
+    results = _semantic_dedup(results)
 
     return CorpusSearchResponse(
         query=body.query,

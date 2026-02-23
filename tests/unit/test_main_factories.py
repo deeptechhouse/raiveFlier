@@ -750,6 +750,7 @@ class TestBuildAll:
             "provider_registry",
             "provider_list",
             "primary_llm_name",
+            "primary_llm",
             "ingestion_service",
             "vector_store",
             "rag_enabled",

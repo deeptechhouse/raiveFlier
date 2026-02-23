@@ -40,8 +40,15 @@ _EXTRACTION_SYSTEM_PROMPT = (
 # minimize hallucinated tags.
 _EXTRACTION_USER_PROMPT = """\
 Extract structured tags from this text about electronic/dance music.
-Return JSON: {{"entities": [...], "places": [...], "genres": [...]}}
+Return JSON with this exact structure:
+{{
+  "entities": [{{"name": "<entity name>", "type": "ARTIST|VENUE|LABEL|EVENT|COLLECTIVE"}}],
+  "places": ["<city or region>"],
+  "genres": ["<genre>"],
+  "time_period": "<decade or year range if mentioned, else null>"
+}}
 Only include items explicitly mentioned in the text. Be precise.
+Entity types: ARTIST (DJ, musician, band, live act), VENUE (club, warehouse, park), LABEL (record label), EVENT (named event series), COLLECTIVE (crew, group, sound system).
 
 Text:
 {text}"""
@@ -80,10 +87,12 @@ class MetadataExtractor:
             Each value is a list of strings.  On LLM failure returns empty
             lists so ingestion is never blocked.
         """
-        empty: dict[str, list[str]] = {
+        empty: dict[str, list[str] | str | None] = {
             "entity_tags": [],
+            "entity_types": [],
             "geographic_tags": [],
             "genre_tags": [],
+            "time_period": None,
         }
 
         try:
@@ -157,8 +166,10 @@ class MetadataExtractor:
             citation_tier=chunk.citation_tier,
             page_number=chunk.page_number,
             entity_tags=tags.get("entity_tags", []),
+            entity_types=tags.get("entity_types", []),
             geographic_tags=tags.get("geographic_tags", []),
             genre_tags=tags.get("genre_tags", []),
+            time_period=tags.get("time_period"),
         )
 
     @staticmethod
@@ -172,10 +183,12 @@ class MetadataExtractor:
 
         Returns empty tag lists on parse failure (never raises).
         """
-        empty: dict[str, list[str]] = {
+        empty: dict[str, list[str] | str | None] = {
             "entity_tags": [],
+            "entity_types": [],
             "geographic_tags": [],
             "genre_tags": [],
+            "time_period": None,
         }
 
         cleaned = response.strip()
@@ -211,10 +224,29 @@ class MetadataExtractor:
                 return [str(v) for v in val if v]
             return []
 
-        # Map LLM response keys ("entities", "places", "genres") to our
-        # internal tag key names ("entity_tags", "geographic_tags", "genre_tags").
+        # Parse entities — handle both new format (list of {"name", "type"} dicts)
+        # and old format (list of plain strings) for backward compatibility.
+        raw_entities = data.get("entities", [])
+        entity_names: list[str] = []
+        entity_types: list[str] = []
+        if isinstance(raw_entities, list):
+            for item in raw_entities:
+                if isinstance(item, dict) and "name" in item:
+                    name = str(item["name"]).strip()
+                    if name:
+                        entity_names.append(name)
+                        entity_types.append(str(item.get("type", "")).strip().upper())
+                elif item:
+                    entity_names.append(str(item))
+
+        # Extract time_period (string or None).
+        raw_time = data.get("time_period")
+        time_period = str(raw_time).strip() if raw_time and str(raw_time).strip().lower() != "null" else None
+
         return {
-            "entity_tags": _as_str_list(data.get("entities")),
+            "entity_tags": entity_names,
+            "entity_types": entity_types,
             "geographic_tags": _as_str_list(data.get("places")),
             "genre_tags": _as_str_list(data.get("genres")),
+            "time_period": time_period,
         }

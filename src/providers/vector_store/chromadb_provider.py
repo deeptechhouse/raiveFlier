@@ -352,7 +352,10 @@ class ChromaDBProvider(IVectorStoreProvider):
             "entity_tags": ",".join(chunk.entity_tags),
             "geographic_tags": ",".join(chunk.geographic_tags),
             "genre_tags": ",".join(chunk.genre_tags),
+            "entity_types": ",".join(chunk.entity_types),
         }
+        if chunk.time_period is not None:
+            meta["time_period"] = chunk.time_period
         if chunk.author is not None:
             meta["author"] = chunk.author
         if chunk.publication_date is not None:
@@ -381,8 +384,10 @@ class ChromaDBProvider(IVectorStoreProvider):
             citation_tier=int(meta.get("citation_tier", 6)),
             page_number=meta.get("page_number"),
             entity_tags=ChromaDBProvider._split_tags(meta.get("entity_tags", "")),
+            entity_types=ChromaDBProvider._split_tags(meta.get("entity_types", "")),
             geographic_tags=ChromaDBProvider._split_tags(meta.get("geographic_tags", "")),
             genre_tags=ChromaDBProvider._split_tags(meta.get("genre_tags", "")),
+            time_period=meta.get("time_period"),
         )
 
     @staticmethod
