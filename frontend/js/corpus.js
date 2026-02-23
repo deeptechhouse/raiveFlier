@@ -78,7 +78,7 @@ const Corpus = (() => {
             <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
             <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <h3 class="corpus-sidebar__title">Corpus Search</h3>
+          <h3 class="corpus-sidebar__title">Explore the History</h3>
         </div>
         <button type="button" class="corpus-sidebar__close" id="corpus-close-btn" aria-label="Close corpus search">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
