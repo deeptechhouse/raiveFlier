@@ -237,8 +237,9 @@ class EventNameResearcher:
             self._logger.debug("Corpus retrieval failed", event_name=event_name, error=str(exc))
             return []
 
-        # Deduplicate by source_id — keep best chunk per source (safety net)
-        seen_sources: dict[str, tuple[float, ArticleReference]] = {}
+        # Deduplicate by source_id — keep top 3 chunks per source (safety net)
+        _MAX_PER_SOURCE = 3
+        source_chunks: dict[str, list[tuple[float, ArticleReference]]] = {}
         for chunk in chunks:
             if chunk.similarity_score < 0.7:
                 continue
@@ -252,11 +253,12 @@ class EventNameResearcher:
                 snippet=chunk.chunk.text[:200] + "...",
                 citation_tier=chunk.chunk.citation_tier,
             )
-            existing = seen_sources.get(sid)
-            if existing is None or chunk.similarity_score > existing[0]:
-                seen_sources[sid] = (chunk.similarity_score, ref)
+            source_chunks.setdefault(sid, []).append((chunk.similarity_score, ref))
 
-        refs = [ref for _, ref in seen_sources.values()]
+        refs: list[ArticleReference] = []
+        for entries in source_chunks.values():
+            entries.sort(key=lambda t: t[0], reverse=True)
+            refs.extend(ref for _, ref in entries[:_MAX_PER_SOURCE])
 
         if refs:
             self._logger.info(

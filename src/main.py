@@ -741,6 +741,12 @@ def create_app() -> FastAPI:
                 StaticFiles(directory=str(_FRONTEND_DIR / "js")),
                 name="js",
             )
+        if (_FRONTEND_DIR / "assets").exists():
+            application.mount(
+                "/assets",
+                StaticFiles(directory=str(_FRONTEND_DIR / "assets")),
+                name="assets",
+            )
 
         @application.get("/", include_in_schema=False)
         async def serve_index() -> FileResponse:

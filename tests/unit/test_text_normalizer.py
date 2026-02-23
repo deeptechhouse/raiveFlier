@@ -188,3 +188,109 @@ class TestCorrectOCRErrors:
     def test_preserves_standalone_zero(self) -> None:
         # "0" alone should not be corrected
         assert correct_ocr_errors("$10") == "$10"
+
+
+# ---------------------------------------------------------------------------
+# Transcript preprocessing tests
+# ---------------------------------------------------------------------------
+
+
+class TestPreprocessTranscript:
+    """Test preprocess_transcript() cleaning pipeline."""
+
+    def test_strips_bracket_timestamps(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "[00:15:22] So tell me about your first record."
+        result = preprocess_transcript(text)
+        assert "[00:15:22]" not in result
+        assert "So tell me about your first record." in result
+
+    def test_strips_bare_timestamps(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "00:15:22 - So tell me about your first record."
+        result = preprocess_transcript(text)
+        assert "00:15:22" not in result
+        assert "So tell me about your first record." in result
+
+    def test_strips_paren_timestamps(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "They released it in 1995 (15:22) on Metroplex."
+        result = preprocess_transcript(text)
+        assert "(15:22)" not in result
+        assert "They released it in 1995" in result
+        assert "on Metroplex" in result
+
+    def test_removes_noise_markers(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "I started DJing [INAUDIBLE] in Detroit and [CROSSTALK] yeah."
+        result = preprocess_transcript(text)
+        assert "[INAUDIBLE]" not in result
+        assert "[CROSSTALK]" not in result
+        assert "I started DJing" in result
+        assert "in Detroit and" in result
+
+    def test_removes_laughter_and_applause(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "That was wild [LAUGHTER] and the crowd [APPLAUSE] loved it."
+        result = preprocess_transcript(text)
+        assert "[LAUGHTER]" not in result
+        assert "[APPLAUSE]" not in result
+
+    def test_normalizes_speaker_labels(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "Interviewer: What inspired you?\nDJ Rush: The city of Chicago."
+        result = preprocess_transcript(text)
+        assert "Interviewer:" not in result
+        assert "DJ Rush:" not in result
+        assert "What inspired you?" in result
+        assert "The city of Chicago." in result
+
+    def test_collapses_whitespace(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = "First paragraph.\n\n\n\n\nSecond paragraph.   Extra  spaces."
+        result = preprocess_transcript(text)
+        assert "\n\n\n" not in result
+        assert "  " not in result
+        assert "First paragraph." in result
+        assert "Second paragraph." in result
+
+    def test_preserves_content(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = (
+            "The record was released on Underground Resistance in 1991. "
+            "It changed the entire Detroit techno scene."
+        )
+        result = preprocess_transcript(text)
+        assert result == text
+
+    def test_empty_string(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        assert preprocess_transcript("") == ""
+
+    def test_full_transcript_sample(self) -> None:
+        from src.utils.text_normalizer import preprocess_transcript
+
+        text = (
+            "[00:00:00] Interviewer: Welcome to the show.\n"
+            "[00:00:05] DJ Rush: Thanks for having me.\n"
+            "[00:00:10] Interviewer: Tell us about your early days in Chicago.\n"
+            "[00:00:15] DJ Rush: I started going to the Music Box [INAUDIBLE] "
+            "around 1985. Ron Hardy was [LAUGHTER] incredible.\n"
+        )
+        result = preprocess_transcript(text)
+        assert "00:00" not in result
+        assert "[INAUDIBLE]" not in result
+        assert "[LAUGHTER]" not in result
+        assert "Welcome to the show" in result
+        assert "Music Box" in result
+        assert "Ron Hardy was" in result
+        assert "incredible" in result

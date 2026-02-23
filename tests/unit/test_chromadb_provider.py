@@ -299,6 +299,95 @@ class TestChromaDBQueryFilters:
 
 
 # ======================================================================
+# Multi-chunk per-source dedup tests
+# ======================================================================
+
+
+class TestMultiChunkPerSourceDedup:
+    """Tests for max_per_source dedup in query()."""
+
+    @pytest.fixture()
+    def mock_embedding_provider(self):
+        from src.interfaces.embedding_provider import IEmbeddingProvider
+
+        mock = MagicMock(spec=IEmbeddingProvider)
+        mock.embed_single = AsyncMock(return_value=[0.1] * 128)
+        mock.embed = AsyncMock(return_value=[[0.1] * 128])
+        mock.get_dimension.return_value = 128
+        mock.get_provider_name.return_value = "mock"
+        mock.is_available.return_value = True
+        return mock
+
+    @pytest.mark.asyncio
+    async def test_returns_multiple_chunks_per_source(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """With max_per_source=3, up to 3 chunks from the same source are returned."""
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_multi"),
+            collection_name="test_multi_chunk",
+        )
+
+        # Add 5 chunks from the same source
+        chunks = [
+            _make_chunk(chunk_id=f"c{i}", source_id="transcript-001", text=f"Topic {i} content")
+            for i in range(5)
+        ]
+        embeddings = [[0.1] * 128 for _ in range(5)]
+        mock_embedding_provider.embed = AsyncMock(return_value=embeddings)
+        await provider.add_chunks(chunks, embeddings)
+
+        results = await provider.query("Topic content", top_k=10, max_per_source=3)
+        assert len(results) <= 3
+        assert len(results) >= 1
+
+    @pytest.mark.asyncio
+    async def test_max_per_source_one_gives_single_result(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """max_per_source=1 should give at most 1 result per source (old behavior)."""
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_single"),
+            collection_name="test_single_chunk",
+        )
+
+        chunks = [
+            _make_chunk(chunk_id=f"c{i}", source_id="same-source", text=f"Content {i}")
+            for i in range(3)
+        ]
+        embeddings = [[0.1] * 128 for _ in range(3)]
+        mock_embedding_provider.embed = AsyncMock(return_value=embeddings)
+        await provider.add_chunks(chunks, embeddings)
+
+        results = await provider.query("Content", top_k=10, max_per_source=1)
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_different_sources_not_limited(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """Chunks from different sources are not affected by per-source limit."""
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_diff"),
+            collection_name="test_diff_sources",
+        )
+
+        chunks = [
+            _make_chunk(chunk_id=f"c{i}", source_id=f"source-{i}", text=f"Detroit techno content {i}")
+            for i in range(5)
+        ]
+        embeddings = [[0.1] * 128 for _ in range(5)]
+        mock_embedding_provider.embed = AsyncMock(return_value=embeddings)
+        await provider.add_chunks(chunks, embeddings)
+
+        results = await provider.query("Detroit techno", top_k=10, max_per_source=3)
+        assert len(results) == 5
+
+
+# ======================================================================
 # Extended tests — cache invalidation
 # ======================================================================
 
