@@ -349,22 +349,31 @@ class QAService:
                 filters=filters if filters else None,
             )
 
-            passages: list[str] = []
-            citations: list[dict[str, Any]] = []
+            # Deduplicate by source_id — keep best chunk per source (safety net)
+            best_per_source: dict[str, tuple[float, str, dict[str, Any]]] = {}
 
             for chunk in chunks:
                 if chunk.similarity_score < self._RAG_SIMILARITY_THRESHOLD:
                     continue
-                passages.append(
+                sid = chunk.chunk.source_id
+                passage = (
                     f"[Source: {chunk.chunk.source_title}, "
                     f"Tier {chunk.chunk.citation_tier}]\n{chunk.chunk.text}"
                 )
-                citations.append({
+                citation = {
                     "text": chunk.formatted_citation,
                     "source": chunk.chunk.source_title,
                     "tier": chunk.chunk.citation_tier,
                     "similarity": round(chunk.similarity_score, 3),
-                })
+                }
+                existing = best_per_source.get(sid)
+                if existing is None or chunk.similarity_score > existing[0]:
+                    best_per_source[sid] = (chunk.similarity_score, passage, citation)
+
+            # Sort by similarity descending
+            ordered = sorted(best_per_source.values(), key=lambda t: t[0], reverse=True)
+            passages = [p for _, p, _ in ordered]
+            citations = [c for _, _, c in ordered]
 
             rag_text = "\n\n---\n\n".join(passages) if passages else ""
             return rag_text, citations
