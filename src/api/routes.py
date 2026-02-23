@@ -27,6 +27,7 @@ from src.api.schemas import (
     CorpusStatsResponse,
     DismissConnectionRequest,
     DismissConnectionResponse,
+    DuplicateMatch,
     ErrorResponse,
     FlierAnalysisResponse,
     FlierUploadResponse,
@@ -55,6 +56,25 @@ router = APIRouter(prefix="/api/v1")
 
 _ALLOWED_CONTENT_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+_PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
+
+
+def _compute_perceptual_hash(image_data: bytes) -> str | None:
+    """Compute a perceptual hash (pHash) of the image for duplicate detection.
+
+    Returns the hex-encoded 64-bit pHash string, or ``None`` if hashing fails.
+    """
+    try:
+        from io import BytesIO
+
+        import imagehash
+        from PIL import Image
+
+        img = Image.open(BytesIO(image_data))
+        return str(imagehash.phash(img))
+    except Exception as exc:
+        _logger.warning("phash_computation_failed", error=str(exc))
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +129,14 @@ def _get_feedback_provider(request: Request) -> Any:
 
 
 FeedbackDep = Annotated[Any, Depends(_get_feedback_provider)]
+
+
+def _get_flier_history(request: Request) -> Any:
+    """Return the flier history provider from application state, or ``None``."""
+    return getattr(request.app.state, "flier_history", None)
+
+
+FlierHistoryDep = Annotated[Any, Depends(_get_flier_history)]
 
 
 def _js_simple_hash(s: str) -> str:
@@ -183,6 +211,7 @@ async def upload_flier(
     pipeline: PipelineDep,
     gate: GateDep,
     session_states: SessionStatesDep,
+    flier_history: FlierHistoryDep,
 ) -> FlierUploadResponse:
     """Accept a flier image, run OCR + entity extraction, and return results for review."""
     # --- Validate content type ---
@@ -204,6 +233,29 @@ async def upload_flier(
             detail=f"File too large: {len(image_data)} bytes. Maximum: {_MAX_FILE_SIZE} bytes.",
         )
 
+    # --- Compute perceptual hash for duplicate detection ---
+    image_phash = _compute_perceptual_hash(image_data)
+    duplicate_match: DuplicateMatch | None = None
+
+    if image_phash and flier_history is not None:
+        try:
+            match = await flier_history.find_duplicate_by_phash(
+                image_phash, threshold=_PHASH_DUPLICATE_THRESHOLD,
+            )
+            if match is not None:
+                duplicate_match = DuplicateMatch(
+                    previous_session_id=match["session_id"],
+                    similarity=match["similarity"],
+                    analyzed_at=match["analyzed_at"],
+                    artists=match.get("artists", []),
+                    venue=match.get("venue"),
+                    event_name=match.get("event_name"),
+                    event_date=match.get("event_date"),
+                    hamming_distance=match["hamming_distance"],
+                )
+        except Exception as exc:
+            _logger.warning("duplicate_check_failed", error=str(exc))
+
     # --- Build FlierImage ---
     session_id = str(uuid.uuid4())
     image_hash = hashlib.sha256(image_data).hexdigest()
@@ -214,9 +266,17 @@ async def upload_flier(
         content_type=content_type,
         file_size=len(image_data),
         image_hash=image_hash,
+        image_phash=image_phash,
     )
     # Attach raw bytes to the private attr on a frozen model
     flier_image.__pydantic_private__["_image_data"] = image_data
+
+    # --- Register perceptual hash for future duplicate detection ---
+    if image_phash and flier_history is not None:
+        try:
+            await flier_history.register_image_hash(session_id, image_phash)
+        except Exception as exc:
+            _logger.warning("phash_registration_failed", error=str(exc))
 
     # --- Run Phase 1 (OCR + Entity Extraction) ---
     state = PipelineState(session_id=session_id, flier=flier_image)
@@ -232,6 +292,7 @@ async def upload_flier(
         extracted_entities=state.extracted_entities,
         ocr_confidence=ocr_result.confidence if ocr_result else 0.0,
         provider_used=ocr_result.provider_used if ocr_result else "unknown",
+        duplicate_match=duplicate_match,
     )
 
 

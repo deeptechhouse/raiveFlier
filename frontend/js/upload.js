@@ -24,6 +24,14 @@ const Upload = (() => {
   let _submitBtn = null;
   let _errorEl = null;
   let _loadingOverlay = null;
+  let _duplicateWarning = null;
+  let _duplicateText = null;
+  let _duplicateMeta = null;
+  let _duplicateAnalyzeBtn = null;
+  let _duplicateCancelBtn = null;
+
+  /** Cached upload response when a duplicate is detected. */
+  let _pendingDuplicateData = null;
 
   /** Bind all DOM references. */
   function _cacheDom() {
@@ -36,6 +44,11 @@ const Upload = (() => {
     _submitBtn = document.getElementById("submit-btn");
     _errorEl = document.getElementById("upload-error");
     _loadingOverlay = document.getElementById("loading-overlay");
+    _duplicateWarning = document.getElementById("duplicate-warning");
+    _duplicateText = document.getElementById("duplicate-warning-text");
+    _duplicateMeta = document.getElementById("duplicate-warning-meta");
+    _duplicateAnalyzeBtn = document.getElementById("duplicate-analyze-btn");
+    _duplicateCancelBtn = document.getElementById("duplicate-cancel-btn");
   }
 
   /** Set up all event listeners. */
@@ -72,6 +85,20 @@ const Upload = (() => {
       if (_selectedFile) {
         _submitFlier(_selectedFile);
       }
+    });
+
+    // Duplicate warning: "Analyze Anyway" — proceed to confirm view
+    _duplicateAnalyzeBtn.addEventListener("click", () => {
+      if (_pendingDuplicateData) {
+        _hideDuplicateWarning();
+        _proceedToConfirm(_pendingDuplicateData);
+      }
+    });
+
+    // Duplicate warning: "Cancel" — reset the upload
+    _duplicateCancelBtn.addEventListener("click", () => {
+      _hideDuplicateWarning();
+      _resetUpload();
     });
   }
 
@@ -150,6 +177,7 @@ const Upload = (() => {
    */
   async function _submitFlier(file) {
     _hideError();
+    _hideDuplicateWarning();
     _loadingOverlay.hidden = false;
     _submitBtn.disabled = true;
 
@@ -171,19 +199,71 @@ const Upload = (() => {
 
       const data = await response.json();
 
-      // Store session ID
-      App.setSessionId(data.session_id);
+      // Check for duplicate match — show warning and pause before proceeding
+      if (data.duplicate_match) {
+        _pendingDuplicateData = data;
+        _showDuplicateWarning(data.duplicate_match);
+        return;
+      }
 
-      // Populate confirm view (stub — G2 will implement)
-      _populateConfirmView(data);
-
-      // Switch to confirm view
-      App.showView("confirm");
+      _proceedToConfirm(data);
     } catch (err) {
       _showError(err.message || "Upload failed. Please try again.");
     } finally {
       _loadingOverlay.hidden = true;
       _submitBtn.disabled = _selectedFile === null;
+    }
+  }
+
+  /**
+   * Continue to the confirm view with the upload response data.
+   * @param {object} data — FlierUploadResponse
+   */
+  function _proceedToConfirm(data) {
+    App.setSessionId(data.session_id);
+    _populateConfirmView(data);
+    App.showView("confirm");
+  }
+
+  /**
+   * Display the duplicate flier warning with match details.
+   * @param {object} match — DuplicateMatch from the API response
+   */
+  function _showDuplicateWarning(match) {
+    const pct = Math.round(match.similarity * 100);
+    const dateStr = match.analyzed_at
+      ? new Date(match.analyzed_at).toLocaleDateString()
+      : "unknown date";
+
+    _duplicateText.textContent =
+      `This flier appears ${pct}% visually similar to one analyzed on ${dateStr}. ` +
+      "You can analyze it again or cancel.";
+
+    // Build metadata tags
+    _duplicateMeta.innerHTML = "";
+    const tags = [];
+    if (match.artists && match.artists.length > 0) {
+      match.artists.forEach((a) => tags.push(a));
+    }
+    if (match.venue) tags.push(match.venue);
+    if (match.event_name) tags.push(match.event_name);
+    if (match.event_date) tags.push(match.event_date);
+
+    tags.forEach((tag) => {
+      const el = document.createElement("span");
+      el.className = "duplicate-warning__tag";
+      el.textContent = tag;
+      _duplicateMeta.appendChild(el);
+    });
+
+    _duplicateWarning.hidden = false;
+  }
+
+  /** Hide the duplicate warning and clear pending data. */
+  function _hideDuplicateWarning() {
+    if (_duplicateWarning) {
+      _duplicateWarning.hidden = true;
+      _pendingDuplicateData = null;
     }
   }
 
@@ -206,6 +286,7 @@ const Upload = (() => {
     _dropContent.hidden = false;
     _submitBtn.disabled = true;
     _hideError();
+    _hideDuplicateWarning();
   }
 
   /**

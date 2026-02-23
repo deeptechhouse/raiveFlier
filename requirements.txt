@@ -29,3 +29,4 @@ ebooklib>=0.18,<1.0
 tokenizers>=0.15.0,<1.0
 aiosqlite>=0.19.0,<1.0
 fastembed>=0.7.0,<1.0
+imagehash>=4.3.0,<5.0

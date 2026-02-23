@@ -87,6 +87,49 @@ class IFlierHistoryProvider(ABC):
         """
 
     @abstractmethod
+    async def register_image_hash(
+        self,
+        session_id: str,
+        image_phash: str,
+    ) -> None:
+        """Store a perceptual hash immediately on upload for duplicate detection.
+
+        Parameters
+        ----------
+        session_id:
+            Pipeline session UUID for this upload.
+        image_phash:
+            Hex-encoded perceptual hash of the uploaded image.
+        """
+
+    @abstractmethod
+    async def find_duplicate_by_phash(
+        self,
+        image_phash: str,
+        threshold: int = 10,
+    ) -> dict[str, Any] | None:
+        """Check if a visually similar flier has been analyzed before.
+
+        Compares the given perceptual hash against all stored hashes using
+        Hamming distance.  Returns metadata about the closest match if
+        the distance is below *threshold*, otherwise ``None``.
+
+        Parameters
+        ----------
+        image_phash:
+            Hex-encoded perceptual hash of the new image.
+        threshold:
+            Maximum Hamming distance to consider a match (default 10).
+
+        Returns
+        -------
+        dict | None
+            Match info with keys ``session_id``, ``similarity``,
+            ``analyzed_at``, ``artists``, ``venue``, ``event_name``,
+            ``event_date``, ``hamming_distance``; or ``None`` if no match.
+        """
+
+    @abstractmethod
     async def initialize(self) -> None:
         """Create tables/indices if they don't exist.  Called at startup."""
 

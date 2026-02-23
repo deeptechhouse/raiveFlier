@@ -21,6 +21,19 @@ class EntityInput(BaseModel):
     entity_type: str
 
 
+class DuplicateMatch(BaseModel):
+    """Metadata about a previously analyzed flier that visually matches the upload."""
+
+    previous_session_id: str
+    similarity: float = Field(ge=0.0, le=1.0, description="1.0 = exact visual match")
+    analyzed_at: str
+    artists: list[str] = Field(default_factory=list)
+    venue: str | None = None
+    event_name: str | None = None
+    event_date: str | None = None
+    hamming_distance: int = Field(description="Perceptual hash Hamming distance (0 = identical)")
+
+
 class FlierUploadResponse(BaseModel):
     """Response returned after uploading and processing a flier image."""
 
@@ -28,6 +41,7 @@ class FlierUploadResponse(BaseModel):
     extracted_entities: ExtractedEntities
     ocr_confidence: float
     provider_used: str
+    duplicate_match: DuplicateMatch | None = None
 
 
 class ConfirmEntitiesRequest(BaseModel):

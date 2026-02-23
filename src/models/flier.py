@@ -24,6 +24,7 @@ class FlierImage(BaseModel):
     content_type: str
     file_size: int
     image_hash: str
+    image_phash: str | None = None
     upload_timestamp: datetime = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc)  # noqa: UP017
     )
