@@ -174,7 +174,7 @@ class SubmitRatingRequest(BaseModel):
 
     item_type: str = Field(
         ...,
-        description="ARTIST, VENUE, PROMOTER, DATE, EVENT, CONNECTION, PATTERN, QA, CORPUS",
+        description="ARTIST, VENUE, PROMOTER, DATE, EVENT, CONNECTION, PATTERN, QA, CORPUS, RELEASE, LABEL",
     )
     item_key: str = Field(..., min_length=1, max_length=500)
     rating: int = Field(..., description="+1 for thumbs up, -1 for thumbs down")

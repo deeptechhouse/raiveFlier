@@ -227,6 +227,7 @@ class TestSubmitRatingEndpoint:
         valid_types = [
             "ARTIST", "VENUE", "PROMOTER", "DATE", "EVENT",
             "CONNECTION", "PATTERN", "QA", "CORPUS",
+            "RELEASE", "LABEL",
         ]
         for item_type in valid_types:
             mock = _mock_feedback_provider(
@@ -447,3 +448,182 @@ class TestSQLiteFeedbackProvider:
         ratings = await provider.get_ratings("s1")
         assert len(ratings) == 1
         assert ratings[0]["item_type"] == "ARTIST"
+
+
+# ---------------------------------------------------------------------------
+# get_negative_item_keys tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetNegativeItemKeys:
+    """Test SQLiteFeedbackProvider.get_negative_item_keys() cross-session queries."""
+
+    @pytest.fixture
+    async def provider(self, tmp_path: Path) -> SQLiteFeedbackProvider:
+        p = SQLiteFeedbackProvider(db_path=tmp_path / "neg_keys.db")
+        await p.initialize()
+        return p
+
+    @pytest.mark.asyncio
+    async def test_empty_returns_empty_set(self, provider: SQLiteFeedbackProvider) -> None:
+        result = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        assert result == set()
+
+    @pytest.mark.asyncio
+    async def test_negative_release_included(self, provider: SQLiteFeedbackProvider) -> None:
+        await provider.submit_rating("s1", "RELEASE", "Henry Brooks::release::Rock Album", -1)
+        result = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        assert "Henry Brooks::release::Rock Album" in result
+
+    @pytest.mark.asyncio
+    async def test_positive_release_excluded(self, provider: SQLiteFeedbackProvider) -> None:
+        await provider.submit_rating("s1", "RELEASE", "Henry Brooks::release::Techno EP", 1)
+        result = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        assert result == set()
+
+    @pytest.mark.asyncio
+    async def test_net_negative_across_sessions(self, provider: SQLiteFeedbackProvider) -> None:
+        """Two thumbs-down from different sessions and one thumbs-up → net -1 → included."""
+        key = "Henry Brooks::release::Rock Album"
+        await provider.submit_rating("s1", "RELEASE", key, -1)
+        await provider.submit_rating("s2", "RELEASE", key, -1)
+        await provider.submit_rating("s3", "RELEASE", key, 1)
+        result = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        assert key in result
+
+    @pytest.mark.asyncio
+    async def test_net_zero_excluded(self, provider: SQLiteFeedbackProvider) -> None:
+        """One thumbs-down and one thumbs-up → net 0 → NOT included."""
+        key = "Henry Brooks::release::Ambiguous Album"
+        await provider.submit_rating("s1", "RELEASE", key, -1)
+        await provider.submit_rating("s2", "RELEASE", key, 1)
+        result = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        assert result == set()
+
+    @pytest.mark.asyncio
+    async def test_prefix_isolation(self, provider: SQLiteFeedbackProvider) -> None:
+        """Negative releases for different artists don't cross-contaminate."""
+        await provider.submit_rating("s1", "RELEASE", "Henry Brooks::release::Rock Album", -1)
+        await provider.submit_rating("s1", "RELEASE", "DJ Rush::release::Funk Track", -1)
+
+        henry = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        rush = await provider.get_negative_item_keys("RELEASE", "DJ Rush::release::")
+
+        assert "Henry Brooks::release::Rock Album" in henry
+        assert "DJ Rush::release::Funk Track" not in henry
+        assert "DJ Rush::release::Funk Track" in rush
+
+    @pytest.mark.asyncio
+    async def test_type_isolation(self, provider: SQLiteFeedbackProvider) -> None:
+        """LABEL negatives don't appear in RELEASE queries and vice-versa."""
+        await provider.submit_rating("s1", "RELEASE", "Henry Brooks::release::Rock Album", -1)
+        await provider.submit_rating("s1", "LABEL", "Henry Brooks::label::Rock Records", -1)
+
+        releases = await provider.get_negative_item_keys("RELEASE", "Henry Brooks::release::")
+        labels = await provider.get_negative_item_keys("LABEL", "Henry Brooks::label::")
+
+        assert "Henry Brooks::release::Rock Album" in releases
+        assert "Henry Brooks::label::Rock Records" not in releases
+        assert "Henry Brooks::label::Rock Records" in labels
+
+
+# ---------------------------------------------------------------------------
+# ArtistResearcher feedback filter tests
+# ---------------------------------------------------------------------------
+
+
+class TestArtistResearcherFeedbackFilter:
+    """Test ArtistResearcher._filter_by_feedback() method."""
+
+    def _make_researcher(self, feedback: object | None = None) -> "ArtistResearcher":
+        """Build a minimal ArtistResearcher with mocked dependencies."""
+        from src.services.artist_researcher import ArtistResearcher
+
+        return ArtistResearcher(
+            music_dbs=[MagicMock()],
+            web_search=MagicMock(),
+            article_scraper=MagicMock(),
+            llm=MagicMock(),
+            feedback=feedback,
+        )
+
+    def _release(self, title: str, label: str = "Unknown") -> "Release":
+        from src.models.entities import Release
+        return Release(title=title, label=label)
+
+    def _label(self, name: str) -> "Label":
+        from src.models.entities import Label
+        return Label(name=name)
+
+    @pytest.mark.asyncio
+    async def test_no_feedback_provider_noop(self) -> None:
+        """When no feedback provider is injected, all items pass through."""
+        researcher = self._make_researcher(feedback=None)
+        releases = [self._release("Techno EP"), self._release("Rock Album")]
+        labels = [self._label("Underground Resistance")]
+
+        result_releases, result_labels = await researcher._filter_by_feedback(
+            "henry brooks", releases, labels
+        )
+
+        assert len(result_releases) == 2
+        assert len(result_labels) == 1
+
+    @pytest.mark.asyncio
+    async def test_negative_releases_filtered(self) -> None:
+        """Releases flagged negative in prior sessions are removed."""
+        mock_feedback = AsyncMock()
+        mock_feedback.get_negative_item_keys = AsyncMock(side_effect=lambda item_type, prefix: {
+            "henry brooks::release::Rock Album"
+        } if item_type == "RELEASE" else set())
+
+        researcher = self._make_researcher(feedback=mock_feedback)
+        releases = [self._release("Techno EP"), self._release("Rock Album")]
+        labels = [self._label("Underground Resistance")]
+
+        result_releases, result_labels = await researcher._filter_by_feedback(
+            "henry brooks", releases, labels
+        )
+
+        assert len(result_releases) == 1
+        assert result_releases[0].title == "Techno EP"
+        assert len(result_labels) == 1
+
+    @pytest.mark.asyncio
+    async def test_negative_labels_filtered(self) -> None:
+        """Labels flagged negative in prior sessions are removed."""
+        mock_feedback = AsyncMock()
+        mock_feedback.get_negative_item_keys = AsyncMock(side_effect=lambda item_type, prefix: {
+            "henry brooks::label::Rock Records"
+        } if item_type == "LABEL" else set())
+
+        researcher = self._make_researcher(feedback=mock_feedback)
+        releases = [self._release("Techno EP")]
+        labels = [self._label("Underground Resistance"), self._label("Rock Records")]
+
+        result_releases, result_labels = await researcher._filter_by_feedback(
+            "henry brooks", releases, labels
+        )
+
+        assert len(result_releases) == 1
+        assert len(result_labels) == 1
+        assert result_labels[0].name == "Underground Resistance"
+
+    @pytest.mark.asyncio
+    async def test_feedback_error_gracefully_skipped(self) -> None:
+        """If the feedback provider throws, filtering is skipped entirely."""
+        mock_feedback = AsyncMock()
+        mock_feedback.get_negative_item_keys = AsyncMock(
+            side_effect=RuntimeError("DB unavailable")
+        )
+
+        researcher = self._make_researcher(feedback=mock_feedback)
+        releases = [self._release("Techno EP"), self._release("Rock Album")]
+        labels = [self._label("Underground Resistance")]
+
+        result_releases, result_labels = await researcher._filter_by_feedback(
+            "henry brooks", releases, labels
+        )
+
+        assert len(result_releases) == 2
+        assert len(result_labels) == 1

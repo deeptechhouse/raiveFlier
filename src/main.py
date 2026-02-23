@@ -274,6 +274,9 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         cache=cache,
     )
 
+    # -- Feedback provider (SQLite-backed ratings persistence) --
+    feedback_provider = SQLiteFeedbackProvider(db_path=app_settings.feedback_db_path)
+
     # -- Services --
     ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
     ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
@@ -286,6 +289,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         llm=primary_llm,
         cache=cache,
         vector_store=vector_store,
+        feedback=feedback_provider,
     )
     venue_researcher = VenueResearcher(
         web_search=primary_search,
@@ -362,9 +366,6 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     provider_list.append({"name": "WebScraperProvider", "type": "article", "available": True})
     provider_list.append({"name": "WaybackProvider", "type": "article", "available": True})
 
-    # -- Feedback provider (SQLite-backed ratings persistence) --
-    feedback_provider = SQLiteFeedbackProvider(db_path=app_settings.feedback_db_path)
-
     return {
         "http_client": http_client,
         "pipeline": pipeline,
@@ -428,12 +429,15 @@ def build_pipeline(custom_settings: Settings | None = None) -> dict[str, Any]:
     ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
     entity_extractor = EntityExtractor(llm_provider=llm)
 
+    cli_feedback = SQLiteFeedbackProvider(db_path="data/feedback.db")
+
     artist_researcher = ArtistResearcher(
         music_dbs=music_dbs,
         web_search=web_search,
         article_scraper=article_scraper,
         llm=llm,
         cache=cache,
+        feedback=cli_feedback,
     )
     venue_researcher = VenueResearcher(
         web_search=web_search,

@@ -386,6 +386,7 @@ async def dismiss_connection(
 _VALID_RATING_TYPES = frozenset({
     "ARTIST", "VENUE", "PROMOTER", "DATE", "EVENT",
     "CONNECTION", "PATTERN", "QA", "CORPUS",
+    "RELEASE", "LABEL",
 })
 
 

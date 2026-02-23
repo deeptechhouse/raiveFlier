@@ -51,6 +51,14 @@ FROM ratings
 WHERE session_id = ? AND item_type = ? AND item_key = ?;
 """
 
+_SELECT_NEGATIVE_KEYS_SQL = """\
+SELECT item_key
+FROM ratings
+WHERE item_type = ? AND item_key LIKE ?
+GROUP BY item_key
+HAVING SUM(rating) < 0;
+"""
+
 
 class SQLiteFeedbackProvider(IFeedbackProvider):
     """SQLite-backed feedback persistence."""
@@ -160,6 +168,21 @@ class SQLiteFeedbackProvider(IFeedbackProvider):
             "negative": negative,
             "by_type": by_type,
         }
+
+    async def get_negative_item_keys(
+        self,
+        item_type: str,
+        item_key_prefix: str,
+    ) -> set[str]:
+        """Return item_keys with net-negative ratings across all sessions."""
+        async with aiosqlite.connect(str(self._db_path)) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                _SELECT_NEGATIVE_KEYS_SQL,
+                (item_type.upper(), item_key_prefix + "%"),
+            )
+            rows = await cursor.fetchall()
+        return {row["item_key"] for row in rows}
 
     def get_provider_name(self) -> str:
         """Return a human-readable identifier for this provider."""
