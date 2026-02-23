@@ -1015,6 +1015,10 @@ async def corpus_search(
         entries.sort(key=lambda r: r.similarity_score, reverse=True)
         deduped.extend(entries[:_MAX_PER_SOURCE])
 
+    # Exclude "analysis" source-type chunks — these are internal pipeline
+    # outputs that should not surface in user-facing corpus search results.
+    deduped = [r for r in deduped if r.source_type != "analysis"]
+
     # Filter out results the user previously thumbs-downed.
     if feedback is not None:
         try:
