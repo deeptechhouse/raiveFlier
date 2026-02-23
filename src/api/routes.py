@@ -9,6 +9,7 @@ using the ``Annotated`` pattern.
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid
 from typing import Annotated, Any
 
@@ -669,6 +670,22 @@ async def corpus_stats(request: Request) -> CorpusStatsResponse:
     )
 
 
+_ARTIST_QUERY_RE = re.compile(
+    r"""(?ix)                     # case-insensitive, verbose
+    \b(?:artist|artists|dj|djs|producer|producers|musician|musicians|act|acts)
+      \s+(?:from|in|who|that|like)\b
+    | \bsimilar\s+to\b
+    | \bsounds?\s+like\b
+    | \bwho\s+(?:play|plays|perform|performs|spins?)\b
+    """,
+)
+
+
+def _is_artist_query(query: str) -> bool:
+    """Return *True* when the query is explicitly asking for artists."""
+    return _ARTIST_QUERY_RE.search(query) is not None
+
+
 @router.post(
     "/corpus/search",
     response_model=CorpusSearchResponse,
@@ -740,6 +757,30 @@ async def corpus_search(
                 ]
         except Exception:
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
+
+    # When the query is NOT explicitly asking for artists, diversify results
+    # so a single entity doesn't dominate (max 2 results per entity tag).
+    if not _is_artist_query(body.query):
+        _MAX_PER_ENTITY = 2
+        entity_counts: dict[str, int] = {}
+        diversified: list[CorpusSearchChunk] = []
+        # Process in similarity order so we keep the best hits per entity.
+        deduped.sort(key=lambda r: r.similarity_score, reverse=True)
+        for r in deduped:
+            if not r.entity_tags:
+                diversified.append(r)
+                continue
+            # A chunk can have multiple entity tags; gate on the most-seen one.
+            capped = False
+            for tag in r.entity_tags:
+                if entity_counts.get(tag, 0) >= _MAX_PER_ENTITY:
+                    capped = True
+                    break
+            if not capped:
+                diversified.append(r)
+                for tag in r.entity_tags:
+                    entity_counts[tag] = entity_counts.get(tag, 0) + 1
+        deduped = diversified
 
     results = sorted(
         deduped,
