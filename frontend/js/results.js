@@ -1239,69 +1239,12 @@ const Results = (() => {
   }
 
   // ------------------------------------------------------------------
-  // Section 6: Citations
+  // Section 6: Citations — logged server-side, not rendered in UI
   // ------------------------------------------------------------------
-
-  function _renderCitations(citations) {
-    if (!citations || citations.length === 0) return "";
-
-    // Group by tier
-    const grouped = {};
-    citations.forEach((c) => {
-      const tier = c.tier || 6;
-      if (!grouped[tier]) grouped[tier] = [];
-      grouped[tier].push(c);
-    });
-
-    let html = '<div class="results-section" id="results-citations">';
-    html += '<h2 class="results-section__title text-heading">All Citations</h2>';
-
-    // Render tier groups in order
-    for (let tier = 1; tier <= 6; tier++) {
-      const items = grouped[tier];
-      if (!items || items.length === 0) continue;
-
-      const tierName = TIER_NAMES[tier] || `Tier ${tier}`;
-      html += `<div class="citation-tier-group">`;
-      html += `<h3 class="citation-tier-group__header"><span class="citation-tier-badge citation-tier-${tier}">${_esc(tierName)}</span> <span class="text-caption">(${items.length})</span></h3>`;
-      html += '<ul class="citation-list">';
-
-      items.forEach((c) => {
-        html += `<li class="citation-item citation-item--tier-${tier}">`;
-
-        // Accessibility status icon
-        if (c.accessible === true) {
-          html += '<span class="citation-item__status citation-item__status--ok" aria-label="Accessible" title="Link accessible">&#x2713;</span>';
-        } else if (c.accessible === false) {
-          html += '<span class="citation-item__status citation-item__status--fail" aria-label="Not accessible" title="Link not accessible">&#x2717;</span>';
-        } else {
-          html += '<span class="citation-item__status citation-item__status--unknown" aria-label="Status unknown" title="Status unknown">&mdash;</span>';
-        }
-
-        html += `<span class="citation-item__text">${_esc(c.text)}</span>`;
-
-        if (c.source) {
-          html += ` <span class="citation-item__source text-caption">${_esc(c.source)}</span>`;
-        }
-
-        if (c.url) {
-          html += ` <a href="${_esc(c.url)}" target="_blank" rel="noopener noreferrer" class="citation-item__link">View source &rarr;</a>`;
-        }
-
-        html += "</li>";
-      });
-
-      html += "</ul></div>";
-    }
-
-    // Export JSON button
-    html += '<div class="citation-export">';
-    html += '<button type="button" class="btn-secondary" id="export-json-btn">Export JSON</button>';
-    html += "</div>";
-
-    html += "</div>"; // results-section
-    return html;
-  }
+  // Citations are collected and included in the API response for JSON
+  // export, but no longer rendered as a visible section.  Structured
+  // logging on the backend (output_formatter.py) records every citation
+  // with tier breakdown and source names for audit purposes.
 
   // ------------------------------------------------------------------
   // Export — Download the raw analysis data as a JSON file

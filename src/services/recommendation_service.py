@@ -420,54 +420,61 @@ class RecommendationService:
             self._logger.debug("label_mate_discovery_skipped", reason="no available provider")
             return []
 
-        # Gather: artist_name_normalized -> {label_names, connected_to_set, count}
-        candidate_map: dict[str, dict[str, Any]] = {}
-
+        # ── Collect all (label, artist) pairs, then batch-fetch concurrently ──
+        # Previously each label was fetched sequentially inside a nested loop.
+        # Now we collect all label IDs upfront, fire all get_label_releases()
+        # calls via asyncio.gather, then merge results.  With N artists * M
+        # labels this cuts latency from O(N*M) sequential to O(1) parallel.
+        label_tasks: list[tuple[str, str, str]] = []  # (label_discogs_id, label_name, artist_name)
         for result in research_results:
-            if not result.artist:
+            if not result.artist or not result.artist.labels:
                 continue
-            artist = result.artist
-            if not artist.labels:
-                continue
+            for label in result.artist.labels:
+                if label.discogs_id:
+                    label_tasks.append(
+                        (str(label.discogs_id), label.name, result.artist.name)
+                    )
 
-            for label in artist.labels:
-                if not label.discogs_id:
+        # Fetch all label releases concurrently
+        async def _fetch_label(label_id: str, label_name: str) -> list[Any]:
+            try:
+                return await provider.get_label_releases(label_id, max_results=30)
+            except Exception as exc:
+                self._logger.debug(
+                    "label_releases_fetch_failed",
+                    label=label_name,
+                    error=str(exc),
+                )
+                return []
+
+        fetched = await asyncio.gather(
+            *(_fetch_label(lid, lname) for lid, lname, _aname in label_tasks)
+        )
+
+        # Merge fetched releases into candidate map
+        candidate_map: dict[str, dict[str, Any]] = {}
+        for (_, label_name, artist_name), releases in zip(label_tasks, fetched):
+            for release in releases:
+                release_artist = self._extract_artist_from_release(release.title)
+                if not release_artist:
                     continue
 
-                try:
-                    releases = await provider.get_label_releases(
-                        str(label.discogs_id), max_results=30,
-                    )
-                except Exception as exc:
-                    self._logger.debug(
-                        "label_releases_fetch_failed",
-                        label=label.name,
-                        error=str(exc),
-                    )
+                normalized = release_artist.strip().lower()
+                if normalized in exclusion_set or not normalized:
                     continue
 
-                for release in releases:
-                    # Release titles often follow "Artist - Title" format
-                    release_artist = self._extract_artist_from_release(release.title)
-                    if not release_artist:
-                        continue
-
-                    normalized = release_artist.strip().lower()
-                    if normalized in exclusion_set or not normalized:
-                        continue
-
-                    if normalized not in candidate_map:
-                        candidate_map[normalized] = {
-                            "artist_name": release_artist.strip(),
-                            "label_names": set(),
-                            "connected_to": set(),
-                            "shared_label_count": 0,
-                        }
-                    candidate_map[normalized]["label_names"].add(label.name)
-                    candidate_map[normalized]["connected_to"].add(artist.name)
-                    candidate_map[normalized]["shared_label_count"] = len(
-                        candidate_map[normalized]["label_names"]
-                    )
+                if normalized not in candidate_map:
+                    candidate_map[normalized] = {
+                        "artist_name": release_artist.strip(),
+                        "label_names": set(),
+                        "connected_to": set(),
+                        "shared_label_count": 0,
+                    }
+                candidate_map[normalized]["label_names"].add(label_name)
+                candidate_map[normalized]["connected_to"].add(artist_name)
+                candidate_map[normalized]["shared_label_count"] = len(
+                    candidate_map[normalized]["label_names"]
+                )
 
         # Convert to list and sort.  Connection strength is a linear formula:
         #   strength = min(1.0, shared_label_count * 0.3 + 0.2)
@@ -630,23 +637,33 @@ class RecommendationService:
         # other artist names from those passages.  This is necessary because
         # artist names in free-text lineup descriptions are too varied for
         # regex extraction.
+        #
+        # All per-artist RAG queries are dispatched concurrently via
+        # asyncio.gather instead of the previous sequential loop, reducing
+        # latency from O(N) sequential to O(1) parallel for N artists.
         all_chunks: list[str] = []
         chunk_artist_map: dict[int, str] = {}
 
-        for name in artist_names:
+        async def _query_for_artist(name: str) -> tuple[str, list]:
             query = f'"{name}" event lineup artists performing'
             try:
                 chunks = await self._vector_store.query(
                     query_text=query, top_k=5,
                 )
+                return name, chunks
             except Exception as exc:
                 self._logger.debug(
                     "lineup_rag_query_failed",
                     artist=name,
                     error=str(exc),
                 )
-                continue
+                return name, []
 
+        rag_results = await asyncio.gather(
+            *(_query_for_artist(n) for n in artist_names)
+        )
+
+        for name, chunks in rag_results:
             for chunk in chunks:
                 idx = len(all_chunks)
                 all_chunks.append(chunk.chunk.text)

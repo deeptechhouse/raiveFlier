@@ -585,45 +585,65 @@ class ArtistResearcher:
     ) -> tuple[list[Release], list[Label]]:
         """Fetch releases and labels from additional providers (Bandcamp, Beatport, etc.).
 
-        Iterates non-Discogs, non-MusicBrainz providers that matched
-        during identity resolution.  Each provider is tried independently;
-        failures are logged but don't block the others.
+        All matched non-Discogs, non-MusicBrainz providers are queried in
+        parallel via ``asyncio.gather``.  Each provider's releases and labels
+        are fetched concurrently as a single coroutine, so N additional
+        providers complete in ~1x latency instead of ~Nx sequential.
+        Failures are logged but don't block other providers.
         """
         if not provider_ids:
             return [], []
 
-        releases: list[Release] = []
-        labels: list[Label] = []
-
+        # Identify which providers to query (exclude Discogs/MusicBrainz —
+        # those are handled by their own dedicated fetch methods).
+        additional_providers: list[tuple[IMusicDatabaseProvider, str]] = []
         for provider in self._music_dbs:
             pname = provider.get_provider_name()
             if pname not in provider_ids:
                 continue
             if "discogs" in pname.lower() or "musicbrainz" in pname.lower():
                 continue
+            additional_providers.append((provider, provider_ids[pname]))
 
-            artist_id = provider_ids[pname]
+        if not additional_providers:
+            return [], []
+
+        async def _fetch_single(
+            prov: IMusicDatabaseProvider, artist_id: str
+        ) -> tuple[list[Release], list[Label]]:
+            """Fetch releases + labels from one provider (runs inside gather)."""
+            pname = prov.get_provider_name()
             try:
-                extra_releases = await provider.get_artist_releases(artist_id, before_date)
-                releases.extend(extra_releases)
-
-                extra_labels = await provider.get_artist_labels(artist_id)
-                labels.extend(extra_labels)
-
+                extra_releases = await prov.get_artist_releases(artist_id, before_date)
+                extra_labels = await prov.get_artist_labels(artist_id)
                 self._logger.info(
                     "Additional provider supplement complete",
                     provider=pname,
                     new_releases=len(extra_releases),
                     new_labels=len(extra_labels),
                 )
+                return list(extra_releases), list(extra_labels)
             except Exception as exc:
                 self._logger.warning(
                     "Additional provider fetch failed",
                     provider=pname,
                     error=str(exc),
                 )
+                return [], []
 
-        return releases, labels
+        # Fire all additional providers concurrently
+        results = await asyncio.gather(
+            *(_fetch_single(prov, aid) for prov, aid in additional_providers)
+        )
+
+        # Merge results from all providers
+        all_releases: list[Release] = []
+        all_labels: list[Label] = []
+        for prov_releases, prov_labels in results:
+            all_releases.extend(prov_releases)
+            all_labels.extend(prov_labels)
+
+        return all_releases, all_labels
 
     async def _filter_by_feedback(
         self,

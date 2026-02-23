@@ -364,11 +364,36 @@ class OutputFormatter:
         }
 
     def _format_citations(self, state: PipelineState) -> list[dict[str, Any]]:
-        """Collect and format all citations from the interconnection map."""
+        """Collect, log, and format all citations from the interconnection map.
+
+        Citations are included in the API response for JSON export and internal
+        use, but are NOT rendered in the frontend results display.  Structured
+        logging here provides an audit trail of every source cited in the
+        analysis — grouped by tier so operators can monitor citation quality.
+        """
         if state.interconnection_map is None:
             return []
 
-        return [self._format_single_citation(c) for c in state.interconnection_map.citations]
+        citations = state.interconnection_map.citations
+        formatted = [self._format_single_citation(c) for c in citations]
+
+        # ── Structured logging: tier breakdown + source inventory ──
+        if formatted:
+            tier_counts: dict[int, int] = {}
+            source_names: list[str] = []
+            for c in citations:
+                tier_counts[c.tier] = tier_counts.get(c.tier, 0) + 1
+                source_names.append(c.source_name)
+
+            self._logger.info(
+                "citations_used",
+                session_id=state.session_id,
+                total=len(formatted),
+                tier_breakdown=tier_counts,
+                sources=sorted(set(source_names)),
+            )
+
+        return formatted
 
     @staticmethod
     def _format_single_citation(citation: Citation) -> dict[str, Any]:
