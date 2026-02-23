@@ -31,8 +31,10 @@ WORKDIR /app
 # Copy requirements first for Docker layer caching
 COPY requirements.txt .
 
-# Install everything EXCEPT easyocr (too heavy for <=512 MB RAM)
-RUN grep -iv 'easyocr' requirements.txt > requirements-deploy.txt \
+# Install everything EXCEPT easyocr and sentence-transformers (too heavy for <=512 MB RAM;
+# easyocr and sentence-transformers both pull PyTorch ~561MB).
+# fastembed provides the same embedding functionality via ONNX Runtime without PyTorch.
+RUN grep -ivE 'easyocr|sentence.transformers' requirements.txt > requirements-deploy.txt \
     && pip install --no-cache-dir -r requirements-deploy.txt \
     && rm requirements-deploy.txt
 
