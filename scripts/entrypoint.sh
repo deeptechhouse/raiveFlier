@@ -22,15 +22,18 @@ download_corpus() {
         return 0
     fi
 
-    # Check if ChromaDB already has data
+    # Check if ChromaDB already has a full corpus (not just the small reference set)
+    # The full corpus tarball produces a chroma.sqlite3 > 50MB (~15K chunks).
+    # The auto-ingested reference set is only ~36 chunks / <1MB — too small to skip.
     DB_FILE="$CHROMADB_DIR/chroma.sqlite3"
+    MIN_CORPUS_SIZE=50000000  # 50MB — full corpus is ~154MB
     if [ -f "$DB_FILE" ]; then
         DB_SIZE=$(wc -c < "$DB_FILE" 2>/dev/null || echo "0")
-        if [ "$DB_SIZE" -gt 100000 ]; then
-            echo "[entrypoint] Corpus already present at $CHROMADB_DIR ($DB_SIZE bytes)"
+        if [ "$DB_SIZE" -gt "$MIN_CORPUS_SIZE" ]; then
+            echo "[entrypoint] Full corpus already present at $CHROMADB_DIR ($DB_SIZE bytes)"
             return 0
         fi
-        echo "[entrypoint] Corpus DB too small ($DB_SIZE bytes) — re-downloading..."
+        echo "[entrypoint] Corpus DB too small ($DB_SIZE bytes < ${MIN_CORPUS_SIZE}) — downloading full corpus..."
     else
         echo "[entrypoint] No corpus found at $CHROMADB_DIR — downloading..."
     fi
