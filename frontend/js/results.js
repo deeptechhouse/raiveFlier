@@ -1372,6 +1372,11 @@ const Results = (() => {
       Rating.initWidgets(resultsView, _sessionId);
     }
 
+    // Initialize recommendations panel (lazy — fetches on first open)
+    if (typeof Recommendations !== "undefined" && Recommendations.init) {
+      Recommendations.init(_sessionId);
+    }
+
     // Export button
     const exportBtn = document.getElementById("export-json-btn");
     if (exportBtn) {

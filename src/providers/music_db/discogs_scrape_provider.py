@@ -345,6 +345,79 @@ class DiscogsScrapeProvider(IMusicDatabaseProvider):
             styles=styles,
         )
 
+    async def get_label_releases(
+        self, label_id: str, max_results: int = 50
+    ) -> list[Release]:
+        """Scrape releases from a Discogs label page."""
+        url = f"{_BASE_URL}/label/{label_id}"
+        soup = await self._fetch_page(url)
+
+        if soup is None:
+            self._logger.warning(
+                "discogs_scrape_label_releases_failed",
+                label_id=label_id,
+            )
+            return []
+
+        # Extract label name from the page heading
+        label_name_el = soup.select_one("h1")
+        label_name = label_name_el.get_text(strip=True) if label_name_el else ""
+
+        releases: list[Release] = []
+        for row in soup.find_all("tr"):
+            if len(releases) >= max_results:
+                break
+
+            # Find a release or master link in the row
+            title_el = row.find("a", href=lambda h: h and (_RELEASE_URL_RE.search(h) or _MASTER_URL_RE.search(h)))
+            if not title_el:
+                continue
+
+            title = title_el.get_text(strip=True)
+            href = title_el.get("href", "")
+            release_id = self._extract_release_id(href)
+            discogs_url = f"{_BASE_URL}{href}" if href.startswith("/") else href
+
+            # Extract artist name from an artist link in the same row
+            artist_el = row.find("a", href=_ARTIST_URL_RE)
+            artist_name = artist_el.get_text(strip=True) if artist_el else ""
+
+            # Extract year from the row
+            year: int | None = None
+            for cell in row.find_all("td"):
+                cell_text = cell.get_text(strip=True)
+                year_match = re.search(r"(\d{4})", cell_text)
+                if year_match:
+                    candidate = int(year_match.group(1))
+                    if 1900 <= candidate <= 2100:
+                        year = candidate
+                        break
+
+            # Extract format from the row
+            format_str: str | None = None
+            format_cell = row.find(attrs={"class": re.compile(r"format", re.IGNORECASE)})
+            if format_cell:
+                format_str = format_cell.get_text(strip=True) or None
+
+            display_title = f"{artist_name} - {title}" if artist_name else title
+
+            releases.append(
+                Release(
+                    title=display_title,
+                    label=label_name,
+                    year=year,
+                    format=format_str,
+                    discogs_url=discogs_url,
+                )
+            )
+
+        self._logger.info(
+            "discogs_scrape_label_releases_complete",
+            label_id=label_id,
+            release_count=len(releases),
+        )
+        return releases
+
     def get_provider_name(self) -> str:
         """Return ``'discogs_scrape'``."""
         return "discogs_scrape"

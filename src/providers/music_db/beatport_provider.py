@@ -334,6 +334,12 @@ class BeatportProvider(IMusicDatabaseProvider):
 
         return None
 
+    async def get_label_releases(
+        self, label_id: str, max_results: int = 50
+    ) -> list[Release]:
+        """Not supported by Beatport provider."""
+        return []
+
     def get_provider_name(self) -> str:
         return "beatport"
 

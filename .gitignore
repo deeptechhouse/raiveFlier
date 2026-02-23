@@ -48,3 +48,9 @@ data/chromadb/
 
 # SQLite feedback database (runtime data)
 data/feedback.db
+
+# Transcripts (large data files, not code)
+transcripts/
+
+# RA.co scrape checkpoints (large JSON files, resumable)
+data/ra_scrape/

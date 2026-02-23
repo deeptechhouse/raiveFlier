@@ -193,6 +193,12 @@ class MusicBrainzProvider(IMusicDatabaseProvider):
 
         return self._map_release(rel)
 
+    async def get_label_releases(
+        self, label_id: str, max_results: int = 50
+    ) -> list[Release]:
+        """Not yet implemented for MusicBrainz — returns empty list."""
+        return []
+
     def get_provider_name(self) -> str:
         """Return the provider identifier."""
         return "musicbrainz"
