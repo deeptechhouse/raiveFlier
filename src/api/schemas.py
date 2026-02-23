@@ -247,3 +247,4 @@ class RecommendationsResponse(BaseModel):
     flier_artists: list[str] = Field(default_factory=list)
     genres_analyzed: list[str] = Field(default_factory=list)
     total: int = 0
+    is_partial: bool = False

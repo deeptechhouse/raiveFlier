@@ -208,6 +208,79 @@ class RecommendationService:
         )
         return result
 
+    async def recommend_quick(
+        self,
+        research_results: list[ResearchResult],
+        entities: ExtractedEntities,
+    ) -> RecommendationResult:
+        """Run the fast label-mate-only recommendation pass (no LLM calls).
+
+        Returns label-mate candidates with fallback reasons generated from
+        source metadata.  Designed to complete in 1-3 seconds for immediate
+        display while the full recommendation pipeline runs in background.
+
+        Parameters
+        ----------
+        research_results:
+            Research profiles for every entity on the flier.
+        entities:
+            The raw extracted entities from the OCR / entity-extraction phase.
+
+        Returns
+        -------
+        RecommendationResult
+            Label-mate recommendations only (may be empty if no Discogs
+            data is available).
+        """
+        self._logger.info(
+            "quick_recommendation_start",
+            research_count=len(research_results),
+        )
+
+        exclusion_set = self._build_exclusion_set(research_results, entities)
+        label_mates = await self._discover_label_mates(
+            research_results, exclusion_set,
+        )
+        label_mates = label_mates[:_MAX_RECOMMENDATIONS]
+
+        recommendations: list[RecommendedArtist] = []
+        for candidate in label_mates:
+            reason = self._build_fallback_reason(candidate)
+            connected_to = candidate.get("connected_to", [])
+            if isinstance(connected_to, set):
+                connected_to = sorted(connected_to)
+
+            recommendations.append(
+                RecommendedArtist(
+                    artist_name=candidate["artist_name"],
+                    genres=candidate.get("genres", []),
+                    reason=reason,
+                    source_tier=candidate.get("source_tier", "label_mate"),
+                    connection_strength=float(
+                        candidate.get("connection_strength", 0.5),
+                    ),
+                    connected_to=connected_to,
+                    label_name=candidate.get("label_name"),
+                    event_name=candidate.get("event_name"),
+                ),
+            )
+
+        flier_artist_names = [e.text for e in entities.artists]
+        genres_analyzed = list(entities.genre_tags) if entities.genre_tags else []
+
+        result = RecommendationResult(
+            recommendations=recommendations,
+            flier_artists=flier_artist_names,
+            genres_analyzed=genres_analyzed,
+            generated_at=datetime.now(tz=timezone.utc),
+        )
+
+        self._logger.info(
+            "quick_recommendation_complete",
+            total=len(result.recommendations),
+        )
+        return result
+
     # ------------------------------------------------------------------
     # Step 1 — exclusion set
     # ------------------------------------------------------------------
