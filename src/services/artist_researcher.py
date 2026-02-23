@@ -41,7 +41,6 @@ Key design patterns:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import re
 from datetime import date
 from typing import TYPE_CHECKING, Any
@@ -63,7 +62,7 @@ from src.models.entities import (
 )
 from src.models.research import ResearchResult
 from src.utils.confidence import calculate_confidence
-from src.utils.concurrency import parallel_search, throttled_gather
+from src.utils.concurrency import throttled_gather
 from src.utils.errors import RateLimitError, ResearchError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import fuzzy_match, normalize_artist_name
@@ -76,16 +75,6 @@ if TYPE_CHECKING:
 # Tuning constants — control search breadth and adaptive deepening
 # ---------------------------------------------------------------------------
 _CACHE_TTL_SECONDS = 3600  # 1 hour — balances freshness vs. API quota
-_MAX_PRESS_ARTICLES = 15   # cap on articles to scrape per artist
-_GIG_SEARCH_LIMIT = 30     # max web search results per gig query
-_PRESS_SEARCH_LIMIT = 20   # max web search results per press query
-
-# Adaptive deepening thresholds: if the primary search phase returns fewer
-# results than these minimums, a second round of broader queries fires
-# automatically.  This handles obscure artists who don't appear in the
-# first round of targeted queries.
-_MIN_ADEQUATE_APPEARANCES = 3  # trigger deeper gig search if below this
-_MIN_ADEQUATE_ARTICLES = 2     # trigger deeper press search if below this
 
 # ---------------------------------------------------------------------------
 # Relevance filters — separate signal from noise in web search results
@@ -283,7 +272,7 @@ class ArtistResearcher:
         ])
         if data_source_count >= 2:
             profile_summary = await self._synthesize_profile(
-                normalized_name, releases, [], [], labels, city=city
+                normalized_name, releases, labels, city=city
             )
 
         # ===================================================================
@@ -458,135 +447,183 @@ class ArtistResearcher:
     ) -> tuple[list[Release], list[Label]]:
         """Fetch releases and labels from matched database entries.
 
-        Attempts Discogs API first, falls back to scrape provider, then
-        supplements with MusicBrainz data and any additional providers
-        (Bandcamp, Beatport, etc.) that found a match.
+        Runs Discogs, MusicBrainz, and additional provider fetches in
+        parallel via ``asyncio.gather``, then merges and deduplicates
+        results.  Internal fallback chains within each provider group
+        (e.g. Discogs API -> Discogs scraper) remain sequential — only
+        cross-group parallelism is added.
         """
-        releases: list[Release] = []
-        labels: list[Label] = []
+        # Fire all three provider groups concurrently.  Each helper
+        # returns (releases, labels) independently; merge happens after.
+        results = await asyncio.gather(
+            self._fetch_from_discogs(discogs_id, before_date),
+            self._fetch_from_musicbrainz(musicbrainz_id, before_date),
+            self._fetch_from_additional(provider_ids, before_date),
+            return_exceptions=True,
+        )
+
+        # Merge results from all three groups, skipping any that raised
+        all_releases: list[Release] = []
+        all_labels: list[Label] = []
+        group_names = ("discogs", "musicbrainz", "additional")
+        for idx, result in enumerate(results):
+            if isinstance(result, Exception):
+                self._logger.warning(
+                    "Discography provider group failed",
+                    group=group_names[idx],
+                    error=str(result),
+                )
+                continue
+            releases, labels = result
+            all_releases.extend(releases)
+            all_labels.extend(labels)
+
+        # Deduplicate releases by lowercase title
         seen_titles: set[str] = set()
-        fetched_providers: set[str] = set()
-
-        # Multi-source search strategy for discography:
-        # 1. Discogs (API adapter first, then scrape-based fallback)
-        # 2. MusicBrainz (supplement — fills gaps Discogs may miss)
-        # 3. Additional providers (Bandcamp, Beatport, etc.)
-        # Each provider is tried independently; failures don't block others.
-        # Releases are deduplicated by lowercase title via `seen_titles`.
-        discogs_providers = [
-            p for p in self._music_dbs if "discogs" in p.get_provider_name().lower()
-        ]
-
-        if discogs_id and discogs_providers:
-            for provider in discogs_providers:
-                try:
-                    provider_releases = await provider.get_artist_releases(discogs_id, before_date)
-                    for release in provider_releases:
-                        title_key = release.title.lower().strip()
-                        if title_key not in seen_titles:
-                            seen_titles.add(title_key)
-                            releases.append(release)
-
-                    provider_labels = await provider.get_artist_labels(discogs_id)
-                    labels.extend(provider_labels)
-                    fetched_providers.add(provider.get_provider_name())
-                    self._logger.info(
-                        "Discography fetched",
-                        provider=provider.get_provider_name(),
-                        releases=len(provider_releases),
-                        labels=len(provider_labels),
-                    )
-                    break  # Success — skip fallback providers
-                except RateLimitError:
-                    self._logger.warning(
-                        "Rate limited, trying next provider",
-                        provider=provider.get_provider_name(),
-                    )
-                    continue
-                except ResearchError as exc:
-                    self._logger.warning(
-                        "Discography fetch failed, trying next provider",
-                        provider=provider.get_provider_name(),
-                        error=str(exc),
-                    )
-                    continue
-
-        # Supplement with MusicBrainz data if available
-        if musicbrainz_id:
-            mb_providers = [
-                p for p in self._music_dbs if "musicbrainz" in p.get_provider_name().lower()
-            ]
-            for provider in mb_providers:
-                try:
-                    mb_releases = await provider.get_artist_releases(musicbrainz_id, before_date)
-                    for release in mb_releases:
-                        title_key = release.title.lower().strip()
-                        if title_key not in seen_titles:
-                            seen_titles.add(title_key)
-                            releases.append(release)
-
-                    if not labels:
-                        mb_labels = await provider.get_artist_labels(musicbrainz_id)
-                        labels.extend(mb_labels)
-
-                    fetched_providers.add(provider.get_provider_name())
-                    self._logger.debug(
-                        "MusicBrainz supplement complete",
-                        new_releases=len(mb_releases),
-                    )
-                    break
-                except (ResearchError, RateLimitError) as exc:
-                    self._logger.warning(
-                        "MusicBrainz supplement failed",
-                        error=str(exc),
-                    )
-
-        # Supplement with additional providers (Bandcamp, Beatport, etc.)
-        if provider_ids:
-            for provider in self._music_dbs:
-                pname = provider.get_provider_name()
-                if pname in fetched_providers or pname not in provider_ids:
-                    continue
-                if "discogs" in pname.lower() or "musicbrainz" in pname.lower():
-                    continue
-
-                artist_id = provider_ids[pname]
-                try:
-                    extra_releases = await provider.get_artist_releases(artist_id, before_date)
-                    added = 0
-                    for release in extra_releases:
-                        title_key = release.title.lower().strip()
-                        if title_key not in seen_titles:
-                            seen_titles.add(title_key)
-                            releases.append(release)
-                            added += 1
-
-                    extra_labels = await provider.get_artist_labels(artist_id)
-                    labels.extend(extra_labels)
-                    fetched_providers.add(pname)
-
-                    self._logger.info(
-                        "Additional provider supplement complete",
-                        provider=pname,
-                        new_releases=added,
-                        new_labels=len(extra_labels),
-                    )
-                except Exception as exc:
-                    self._logger.warning(
-                        "Additional provider fetch failed",
-                        provider=pname,
-                        error=str(exc),
-                    )
+        unique_releases: list[Release] = []
+        for release in all_releases:
+            title_key = release.title.lower().strip()
+            if title_key not in seen_titles:
+                seen_titles.add(title_key)
+                unique_releases.append(release)
 
         # Deduplicate labels by name
         seen_label_names: set[str] = set()
         unique_labels: list[Label] = []
-        for label in labels:
+        for label in all_labels:
             if label.name.lower() not in seen_label_names:
                 seen_label_names.add(label.name.lower())
                 unique_labels.append(label)
 
-        return releases, unique_labels
+        return unique_releases, unique_labels
+
+    async def _fetch_from_discogs(
+        self,
+        discogs_id: str | None,
+        before_date: date | None,
+    ) -> tuple[list[Release], list[Label]]:
+        """Fetch releases and labels from Discogs providers.
+
+        Tries each Discogs provider (API first, scraper fallback) in
+        order; returns on first success.  Sequential fallback within this
+        group preserves the existing error-recovery behaviour.
+        """
+        if not discogs_id:
+            return [], []
+
+        discogs_providers = [
+            p for p in self._music_dbs if "discogs" in p.get_provider_name().lower()
+        ]
+        if not discogs_providers:
+            return [], []
+
+        for provider in discogs_providers:
+            try:
+                releases = await provider.get_artist_releases(discogs_id, before_date)
+                labels = await provider.get_artist_labels(discogs_id)
+                self._logger.info(
+                    "Discography fetched",
+                    provider=provider.get_provider_name(),
+                    releases=len(releases),
+                    labels=len(labels),
+                )
+                return list(releases), list(labels)
+            except RateLimitError:
+                self._logger.warning(
+                    "Rate limited, trying next provider",
+                    provider=provider.get_provider_name(),
+                )
+                continue
+            except ResearchError as exc:
+                self._logger.warning(
+                    "Discography fetch failed, trying next provider",
+                    provider=provider.get_provider_name(),
+                    error=str(exc),
+                )
+                continue
+
+        return [], []
+
+    async def _fetch_from_musicbrainz(
+        self,
+        musicbrainz_id: str | None,
+        before_date: date | None,
+    ) -> tuple[list[Release], list[Label]]:
+        """Fetch releases and labels from MusicBrainz providers.
+
+        Supplements Discogs data with MusicBrainz entries.  Labels are
+        always fetched (deduplication happens in the caller).
+        """
+        if not musicbrainz_id:
+            return [], []
+
+        mb_providers = [
+            p for p in self._music_dbs if "musicbrainz" in p.get_provider_name().lower()
+        ]
+
+        for provider in mb_providers:
+            try:
+                releases = await provider.get_artist_releases(musicbrainz_id, before_date)
+                labels = await provider.get_artist_labels(musicbrainz_id)
+                self._logger.debug(
+                    "MusicBrainz supplement complete",
+                    new_releases=len(releases),
+                )
+                return list(releases), list(labels)
+            except (ResearchError, RateLimitError) as exc:
+                self._logger.warning(
+                    "MusicBrainz supplement failed",
+                    error=str(exc),
+                )
+
+        return [], []
+
+    async def _fetch_from_additional(
+        self,
+        provider_ids: dict[str, str] | None,
+        before_date: date | None,
+    ) -> tuple[list[Release], list[Label]]:
+        """Fetch releases and labels from additional providers (Bandcamp, Beatport, etc.).
+
+        Iterates non-Discogs, non-MusicBrainz providers that matched
+        during identity resolution.  Each provider is tried independently;
+        failures are logged but don't block the others.
+        """
+        if not provider_ids:
+            return [], []
+
+        releases: list[Release] = []
+        labels: list[Label] = []
+
+        for provider in self._music_dbs:
+            pname = provider.get_provider_name()
+            if pname not in provider_ids:
+                continue
+            if "discogs" in pname.lower() or "musicbrainz" in pname.lower():
+                continue
+
+            artist_id = provider_ids[pname]
+            try:
+                extra_releases = await provider.get_artist_releases(artist_id, before_date)
+                releases.extend(extra_releases)
+
+                extra_labels = await provider.get_artist_labels(artist_id)
+                labels.extend(extra_labels)
+
+                self._logger.info(
+                    "Additional provider supplement complete",
+                    provider=pname,
+                    new_releases=len(extra_releases),
+                    new_labels=len(extra_labels),
+                )
+            except Exception as exc:
+                self._logger.warning(
+                    "Additional provider fetch failed",
+                    provider=pname,
+                    error=str(exc),
+                )
+
+        return releases, labels
 
     async def _filter_by_feedback(
         self,
@@ -648,123 +685,6 @@ class ArtistResearcher:
             )
 
         return filtered_releases, filtered_labels
-
-    async def _search_gig_history(
-        self, name: str, before_date: date | None, city: str | None = None
-    ) -> list[EventAppearance]:
-        """Search the web for past event appearances by the artist.
-
-        Uses RA.co (Resident Advisor) as the primary source for event
-        listings, supplemented by general web search. When ``city`` is
-        provided, city-qualified queries are included to improve
-        disambiguation. Performs deeper follow-up searches if initial
-        results are sparse.
-        """
-        # Phase 1 — Primary queries (targeted, high-precision)
-        # RA.co (Resident Advisor) is queried first via site: operator
-        # because it is the most authoritative source for electronic music
-        # event listings.  General queries follow for broader coverage.
-        # If a city hint is available, a city-qualified query is inserted
-        # to help disambiguate common DJ names in a specific scene.
-        primary_queries = [
-            f'site:ra.co/dj "{name}"',
-            f'site:ra.co/events "{name}"',
-            f'"{name}" DJ set event lineup',
-            f'"{name}" live club night rave',
-        ]
-        if city:
-            primary_queries.insert(2, f'"{name}" DJ "{city}" event')
-
-        # Execute all primary queries in parallel with throttling
-        all_results: list[SearchResult] = await parallel_search(
-            self._web_search.search,
-            [{"query": q, "num_results": _GIG_SEARCH_LIMIT, "before_date": before_date}
-             for q in primary_queries],
-            logger=self._logger,
-            error_msg="Gig history search failed",
-        )
-
-        # Deduplicate by URL
-        seen_urls: set[str] = set()
-        unique_results: list[SearchResult] = []
-        for result in all_results:
-            if result.url not in seen_urls:
-                seen_urls.add(result.url)
-                unique_results.append(result)
-
-        # Phase 2 — Adaptive deepening: if the primary search returned fewer
-        # results than _MIN_ADEQUATE_APPEARANCES (default 3), fire a second
-        # round of broader queries targeting festivals, major clubs, and
-        # biography pages.  This ensures obscure or emerging artists still
-        # get reasonable coverage rather than returning empty results.
-        if len(unique_results) < _MIN_ADEQUATE_APPEARANCES:
-            deeper_queries = [
-                f'"{name}" resident advisor event',
-                f'"{name}" electronic music festival',
-                f'"{name}" boiler room OR dekmantel OR fabric OR berghain',
-                f'"{name}" DJ biography',
-            ]
-            deeper_results: list[SearchResult] = await parallel_search(
-                self._web_search.search,
-                [{"query": q, "num_results": _GIG_SEARCH_LIMIT, "before_date": before_date}
-                 for q in deeper_queries],
-                logger=self._logger,
-                error_msg="Deepened gig search failed",
-            )
-            for r in deeper_results:
-                if r.url not in seen_urls:
-                    seen_urls.add(r.url)
-                    unique_results.append(r)
-
-            self._logger.info(
-                "Deepened gig search",
-                artist=name,
-                total_results=len(unique_results),
-            )
-
-        if not unique_results:
-            return []
-
-        # Prioritize RA.co results first in the snippet list passed to the
-        # LLM.  Since RA is the most authoritative source for event data,
-        # placing these first biases the LLM toward higher-quality extractions.
-        ra_results = [r for r in unique_results if "ra.co" in r.url or "residentadvisor" in r.url]
-        other_results = [r for r in unique_results if r not in ra_results]
-        ordered = ra_results + other_results
-
-        # Use LLM to extract structured event data from search snippets
-        snippet_text = "\n".join(
-            f"- {r.title}: {r.snippet or '(no snippet)'} [{r.url}]"
-            for r in ordered[:_GIG_SEARCH_LIMIT]
-        )
-
-        system_prompt = (
-            "You are a music event data extractor. Given web search results about "
-            "a DJ/artist, extract any identifiable past event appearances. "
-            "Pay special attention to Resident Advisor (ra.co) results — these are "
-            "the most authoritative source for electronic music event listings. "
-            "Return one appearance per line in the format:\n"
-            "EVENT_NAME | VENUE | DATE (YYYY-MM-DD or unknown) | SOURCE_URL\n"
-            "Only include results that clearly indicate the artist performed at an event. "
-            "If no clear events are found, return NONE."
-        )
-        user_prompt = (
-            f"Extract event appearances for artist '{name}' from these search results:\n\n"
-            f"{snippet_text}"
-        )
-
-        try:
-            llm_response = await self._llm.complete(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                temperature=0.1,
-                max_tokens=3000,
-            )
-        except Exception as exc:
-            self._logger.warning("LLM gig extraction failed", error=str(exc))
-            return []
-
-        return self._parse_event_appearances(llm_response)
 
     async def _retrieve_from_corpus(
         self, artist_name: str, before_date: date | None
@@ -829,121 +749,6 @@ class ArtistResearcher:
             )
         return refs
 
-    async def _search_press(
-        self, name: str, before_date: date | None, city: str | None = None
-    ) -> list[ArticleReference]:
-        """Search for press articles and interviews mentioning the artist.
-
-        Prioritizes RA.co (Resident Advisor) as the premier source for
-        electronic music artist profiles and event coverage. When ``city``
-        is provided, a city-qualified query is added for disambiguation.
-        Performs adaptive deepening when initial results are insufficient.
-        """
-        # Phase 1: Primary queries — RA.co artist profiles, then major press
-        primary_queries = [
-            f'site:ra.co "{name}"',
-            f'"{name}" interview OR profile "Resident Advisor" OR "DJ Mag" OR Mixmag',
-            f'"{name}" electronic music artist biography',
-        ]
-        if city:
-            primary_queries.append(f'"{name}" "{city}" electronic music DJ')
-
-        # Execute all primary queries in parallel with throttling
-        raw_press_results: list[SearchResult] = await parallel_search(
-            self._web_search.search,
-            [{"query": q, "num_results": _PRESS_SEARCH_LIMIT, "before_date": before_date}
-             for q in primary_queries],
-            logger=self._logger,
-            error_msg="Press search failed",
-        )
-
-        all_results: list[SearchResult] = []
-        seen_urls: set[str] = set()
-        for r in raw_press_results:
-            if r.url not in seen_urls:
-                seen_urls.add(r.url)
-                all_results.append(r)
-
-        # Phase 2 — Adaptive deepening for press: same concept as gig
-        # search deepening.  If fewer than _MIN_ADEQUATE_ARTICLES (default 2)
-        # came back, broaden to additional music publications and generic
-        # queries.  This handles artists who may not appear in RA/DJ Mag
-        # but have coverage in niche outlets.
-        if len(all_results) < _MIN_ADEQUATE_ARTICLES:
-            deeper_queries = [
-                f'"{name}" XLR8R OR Pitchfork OR "Fact Magazine" OR Mixmag',
-                f'"{name}" electronic music producer DJ',
-                f'"{name}" record label release announcement',
-            ]
-            deeper_press_results: list[SearchResult] = await parallel_search(
-                self._web_search.search,
-                [{"query": q, "num_results": _PRESS_SEARCH_LIMIT, "before_date": before_date}
-                 for q in deeper_queries],
-                logger=self._logger,
-                error_msg="Deepened press search failed",
-            )
-            for r in deeper_press_results:
-                if r.url not in seen_urls:
-                    seen_urls.add(r.url)
-                    all_results.append(r)
-
-            self._logger.info(
-                "Deepened press search",
-                artist=name,
-                total_results=len(all_results),
-            )
-
-        if not all_results:
-            return []
-
-        # Relevance filter: removes results about non-music topics (e.g. an
-        # artist who shares a name with a politician or athlete).  Known
-        # music domains pass automatically; other domains must contain at
-        # least one music-related keyword in the title or snippet.
-        relevant_results = [r for r in all_results if self._is_music_relevant(r)]
-
-        if len(relevant_results) < len(all_results):
-            self._logger.info(
-                "press_relevance_filter",
-                artist=name,
-                before=len(all_results),
-                after=len(relevant_results),
-                removed=len(all_results) - len(relevant_results),
-            )
-
-        if not relevant_results:
-            return []
-
-        # Sort results so tier-1 sources (RA, DJ Mag, Mixmag) are scraped
-        # first.  Since we cap at _MAX_PRESS_ARTICLES, this ensures the
-        # highest-authority content is always included even when there are
-        # more results than the cap allows.
-        def _sort_key(r: SearchResult) -> int:
-            url = r.url.lower()
-            if "ra.co" in url or "residentadvisor" in url:
-                return 0
-            if any(d in url for d in ("djmag.com", "mixmag.net")):
-                return 1
-            return 2
-
-        relevant_results.sort(key=_sort_key)
-
-        # Extract article content for the top results
-        articles: list[ArticleReference] = []
-        extraction_tasks = [
-            self._extract_article_reference(result, name)
-            for result in relevant_results[:_MAX_PRESS_ARTICLES]
-        ]
-        extracted = await asyncio.gather(*extraction_tasks, return_exceptions=True)
-
-        for item in extracted:
-            if isinstance(item, ArticleReference):
-                articles.append(item)
-            elif isinstance(item, Exception):
-                self._logger.debug("Article extraction failed", error=str(item))
-
-        return articles
-
     async def _extract_article_reference(
         self, search_result: SearchResult, artist_name: str
     ) -> ArticleReference:
@@ -997,46 +802,6 @@ class ArtistResearcher:
             if pattern.search(source_url):
                 return tier
         return 6
-
-    # -- Parsing helpers -------------------------------------------------------
-
-    def _parse_event_appearances(self, llm_text: str) -> list[EventAppearance]:
-        """Parse LLM-generated event appearance text into structured objects."""
-        appearances: list[EventAppearance] = []
-
-        if "NONE" in llm_text.strip().upper():
-            return appearances
-
-        for line in llm_text.strip().splitlines():
-            line = line.strip().lstrip("- ")
-            if not line or "|" not in line:
-                continue
-
-            parts = [p.strip() for p in line.split("|")]
-            if len(parts) < 3:
-                continue
-
-            event_name = parts[0] if parts[0] and parts[0].lower() != "unknown" else None
-            venue = parts[1] if len(parts) > 1 and parts[1].lower() != "unknown" else None
-            date_str = parts[2] if len(parts) > 2 else None
-            source_url = parts[3] if len(parts) > 3 else None
-
-            event_date: date | None = None
-            if date_str and date_str.lower() != "unknown":
-                with contextlib.suppress(ValueError):
-                    event_date = date.fromisoformat(date_str)
-
-            appearances.append(
-                EventAppearance(
-                    event_name=event_name,
-                    venue=venue,
-                    date=event_date,
-                    source="web_search",
-                    source_url=source_url,
-                )
-            )
-
-        return appearances
 
     @staticmethod
     def _is_music_relevant(result: SearchResult) -> bool:
@@ -1122,8 +887,6 @@ class ArtistResearcher:
         self,
         artist_name: str,
         releases: list[Release],
-        appearances: list[EventAppearance],
-        articles: list[ArticleReference],
         labels: list[Label],
         city: str | None = None,
     ) -> str | None:
@@ -1152,16 +915,6 @@ class ArtistResearcher:
         if labels:
             label_names = [lb.name for lb in labels[:10]]
             context_parts.append(f"Labels: {', '.join(label_names)}")
-
-        if appearances:
-            event_names = [a.event_name for a in appearances[:10] if a.event_name]
-            if event_names:
-                context_parts.append(f"Events: {', '.join(event_names)}")
-
-        if articles:
-            article_titles = [a.title for a in articles[:5] if a.title]
-            if article_titles:
-                context_parts.append(f"Articles: {', '.join(article_titles)}")
 
         if not context_parts:
             return None
