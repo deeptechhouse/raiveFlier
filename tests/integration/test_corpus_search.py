@@ -24,12 +24,14 @@ def _make_retrieved_chunk(
     author: str = "Simon Reynolds",
     citation_tier: int = 1,
     similarity: float = 0.88,
+    source_id: str = "src-001",
+    chunk_id: str = "chunk-001",
 ) -> RetrievedChunk:
     chunk = DocumentChunk(
-        chunk_id="chunk-001",
+        chunk_id=chunk_id,
         text=text,
         token_count=50,
-        source_id="src-001",
+        source_id=source_id,
         source_title=source_title,
         source_type=source_type,
         author=author,
@@ -84,6 +86,8 @@ class TestCorpusSearchEndpoint:
                 author="Bill Brewster",
                 citation_tier=2,
                 similarity=0.75,
+                source_id="src-002",
+                chunk_id="chunk-002",
             ),
         ])
 
