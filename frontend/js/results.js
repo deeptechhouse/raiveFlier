@@ -412,7 +412,10 @@ const Results = (() => {
     html += "</div>"; // .meta
     html += '<div class="results-summary__stats">';
     html += `<span class="results-summary__stat">${artistCount} artist${artistCount !== 1 ? "s" : ""} researched</span>`;
-    html += `<span class="results-summary__stat">${citationCount} citation${citationCount !== 1 ? "s" : ""} found</span>`;
+    // Citation count logged, not displayed
+    if (citationCount > 0) {
+      console.log("[Results] %d citation(s) found", citationCount);
+    }
     html += "</div>";
     html += "</div>"; // .info
     html += "</div>"; // .results-summary
@@ -1355,8 +1358,15 @@ const Results = (() => {
     // Section 5: Interconnections
     html += _renderInterconnections(data);
 
-    // Section 6: Citations
-    html += _renderCitations(data.citations);
+    // Section 6: Citations — logged but not displayed
+    if (data.citations && data.citations.length > 0) {
+      console.log("[Results] All citations (%d):", data.citations.length, data.citations);
+    }
+
+    // Export JSON button (standalone, not inside citations)
+    html += '<div class="citation-export">';
+    html += '<button type="button" class="btn-secondary" id="export-json-btn">Export JSON</button>';
+    html += "</div>";
 
     resultsView.innerHTML = html;
 
