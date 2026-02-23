@@ -117,8 +117,11 @@ async def ingest_transcript(
     source_id = raw_chunks[0].source_id
     chunker = TextChunker()
 
+    from src.utils.text_normalizer import preprocess_transcript
+
     all_chunks: list[DocumentChunk] = []
     for rc in raw_chunks:
+        text = preprocess_transcript(rc.text)
         metadata = {
             "source_id": rc.source_id,
             "source_title": title,
@@ -126,7 +129,7 @@ async def ingest_transcript(
             "citation_tier": 3,
             "author": "Resident Advisor",
         }
-        chunks = chunker.chunk(rc.text, metadata)
+        chunks = chunker.chunk(text, metadata)
         all_chunks.extend(chunks)
 
     if not all_chunks:

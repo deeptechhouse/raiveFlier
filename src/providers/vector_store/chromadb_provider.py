@@ -248,6 +248,29 @@ class ChromaDBProvider(IVectorStoreProvider):
                 provider_name=self.get_provider_name(),
             ) from exc
 
+    async def delete_by_source_type(self, source_type: str) -> int:
+        """Delete all chunks with the given source type."""
+        self._cached_stats = None  # Invalidate stats cache
+        try:
+            existing = self._collection.get(where={"source_type": source_type})
+            count = len(existing["ids"]) if existing["ids"] else 0
+
+            if count > 0:
+                self._collection.delete(where={"source_type": source_type})
+
+            logger.info(
+                "chromadb_delete_by_source_type",
+                source_type=source_type,
+                deleted_count=count,
+            )
+            return count
+
+        except Exception as exc:
+            raise RAGError(
+                message=f"ChromaDB delete_by_source_type failed: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
     async def get_stats(self) -> CorpusStats:
         """Return aggregate statistics about the corpus.
 

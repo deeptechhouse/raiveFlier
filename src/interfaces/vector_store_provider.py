@@ -118,6 +118,22 @@ class IVectorStoreProvider(ABC):
         """
 
     @abstractmethod
+    async def delete_by_source_type(self, source_type: str) -> int:
+        """Delete all chunks with the given source type.
+
+        Parameters
+        ----------
+        source_type:
+            The ``source_type`` metadata value (e.g. ``"interview"``,
+            ``"reference"``, ``"book"``).
+
+        Returns
+        -------
+        int
+            The number of chunks deleted.
+        """
+
+    @abstractmethod
     async def get_stats(self) -> CorpusStats:
         """Return aggregate statistics about the corpus.
 

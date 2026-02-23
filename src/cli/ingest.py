@@ -221,6 +221,44 @@ async def _handle_directory(args: argparse.Namespace, service) -> int:  # noqa: 
     return 0
 
 
+async def _handle_purge(args: argparse.Namespace, app_settings: Settings) -> int:
+    """Delete all chunks of a given source type."""
+    source_type = args.type
+    print(f"Purging all chunks with source_type='{source_type}'")
+
+    embedding_provider = _build_embedding_provider(app_settings)
+    if embedding_provider is None:
+        print("Error: No embedding provider available.", file=sys.stderr)
+        return 1
+
+    from src.providers.vector_store.chromadb_provider import ChromaDBProvider
+
+    vector_store = ChromaDBProvider(
+        embedding_provider=embedding_provider,
+        persist_directory=app_settings.chromadb_persist_dir,
+        collection_name=app_settings.chromadb_collection,
+    )
+
+    # Show current count before deleting
+    stats = await vector_store.get_stats()
+    type_count = stats.sources_by_type.get(source_type, 0)
+    if type_count == 0:
+        print(f"No chunks found with source_type='{source_type}'. Nothing to purge.")
+        return 0
+
+    print(f"  Found {type_count} chunks with source_type='{source_type}'")
+
+    if not args.yes:
+        confirm = input(f"  Delete all {type_count} chunks? [y/N] ").strip().lower()
+        if confirm not in ("y", "yes"):
+            print("  Aborted.")
+            return 0
+
+    deleted = await vector_store.delete_by_source_type(source_type)
+    print(f"\n  Deleted {deleted} chunks.")
+    return 0
+
+
 async def _handle_stats(app_settings: Settings) -> int:
     """Display corpus statistics."""
     embedding_provider = _build_embedding_provider(app_settings)
@@ -305,6 +343,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Source type label (default: article)",
     )
 
+    # -- purge --
+    purge_parser = subparsers.add_parser(
+        "purge", help="Delete all chunks of a given source type"
+    )
+    purge_parser.add_argument(
+        "--type", required=True, help="Source type to purge (e.g. interview, reference)"
+    )
+    purge_parser.add_argument(
+        "--yes", "-y", action="store_true", help="Skip confirmation prompt"
+    )
+
     # -- stats --
     subparsers.add_parser("stats", help="Show corpus statistics")
 
@@ -329,6 +378,10 @@ def main() -> None:
 
     if args.command == "stats":
         exit_code = asyncio.run(_handle_stats(app_settings))
+        sys.exit(exit_code)
+
+    if args.command == "purge":
+        exit_code = asyncio.run(_handle_purge(args, app_settings))
         sys.exit(exit_code)
 
     # All other commands require the full ingestion service.

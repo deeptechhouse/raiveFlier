@@ -578,6 +578,89 @@ class TestChromaDBDeleteExtended:
 
 
 # ======================================================================
+# delete_by_source_type tests
+# ======================================================================
+
+
+class TestDeleteBySourceType:
+    """Tests for delete_by_source_type()."""
+
+    @pytest.fixture()
+    def mock_embedding_provider(self):
+        from src.interfaces.embedding_provider import IEmbeddingProvider
+
+        mock = MagicMock(spec=IEmbeddingProvider)
+        mock.embed_single = AsyncMock(return_value=[0.1] * 128)
+        mock.embed = AsyncMock(return_value=[[0.1] * 128])
+        mock.get_dimension.return_value = 128
+        mock.get_provider_name.return_value = "mock"
+        mock.is_available.return_value = True
+        return mock
+
+    @pytest.mark.asyncio
+    async def test_deletes_all_chunks_of_type(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """All chunks with the given source_type are deleted."""
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_dst1"),
+            collection_name="test_dst_all",
+        )
+        chunks = [
+            _make_chunk(chunk_id="dst1", source_id="int-1", source_type="interview"),
+            _make_chunk(chunk_id="dst2", source_id="int-1", source_type="interview"),
+            _make_chunk(chunk_id="dst3", source_id="int-2", source_type="interview"),
+            _make_chunk(chunk_id="dst4", source_id="ref-1", source_type="reference"),
+        ]
+        mock_embedding_provider.embed = AsyncMock(
+            return_value=[[0.1] * 128, [0.2] * 128, [0.3] * 128, [0.4] * 128]
+        )
+        embeddings = await mock_embedding_provider.embed([c.text for c in chunks])
+        await provider.add_chunks(chunks, embeddings)
+
+        deleted = await provider.delete_by_source_type("interview")
+        assert deleted == 3
+
+        stats = await provider.get_stats()
+        assert stats.total_chunks == 1
+        assert stats.sources_by_type.get("interview", 0) == 0
+        assert stats.sources_by_type.get("reference") == 1
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_type_returns_zero(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """Purging a type that doesn't exist returns 0."""
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_dst2"),
+            collection_name="test_dst_none",
+        )
+        deleted = await provider.delete_by_source_type("nonexistent")
+        assert deleted == 0
+
+    @pytest.mark.asyncio
+    async def test_invalidates_stats_cache(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """delete_by_source_type invalidates the stats cache."""
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_dst3"),
+            collection_name="test_dst_cache",
+        )
+        chunk = _make_chunk(chunk_id="dst5", source_type="interview")
+        await provider.add_chunks([chunk], [[0.1] * 128])
+
+        await provider.get_stats()
+        assert provider._cached_stats is not None
+
+        await provider.delete_by_source_type("interview")
+        assert provider._cached_stats is None
+
+
+# ======================================================================
 # Static helper methods
 # ======================================================================
 
