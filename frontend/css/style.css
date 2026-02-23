@@ -243,6 +243,17 @@ body {
   margin-top: var(--space-2);
 }
 
+/* Analysis count badge — small mono label shown when a flier has been
+   analyzed more than once. Sits below the subtitle in the header. */
+.analysis-count-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+  opacity: 0.7;
+}
+
 
 /* ---- Main ---- */
 #app {

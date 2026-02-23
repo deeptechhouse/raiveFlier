@@ -236,15 +236,19 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
         if not hash_rows:
             return None
 
-        # Find the closest match by Hamming distance
+        # Find the closest match by Hamming distance and count all
+        # within-threshold matches (= how many times this flier was analyzed)
         best_match = None
         best_distance = threshold + 1
+        times_analyzed = 0
 
         for row in hash_rows:
             stored_phash = row["image_phash"]
             if len(stored_phash) != len(image_phash):
                 continue
             distance = self._hamming_distance(image_phash, stored_phash)
+            if distance <= threshold:
+                times_analyzed += 1
             if distance < best_distance:
                 best_distance = distance
                 best_match = dict(row)
@@ -299,6 +303,7 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
             "event_name": event_name,
             "event_date": event_date,
             "hamming_distance": best_distance,
+            "times_analyzed": times_analyzed,
         }
 
     async def get_flier_count(self) -> int:

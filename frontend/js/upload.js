@@ -57,6 +57,7 @@ const Upload = (() => {
   let _duplicateMeta = null;
   let _duplicateAnalyzeBtn = null;
   let _duplicateCancelBtn = null;
+  let _analysisCountBadge = null;
 
   // When the backend detects a duplicate flier, we store the full upload
   // response here so the user can choose "Analyze Anyway" to proceed.
@@ -78,6 +79,7 @@ const Upload = (() => {
     _duplicateMeta = document.getElementById("duplicate-warning-meta");
     _duplicateAnalyzeBtn = document.getElementById("duplicate-analyze-btn");
     _duplicateCancelBtn = document.getElementById("duplicate-cancel-btn");
+    _analysisCountBadge = document.getElementById("analysis-count-badge");
   }
 
   /** Set up all event listeners.
@@ -122,11 +124,13 @@ const Upload = (() => {
       }
     });
 
-    // Duplicate warning: "Analyze Anyway" — proceed to confirm view
+    // Duplicate warning: "Analyze Anyway" — proceed to confirm view.
+    // Capture the data reference BEFORE _hideDuplicateWarning() nulls it.
     _duplicateAnalyzeBtn.addEventListener("click", () => {
-      if (_pendingDuplicateData) {
+      const data = _pendingDuplicateData;
+      if (data) {
         _hideDuplicateWarning();
-        _proceedToConfirm(_pendingDuplicateData);
+        _proceedToConfirm(data);
       }
     });
 
@@ -277,6 +281,7 @@ const Upload = (() => {
    */
   function _proceedToConfirm(data) {
     App.setSessionId(data.session_id);
+    _updateAnalysisCount(data.times_analyzed || 1);
     _populateConfirmView(data);
     App.showView("confirm");
   }
@@ -343,6 +348,23 @@ const Upload = (() => {
     _submitBtn.disabled = true;
     _hideError();
     _hideDuplicateWarning();
+    _updateAnalysisCount(0);
+  }
+
+  /**
+   * Show or hide the analysis count badge in the site header.
+   * Only visible when a flier has been analyzed more than once.
+   * @param {number} count — total times this flier has been analyzed
+   */
+  function _updateAnalysisCount(count) {
+    if (!_analysisCountBadge) return;
+    if (count > 1) {
+      _analysisCountBadge.textContent = `analysis #${count}`;
+      _analysisCountBadge.hidden = false;
+    } else {
+      _analysisCountBadge.hidden = true;
+      _analysisCountBadge.textContent = "";
+    }
   }
 
   /**

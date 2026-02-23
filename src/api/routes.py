@@ -321,6 +321,7 @@ async def upload_flier(
                     event_name=match.get("event_name"),
                     event_date=match.get("event_date"),
                     hamming_distance=match["hamming_distance"],
+                    times_analyzed=match.get("times_analyzed", 1),
                 )
         except Exception as exc:
             _logger.warning("duplicate_check_failed", error=str(exc))
@@ -359,12 +360,15 @@ async def upload_flier(
     await gate.submit_for_review(state)
 
     ocr_result = state.ocr_result
+    # times_analyzed: previous analyses + this one (1 for first-time fliers)
+    times_analyzed = (duplicate_match.times_analyzed + 1) if duplicate_match else 1
     return FlierUploadResponse(
         session_id=session_id,
         extracted_entities=state.extracted_entities,
         ocr_confidence=ocr_result.confidence if ocr_result else 0.0,
         provider_used=ocr_result.provider_used if ocr_result else "unknown",
         duplicate_match=duplicate_match,
+        times_analyzed=times_analyzed,
     )
 
 

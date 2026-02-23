@@ -53,6 +53,7 @@ class DuplicateMatch(BaseModel):
     event_name: str | None = None
     event_date: str | None = None
     hamming_distance: int = Field(description="Perceptual hash Hamming distance (0 = identical)")
+    times_analyzed: int = Field(default=1, description="How many times this flier image has been analyzed")
 
 
 class FlierUploadResponse(BaseModel):
@@ -63,6 +64,7 @@ class FlierUploadResponse(BaseModel):
     ocr_confidence: float
     provider_used: str
     duplicate_match: DuplicateMatch | None = None
+    times_analyzed: int = Field(default=1, description="Total times this flier image has been analyzed (including this time)")
 
 
 class ConfirmEntitiesRequest(BaseModel):
