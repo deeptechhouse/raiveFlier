@@ -41,26 +41,25 @@ _RETRY_BACKOFF = 10.0  # seconds base backoff on rate-limit
 # Use ``discover_area_id()`` or ``verify_area_ids()`` to validate at runtime.
 # ---------------------------------------------------------------------------
 RA_AREA_IDS: dict[str, int] = {
-    # USA
-    "chicago": 218,
-    "detroit": 219,
-    "new_york": 8,
-    "san_francisco": 111,
-    "minneapolis": 221,
-    "madison": 335,
-    "milwaukee": 336,
-    "los_angeles": 17,
-    # Europe
+    # USA — verified via GraphQL probe 2026-02-23
+    "chicago": 17,  # (v)
+    "detroit": 19,  # (v)
+    "new_york": 8,  # (v)
+    "san_francisco": 218,  # (v) SF/Oakland
+    "minneapolis": 81,  # (v) Minnesota region
+    "wisconsin": 107,  # (v) covers Madison + Milwaukee
+    "los_angeles": 23,  # (v)
+    # Europe — verified via GraphQL probe 2026-02-23
     "berlin": 34,  # (v)
-    "london": 13,
-    "manchester": 45,
+    "london": 13,  # (v)
+    "manchester": 16,  # (v)
     "cologne": 143,  # (v)
-    "amsterdam": 29,
-    "brussels": 48,
-    "ibiza": 25,
-    "barcelona": 44,
-    # Asia
-    "tokyo": 127,
+    "amsterdam": 29,  # (v)
+    "brussels": 62,  # (v)
+    "ibiza": 25,  # (v)
+    "barcelona": 20,  # (v)
+    # Asia — verified via GraphQL probe 2026-02-23
+    "tokyo": 27,  # (v)
 }
 
 # Display-friendly city names.
@@ -70,8 +69,7 @@ CITY_DISPLAY_NAMES: dict[str, str] = {
     "new_york": "New York",
     "san_francisco": "San Francisco",
     "minneapolis": "Minneapolis",
-    "madison": "Madison",
-    "milwaukee": "Milwaukee",
+    "wisconsin": "Wisconsin",
     "los_angeles": "Los Angeles",
     "berlin": "Berlin",
     "london": "London",
