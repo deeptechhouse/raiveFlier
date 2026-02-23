@@ -408,6 +408,12 @@ class MockVectorStore(IVectorStoreProvider):
             del self._store[cid]
         return len(to_delete)
 
+    async def delete_by_source_type(self, source_type: str) -> int:
+        to_delete = [cid for cid, (chunk, _) in self._store.items() if chunk.source_type == source_type]
+        for cid in to_delete:
+            del self._store[cid]
+        return len(to_delete)
+
     async def get_stats(self) -> CorpusStats:
         sources_by_type: dict[str, int] = {}
         source_ids: set[str] = set()
