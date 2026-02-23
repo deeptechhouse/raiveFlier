@@ -34,6 +34,8 @@ from src.api.schemas import (
     ProvidersResponse,
     RatingResponse,
     RatingSummaryResponse,
+    RecommendationsResponse,
+    RecommendedArtistResponse,
     RelatedFact,
     SessionRatingsResponse,
     SubmitRatingRequest,
@@ -117,11 +119,28 @@ async def _run_phases_2_through_5(
     pipeline: FlierAnalysisPipeline,
     state: PipelineState,
     session_states: dict[str, PipelineState],
+    flier_history: Any | None = None,
 ) -> None:
     """Execute research-through-output phases and persist the final state."""
     try:
         result = await pipeline.run_phases_2_through_5(state)
         session_states[result.session_id] = result
+
+        # Log flier data for cross-flier recommendations
+        if flier_history is not None:
+            try:
+                confirmed = result.confirmed_entities or result.extracted_entities
+                await flier_history.log_flier(
+                    session_id=result.session_id,
+                    artists=[a.text if hasattr(a, 'text') else str(a) for a in (confirmed.artists or [])],
+                    venue=confirmed.venue.text if confirmed.venue and hasattr(confirmed.venue, 'text') else None,
+                    promoter=confirmed.promoter.text if confirmed.promoter and hasattr(confirmed.promoter, 'text') else None,
+                    event_name=confirmed.event_name.text if confirmed.event_name and hasattr(confirmed.event_name, 'text') else None,
+                    event_date=str(confirmed.date.text) if confirmed.date and hasattr(confirmed.date, 'text') else None,
+                    genre_tags=confirmed.genre_tags if hasattr(confirmed, 'genre_tags') else [],
+                )
+            except Exception as exc:
+                _logger.warning("flier_history_log_failed", session_id=result.session_id, error=str(exc))
     except Exception as exc:
         _logger.error(
             "background_phases_failed",
@@ -208,6 +227,7 @@ async def confirm_entities(
     session_id: str,
     body: ConfirmEntitiesRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     pipeline: PipelineDep,
     gate: GateDep,
     session_states: SessionStatesDep,
@@ -259,11 +279,13 @@ async def confirm_entities(
     session_states[session_id] = confirmed_state
 
     # --- Run phases 2-5 in background ---
+    flier_history = getattr(request.app.state, "flier_history", None)
     background_tasks.add_task(
         _run_phases_2_through_5,
         pipeline,
         confirmed_state,
         session_states,
+        flier_history,
     )
 
     return ConfirmResponse(
@@ -386,7 +408,7 @@ async def dismiss_connection(
 _VALID_RATING_TYPES = frozenset({
     "ARTIST", "VENUE", "PROMOTER", "DATE", "EVENT",
     "CONNECTION", "PATTERN", "QA", "CORPUS",
-    "RELEASE", "LABEL",
+    "RELEASE", "LABEL", "RECOMMENDATION",
 })
 
 
@@ -699,4 +721,72 @@ async def corpus_search(
         query=body.query,
         total_results=len(results),
         results=results,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Recommendation endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/fliers/{session_id}/recommendations",
+    response_model=RecommendationsResponse,
+    responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    summary="Get artist recommendations based on flier analysis",
+)
+async def get_recommendations(
+    session_id: str,
+    request: Request,
+    session_states: SessionStatesDep,
+) -> RecommendationsResponse:
+    """Generate artist recommendations based on the completed flier analysis.
+
+    Uses a three-tier approach: label-mates, shared-flier history, shared
+    lineups (from RAG corpus), then LLM reasoning for remaining slots.
+    """
+    recommendation_service = getattr(request.app.state, "recommendation_service", None)
+    if recommendation_service is None:
+        raise HTTPException(status_code=503, detail="Recommendation service not available")
+
+    state = session_states.get(session_id)
+    if state is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session not found: {session_id}. Sessions are cleared on server restart.",
+        )
+
+    if not state.research_results:
+        raise HTTPException(status_code=404, detail="No research data available yet. Wait for analysis to complete.")
+
+    entities = state.confirmed_entities or state.extracted_entities
+
+    try:
+        result = await recommendation_service.recommend(
+            research_results=state.research_results,
+            entities=entities,
+            interconnection_map=state.interconnection_map,
+        )
+    except Exception as exc:
+        _logger.error("recommendation_failed", session_id=session_id, error=str(exc))
+        raise HTTPException(status_code=503, detail="Failed to generate recommendations") from exc
+
+    return RecommendationsResponse(
+        session_id=session_id,
+        recommendations=[
+            RecommendedArtistResponse(
+                artist_name=r.artist_name,
+                genres=r.genres,
+                reason=r.reason,
+                source_tier=r.source_tier,
+                connection_strength=r.connection_strength,
+                connected_to=r.connected_to,
+                label_name=r.label_name,
+                event_name=r.event_name,
+            )
+            for r in result.recommendations
+        ],
+        flier_artists=result.flier_artists,
+        genres_analyzed=result.genres_analyzed,
+        total=len(result.recommendations),
     )

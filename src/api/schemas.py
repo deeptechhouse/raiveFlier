@@ -174,7 +174,7 @@ class SubmitRatingRequest(BaseModel):
 
     item_type: str = Field(
         ...,
-        description="ARTIST, VENUE, PROMOTER, DATE, EVENT, CONNECTION, PATTERN, QA, CORPUS, RELEASE, LABEL",
+        description="ARTIST, VENUE, PROMOTER, DATE, EVENT, CONNECTION, PATTERN, QA, CORPUS, RELEASE, LABEL, RECOMMENDATION",
     )
     item_key: str = Field(..., min_length=1, max_length=500)
     rating: int = Field(..., description="+1 for thumbs up, -1 for thumbs down")
@@ -224,3 +224,26 @@ class DismissConnectionResponse(BaseModel):
     session_id: str
     dismissed_count: int
     message: str
+
+
+class RecommendedArtistResponse(BaseModel):
+    """A single recommended artist."""
+
+    artist_name: str
+    genres: list[str] = Field(default_factory=list)
+    reason: str = ""
+    source_tier: str = "llm_suggestion"
+    connection_strength: float = 0.5
+    connected_to: list[str] = Field(default_factory=list)
+    label_name: str | None = None
+    event_name: str | None = None
+
+
+class RecommendationsResponse(BaseModel):
+    """Response containing artist recommendations based on flier analysis."""
+
+    session_id: str
+    recommendations: list[RecommendedArtistResponse] = Field(default_factory=list)
+    flier_artists: list[str] = Field(default_factory=list)
+    genres_analyzed: list[str] = Field(default_factory=list)
+    total: int = 0

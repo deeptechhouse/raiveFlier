@@ -5,4 +5,6 @@ Provides standalone command-line utilities:
 - ``python -m src.cli.analyze`` — analyze a rave flier image (full pipeline)
 - ``python -m src.cli.ingest`` — ingest books, articles, and directories
   into the vector store.
+- ``python -m src.cli.scrape_ra`` — scrape RA.co events and ingest into
+  the RAG corpus.
 """

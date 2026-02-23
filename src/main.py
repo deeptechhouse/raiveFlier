@@ -277,6 +277,12 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     # -- Feedback provider (SQLite-backed ratings persistence) --
     feedback_provider = SQLiteFeedbackProvider(db_path=app_settings.feedback_db_path)
 
+    # -- Flier history provider (SQLite-backed flier data persistence) --
+    from src.providers.flier_history.sqlite_flier_history_provider import SQLiteFlierHistoryProvider
+
+    flier_history = SQLiteFlierHistoryProvider(db_path="data/flier_history.db")
+    await flier_history.initialize()
+
     # -- Services --
     ocr_min_conf = config.get("ocr", {}).get("min_confidence", 0.7)
     ocr_service = OCRService(providers=ocr_providers, min_confidence=ocr_min_conf)
@@ -332,6 +338,17 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         citation_service=citation_service,
         vector_store=vector_store,
     )
+
+    # -- Recommendation service --
+    from src.services.recommendation_service import RecommendationService
+
+    recommendation_service = RecommendationService(
+        llm_provider=primary_llm,
+        music_dbs=music_dbs,
+        vector_store=vector_store,
+        flier_history=flier_history,
+    )
+
     progress_tracker = ProgressTracker()
     confirmation_gate = ConfirmationGate()
 
@@ -380,6 +397,8 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "rag_enabled": app_settings.rag_enabled and vector_store is not None,
         "qa_service": qa_service,
         "feedback_provider": feedback_provider,
+        "flier_history": flier_history,
+        "recommendation_service": recommendation_service,
     }
 
 

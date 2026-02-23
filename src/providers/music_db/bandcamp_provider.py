@@ -255,6 +255,12 @@ class BandcampProvider(IMusicDatabaseProvider):
             genres=tags[:5],
         )
 
+    async def get_label_releases(
+        self, label_id: str, max_results: int = 50
+    ) -> list[Release]:
+        """Not supported by Bandcamp provider — returns empty list."""
+        return []
+
     def get_provider_name(self) -> str:
         return "bandcamp"
 

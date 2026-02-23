@@ -123,6 +123,31 @@ class DiscogsAPIProvider(IMusicDatabaseProvider):
             return {"id": item.id, "name": item.data.get("title", label_name)}
         return None
 
+    def _get_label_releases_sync(self, label_id: int, max_results: int) -> list[dict[str, Any]]:
+        """Synchronous fetch of label releases for thread offloading."""
+        client = self._get_client()
+        label = client.label(label_id)
+        results: list[dict[str, Any]] = []
+        for release in label.releases:
+            if len(results) >= max_results:
+                break
+            artist_name = getattr(release, "artist", "") or ""
+            if not artist_name and hasattr(release, "artists") and release.artists:
+                artist_name = release.artists[0].name
+            results.append({
+                "id": release.id,
+                "title": getattr(release, "title", ""),
+                "year": getattr(release, "year", 0),
+                "format": (
+                    ", ".join(getattr(release, "formats", []) or [])
+                    if hasattr(release, "formats")
+                    else ""
+                ),
+                "label": label.name if hasattr(label, "name") else "",
+                "artist": artist_name,
+            })
+        return results
+
     # -- IMusicDatabaseProvider implementation ---------------------------------
 
     async def search_artist(self, name: str) -> list[ArtistSearchResult]:
@@ -268,6 +293,34 @@ class DiscogsAPIProvider(IMusicDatabaseProvider):
             genres=data.get("genres", []),
             styles=data.get("styles", []),
         )
+
+    async def get_label_releases(
+        self, label_id: str, max_results: int = 50
+    ) -> list[Release]:
+        """Fetch releases from a Discogs label to discover label-mates."""
+        await self._throttle()
+        try:
+            releases_data = await asyncio.to_thread(
+                self._get_label_releases_sync, int(label_id), max_results
+            )
+        except Exception as exc:
+            self._logger.warning(
+                "discogs_api_label_releases_failed",
+                label_id=label_id,
+                error=str(exc),
+            )
+            return []
+
+        releases: list[Release] = []
+        for data in releases_data:
+            releases.append(self._release_from_list_data(data))
+
+        self._logger.info(
+            "discogs_api_label_releases_complete",
+            label_id=label_id,
+            release_count=len(releases),
+        )
+        return releases
 
     def get_provider_name(self) -> str:
         """Return ``'discogs_api'``."""

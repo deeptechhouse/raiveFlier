@@ -115,6 +115,28 @@ class IMusicDatabaseProvider(ABC):
         """
 
     @abstractmethod
+    async def get_label_releases(
+        self, label_id: str, max_results: int = 50
+    ) -> list[Release]:
+        """Retrieve releases from a record label.
+
+        Used to discover other artists who have released on the same label
+        as an artist on the flier (label-mate discovery).
+
+        Parameters
+        ----------
+        label_id:
+            Provider-specific label identifier (e.g. Discogs label ID).
+        max_results:
+            Maximum number of releases to return.
+
+        Returns
+        -------
+        list[Release]
+            Releases from the label, each containing artist info.
+        """
+
+    @abstractmethod
     def get_provider_name(self) -> str:
         """Return a human-readable identifier for this music-database provider.
 

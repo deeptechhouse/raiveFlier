@@ -14,6 +14,9 @@ from src.services.ingestion.source_processors.article_processor import (
 from src.services.ingestion.source_processors.book_processor import BookProcessor
 from src.services.ingestion.source_processors.epub_processor import EPUBProcessor
 from src.services.ingestion.source_processors.pdf_processor import PDFProcessor
+from src.services.ingestion.source_processors.ra_event_processor import (
+    RAEventProcessor,
+)
 
 __all__ = [
     "AnalysisProcessor",
@@ -21,4 +24,5 @@ __all__ = [
     "BookProcessor",
     "EPUBProcessor",
     "PDFProcessor",
+    "RAEventProcessor",
 ]

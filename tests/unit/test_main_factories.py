@@ -755,6 +755,8 @@ class TestBuildAll:
             "rag_enabled",
             "qa_service",
             "feedback_provider",
+            "flier_history",
+            "recommendation_service",
         }
         assert set(result.keys()) == expected_keys
 
