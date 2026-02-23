@@ -40,6 +40,7 @@ from src.models.research import ResearchResult
 from src.pipeline.confirmation_gate import ConfirmationGate
 from src.pipeline.orchestrator import FlierAnalysisPipeline
 from src.pipeline.progress_tracker import ProgressTracker
+from src.providers.session.sqlite_session_store import PersistentSessionStore
 from src.providers.article.wayback_provider import WaybackProvider
 from src.providers.article.web_scraper_provider import WebScraperProvider
 from src.providers.cache.memory_cache import MemoryCacheProvider
@@ -349,8 +350,22 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         flier_history=flier_history,
     )
 
+    # -- Persistent session stores (survive container restarts) --
+    session_store = PersistentSessionStore(
+        db_path=app_settings.session_db_path,
+        table_name="sessions",
+        max_age_hours=72,
+    )
+    pending_store = PersistentSessionStore(
+        db_path=app_settings.session_db_path,
+        table_name="pending_sessions",
+        max_age_hours=24,
+    )
+    session_store.initialize()
+    pending_store.initialize()
+
     progress_tracker = ProgressTracker()
-    confirmation_gate = ConfirmationGate()
+    confirmation_gate = ConfirmationGate(pending_store=pending_store)
 
     pipeline = FlierAnalysisPipeline(
         ocr_service=ocr_service,
@@ -388,7 +403,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "pipeline": pipeline,
         "confirmation_gate": confirmation_gate,
         "progress_tracker": progress_tracker,
-        "session_states": {},
+        "session_states": session_store,
         "provider_registry": provider_registry,
         "provider_list": provider_list,
         "primary_llm_name": primary_llm.get_provider_name(),

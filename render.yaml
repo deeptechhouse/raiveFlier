@@ -65,3 +65,5 @@ services:
         value: /data/chromadb
       - key: FEEDBACK_DB_PATH
         value: /data/feedback.db
+      - key: SESSION_DB_PATH
+        value: /data/session_state.db

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # === Feedback / Ratings ===
     feedback_db_path: str = "data/feedback.db"
 
+    # === Session Persistence ===
+    session_db_path: str = "data/session_state.db"
+
     # === App Config ===
     app_host: str = "0.0.0.0"
     app_port: int = 8000

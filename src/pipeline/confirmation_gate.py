@@ -7,6 +7,8 @@ This module manages the pending session state during that pause.
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+
 import structlog
 
 from src.models.flier import ExtractedEntities
@@ -17,13 +19,19 @@ from src.utils.logging import get_logger
 class ConfirmationGate:
     """Manages pipeline pause at the USER_CONFIRMATION phase for user review.
 
-    Pending sessions are stored in an in-memory dictionary keyed by
-    ``session_id``.  The gate exposes methods to submit a state for review,
-    retrieve it, confirm it (with user-edited entities), or cancel it.
+    Pending sessions are stored in a dict-like store keyed by
+    ``session_id``.  When a :class:`PersistentSessionStore` is
+    injected, pending sessions survive container restarts.  Falls
+    back to a plain in-memory dict when no store is provided.
     """
 
-    def __init__(self) -> None:
-        self._pending_sessions: dict[str, PipelineState] = {}
+    def __init__(
+        self,
+        pending_store: MutableMapping[str, PipelineState] | None = None,
+    ) -> None:
+        self._pending_sessions: MutableMapping[str, PipelineState] = (
+            pending_store if pending_store is not None else {}
+        )
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # ------------------------------------------------------------------

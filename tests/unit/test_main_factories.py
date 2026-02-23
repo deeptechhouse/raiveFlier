@@ -963,7 +963,7 @@ class TestBuildAll:
         ):
             result = await _build_all(_settings())
 
-        assert result["session_states"] == {}
+        assert len(result["session_states"]) == 0
 
     @pytest.mark.asyncio()
     async def test_vision_llm_adds_vision_ocr(self) -> None:
