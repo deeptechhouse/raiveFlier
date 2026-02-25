@@ -243,6 +243,94 @@ class RecommendationService:
         )
         return result
 
+    async def recommend_quick(
+        self,
+        research_results: list[ResearchResult],
+        entities: ExtractedEntities,
+        interconnection_map: InterconnectionMap | None = None,
+    ) -> RecommendationResult:
+        """Fast recommendation path: SQLite + simple LLM only.
+
+        Skips Discogs label-mate queries (rate-limited external API) and
+        RAG+LLM lineup extraction — the two slowest steps in the full
+        pipeline.  Uses only:
+          - Shared-flier lookup (SQLite, ~50ms)
+          - Simple LLM suggestions (~2-3 seconds)
+
+        Target latency: 3-5 seconds.  Designed to return partial results
+        quickly while the frontend fetches full results in the background.
+
+        Parameters
+        ----------
+        research_results:
+            Research profiles for context (passed to LLM prompt).
+        entities:
+            Confirmed or extracted entities from the flier.
+        interconnection_map:
+            Accepted for API compatibility with recommend(); unused here.
+
+        Returns
+        -------
+        RecommendationResult
+            Up to ten recommendations from fast sources only.
+        """
+        self._logger.info(
+            "recommend_quick_start",
+            artist_count=len(entities.artists),
+        )
+
+        # Step 1 — build exclusion set (in-memory, <1ms)
+        exclusion_set = self._build_exclusion_set(research_results, entities)
+        artist_names = [e.text for e in entities.artists]
+
+        # Step 2 — shared-flier lookup only (SQLite, ~50ms)
+        shared_flier = await self._discover_shared_flier_artists(
+            artist_names, exclusion_set,
+        )
+
+        # Convert shared-flier dicts to RecommendedArtist with template
+        # reasons (no LLM call needed — _build_fallback_reason provides
+        # human-readable strings like "Appeared on N other flier(s)…").
+        recommendations: list[RecommendedArtist] = []
+        for candidate in shared_flier[:_MAX_RECOMMENDATIONS]:
+            recommendations.append(
+                RecommendedArtist(
+                    artist_name=candidate["artist_name"],
+                    reason=self._build_fallback_reason(candidate),
+                    source_tier=candidate["source_tier"],
+                    connection_strength=candidate["connection_strength"],
+                    connected_to=candidate.get("connected_to", []),
+                    event_name=candidate.get("event_name"),
+                )
+            )
+
+        # Step 3 — fill remaining slots with simple LLM suggestions
+        # (~2-3 seconds, single LLM call with minimal prompt)
+        if len(recommendations) < _MAX_RECOMMENDATIONS:
+            quick_exclusions = exclusion_set | {
+                r.artist_name.lower() for r in recommendations
+            }
+            llm_recs = await self._generate_simple_llm_recommendations(
+                research_results, entities, quick_exclusions,
+            )
+            recommendations.extend(llm_recs)
+
+        recommendations = recommendations[:_MAX_RECOMMENDATIONS]
+
+        self._logger.info(
+            "recommend_quick_complete",
+            total=len(recommendations),
+            shared_flier=len(shared_flier),
+            llm_fill=len(recommendations) - min(len(shared_flier), _MAX_RECOMMENDATIONS),
+        )
+
+        return RecommendationResult(
+            recommendations=recommendations,
+            flier_artists=artist_names,
+            genres_analyzed=list(entities.genre_tags) if entities.genre_tags else [],
+            generated_at=datetime.now(tz=timezone.utc),
+        )
+
     # ------------------------------------------------------------------
     # Step 1 — exclusion set
     # ------------------------------------------------------------------

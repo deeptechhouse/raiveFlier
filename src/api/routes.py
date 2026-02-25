@@ -92,9 +92,11 @@ _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 # A threshold of 10 allows for minor cropping, compression, color shifts.
 _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
 
-# Recommendation endpoint timeout — generous to accommodate Discogs rate
-# limiting (~4s per label query x 4 labels) plus LLM explanation calls.
-_RECO_TIMEOUT = 60.0  # seconds — max wait for on-demand recommendations
+# Recommendation endpoint timeouts.
+# Quick mode: SQLite + simple LLM only (~3-5 seconds expected).
+_RECO_QUICK_TIMEOUT = 15.0  # seconds
+# Full mode: Discogs + RAG + full LLM fill+explain (~10-15 seconds expected).
+_RECO_TIMEOUT = 60.0  # seconds
 
 
 def _compute_perceptual_hash(image_data: bytes) -> str | None:
@@ -1191,12 +1193,21 @@ async def get_recommendations(
     session_id: str,
     request: Request,
     session_states: SessionStatesDep,
+    mode: str = "full",
 ) -> RecommendationsResponse:
     """Generate artist recommendations based on the completed flier analysis.
 
-    Runs the full recommendation pipeline on demand: 3-tier data-driven
-    discovery (label-mates, shared-flier, shared-lineup) then LLM fill
-    for remaining slots, plus LLM-generated explanation for each pick.
+    Supports two modes via the ``mode`` query parameter:
+
+    - **quick** — Fast path (~3-5s): shared-flier SQLite lookup + simple
+      LLM suggestions.  Returns ``is_partial=True`` so the frontend knows
+      to fetch full results next.
+    - **full** (default) — Full pipeline (~10-60s): Discogs label-mates,
+      RAG shared-lineup, shared-flier, LLM fill + explanation.  Returns
+      ``is_partial=False``.
+
+    The frontend calls quick first for immediate display, then fetches
+    full in the background to replace quick results with richer data.
     """
     recommendation_service = getattr(request.app.state, "recommendation_service", None)
     if recommendation_service is None:
@@ -1214,27 +1225,42 @@ async def get_recommendations(
 
     entities = state.confirmed_entities or state.extracted_entities
 
+    # Route to quick or full pipeline based on mode query param.
+    is_quick = mode == "quick"
+    timeout = _RECO_QUICK_TIMEOUT if is_quick else _RECO_TIMEOUT
+
     try:
-        result = await asyncio.wait_for(
-            recommendation_service.recommend(
-                research_results=state.research_results,
-                entities=entities,
-                interconnection_map=state.interconnection_map,
-            ),
-            timeout=_RECO_TIMEOUT,
-        )
+        if is_quick:
+            result = await asyncio.wait_for(
+                recommendation_service.recommend_quick(
+                    research_results=state.research_results,
+                    entities=entities,
+                    interconnection_map=state.interconnection_map,
+                ),
+                timeout=timeout,
+            )
+        else:
+            result = await asyncio.wait_for(
+                recommendation_service.recommend(
+                    research_results=state.research_results,
+                    entities=entities,
+                    interconnection_map=state.interconnection_map,
+                ),
+                timeout=timeout,
+            )
     except asyncio.TimeoutError:
         _logger.warning(
             "recommendation_timeout",
             session_id=session_id,
-            timeout=_RECO_TIMEOUT,
+            mode=mode,
+            timeout=timeout,
         )
         raise HTTPException(
             status_code=503,
-            detail=f"Recommendations timed out after {_RECO_TIMEOUT:.0f} seconds",
+            detail=f"Recommendations ({mode}) timed out after {timeout:.0f} seconds",
         )
     except Exception as exc:
-        _logger.error("recommendation_failed", session_id=session_id, error=str(exc))
+        _logger.error("recommendation_failed", session_id=session_id, mode=mode, error=str(exc))
         raise HTTPException(status_code=503, detail="Failed to generate recommendations") from exc
 
     return RecommendationsResponse(
@@ -1255,5 +1281,5 @@ async def get_recommendations(
         flier_artists=result.flier_artists,
         genres_analyzed=result.genres_analyzed,
         total=len(result.recommendations),
-        is_partial=False,
+        is_partial=is_quick,
     )
