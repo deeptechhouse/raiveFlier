@@ -91,6 +91,10 @@ download_corpus() {
 
     # Parse the asset ID from the JSON response using Python (available in the
     # container since we use python:3.12-slim as the base image).
+    # Parse asset ID, routing stderr to /dev/null so error messages
+    # don't get captured into the ASSET_ID variable (the old 2>&1
+    # redirect was mixing stderr text into ASSET_ID, causing the
+    # download to always fail with "Could not find corpus release asset").
     ASSET_ID=$(echo "$RELEASE_JSON" | python3 -c "
 import sys, json
 try:
@@ -99,11 +103,12 @@ try:
     if assets:
         print(assets[0]['id'])
     else:
-        print('')
+        print('No assets in release', file=sys.stderr)
+        sys.exit(1)
 except Exception as e:
-    print('', file=sys.stderr)
     print(f'JSON parse error: {e}', file=sys.stderr)
-" 2>&1)
+    sys.exit(1)
+" 2>/dev/null)
 
     if [ -z "$ASSET_ID" ] || [ "$ASSET_ID" = "None" ]; then
         echo "[entrypoint] WARNING: Could not find corpus release asset"

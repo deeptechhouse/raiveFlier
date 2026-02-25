@@ -321,6 +321,7 @@ class IngestionService:
         source_type: str,
         skip_source_ids: set[str] | None = None,
         skip_tagging: bool = False,
+        concurrency: int = 1,
     ) -> list[IngestionResult]:
         """Ingest all ``.txt`` and ``.html`` files in *dir_path*.
 
@@ -341,6 +342,12 @@ class IngestionService:
             and stored — semantic search works, but tag-based filters
             won't apply.  Cuts ingestion from hours to minutes for
             large corpora by eliminating thousands of LLM API calls.
+        concurrency:
+            Maximum number of files to process concurrently.  Defaults
+            to 1 (sequential) to stay within the 512 MB RAM budget on
+            Render.  Each concurrent file holds its full text, chunks,
+            and embeddings in memory simultaneously.  Increase on
+            machines with more memory for faster ingestion.
 
         Returns
         -------
@@ -353,7 +360,10 @@ class IngestionService:
             return []
 
         files = sorted(path.glob("*.txt")) + sorted(path.glob("*.html"))
-        semaphore = asyncio.Semaphore(4)
+        # Concurrency limit — defaults to 1 (sequential) to stay within
+        # the 512 MB RAM budget on Render.  max(1, ...) guards against
+        # deadlock from a zero or negative value.
+        semaphore = asyncio.Semaphore(max(1, concurrency))
 
         async def _process_file(fp: Path) -> IngestionResult | None:
             async with semaphore:

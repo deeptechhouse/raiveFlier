@@ -127,6 +127,12 @@ class ArticleProcessor:
     ) -> list[DocumentChunk]:
         """Read a local article file and convert to a document chunk.
 
+        For large files (e.g. 17-20 MB RA event listings), the content
+        hash is computed incrementally in binary mode to avoid the
+        ``text.encode()`` call that would create a second full copy of
+        the file in memory.  On a 20 MB file this saves ~20 MB of peak
+        RAM — critical on Render's 512 MB budget.
+
         Parameters
         ----------
         file_path:
@@ -142,16 +148,30 @@ class ArticleProcessor:
             A single-element list with the file's content, or empty on read failure.
         """
         try:
+            # Pass 1: Compute SHA-256 hash incrementally in binary mode.
+            # This avoids text.encode() which would allocate a full byte
+            # copy alongside the text string — doubling peak RAM usage.
+            hasher = hashlib.sha256()
+            with open(file_path, "rb") as fh:
+                while True:
+                    block = fh.read(1024 * 1024)  # 1 MB blocks
+                    if not block:
+                        break
+                    hasher.update(block)
+
+            source_id = hasher.hexdigest()
+
+            # Pass 2: Read the text content.  The OS page cache typically
+            # retains the file data from pass 1, making this nearly free.
             with open(file_path, encoding="utf-8") as fh:
                 text = fh.read()
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             logger.error("article_file_read_failed", file_path=file_path)
             return []
 
         if not text.strip():
             return []
 
-        source_id = hashlib.sha256(text.encode()).hexdigest()
         chunk = DocumentChunk(
             chunk_id=str(uuid.uuid4()),
             text=text,

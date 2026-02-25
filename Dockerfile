@@ -35,8 +35,12 @@ FROM python:3.12-slim AS base
 
 # PYTHONDONTWRITEBYTECODE=1 — Prevents .pyc bytecode files (saves disk I/O)
 # PYTHONUNBUFFERED=1 — Forces stdout/stderr to be unbuffered (logs appear immediately)
+# ANONYMIZED_TELEMETRY=False — Disables ChromaDB PostHog telemetry to prevent
+#   "capture() takes 1 positional argument but 3 were given" errors caused by
+#   a version mismatch between ChromaDB's bundled PostHog client and the server.
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    ANONYMIZED_TELEMETRY=False
 
 # ── System dependencies ──────────────────────────────────────
 # These are native libraries required by the application and its Python deps:

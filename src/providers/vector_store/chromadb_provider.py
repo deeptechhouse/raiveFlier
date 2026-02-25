@@ -7,8 +7,15 @@ Python-native — no external service required.
 
 from __future__ import annotations
 
+import os
 from datetime import date
 from typing import Any
+
+# Disable ChromaDB PostHog telemetry before importing chromadb.
+# Defense-in-depth: the Dockerfile also sets this env var, but setting
+# it here ensures telemetry is disabled in all execution contexts
+# (local dev, tests, CI) where the Dockerfile ENV may not be present.
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
 import chromadb
 import structlog
@@ -190,8 +197,19 @@ class ChromaDBProvider(IVectorStoreProvider):
         self,
         chunks: list[DocumentChunk],
         embeddings: list[list[float]],
+        batch_size: int = 500,
     ) -> int:
-        """Add pre-embedded document chunks to the ChromaDB collection (upsert)."""
+        """Add pre-embedded document chunks to the ChromaDB collection (upsert).
+
+        Chunks are upserted in batches of *batch_size* to keep memory
+        bounded.  A single upsert of thousands of chunks can spike memory
+        beyond the 512 MB Render budget because ChromaDB builds internal
+        data structures proportional to the batch.  Paginating lets the
+        previous batch's allocations be garbage-collected before the next.
+
+        The *batch_size* parameter is an implementation detail — the
+        :class:`IVectorStoreProvider` interface is unchanged.
+        """
         if len(chunks) != len(embeddings):
             raise ValueError(
                 f"chunks and embeddings length mismatch: {len(chunks)} != {len(embeddings)}"
@@ -202,22 +220,34 @@ class ChromaDBProvider(IVectorStoreProvider):
         self._cached_stats = None  # Invalidate stats cache
 
         try:
-            ids = [c.chunk_id for c in chunks]
-            documents = [c.text for c in chunks]
-            metadatas = [self._chunk_to_metadata(c) for c in chunks]
+            total_stored = 0
 
-            self._collection.upsert(
-                ids=ids,
-                embeddings=embeddings,
-                documents=documents,
-                metadatas=metadatas,
-            )
+            # Paginate upserts to bound peak memory.  Each iteration
+            # builds id/document/metadata lists only for its slice,
+            # letting the previous batch's allocations be GC'd.
+            for start in range(0, len(chunks), batch_size):
+                end = min(start + batch_size, len(chunks))
+                batch_chunks = chunks[start:end]
+                batch_embeddings = embeddings[start:end]
+
+                ids = [c.chunk_id for c in batch_chunks]
+                documents = [c.text for c in batch_chunks]
+                metadatas = [self._chunk_to_metadata(c) for c in batch_chunks]
+
+                self._collection.upsert(
+                    ids=ids,
+                    embeddings=batch_embeddings,
+                    documents=documents,
+                    metadatas=metadatas,
+                )
+                total_stored += len(batch_chunks)
 
             logger.info(
                 "chromadb_add_chunks",
-                count=len(chunks),
+                count=total_stored,
+                batches=(len(chunks) + batch_size - 1) // batch_size,
             )
-            return len(chunks)
+            return total_stored
 
         except Exception as exc:
             raise RAGError(
