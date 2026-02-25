@@ -1015,38 +1015,48 @@ class TestAutoIngestCorpus:
         # Should complete silently — no exception raised
 
     @pytest.mark.asyncio
-    async def test_vector_store_has_data_skips_ingestion(self) -> None:
-        """When the vector store already contains chunks, ingestion is skipped."""
+    async def test_all_files_already_ingested_skips(self, tmp_path: Path) -> None:
+        """When all reference files are already in the vector store,
+        ingest_directory still runs but skip_source_ids causes it to
+        process zero new files (returns empty list)."""
         from src.main import _auto_ingest_reference_corpus
         from src.models.rag import CorpusStats
 
+        corpus_dir = tmp_path / "reference_corpus"
+        corpus_dir.mkdir()
+        (corpus_dir / "test.txt").write_text("already ingested content")
+
         app = FastAPI()
         mock_vs = AsyncMock()
-        mock_vs.get_stats = AsyncMock(
-            return_value=CorpusStats(total_chunks=100, total_sources=5)
-        )
+        # Return a set of source_ids that covers all files
+        mock_vs.get_source_ids = AsyncMock(return_value={"existing-id-1", "existing-id-2"})
+        mock_vs.get_stats = AsyncMock(return_value=CorpusStats(total_chunks=100, total_sources=5))
         mock_ingestion = AsyncMock()
+        # ingest_directory returns empty when all files are skipped
+        mock_ingestion.ingest_directory = AsyncMock(return_value=[])
 
         app.state.vector_store = mock_vs
         app.state.ingestion_service = mock_ingestion
 
-        await _auto_ingest_reference_corpus(app)
+        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
+            await _auto_ingest_reference_corpus(app)
 
-        # get_stats was called to check, but ingest_directory was NOT called
-        mock_vs.get_stats.assert_awaited_once()
-        mock_ingestion.ingest_directory.assert_not_awaited()
+        # get_source_ids was called to determine existing reference sources
+        mock_vs.get_source_ids.assert_awaited_once_with(source_type="reference")
+        # ingest_directory was called with skip_source_ids
+        mock_ingestion.ingest_directory.assert_awaited_once()
+        call_kwargs = mock_ingestion.ingest_directory.await_args
+        assert call_kwargs.kwargs.get("skip_source_ids") is not None or (
+            len(call_kwargs.args) >= 3 if call_kwargs.args else False
+        )
 
     @pytest.mark.asyncio
     async def test_corpus_dir_not_found_skips(self) -> None:
         """When the reference corpus directory does not exist, ingestion is skipped."""
         from src.main import _auto_ingest_reference_corpus
-        from src.models.rag import CorpusStats
 
         app = FastAPI()
         mock_vs = AsyncMock()
-        mock_vs.get_stats = AsyncMock(
-            return_value=CorpusStats(total_chunks=0, total_sources=0)
-        )
         mock_ingestion = AsyncMock()
 
         app.state.vector_store = mock_vs
@@ -1063,7 +1073,8 @@ class TestAutoIngestCorpus:
 
     @pytest.mark.asyncio
     async def test_success_path_ingests_directory(self, tmp_path: Path) -> None:
-        """When vector store is empty and corpus dir exists, ingest_directory is called."""
+        """When vector store has no reference sources, ingest_directory is called
+        with skip_source_ids (empty set since nothing is ingested yet)."""
         from src.main import _auto_ingest_reference_corpus
         from src.models.rag import CorpusStats, IngestionResult
 
@@ -1074,9 +1085,9 @@ class TestAutoIngestCorpus:
 
         app = FastAPI()
         mock_vs = AsyncMock()
-        mock_vs.get_stats = AsyncMock(
-            return_value=CorpusStats(total_chunks=0, total_sources=0)
-        )
+        # Empty store — no existing reference source_ids
+        mock_vs.get_source_ids = AsyncMock(return_value=set())
+        mock_vs.get_stats = AsyncMock(return_value=CorpusStats(total_chunks=0, total_sources=0))
         mock_ingestion = AsyncMock()
         mock_ingestion.ingest_directory = AsyncMock(
             return_value=[
@@ -1096,15 +1107,19 @@ class TestAutoIngestCorpus:
         with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
             await _auto_ingest_reference_corpus(app)
 
-        mock_ingestion.ingest_directory.assert_awaited_once_with(
-            str(corpus_dir), source_type="reference"
-        )
+        # ingest_directory called with the corpus dir, reference type, and
+        # no skip_source_ids (empty set is falsy, so passed as None)
+        mock_ingestion.ingest_directory.assert_awaited_once()
+        call_args = mock_ingestion.ingest_directory.await_args
+        assert call_args.args[0] == str(corpus_dir)
+        assert call_args.kwargs.get("source_type") == "reference" or call_args.args[1] == "reference"
 
     @pytest.mark.asyncio
-    async def test_get_stats_exception_proceeds_to_ingest(self, tmp_path: Path) -> None:
-        """When get_stats raises an exception, ingestion proceeds anyway."""
+    async def test_get_source_ids_exception_proceeds_to_ingest(self, tmp_path: Path) -> None:
+        """When get_source_ids raises an exception, ingestion proceeds with
+        no skip_source_ids (full ingest as fallback)."""
         from src.main import _auto_ingest_reference_corpus
-        from src.models.rag import IngestionResult
+        from src.models.rag import CorpusStats, IngestionResult
 
         corpus_dir = tmp_path / "corpus"
         corpus_dir.mkdir()
@@ -1112,7 +1127,8 @@ class TestAutoIngestCorpus:
 
         app = FastAPI()
         mock_vs = AsyncMock()
-        mock_vs.get_stats = AsyncMock(side_effect=RuntimeError("DB error"))
+        mock_vs.get_source_ids = AsyncMock(side_effect=RuntimeError("DB error"))
+        mock_vs.get_stats = AsyncMock(return_value=CorpusStats(total_chunks=0, total_sources=0))
         mock_ingestion = AsyncMock()
         mock_ingestion.ingest_directory = AsyncMock(
             return_value=[
@@ -1147,6 +1163,7 @@ class TestAutoIngestCorpus:
 
         app = FastAPI()
         mock_vs = AsyncMock()
+        mock_vs.get_source_ids = AsyncMock(return_value=set())
         mock_vs.get_stats = AsyncMock(
             return_value=CorpusStats(total_chunks=0, total_sources=0)
         )

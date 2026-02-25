@@ -271,6 +271,28 @@ class ChromaDBProvider(IVectorStoreProvider):
                 provider_name=self.get_provider_name(),
             ) from exc
 
+    async def get_source_ids(self, source_type: str | None = None) -> set[str]:
+        """Return unique source_ids, optionally filtered by source_type.
+
+        Uses a ChromaDB ``where`` clause when *source_type* is given to avoid
+        fetching metadata for every chunk in the collection.
+        """
+        try:
+            kwargs: dict[str, Any] = {"include": ["metadatas"]}
+            if source_type:
+                kwargs["where"] = {"source_type": source_type}
+            results = self._collection.get(**kwargs)
+            return {
+                m.get("source_id", "")
+                for m in (results["metadatas"] or [])
+                if m.get("source_id")
+            }
+        except Exception as exc:
+            raise RAGError(
+                message=f"ChromaDB get_source_ids failed: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
     async def get_stats(self) -> CorpusStats:
         """Return aggregate statistics about the corpus.
 

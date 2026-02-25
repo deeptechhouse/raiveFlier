@@ -798,52 +798,66 @@ _REFERENCE_CORPUS_DIR = Path(__file__).resolve().parent.parent / "data" / "refer
 
 
 async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
-    """Ingest curated reference text files into the RAG corpus if empty.
+    """Incrementally ingest reference corpus files into the RAG vector store.
 
-    Runs once on startup.  If the vector store already has data (e.g. from
-    a persistent disk), this is a no-op.  The ``ingest_directory`` method
-    also deduplicates by ``source_id``, so re-runs are safe.
+    Runs on every startup but only processes NEW files.  Uses the vector
+    store's ``get_source_ids`` method to find which reference sources are
+    already ingested, then passes that set to ``ingest_directory`` so
+    already-ingested files are skipped (no wasted LLM / embedding calls).
 
-    # JUNIOR DEV NOTE — Idempotent startup
-    # This function is safe to call on every boot because:
-    #   1. It checks if the vector store already has chunks → skips if so.
-    #   2. Even if it runs, ingest_directory deduplicates by source_id.
-    # This pattern is called "idempotent" — running it multiple times
-    # produces the same result as running it once.
+    # JUNIOR DEV NOTE — Incremental idempotent startup
+    # Previous versions skipped ALL ingestion when total_chunks > 0, which
+    # meant new reference files added to data/reference_corpus/ were never
+    # ingested on an existing deployment.  This version compares files on
+    # disk with sources already in the store and only ingests the difference.
+    # The ingest_directory method also uses upsert, so even if a file were
+    # re-processed, the result would be the same (idempotent).
     """
     ingestion_service = getattr(application.state, "ingestion_service", None)
     vector_store = getattr(application.state, "vector_store", None)
     if ingestion_service is None or vector_store is None:
         return  # RAG not enabled
 
-    try:
-        stats = await vector_store.get_stats()
-        if stats.total_chunks > 0:
-            _logger.info(
-                "reference_corpus_already_ingested",
-                chunks=stats.total_chunks,
-                sources=stats.total_sources,
-            )
-            return
-    except Exception:
-        pass  # Can't determine state — proceed with ingestion
-
     corpus_dir = _REFERENCE_CORPUS_DIR
     if not corpus_dir.is_dir():
         _logger.warning("reference_corpus_dir_not_found", path=str(corpus_dir))
         return
 
-    _logger.info("auto_ingesting_reference_corpus", path=str(corpus_dir))
+    # Count files on disk
+    disk_files = sorted(corpus_dir.glob("*.txt")) + sorted(corpus_dir.glob("*.html"))
+    if not disk_files:
+        _logger.info("reference_corpus_no_files", path=str(corpus_dir))
+        return
+
+    # Get source_ids already ingested as "reference" type
+    existing_ids: set[str] = set()
+    try:
+        existing_ids = await vector_store.get_source_ids(source_type="reference")
+    except Exception:
+        _logger.debug("get_source_ids_failed_proceeding_with_full_ingest")
+
+    _logger.info(
+        "reference_corpus_check",
+        files_on_disk=len(disk_files),
+        existing_reference_sources=len(existing_ids),
+    )
+
+    # Ingest — skip_source_ids lets ingest_directory skip already-stored files
     try:
         results = await ingestion_service.ingest_directory(
-            str(corpus_dir), source_type="reference"
+            str(corpus_dir),
+            source_type="reference",
+            skip_source_ids=existing_ids if existing_ids else None,
         )
         total_chunks = sum(r.chunks_created for r in results)
-        _logger.info(
-            "reference_corpus_ingested",
-            files=len(results),
-            chunks=total_chunks,
-        )
+        if results:
+            _logger.info(
+                "reference_corpus_ingested",
+                new_files=len(results),
+                new_chunks=total_chunks,
+            )
+        else:
+            _logger.info("reference_corpus_up_to_date")
     except Exception as exc:
         _logger.error("reference_corpus_ingestion_failed", error=str(exc))
 

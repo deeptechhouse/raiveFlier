@@ -138,6 +138,23 @@ class IVectorStoreProvider(ABC):
         """
 
     @abstractmethod
+    async def get_source_ids(self, source_type: str | None = None) -> set[str]:
+        """Return the set of unique ``source_id`` values in the store.
+
+        Parameters
+        ----------
+        source_type:
+            If provided, only return source IDs for chunks of this type
+            (e.g. ``"reference"``, ``"analysis"``).  If ``None``, return
+            all source IDs regardless of type.
+
+        Returns
+        -------
+        set[str]
+            Unique source identifiers.
+        """
+
+    @abstractmethod
     async def get_stats(self) -> CorpusStats:
         """Return aggregate statistics about the corpus.
 

@@ -319,6 +319,7 @@ class IngestionService:
         self,
         dir_path: str,
         source_type: str,
+        skip_source_ids: set[str] | None = None,
     ) -> list[IngestionResult]:
         """Ingest all ``.txt`` and ``.html`` files in *dir_path*.
 
@@ -328,11 +329,16 @@ class IngestionService:
             Path to a directory containing article/text files.
         source_type:
             Source type label applied to all files.
+        skip_source_ids:
+            Optional set of source IDs already in the vector store.
+            Files whose content-based ``source_id`` is in this set are
+            skipped, avoiding expensive re-tagging and re-embedding of
+            already-ingested documents.
 
         Returns
         -------
         list[IngestionResult]
-            One result per file processed.
+            One result per file processed (skipped files are excluded).
         """
         path = Path(dir_path)
         if not path.is_dir():
@@ -352,6 +358,15 @@ class IngestionService:
                     return None
 
                 source_id = raw_chunks[0].source_id
+
+                # Skip files already in the vector store (incremental ingest)
+                if skip_source_ids and source_id in skip_source_ids:
+                    logger.debug(
+                        "skip_already_ingested",
+                        file=fp.name,
+                        source_id=source_id[:12],
+                    )
+                    return None
                 _needs_preprocess = source_type in ("transcript", "interview")
                 all_chunks: list[DocumentChunk] = []
                 for rc in raw_chunks:
