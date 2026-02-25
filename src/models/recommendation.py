@@ -17,9 +17,7 @@ See src/services/recommendation_service.py for the implementation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -105,31 +103,3 @@ class RecommendationResult(BaseModel):
     genres_analyzed: list[str] = Field(default_factory=list)
     # When the recommendations were generated (for caching/freshness).
     generated_at: datetime | None = None
-
-
-# ---------------------------------------------------------------------------
-# PreloadedTier1 — cached Tier 1 discovery results from background preload.
-# ---------------------------------------------------------------------------
-@dataclass
-class PreloadedTier1:
-    """Cached Tier 1 discovery results from the background preload task.
-
-    After the main pipeline completes (research + interconnection), the
-    background task calls RecommendationService.preload_tier1() to run all
-    three Tier 1 discovery methods (label-mates, shared-flier, shared-
-    lineup) in parallel.  Results are stored on app.state._reco_preload
-    keyed by session_id.
-
-    When the frontend later requests /recommendations or /recommendations/
-    quick, the endpoints pass this cached data to the service, which skips
-    the redundant discovery calls — delivering results in <1 second instead
-    of 5-15+ seconds.
-
-    Uses a plain dataclass rather than Pydantic because the inner dicts
-    are mutable intermediate data (candidate dicts from the discovery
-    methods) and this is an internal cache object, not an API-facing schema.
-    """
-
-    label_mates: list[dict[str, Any]] = field(default_factory=list)
-    shared_flier: list[dict[str, Any]] = field(default_factory=list)
-    shared_lineup: list[dict[str, Any]] = field(default_factory=list)
