@@ -2976,6 +2976,86 @@ body {
   outline: none;
 }
 
+/* Multi-select dropdown — constrained height so it doesn't dominate
+   the filter panel while still showing enough options to be useful. */
+.corpus-sidebar__filter-select[multiple] {
+  min-height: 3.5rem;
+  max-height: 5rem;
+}
+
+/* Range slider (tier and similarity filters) — custom track and thumb
+   styled to match the dark-themed corpus sidebar aesthetic. */
+.corpus-sidebar__filter-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--color-surface-raised);
+  border-radius: 2px;
+  outline: none;
+  margin-top: 0.25rem;
+}
+
+.corpus-sidebar__filter-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid var(--color-surface);
+}
+
+.corpus-sidebar__filter-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid var(--color-surface);
+}
+
+/* Result count header — displayed above results to show total matches */
+.corpus-sidebar__result-count {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-muted);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* Load More button — appears at the bottom of results when has_more=true */
+.corpus-sidebar__load-more {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  margin-top: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.corpus-sidebar__load-more:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.corpus-sidebar__load-more:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
+
 /* ---- Results Container ---- */
 .corpus-sidebar__results {
   flex: 1;

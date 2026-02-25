@@ -34,6 +34,10 @@ class IVectorStoreProvider(ABC):
       specific source types.
     * ``{"geographic_tags": {"$contains": "city"}}`` — chunks referencing
       a specific geographic location.
+    * ``{"genre_tags": {"$contains": "techno"}}`` — chunks tagged with a
+      specific genre (substring match on comma-separated metadata).
+    * ``{"citation_tier": {"$lte": 3}}`` — chunks with citation tier at
+      or better than the given value (1 = best, 6 = unverified).
 
     Concrete providers translate this common filter syntax into their
     backend-specific query language.

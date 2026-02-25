@@ -60,6 +60,14 @@ class Settings(BaseSettings):
     rag_enabled: bool = False
     rag_top_k: int = 20
     rag_max_tokens: int = 30000
+    # Corpus search defaults — overridable per-request via API params.
+    # page_size controls results per "page" in Load More pagination;
+    # max_results caps the total candidate pool; max_per_source limits
+    # how many chunks from one source survive deduplication.
+    corpus_search_default_page_size: int = 20
+    corpus_search_max_results: int = 50
+    corpus_search_max_per_source: int = 5
+    corpus_search_default_min_similarity: float = 0.0
 
     # === Feedback / Ratings ===
     feedback_db_path: str = "data/feedback.db"

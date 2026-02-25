@@ -86,11 +86,26 @@ class ChromaDBProvider(IVectorStoreProvider):
         # and loading its default ONNX embedding model (~80 MB).  All
         # embeddings are pre-computed by our IEmbeddingProvider adapter
         # and passed explicitly to add_chunks().
-        self._collection = self._client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"},
-            embedding_function=_NoopEmbeddingFunction(),
-        )
+        #
+        # Newer ChromaDB versions enforce that the embedding function must
+        # match the one persisted in the collection.  If the collection was
+        # created with the default embedding function (e.g., by an older
+        # ChromaDB version), passing _NoopEmbeddingFunction triggers a
+        # ValueError.  We handle this by falling back to opening the
+        # collection without specifying an embedding function — ChromaDB
+        # then uses whatever was persisted, which is fine because we
+        # pre-compute all embeddings externally anyway.
+        try:
+            self._collection = self._client.get_or_create_collection(
+                name=collection_name,
+                metadata={"hnsw:space": "cosine"},
+                embedding_function=_NoopEmbeddingFunction(),
+            )
+        except ValueError:
+            self._collection = self._client.get_or_create_collection(
+                name=collection_name,
+                metadata={"hnsw:space": "cosine"},
+            )
         self._cached_stats: CorpusStats | None = None
         self._cached_stats_count: int = -1
 
@@ -171,7 +186,10 @@ class ChromaDBProvider(IVectorStoreProvider):
             where_clause = self._translate_filters(filters) if filters else None
 
             # Over-fetch to have enough results after per-source limiting
-            fetch_k = min(top_k * 3, max(top_k, self._collection.count()))
+            # and post-filtering (genre, era, similarity threshold).
+            # Multiplier raised from 3x to 4x to compensate for more
+            # aggressive post-filters introduced in the enhanced search.
+            fetch_k = min(top_k * 4, max(top_k, self._collection.count()))
 
             kwargs: dict[str, Any] = {
                 "query_embeddings": [query_embedding],
@@ -382,6 +400,9 @@ class ChromaDBProvider(IVectorStoreProvider):
             source_ids: set[str] = set()
             entity_tags: set[str] = set()
             geographic_tags: set[str] = set()
+            # Collect genre tags and time periods for frontend filter dropdowns
+            genre_tags: set[str] = set()
+            time_periods: set[str] = set()
 
             if current_count > 0:
                 all_meta = self._collection.get(include=["metadatas"])
@@ -394,6 +415,11 @@ class ChromaDBProvider(IVectorStoreProvider):
                         entity_tags.add(tag)
                     for tag in self._split_tags(meta.get("geographic_tags", "")):
                         geographic_tags.add(tag)
+                    for tag in self._split_tags(meta.get("genre_tags", "")):
+                        genre_tags.add(tag)
+                    tp = meta.get("time_period")
+                    if tp:
+                        time_periods.add(tp)
 
             result = CorpusStats(
                 total_chunks=current_count,
@@ -401,6 +427,9 @@ class ChromaDBProvider(IVectorStoreProvider):
                 sources_by_type=sources_by_type,
                 entity_tag_count=len(entity_tags),
                 geographic_tag_count=len(geographic_tags),
+                genre_tag_count=len(genre_tags),
+                genre_tags=sorted(genre_tags),
+                time_periods=sorted(time_periods),
             )
 
             # Cache the result
@@ -525,6 +554,25 @@ class ChromaDBProvider(IVectorStoreProvider):
             in_val = source_filter.get("$in")
             if in_val and isinstance(in_val, list):
                 clauses.append({"source_type": {"$in": in_val}})
+
+        # Genre filter: match chunks whose genre_tags metadata contains the
+        # genre string.  Genre tags are stored as comma-separated strings,
+        # so ChromaDB's $contains does a substring match (e.g. "techno"
+        # matches "techno,acid techno,detroit techno").
+        genre_filter = filters.get("genre_tags")
+        if genre_filter and isinstance(genre_filter, dict):
+            contains_val = genre_filter.get("$contains")
+            if contains_val:
+                clauses.append({"genre_tags": {"$contains": str(contains_val)}})
+
+        # Citation tier filter: only include chunks with citation_tier at
+        # or better than the threshold.  Lower number = higher quality,
+        # so $lte finds "at least this good" (e.g. $lte: 3 returns T1-T3).
+        tier_filter = filters.get("citation_tier")
+        if tier_filter and isinstance(tier_filter, dict):
+            lte_val = tier_filter.get("$lte")
+            if lte_val is not None:
+                clauses.append({"citation_tier": {"$lte": int(lte_val)}})
 
         if not clauses:
             return None

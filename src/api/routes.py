@@ -85,18 +85,81 @@ router = APIRouter(prefix="/api/v1")
 # --- Upload validation constants ---
 # frozenset is an immutable set — perfect for constants that should never change.
 _ALLOWED_CONTENT_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
-_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB — lowered from 10 MB to reduce peak memory on 512 MB Render
+
+# Chunk size for streaming uploads — read in 64 KB increments to reject
+# oversized files early without buffering the entire payload into memory.
+_UPLOAD_CHUNK_SIZE = 64 * 1024  # 64 KB
+
+# Maximum image dimension (pixels) for OCR processing.  Images larger than
+# this are downscaled immediately after upload to cap uncompressed bitmap
+# memory.  OCR accuracy does not benefit from >2048px — Tesseract and LLM
+# Vision both work well at this resolution.
+_MAX_IMAGE_DIM = 2048
 
 # Perceptual hash duplicate threshold: Hamming distance ≤ 10 means the
 # images look visually similar.  Lower = stricter (0 = pixel-identical).
 # A threshold of 10 allows for minor cropping, compression, color shifts.
 _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
 
+# ── Memory protection: upload processing semaphore ──────────────────
+# Limits concurrent flier upload+OCR processing to 1 at a time.  On the
+# 512 MB Render Starter instance, a single upload can spike ~150-200 MB
+# during image preprocessing (7 OCR variants from a high-res photo).
+# Two concurrent uploads would exceed the memory budget and trigger an
+# OOM kill.  Subsequent uploads queue behind the semaphore — latency
+# increases but the process stays alive.
+_UPLOAD_SEMAPHORE = asyncio.Semaphore(1)
+
 # Recommendation endpoint timeouts.
 # Quick mode: SQLite + simple LLM only (~3-5 seconds expected).
 _RECO_QUICK_TIMEOUT = 15.0  # seconds
 # Full mode: Discogs + RAG + full LLM fill+explain (~10-15 seconds expected).
 _RECO_TIMEOUT = 60.0  # seconds
+
+
+def _downscale_if_oversized(image_data: bytes, max_dim: int) -> bytes:
+    """Downscale an image if its largest dimension exceeds *max_dim* pixels.
+
+    Returns the original bytes unchanged if the image is already within
+    bounds.  Re-encodes as high-quality JPEG (95%) after downscaling to
+    minimize the byte buffer held in memory downstream.
+
+    This runs BEFORE OCR preprocessing so the uncompressed bitmap that
+    PIL/OpenCV create from the bytes is bounded to ~2048×2048 (~12 MB)
+    instead of potentially 4000×3000 (~36 MB).
+    """
+    import io as _io
+
+    from PIL import Image as _PILImage
+
+    try:
+        img = _PILImage.open(_io.BytesIO(image_data)).convert("RGB")
+        largest = max(img.size)
+        if largest <= max_dim:
+            return image_data
+
+        scale = max_dim / largest
+        new_size = (int(img.size[0] * scale), int(img.size[1] * scale))
+        img = img.resize(new_size, _PILImage.LANCZOS)
+
+        buf = _io.BytesIO()
+        # JPEG at quality=95 keeps OCR-relevant detail while being much
+        # smaller than PNG for photographic content.
+        img.save(buf, format="JPEG", quality=95)
+        _logger.info(
+            "image_downscaled_for_memory",
+            original_largest_dim=largest,
+            new_size=new_size,
+            original_bytes=len(image_data),
+            new_bytes=buf.tell(),
+        )
+        return buf.getvalue()
+    except Exception as exc:
+        # If downscaling fails for any reason, proceed with the original
+        # bytes — OCR will still work, just with higher memory usage.
+        _logger.warning("image_downscale_failed", error=str(exc))
+        return image_data
 
 
 def _compute_perceptual_hash(image_data: bytes) -> str | None:
@@ -300,18 +363,36 @@ async def upload_flier(
             ),
         )
 
-    # --- Read and validate file size ---
-    image_data = await file.read()
-    if len(image_data) > _MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large: {len(image_data)} bytes. Maximum: {_MAX_FILE_SIZE} bytes.",
-        )
+    # --- Stream upload in chunks — reject oversized files early -------
+    # Reading in 64 KB chunks means a 50 MB upload is rejected after
+    # buffering only 5 MB, instead of loading all 50 MB into memory.
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(_UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > _MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"File too large: >{_MAX_FILE_SIZE // (1024 * 1024)} MB. "
+                    f"Maximum: {_MAX_FILE_SIZE} bytes."
+                ),
+            )
+        chunks.append(chunk)
+    image_data = b"".join(chunks)
+    # Free the chunk list immediately — image_data now owns the bytes.
+    del chunks
 
-    # --- Compute perceptual hash for duplicate detection ---
+    # --- Compute hashes on ORIGINAL bytes (before any downscaling) ----
+    # Perceptual hash and SHA-256 must be computed on the original image
+    # so duplicate detection works consistently regardless of resize logic.
     image_phash = _compute_perceptual_hash(image_data)
-    duplicate_match: DuplicateMatch | None = None
+    image_hash = hashlib.sha256(image_data).hexdigest()
 
+    duplicate_match: DuplicateMatch | None = None
     if image_phash and flier_history is not None:
         try:
             match = await flier_history.find_duplicate_by_phash(
@@ -332,35 +413,44 @@ async def upload_flier(
         except Exception as exc:
             _logger.warning("duplicate_check_failed", error=str(exc))
 
-    # --- Build FlierImage ---
-    session_id = str(uuid.uuid4())
-    image_hash = hashlib.sha256(image_data).hexdigest()
+    # --- Early resize: cap image dimensions before OCR processing -----
+    # A 4000×3000 JPEG (5 MB compressed) becomes ~36 MB as an uncompressed
+    # RGB bitmap, and then 7 OCR preprocessing variants push peak memory
+    # to ~250 MB.  Downscaling to 2048px max before any processing cuts
+    # uncompressed size to ~12 MB and peak preprocessing to ~85 MB.
+    image_data = _downscale_if_oversized(image_data, _MAX_IMAGE_DIM)
 
-    flier_image = FlierImage(
-        id=session_id,
-        filename=file.filename or "unknown",
-        content_type=content_type,
-        file_size=len(image_data),
-        image_hash=image_hash,
-        image_phash=image_phash,
-    )
-    # Attach raw image bytes to the PrivateAttr on the frozen Pydantic model.
-    # PrivateAttr fields bypass Pydantic's immutability checks, allowing us
-    # to store the binary data without it appearing in serialization (JSON).
-    # This is a deliberate workaround for frozen models that need internal state.
-    flier_image.__pydantic_private__["_image_data"] = image_data
+    # --- Acquire upload semaphore for memory-intensive processing ------
+    # Only one upload goes through OCR + preprocessing at a time to
+    # prevent concurrent memory spikes from exceeding the 512 MB budget.
+    async with _UPLOAD_SEMAPHORE:
+        # --- Build FlierImage ---
+        session_id = str(uuid.uuid4())
 
-    # --- Register perceptual hash for future duplicate detection ---
-    if image_phash and flier_history is not None:
-        try:
-            await flier_history.register_image_hash(session_id, image_phash)
-        except Exception as exc:
-            _logger.warning("phash_registration_failed", error=str(exc))
+        flier_image = FlierImage(
+            id=session_id,
+            filename=file.filename or "unknown",
+            content_type=content_type,
+            file_size=len(image_data),
+            image_hash=image_hash,
+            image_phash=image_phash,
+        )
+        # Attach raw image bytes to the PrivateAttr on the frozen Pydantic model.
+        # PrivateAttr fields bypass Pydantic's immutability checks, allowing us
+        # to store the binary data without it appearing in serialization (JSON).
+        flier_image.__pydantic_private__["_image_data"] = image_data
 
-    # --- Run Phase 1 (OCR + Entity Extraction) ---
-    state = PipelineState(session_id=session_id, flier=flier_image)
-    state = await pipeline.run_phase_1(state)
-    session_states[session_id] = state
+        # --- Register perceptual hash for future duplicate detection ---
+        if image_phash and flier_history is not None:
+            try:
+                await flier_history.register_image_hash(session_id, image_phash)
+            except Exception as exc:
+                _logger.warning("phash_registration_failed", error=str(exc))
+
+        # --- Run Phase 1 (OCR + Entity Extraction) ---
+        state = PipelineState(session_id=session_id, flier=flier_image)
+        state = await pipeline.run_phase_1(state)
+        session_states[session_id] = state
 
     # --- Submit to confirmation gate for user review ---
     await gate.submit_for_review(state)
@@ -810,6 +900,9 @@ async def corpus_stats(request: Request) -> CorpusStatsResponse:
         sources_by_type=stats.sources_by_type,
         entity_tag_count=stats.entity_tag_count,
         geographic_tag_count=stats.geographic_tag_count,
+        # Genre tags and time periods for frontend filter dropdowns
+        genre_tags=stats.genre_tags,
+        time_periods=stats.time_periods,
     )
 
 
@@ -961,7 +1054,8 @@ async def corpus_search(
     if not rag_enabled or vector_store is None:
         raise HTTPException(status_code=503, detail="RAG corpus not available")
 
-    # Build filters from request
+    # Build filters from request — pushed to ChromaDB where possible
+    # for early pruning; others applied as post-filters after retrieval.
     filters: dict[str, Any] = {}
     if body.source_type:
         filters["source_type"] = {"$in": body.source_type}
@@ -969,6 +1063,14 @@ async def corpus_search(
         filters["entity_tags"] = {"$contains": body.entity_tag}
     if body.geographic_tag:
         filters["geographic_tags"] = {"$contains": body.geographic_tag}
+    # Genre filter — ChromaDB $contains handles one genre; multi-genre
+    # precision is handled by a post-filter after retrieval.
+    if body.genre_tags:
+        filters["genre_tags"] = {"$contains": body.genre_tags[0]}
+    # Citation tier quality floor — lower number = better quality,
+    # so $lte returns chunks "at least this good" (e.g. $lte:3 → T1-T3).
+    if body.min_citation_tier is not None:
+        filters["citation_tier"] = {"$lte": body.min_citation_tier}
 
     # --- Pre-query processing: expand query for better retrieval ---
     query_text = body.query
@@ -1014,8 +1116,10 @@ async def corpus_search(
             filters=filters if filters else None,
         )
 
-    # Safety-net dedup by source_id — keep top 3 chunks per source
-    _MAX_PER_SOURCE = 3
+    # Safety-net dedup by source_id — keep top N chunks per source.
+    # Raised from 3→5 to let more distinct passages surface in the
+    # larger candidate pool (top_k up to 50).
+    _MAX_PER_SOURCE = 5
     source_chunks: dict[str, list[CorpusSearchChunk]] = {}
     for c in chunks:
         sid = c.chunk.source_id
@@ -1057,6 +1161,30 @@ async def corpus_search(
         except Exception:
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
+    # --- Post-filters for fields that need Python-side logic ---
+
+    # Time-period post-filter: ChromaDB can't do range-overlap matching,
+    # so we filter after retrieval using temporal_overlap() from domain_knowledge.
+    if body.time_period:
+        try:
+            from src.config.domain_knowledge import detect_temporal_signal, temporal_overlap
+            normalized = detect_temporal_signal(body.time_period) or body.time_period
+            deduped = [
+                r for r in deduped
+                if r.time_period and temporal_overlap(normalized, r.time_period)
+            ]
+        except ImportError:
+            pass  # domain_knowledge not yet available
+
+    # Multi-genre post-filter: ChromaDB $contains only matches one genre.
+    # When the user selected multiple genres, require at least one exact match.
+    if body.genre_tags and len(body.genre_tags) > 1:
+        genre_set = {g.lower() for g in body.genre_tags}
+        deduped = [
+            r for r in deduped
+            if any(gt.lower() in genre_set for gt in r.genre_tags)
+        ]
+
     # --- Score boosting: domain-aware re-ranking ---
     # Each boost is small and additive so cosine similarity remains the
     # dominant signal.  Boosted scores are stored in a parallel dict keyed
@@ -1082,8 +1210,16 @@ async def corpus_search(
     for r in deduped:
         boost = 0.0
 
-        # #8 Citation tier boost: T1 → +0.10 … T6 → 0.00
-        boost += max(0.0, (6 - r.citation_tier) * 0.02)
+        # Citation tier boost: T1 → +0.12, T2 → +0.096, … T6 → 0.00
+        # Gradient raised from 0.02→0.024 per tier level to give higher-quality
+        # sources more lift in the larger result pool.
+        boost += max(0.0, (6 - r.citation_tier) * 0.024)
+
+        # Exact query-match boost: if the raw query string appears verbatim
+        # in the chunk text, that is a strong relevance signal beyond what
+        # embedding similarity alone captures.
+        if body.query.lower() in r.text.lower():
+            boost += 0.03
 
         if _dk_available:
             # #4 Genre adjacency boost
@@ -1120,8 +1256,10 @@ async def corpus_search(
     # so no single entity dominates.  All entity tags are subject to per-tag
     # caps — single-entity chunks are treated the same as multi-entity ones.
     if not _is_artist_query(body.query):
-        _CAP_BY_TYPE = {"ARTIST": 3, "VENUE": 4, "LABEL": 4, "EVENT": 4, "COLLECTIVE": 3}
-        _DEFAULT_CAP = 3
+        # Caps raised from 3/4 to 4/5 to let more results survive in the
+        # larger candidate pool (up to 50 results vs. the old 15).
+        _CAP_BY_TYPE = {"ARTIST": 4, "VENUE": 5, "LABEL": 5, "EVENT": 5, "COLLECTIVE": 4}
+        _DEFAULT_CAP = 4
         entity_counts: dict[str, int] = {}
         diversified: list[CorpusSearchChunk] = []
         deduped.sort(key=_score, reverse=True)
@@ -1169,12 +1307,29 @@ async def corpus_search(
     )
 
     # Remove near-duplicate chunks across different sources.
-    results = _semantic_dedup(results)
+    # Threshold lowered from 0.85→0.80 to catch more near-dupes,
+    # letting more genuinely unique content through in the larger pool.
+    results = _semantic_dedup(results, threshold=0.80)
+
+    # Apply minimum similarity threshold if requested — excludes
+    # low-relevance results that survived ranking but sit below the
+    # user's quality bar.
+    if body.min_similarity is not None and body.min_similarity > 0:
+        results = [r for r in results if _score(r) >= body.min_similarity]
+
+    # --- Pagination: slice the full result set into a page ---
+    total_available = len(results)
+    page_start = min(body.offset, total_available)
+    page_end = min(page_start + body.page_size, total_available)
+    page_results = results[page_start:page_end]
 
     return CorpusSearchResponse(
         query=body.query,
-        total_results=len(results),
-        results=results,
+        total_results=total_available,
+        results=page_results,
+        offset=body.offset,
+        page_size=body.page_size,
+        has_more=page_end < total_available,
     )
 
 

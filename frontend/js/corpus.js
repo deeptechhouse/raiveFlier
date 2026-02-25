@@ -52,6 +52,16 @@ const Corpus = (() => {
   let _debounceTimer = null;  // Timer ID for search input debouncing
   let _searchError = null;    // Last search error message, if any
 
+  // Pagination state — supports "Load More" button pattern.
+  // offset tracks cursor position; hasMore signals whether more pages exist.
+  let _currentOffset = 0;     // Current pagination offset
+  let _hasMore = false;       // Whether more results are available from backend
+  let _totalResults = 0;      // Total result count from backend (for display)
+
+  // Dynamic filter data — populated from /corpus/stats on init
+  let _availableGenres = [];  // Genre tags for populating genre filter dropdown
+  let _availableEras = [];    // Time periods for populating era filter dropdown
+
   // Resize state — managed by mouse event listeners on the drag handle
   let _isResizing = false;
   const _MIN_WIDTH = 280;     // Minimum sidebar width (pixels)
@@ -154,6 +164,42 @@ const Corpus = (() => {
             <input type="text" id="corpus-filter-geo" class="corpus-sidebar__filter-input"
                    placeholder="e.g. Detroit" maxlength="100">
           </div>
+          <div class="corpus-sidebar__filter-group">
+            <label class="corpus-sidebar__filter-label" for="corpus-filter-genre">Genre</label>
+            <select id="corpus-filter-genre" class="corpus-sidebar__filter-select" multiple size="3"
+                    aria-label="Filter by genre (hold Ctrl/Cmd to select multiple)">
+              <option value="">All genres</option>
+            </select>
+          </div>
+          <div class="corpus-sidebar__filter-group">
+            <label class="corpus-sidebar__filter-label" for="corpus-filter-era">Era</label>
+            <select id="corpus-filter-era" class="corpus-sidebar__filter-select"
+                    aria-label="Filter by time period">
+              <option value="">Any era</option>
+              <option value="1988-1989">Second Summer of Love (1988-89)</option>
+              <option value="1988-1992">Early Rave (1988-92)</option>
+              <option value="1993-1997">Golden Era (1993-97)</option>
+              <option value="1990s">1990s</option>
+              <option value="2000s">2000s</option>
+              <option value="2010s">2010s</option>
+            </select>
+          </div>
+          <div class="corpus-sidebar__filter-group">
+            <label class="corpus-sidebar__filter-label" for="corpus-filter-tier">
+              Min quality <span id="corpus-tier-value">Any</span>
+            </label>
+            <input type="range" id="corpus-filter-tier" class="corpus-sidebar__filter-range"
+                   min="1" max="6" value="6" step="1"
+                   aria-label="Minimum citation tier quality">
+          </div>
+          <div class="corpus-sidebar__filter-group">
+            <label class="corpus-sidebar__filter-label" for="corpus-filter-minsim">
+              Min relevance <span id="corpus-minsim-value">Off</span>
+            </label>
+            <input type="range" id="corpus-filter-minsim" class="corpus-sidebar__filter-range"
+                   min="0" max="100" value="0" step="5"
+                   aria-label="Minimum similarity score threshold">
+          </div>
         </div>
       </div>
       <div class="corpus-sidebar__results" id="corpus-results" role="list" aria-label="Search results"></div>
@@ -193,6 +239,36 @@ const Corpus = (() => {
       filterGeo.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); _handleSearch(); }
       });
+    }
+
+    // Genre multi-select — triggers search on selection change
+    const filterGenre = document.getElementById("corpus-filter-genre");
+    if (filterGenre) filterGenre.addEventListener("change", _handleSearch);
+
+    // Era dropdown — triggers search on selection
+    const filterEra = document.getElementById("corpus-filter-era");
+    if (filterEra) filterEra.addEventListener("change", _handleSearch);
+
+    // Citation tier range slider — updates label on input, searches on change
+    const filterTier = document.getElementById("corpus-filter-tier");
+    if (filterTier) {
+      filterTier.addEventListener("input", () => {
+        const val = parseInt(filterTier.value, 10);
+        const label = document.getElementById("corpus-tier-value");
+        if (label) label.textContent = val >= 6 ? "Any" : "T" + val + " or better";
+      });
+      filterTier.addEventListener("change", _handleSearch);
+    }
+
+    // Minimum similarity range slider — updates label on input, searches on change
+    const filterMinSim = document.getElementById("corpus-filter-minsim");
+    if (filterMinSim) {
+      filterMinSim.addEventListener("input", () => {
+        const val = parseInt(filterMinSim.value, 10);
+        const label = document.getElementById("corpus-minsim-value");
+        if (label) label.textContent = val === 0 ? "Off" : val + "%";
+      });
+      filterMinSim.addEventListener("change", _handleSearch);
     }
 
     // Drag handle for resizing
@@ -244,7 +320,9 @@ const Corpus = (() => {
       return;
     }
 
-    let html = "";
+    // Result count header — shows total matches to set expectations
+    let html = `<div class="corpus-sidebar__result-count">${_totalResults} result${_totalResults !== 1 ? "s" : ""}</div>`;
+
     _results.forEach((r, idx) => {
       const tierClass = "corpus-result__tier--" + r.citation_tier;
       const scorePercent = Math.round(r.similarity_score * 100);
@@ -295,6 +373,15 @@ const Corpus = (() => {
       `;
     });
 
+    // "Load More" button — rendered when the backend signals more pages exist
+    if (_hasMore) {
+      html += `
+        <button type="button" class="corpus-sidebar__load-more" id="corpus-load-more">
+          Load more results
+        </button>
+      `;
+    }
+
     container.innerHTML = html;
 
     // Click-to-expand on result text
@@ -308,6 +395,15 @@ const Corpus = (() => {
         }
       });
     });
+
+    // "Load More" click handler — increments offset and appends next page
+    const loadMoreBtn = document.getElementById("corpus-load-more");
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => {
+        _currentOffset += 20;
+        _submitSearch(_lastQuery, true);
+      });
+    }
 
     // Rating widgets: attach event delegation
     if (typeof Rating !== "undefined") {
@@ -377,6 +473,31 @@ const Corpus = (() => {
     if (geoTag && geoTag.value.trim()) {
       filters.geographic_tag = geoTag.value.trim();
     }
+    // Genre multi-select — collect all selected non-empty values
+    const genreSelect = document.getElementById("corpus-filter-genre");
+    if (genreSelect) {
+      const selected = Array.from(genreSelect.selectedOptions)
+        .map(o => o.value)
+        .filter(v => v !== "");
+      if (selected.length > 0) {
+        filters.genre_tags = selected;
+      }
+    }
+    // Era select
+    const eraSelect = document.getElementById("corpus-filter-era");
+    if (eraSelect && eraSelect.value) {
+      filters.time_period = eraSelect.value;
+    }
+    // Citation tier minimum (1-5 means active; 6 means "any")
+    const tierRange = document.getElementById("corpus-filter-tier");
+    if (tierRange && parseInt(tierRange.value, 10) < 6) {
+      filters.min_citation_tier = parseInt(tierRange.value, 10);
+    }
+    // Minimum similarity score (0 means off)
+    const minSimRange = document.getElementById("corpus-filter-minsim");
+    if (minSimRange && parseInt(minSimRange.value, 10) > 0) {
+      filters.min_similarity = parseInt(minSimRange.value, 10) / 100;
+    }
     return filters;
   }
 
@@ -401,19 +522,36 @@ const Corpus = (() => {
     if (!input) return;
     const query = input.value.trim();
     if (!query || _isLoading) return;
-    _submitSearch(query);
+    // Reset pagination on every new search or filter change —
+    // only "Load More" should increment the offset.
+    _currentOffset = 0;
+    _results = [];
+    _submitSearch(query, false);
   }
 
-  async function _submitSearch(query) {
+  async function _submitSearch(query, isLoadMore = false) {
     _lastQuery = query;
     _isLoading = true;
-    _renderResults();
+    // Only show the loading spinner for fresh searches, not load-more
+    if (!isLoadMore) _renderResults();
 
     const filters = _getActiveFilters();
-    const body = { query, top_k: 15 };
+    // Build the request body with pagination support.
+    // top_k=50 gives the backend a large candidate pool; page_size=20
+    // controls how many results we render per "page" via Load More.
+    const body = {
+      query,
+      top_k: 50,
+      page_size: 20,
+      offset: _currentOffset,
+    };
     if (filters.source_type) body.source_type = filters.source_type;
     if (filters.entity_tag) body.entity_tag = filters.entity_tag;
     if (filters.geographic_tag) body.geographic_tag = filters.geographic_tag;
+    if (filters.genre_tags) body.genre_tags = filters.genre_tags;
+    if (filters.time_period) body.time_period = filters.time_period;
+    if (filters.min_citation_tier) body.min_citation_tier = filters.min_citation_tier;
+    if (filters.min_similarity) body.min_similarity = filters.min_similarity;
 
     _searchError = null;
 
@@ -430,9 +568,16 @@ const Corpus = (() => {
       }
 
       const data = await response.json();
-      _results = data.results || [];
+      // Append results on load-more; replace on fresh search
+      if (isLoadMore) {
+        _results = _results.concat(data.results || []);
+      } else {
+        _results = data.results || [];
+      }
+      _hasMore = data.has_more || false;
+      _totalResults = data.total_results || 0;
     } catch (err) {
-      _results = [];
+      if (!isLoadMore) _results = [];
       _searchError = err.message || "Search failed";
       console.error("[Corpus] Search error:", err.message);
     }
@@ -455,6 +600,12 @@ const Corpus = (() => {
       const data = await response.json();
       _corpusStats = data;
       _ragAvailable = data.total_chunks > 0;
+      // Populate filter dropdown data from the backend's stats response.
+      // genre_tags and time_periods are sorted lists of distinct values
+      // collected from all chunks in the corpus.
+      _availableGenres = data.genre_tags || [];
+      _availableEras = data.time_periods || [];
+      _populateGenreFilter();
     } catch {
       _ragAvailable = false;
     }
@@ -464,6 +615,26 @@ const Corpus = (() => {
     if (toggle) {
       toggle.classList.toggle("corpus-toggle--disabled", !_ragAvailable);
     }
+  }
+
+  /**
+   * Dynamically populate the genre multi-select dropdown with genre tags
+   * returned by the /corpus/stats endpoint.  Only adds genres that exist
+   * in the actual corpus — avoids showing irrelevant filter options.
+   */
+  function _populateGenreFilter() {
+    const select = document.getElementById("corpus-filter-genre");
+    if (!select || _availableGenres.length === 0) return;
+    // Clear any previously added dynamic options (keep the "All genres" default)
+    while (select.options.length > 1) {
+      select.remove(1);
+    }
+    _availableGenres.forEach(genre => {
+      const opt = document.createElement("option");
+      opt.value = genre;
+      opt.textContent = genre;
+      select.appendChild(opt);
+    });
   }
 
   // ------------------------------------------------------------------
