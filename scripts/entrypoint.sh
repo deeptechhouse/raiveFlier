@@ -172,6 +172,27 @@ except Exception as e:
 download_corpus || echo "[entrypoint] Corpus download encountered an error — continuing..."
 
 # =============================================================================
+# Phase 1b: Clear Stale ChromaDB Data (if needed)
+# =============================================================================
+# If the corpus download failed (or was skipped) and the existing ChromaDB
+# data is undersized, it may have been created by an older ChromaDB version.
+# Version mismatches cause "'PersistentData' object has no attribute
+# 'max_seq_id'" errors that prevent any new data from being stored.
+# Clearing the stale data lets ChromaDB create a fresh database with the
+# current version's schema.  The reference corpus will be re-ingested
+# automatically by the background task on startup.
+DB_FILE="$CHROMADB_DIR/chroma.sqlite3"
+if [ -f "$DB_FILE" ]; then
+    DB_SIZE=$(wc -c < "$DB_FILE" 2>/dev/null || echo "0")
+    if [ "$DB_SIZE" -lt 50000000 ]; then
+        echo "[entrypoint] Clearing stale ChromaDB data ($DB_SIZE bytes < 50 MB threshold)"
+        echo "[entrypoint] This ensures the current ChromaDB version creates a compatible schema"
+        rm -rf "${CHROMADB_DIR:?}"/*
+        echo "[entrypoint] Cleared — fresh corpus will be built by background ingestion"
+    fi
+fi
+
+# =============================================================================
 # Phase 2: Start the Application
 # =============================================================================
 # Start uvicorn (ASGI server) with the FastAPI application.
