@@ -14,10 +14,18 @@ class TestCorpusSearchRequest:
     def test_valid_minimal_request(self) -> None:
         req = CorpusSearchRequest(query="techno history")
         assert req.query == "techno history"
-        assert req.top_k == 10
+        # Default top_k raised from 10→50 for larger candidate pool
+        assert req.top_k == 50
         assert req.source_type is None
         assert req.entity_tag is None
         assert req.geographic_tag is None
+        # New filter fields default to None/0
+        assert req.genre_tags is None
+        assert req.time_period is None
+        assert req.min_citation_tier is None
+        assert req.min_similarity is None
+        assert req.offset == 0
+        assert req.page_size == 20
 
     def test_valid_full_request(self) -> None:
         req = CorpusSearchRequest(
@@ -49,14 +57,15 @@ class TestCorpusSearchRequest:
             CorpusSearchRequest(query="test", top_k=0)
 
     def test_top_k_above_max_rejected(self) -> None:
+        # Max top_k raised from 50→100 for larger candidate pool
         with pytest.raises(ValidationError):
-            CorpusSearchRequest(query="test", top_k=51)
+            CorpusSearchRequest(query="test", top_k=101)
 
     def test_top_k_at_boundaries_accepted(self) -> None:
         req_min = CorpusSearchRequest(query="test", top_k=1)
-        req_max = CorpusSearchRequest(query="test", top_k=50)
+        req_max = CorpusSearchRequest(query="test", top_k=100)
         assert req_min.top_k == 1
-        assert req_max.top_k == 50
+        assert req_max.top_k == 100
 
 
 class TestCorpusSearchChunk:
@@ -118,3 +127,65 @@ class TestCorpusSearchResponse:
     def test_empty_response(self) -> None:
         resp = CorpusSearchResponse(query="obscure topic", total_results=0)
         assert resp.results == []
+
+    def test_pagination_defaults(self) -> None:
+        """Verify pagination metadata has safe defaults for backward compatibility."""
+        resp = CorpusSearchResponse(query="test", total_results=5)
+        assert resp.offset == 0
+        assert resp.page_size == 20
+        assert resp.has_more is False
+
+    def test_pagination_with_more(self) -> None:
+        resp = CorpusSearchResponse(
+            query="test",
+            total_results=42,
+            offset=20,
+            page_size=20,
+            has_more=True,
+        )
+        assert resp.has_more is True
+        assert resp.offset == 20
+
+
+class TestCorpusSearchRequestNewFilters:
+    """Validate new filter fields added for enhanced corpus search."""
+
+    def test_genre_tags_filter(self) -> None:
+        req = CorpusSearchRequest(
+            query="electronic music",
+            genre_tags=["techno", "house"],
+        )
+        assert req.genre_tags == ["techno", "house"]
+
+    def test_time_period_filter(self) -> None:
+        req = CorpusSearchRequest(query="rave", time_period="1990s")
+        assert req.time_period == "1990s"
+
+    def test_min_citation_tier_valid(self) -> None:
+        req = CorpusSearchRequest(query="test", min_citation_tier=3)
+        assert req.min_citation_tier == 3
+
+    def test_min_citation_tier_out_of_range(self) -> None:
+        with pytest.raises(ValidationError):
+            CorpusSearchRequest(query="test", min_citation_tier=0)
+        with pytest.raises(ValidationError):
+            CorpusSearchRequest(query="test", min_citation_tier=7)
+
+    def test_min_similarity_valid(self) -> None:
+        req = CorpusSearchRequest(query="test", min_similarity=0.5)
+        assert req.min_similarity == 0.5
+
+    def test_min_similarity_out_of_range(self) -> None:
+        with pytest.raises(ValidationError):
+            CorpusSearchRequest(query="test", min_similarity=1.5)
+
+    def test_pagination_fields(self) -> None:
+        req = CorpusSearchRequest(query="test", offset=20, page_size=10)
+        assert req.offset == 20
+        assert req.page_size == 10
+
+    def test_page_size_out_of_range(self) -> None:
+        with pytest.raises(ValidationError):
+            CorpusSearchRequest(query="test", page_size=0)
+        with pytest.raises(ValidationError):
+            CorpusSearchRequest(query="test", page_size=51)

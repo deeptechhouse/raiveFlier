@@ -201,3 +201,18 @@ class CorpusStats(BaseModel):
         ge=0,
         description="Total number of distinct geographic tags across all chunks.",
     )
+    # Genre and time_period lists for populating frontend filter dropdowns.
+    # Collected during get_stats() by iterating chunk metadata.
+    genre_tag_count: int = Field(
+        default=0,
+        ge=0,
+        description="Total number of distinct genre tags across all chunks.",
+    )
+    genre_tags: list[str] = Field(
+        default_factory=list,
+        description="Sorted list of distinct genre tag strings for filter dropdowns.",
+    )
+    time_periods: list[str] = Field(
+        default_factory=list,
+        description="Sorted list of distinct time period strings for filter dropdowns.",
+    )

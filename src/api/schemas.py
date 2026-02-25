@@ -123,13 +123,20 @@ class ProvidersResponse(BaseModel):
 
 
 class CorpusStatsResponse(BaseModel):
-    """RAG corpus statistics."""
+    """RAG corpus statistics.
+
+    Includes genre and time period lists for populating frontend filter
+    dropdowns dynamically from the actual corpus contents.
+    """
 
     total_chunks: int = 0
     total_sources: int = 0
     sources_by_type: dict[str, int] = Field(default_factory=dict)
     entity_tag_count: int = 0
     geographic_tag_count: int = 0
+    # New fields for dynamic filter population
+    genre_tags: list[str] = Field(default_factory=list)
+    time_periods: list[str] = Field(default_factory=list)
 
 
 class ErrorResponse(BaseModel):
@@ -164,10 +171,16 @@ class AskQuestionResponse(BaseModel):
 
 
 class CorpusSearchRequest(BaseModel):
-    """User query for corpus semantic search."""
+    """User query for corpus semantic search.
+
+    Supports pagination via offset/page_size — the backend computes a full
+    ranked candidate pool (up to top_k) then returns a page of results.
+    New filters (genre, era, quality floor, relevance floor) are all optional
+    with safe defaults so existing callers are unaffected.
+    """
 
     query: str = Field(..., min_length=1, max_length=500)
-    top_k: int = Field(default=10, ge=1, le=50)
+    top_k: int = Field(default=50, ge=1, le=100)
     source_type: list[str] | None = Field(
         default=None,
         description='Filter by source types: "book", "article", "interview", etc.',
@@ -179,6 +192,39 @@ class CorpusSearchRequest(BaseModel):
     geographic_tag: str | None = Field(
         default=None,
         description="Filter to chunks referencing a specific city/region.",
+    )
+    # --- New filters for enhanced corpus search ---
+    genre_tags: list[str] | None = Field(
+        default=None,
+        description='Filter by genre tags: "techno", "house", "jungle", etc.',
+    )
+    time_period: str | None = Field(
+        default=None,
+        description='Filter by era/time period: "1990s", "1988-1992", or named era.',
+    )
+    min_citation_tier: int | None = Field(
+        default=None,
+        ge=1,
+        le=6,
+        description="Minimum citation tier (1=best, 6=unverified). Only return chunks at this tier or better.",
+    )
+    min_similarity: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score threshold. Results below this are excluded.",
+    )
+    # --- Pagination ---
+    offset: int = Field(
+        default=0,
+        ge=0,
+        description="Pagination offset — number of results to skip for load-more.",
+    )
+    page_size: int = Field(
+        default=20,
+        ge=1,
+        le=50,
+        description="Number of results per page (used with offset for pagination).",
     )
 
 
@@ -201,11 +247,20 @@ class CorpusSearchChunk(BaseModel):
 
 
 class CorpusSearchResponse(BaseModel):
-    """Response containing corpus search results."""
+    """Response containing corpus search results with pagination metadata.
+
+    The backend computes the full ranked result set then returns a page
+    controlled by offset/page_size.  The has_more flag tells the frontend
+    whether a "Load More" button should be rendered.
+    """
 
     query: str
     total_results: int
     results: list[CorpusSearchChunk] = Field(default_factory=list)
+    # Pagination metadata — safe defaults preserve backward compatibility.
+    offset: int = 0
+    page_size: int = 20
+    has_more: bool = False
 
 
 class SubmitRatingRequest(BaseModel):

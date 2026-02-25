@@ -900,6 +900,9 @@ async def corpus_stats(request: Request) -> CorpusStatsResponse:
         sources_by_type=stats.sources_by_type,
         entity_tag_count=stats.entity_tag_count,
         geographic_tag_count=stats.geographic_tag_count,
+        # Genre tags and time periods for frontend filter dropdowns
+        genre_tags=stats.genre_tags,
+        time_periods=stats.time_periods,
     )
 
 
@@ -1051,7 +1054,8 @@ async def corpus_search(
     if not rag_enabled or vector_store is None:
         raise HTTPException(status_code=503, detail="RAG corpus not available")
 
-    # Build filters from request
+    # Build filters from request — pushed to ChromaDB where possible
+    # for early pruning; others applied as post-filters after retrieval.
     filters: dict[str, Any] = {}
     if body.source_type:
         filters["source_type"] = {"$in": body.source_type}
@@ -1059,6 +1063,14 @@ async def corpus_search(
         filters["entity_tags"] = {"$contains": body.entity_tag}
     if body.geographic_tag:
         filters["geographic_tags"] = {"$contains": body.geographic_tag}
+    # Genre filter — ChromaDB $contains handles one genre; multi-genre
+    # precision is handled by a post-filter after retrieval.
+    if body.genre_tags:
+        filters["genre_tags"] = {"$contains": body.genre_tags[0]}
+    # Citation tier quality floor — lower number = better quality,
+    # so $lte returns chunks "at least this good" (e.g. $lte:3 → T1-T3).
+    if body.min_citation_tier is not None:
+        filters["citation_tier"] = {"$lte": body.min_citation_tier}
 
     # --- Pre-query processing: expand query for better retrieval ---
     query_text = body.query
@@ -1104,8 +1116,10 @@ async def corpus_search(
             filters=filters if filters else None,
         )
 
-    # Safety-net dedup by source_id — keep top 3 chunks per source
-    _MAX_PER_SOURCE = 3
+    # Safety-net dedup by source_id — keep top N chunks per source.
+    # Raised from 3→5 to let more distinct passages surface in the
+    # larger candidate pool (top_k up to 50).
+    _MAX_PER_SOURCE = 5
     source_chunks: dict[str, list[CorpusSearchChunk]] = {}
     for c in chunks:
         sid = c.chunk.source_id
@@ -1147,6 +1161,30 @@ async def corpus_search(
         except Exception:
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
+    # --- Post-filters for fields that need Python-side logic ---
+
+    # Time-period post-filter: ChromaDB can't do range-overlap matching,
+    # so we filter after retrieval using temporal_overlap() from domain_knowledge.
+    if body.time_period:
+        try:
+            from src.config.domain_knowledge import detect_temporal_signal, temporal_overlap
+            normalized = detect_temporal_signal(body.time_period) or body.time_period
+            deduped = [
+                r for r in deduped
+                if r.time_period and temporal_overlap(normalized, r.time_period)
+            ]
+        except ImportError:
+            pass  # domain_knowledge not yet available
+
+    # Multi-genre post-filter: ChromaDB $contains only matches one genre.
+    # When the user selected multiple genres, require at least one exact match.
+    if body.genre_tags and len(body.genre_tags) > 1:
+        genre_set = {g.lower() for g in body.genre_tags}
+        deduped = [
+            r for r in deduped
+            if any(gt.lower() in genre_set for gt in r.genre_tags)
+        ]
+
     # --- Score boosting: domain-aware re-ranking ---
     # Each boost is small and additive so cosine similarity remains the
     # dominant signal.  Boosted scores are stored in a parallel dict keyed
@@ -1172,8 +1210,16 @@ async def corpus_search(
     for r in deduped:
         boost = 0.0
 
-        # #8 Citation tier boost: T1 → +0.10 … T6 → 0.00
-        boost += max(0.0, (6 - r.citation_tier) * 0.02)
+        # Citation tier boost: T1 → +0.12, T2 → +0.096, … T6 → 0.00
+        # Gradient raised from 0.02→0.024 per tier level to give higher-quality
+        # sources more lift in the larger result pool.
+        boost += max(0.0, (6 - r.citation_tier) * 0.024)
+
+        # Exact query-match boost: if the raw query string appears verbatim
+        # in the chunk text, that is a strong relevance signal beyond what
+        # embedding similarity alone captures.
+        if body.query.lower() in r.text.lower():
+            boost += 0.03
 
         if _dk_available:
             # #4 Genre adjacency boost
@@ -1210,8 +1256,10 @@ async def corpus_search(
     # so no single entity dominates.  All entity tags are subject to per-tag
     # caps — single-entity chunks are treated the same as multi-entity ones.
     if not _is_artist_query(body.query):
-        _CAP_BY_TYPE = {"ARTIST": 3, "VENUE": 4, "LABEL": 4, "EVENT": 4, "COLLECTIVE": 3}
-        _DEFAULT_CAP = 3
+        # Caps raised from 3/4 to 4/5 to let more results survive in the
+        # larger candidate pool (up to 50 results vs. the old 15).
+        _CAP_BY_TYPE = {"ARTIST": 4, "VENUE": 5, "LABEL": 5, "EVENT": 5, "COLLECTIVE": 4}
+        _DEFAULT_CAP = 4
         entity_counts: dict[str, int] = {}
         diversified: list[CorpusSearchChunk] = []
         deduped.sort(key=_score, reverse=True)
@@ -1259,12 +1307,29 @@ async def corpus_search(
     )
 
     # Remove near-duplicate chunks across different sources.
-    results = _semantic_dedup(results)
+    # Threshold lowered from 0.85→0.80 to catch more near-dupes,
+    # letting more genuinely unique content through in the larger pool.
+    results = _semantic_dedup(results, threshold=0.80)
+
+    # Apply minimum similarity threshold if requested — excludes
+    # low-relevance results that survived ranking but sit below the
+    # user's quality bar.
+    if body.min_similarity is not None and body.min_similarity > 0:
+        results = [r for r in results if _score(r) >= body.min_similarity]
+
+    # --- Pagination: slice the full result set into a page ---
+    total_available = len(results)
+    page_start = min(body.offset, total_available)
+    page_end = min(page_start + body.page_size, total_available)
+    page_results = results[page_start:page_end]
 
     return CorpusSearchResponse(
         query=body.query,
-        total_results=len(results),
-        results=results,
+        total_results=total_available,
+        results=page_results,
+        offset=body.offset,
+        page_size=body.page_size,
+        has_more=page_end < total_available,
     )
 
 
