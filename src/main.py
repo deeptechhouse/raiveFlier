@@ -393,7 +393,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     # -- Flier history provider (SQLite-backed flier data persistence) --
     from src.providers.flier_history.sqlite_flier_history_provider import SQLiteFlierHistoryProvider
 
-    flier_history = SQLiteFlierHistoryProvider(db_path="data/flier_history.db")
+    flier_history = SQLiteFlierHistoryProvider(db_path=app_settings.flier_history_db_path)
     await flier_history.initialize()
 
     # -- Services --

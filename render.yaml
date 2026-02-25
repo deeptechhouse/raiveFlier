@@ -108,5 +108,7 @@ services:
         value: /data/chromadb                  # ChromaDB vector store directory
       - key: FEEDBACK_DB_PATH
         value: /data/feedback.db               # User feedback SQLite database
+      - key: FLIER_HISTORY_DB_PATH
+        value: /data/flier_history.db          # Cross-flier recommendation history database
       - key: SESSION_DB_PATH
         value: /data/session_state.db          # Pipeline session state database

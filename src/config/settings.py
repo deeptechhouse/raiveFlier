@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # === Feedback / Ratings ===
     feedback_db_path: str = "data/feedback.db"
 
+    # === Flier History (cross-flier recommendation data) ===
+    flier_history_db_path: str = "data/flier_history.db"
+
     # === Session Persistence ===
     session_db_path: str = "data/session_state.db"
 
