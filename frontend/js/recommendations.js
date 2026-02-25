@@ -482,9 +482,13 @@ const Recommendations = (() => {
       // Non-fatal: quick results remain visible — no user-facing error
     } finally {
       _isLoadingFull = false;
-      // If panel is open and we were showing the backfill indicator, re-render to remove it
-      // (whether the fetch succeeded or failed, the spinner should go away)
-      if (_isOpen && _isPartial) {
+      // Mark as attempted even on failure — prevents infinite spinner
+      // in _renderResults() which checks !_hasFetchedFull to decide
+      // whether to show the loading spinner vs the empty-state message.
+      _hasFetchedFull = true;
+      // If panel is open, re-render to remove the backfill indicator
+      // or transition from spinner to final state (results or empty).
+      if (_isOpen) {
         _renderResults();
       }
     }
