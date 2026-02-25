@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import io
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image
 
@@ -52,7 +51,13 @@ class TesseractOCRProvider(IOCRProvider):
     # ------------------------------------------------------------------
 
     async def extract_text(self, image: FlierImage) -> OCRResult:
-        """Extract text from a flier image using Tesseract with multi-pass OCR."""
+        """Extract text from a flier image using Tesseract with multi-pass OCR.
+
+        Passes are processed **sequentially** via :meth:`iter_ocr_passes` so
+        only one preprocessed variant is held in memory at a time.  This
+        trades thread-pool parallelism (negligible on Render's 0.5 CPU) for
+        a ~75% reduction in peak preprocessing memory.
+        """
         start = time.perf_counter()
         try:
             image_bytes = image.image_data
@@ -63,34 +68,30 @@ class TesseractOCRProvider(IOCRProvider):
                 )
 
             original = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-            passes = self._build_passes(original)
 
             all_results: list[dict | None] = []
+            standard_img: Image.Image | None = None
+            pass_count = 0
 
-            def _run_pass(args: tuple[str, Image.Image, str]) -> dict | None:
-                pass_name, pass_image, config = args
-                self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="tesseract")
-                try:
-                    result = self._run_tesseract(pass_image, config=config)
-                    if result is not None:
-                        result["pass_name"] = pass_name
-                    return result
-                except Exception as exc:
-                    self._logger.warning(
-                        "ocr_pass_failed",
-                        pass_name=pass_name,
-                        provider="tesseract",
-                        error=str(exc),
-                    )
-                    return None
+            # Process each preprocessing variant one at a time.  The
+            # generator yields a single (name, image) pair, we run
+            # Tesseract on it, collect the result, and the image becomes
+            # eligible for GC before the next variant is created.
+            for pass_name, pass_image in self._preprocessor.iter_ocr_passes(original):
+                pass_count += 1
+                result = self._run_single_pass(pass_name, pass_image, config="")
+                all_results.append(result)
+                # Keep a reference to the standard image for the sparse pass.
+                if pass_name == "standard":
+                    standard_img = pass_image
 
-            # Tesseract spawns external C++ subprocesses (not Python code),
-            # so threads give REAL parallelism here — the Python GIL (Global
-            # Interpreter Lock) doesn't apply to subprocess I/O. This is why
-            # ThreadPoolExecutor works well despite Python's GIL limitation.
-            # We cap at 4 workers to avoid overloading the CPU.
-            with ThreadPoolExecutor(max_workers=min(4, len(passes))) as pool:
-                all_results = list(pool.map(_run_pass, passes))
+            # Tesseract-specific: sparse text mode (PSM 11) reuses the
+            # standard deskewed image for a final pass tuned for scattered
+            # text layouts common on artistic rave fliers.
+            if standard_img is not None:
+                pass_count += 1
+                result = self._run_single_pass("sparse", standard_img, config="--psm 11")
+                all_results.append(result)
 
             elapsed = time.perf_counter() - start
 
@@ -104,7 +105,7 @@ class TesseractOCRProvider(IOCRProvider):
             self._logger.info(
                 "ocr_extraction_complete",
                 provider="tesseract",
-                passes_run=len(passes),
+                passes_run=pass_count,
                 confidence=round(merged["confidence"], 4),
                 num_regions=len(merged["bounding_boxes"]),
                 processing_time=round(elapsed, 3),
@@ -153,25 +154,28 @@ class TesseractOCRProvider(IOCRProvider):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_passes(
-        self, original: Image.Image
-    ) -> list[tuple[str, Image.Image, str]]:
-        """Build (pass_name, preprocessed_image, tesseract_config) triples.
+    def _run_single_pass(
+        self, pass_name: str, pass_image: Image.Image, config: str,
+    ) -> dict | None:
+        """Run Tesseract on one preprocessing pass and return the result.
 
-        Delegates preprocessing to :meth:`ImagePreprocessor.build_ocr_passes`
-        which caches results so fallback providers skip redundant work.
+        Wraps :meth:`_run_tesseract` with logging and error handling so the
+        sequential loop in :meth:`extract_text` stays clean.
         """
-        common_passes = self._preprocessor.build_ocr_passes(original)
-        passes: list[tuple[str, Image.Image, str]] = [
-            (name, img, "") for name, img in common_passes
-        ]
-
-        # Tesseract-specific: sparse text mode (PSM 11)
-        # Reuse the standard deskewed image from the common passes
-        standard_img = common_passes[0][1]
-        passes.append(("sparse", standard_img, "--psm 11"))
-
-        return passes
+        self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="tesseract")
+        try:
+            result = self._run_tesseract(pass_image, config=config)
+            if result is not None:
+                result["pass_name"] = pass_name
+            return result
+        except Exception as exc:
+            self._logger.warning(
+                "ocr_pass_failed",
+                pass_name=pass_name,
+                provider="tesseract",
+                error=str(exc),
+            )
+            return None
 
     def _run_tesseract(self, image: Image.Image, config: str = "") -> dict | None:
         """Run Tesseract on a single image and return results dict or None.

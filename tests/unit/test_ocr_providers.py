@@ -57,9 +57,9 @@ class TestTesseractOCRProvider:
         flier = _make_flier_image()
         mock_preprocessor = MagicMock(spec=ImagePreprocessor)
 
-        # build_ocr_passes returns list of (name, PIL.Image) tuples
+        # iter_ocr_passes returns iterable of (name, PIL.Image) tuples
         test_img = Image.new("RGB", (400, 300), (255, 255, 255))
-        mock_preprocessor.build_ocr_passes.return_value = [
+        mock_preprocessor.iter_ocr_passes.return_value = [
             ("standard", test_img),
         ]
 
@@ -95,7 +95,7 @@ class TestTesseractOCRProvider:
         flier = _make_flier_image()
         mock_preprocessor = MagicMock(spec=ImagePreprocessor)
         test_img = Image.new("RGB", (400, 300), (0, 0, 0))
-        mock_preprocessor.build_ocr_passes.return_value = [("standard", test_img)]
+        mock_preprocessor.iter_ocr_passes.return_value = [("standard", test_img)]
 
         mock_ocr_data = {
             "text": [""],
@@ -164,7 +164,7 @@ class TestEasyOCRProvider:
         flier = _make_flier_image()
         mock_preprocessor = MagicMock(spec=ImagePreprocessor)
         test_img = Image.new("RGB", (400, 300), (255, 255, 255))
-        mock_preprocessor.build_ocr_passes.return_value = [("standard", test_img)]
+        mock_preprocessor.iter_ocr_passes.return_value = [("standard", test_img)]
 
         # Mock _run_easyocr to return a dict matching merge_pass_results input
         mock_result = {
@@ -282,7 +282,7 @@ class TestEasyOCRProvider:
         mock_preprocessor = MagicMock(spec=ImagePreprocessor)
         test_img1 = Image.new("RGB", (400, 300), (255, 255, 255))
         test_img2 = Image.new("RGB", (400, 300), (0, 0, 0))
-        mock_preprocessor.build_ocr_passes.return_value = [
+        mock_preprocessor.iter_ocr_passes.return_value = [
             ("standard", test_img1),
             ("inverted", test_img2),
         ]
@@ -335,7 +335,7 @@ class TestEasyOCRProvider:
         flier = _make_flier_image()
         mock_preprocessor = MagicMock(spec=ImagePreprocessor)
         test_img = Image.new("RGB", (400, 300), (0, 0, 0))
-        mock_preprocessor.build_ocr_passes.return_value = [("standard", test_img)]
+        mock_preprocessor.iter_ocr_passes.return_value = [("standard", test_img)]
 
         provider = EasyOCRProvider(mock_preprocessor)
 
@@ -372,8 +372,8 @@ class TestEasyOCRProvider:
 
         flier = _make_flier_image()
         mock_preprocessor = MagicMock(spec=ImagePreprocessor)
-        # Make build_ocr_passes raise an unexpected error
-        mock_preprocessor.build_ocr_passes.side_effect = RuntimeError("GPU error")
+        # Make iter_ocr_passes raise an unexpected error
+        mock_preprocessor.iter_ocr_passes.side_effect = RuntimeError("GPU error")
 
         provider = EasyOCRProvider(mock_preprocessor)
 

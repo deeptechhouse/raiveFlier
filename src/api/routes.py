@@ -85,18 +85,81 @@ router = APIRouter(prefix="/api/v1")
 # --- Upload validation constants ---
 # frozenset is an immutable set — perfect for constants that should never change.
 _ALLOWED_CONTENT_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
-_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB — lowered from 10 MB to reduce peak memory on 512 MB Render
+
+# Chunk size for streaming uploads — read in 64 KB increments to reject
+# oversized files early without buffering the entire payload into memory.
+_UPLOAD_CHUNK_SIZE = 64 * 1024  # 64 KB
+
+# Maximum image dimension (pixels) for OCR processing.  Images larger than
+# this are downscaled immediately after upload to cap uncompressed bitmap
+# memory.  OCR accuracy does not benefit from >2048px — Tesseract and LLM
+# Vision both work well at this resolution.
+_MAX_IMAGE_DIM = 2048
 
 # Perceptual hash duplicate threshold: Hamming distance ≤ 10 means the
 # images look visually similar.  Lower = stricter (0 = pixel-identical).
 # A threshold of 10 allows for minor cropping, compression, color shifts.
 _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
 
+# ── Memory protection: upload processing semaphore ──────────────────
+# Limits concurrent flier upload+OCR processing to 1 at a time.  On the
+# 512 MB Render Starter instance, a single upload can spike ~150-200 MB
+# during image preprocessing (7 OCR variants from a high-res photo).
+# Two concurrent uploads would exceed the memory budget and trigger an
+# OOM kill.  Subsequent uploads queue behind the semaphore — latency
+# increases but the process stays alive.
+_UPLOAD_SEMAPHORE = asyncio.Semaphore(1)
+
 # Recommendation endpoint timeouts.
 # Quick mode: SQLite + simple LLM only (~3-5 seconds expected).
 _RECO_QUICK_TIMEOUT = 15.0  # seconds
 # Full mode: Discogs + RAG + full LLM fill+explain (~10-15 seconds expected).
 _RECO_TIMEOUT = 60.0  # seconds
+
+
+def _downscale_if_oversized(image_data: bytes, max_dim: int) -> bytes:
+    """Downscale an image if its largest dimension exceeds *max_dim* pixels.
+
+    Returns the original bytes unchanged if the image is already within
+    bounds.  Re-encodes as high-quality JPEG (95%) after downscaling to
+    minimize the byte buffer held in memory downstream.
+
+    This runs BEFORE OCR preprocessing so the uncompressed bitmap that
+    PIL/OpenCV create from the bytes is bounded to ~2048×2048 (~12 MB)
+    instead of potentially 4000×3000 (~36 MB).
+    """
+    import io as _io
+
+    from PIL import Image as _PILImage
+
+    try:
+        img = _PILImage.open(_io.BytesIO(image_data)).convert("RGB")
+        largest = max(img.size)
+        if largest <= max_dim:
+            return image_data
+
+        scale = max_dim / largest
+        new_size = (int(img.size[0] * scale), int(img.size[1] * scale))
+        img = img.resize(new_size, _PILImage.LANCZOS)
+
+        buf = _io.BytesIO()
+        # JPEG at quality=95 keeps OCR-relevant detail while being much
+        # smaller than PNG for photographic content.
+        img.save(buf, format="JPEG", quality=95)
+        _logger.info(
+            "image_downscaled_for_memory",
+            original_largest_dim=largest,
+            new_size=new_size,
+            original_bytes=len(image_data),
+            new_bytes=buf.tell(),
+        )
+        return buf.getvalue()
+    except Exception as exc:
+        # If downscaling fails for any reason, proceed with the original
+        # bytes — OCR will still work, just with higher memory usage.
+        _logger.warning("image_downscale_failed", error=str(exc))
+        return image_data
 
 
 def _compute_perceptual_hash(image_data: bytes) -> str | None:
@@ -300,18 +363,36 @@ async def upload_flier(
             ),
         )
 
-    # --- Read and validate file size ---
-    image_data = await file.read()
-    if len(image_data) > _MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large: {len(image_data)} bytes. Maximum: {_MAX_FILE_SIZE} bytes.",
-        )
+    # --- Stream upload in chunks — reject oversized files early -------
+    # Reading in 64 KB chunks means a 50 MB upload is rejected after
+    # buffering only 5 MB, instead of loading all 50 MB into memory.
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(_UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > _MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"File too large: >{_MAX_FILE_SIZE // (1024 * 1024)} MB. "
+                    f"Maximum: {_MAX_FILE_SIZE} bytes."
+                ),
+            )
+        chunks.append(chunk)
+    image_data = b"".join(chunks)
+    # Free the chunk list immediately — image_data now owns the bytes.
+    del chunks
 
-    # --- Compute perceptual hash for duplicate detection ---
+    # --- Compute hashes on ORIGINAL bytes (before any downscaling) ----
+    # Perceptual hash and SHA-256 must be computed on the original image
+    # so duplicate detection works consistently regardless of resize logic.
     image_phash = _compute_perceptual_hash(image_data)
-    duplicate_match: DuplicateMatch | None = None
+    image_hash = hashlib.sha256(image_data).hexdigest()
 
+    duplicate_match: DuplicateMatch | None = None
     if image_phash and flier_history is not None:
         try:
             match = await flier_history.find_duplicate_by_phash(
@@ -332,35 +413,44 @@ async def upload_flier(
         except Exception as exc:
             _logger.warning("duplicate_check_failed", error=str(exc))
 
-    # --- Build FlierImage ---
-    session_id = str(uuid.uuid4())
-    image_hash = hashlib.sha256(image_data).hexdigest()
+    # --- Early resize: cap image dimensions before OCR processing -----
+    # A 4000×3000 JPEG (5 MB compressed) becomes ~36 MB as an uncompressed
+    # RGB bitmap, and then 7 OCR preprocessing variants push peak memory
+    # to ~250 MB.  Downscaling to 2048px max before any processing cuts
+    # uncompressed size to ~12 MB and peak preprocessing to ~85 MB.
+    image_data = _downscale_if_oversized(image_data, _MAX_IMAGE_DIM)
 
-    flier_image = FlierImage(
-        id=session_id,
-        filename=file.filename or "unknown",
-        content_type=content_type,
-        file_size=len(image_data),
-        image_hash=image_hash,
-        image_phash=image_phash,
-    )
-    # Attach raw image bytes to the PrivateAttr on the frozen Pydantic model.
-    # PrivateAttr fields bypass Pydantic's immutability checks, allowing us
-    # to store the binary data without it appearing in serialization (JSON).
-    # This is a deliberate workaround for frozen models that need internal state.
-    flier_image.__pydantic_private__["_image_data"] = image_data
+    # --- Acquire upload semaphore for memory-intensive processing ------
+    # Only one upload goes through OCR + preprocessing at a time to
+    # prevent concurrent memory spikes from exceeding the 512 MB budget.
+    async with _UPLOAD_SEMAPHORE:
+        # --- Build FlierImage ---
+        session_id = str(uuid.uuid4())
 
-    # --- Register perceptual hash for future duplicate detection ---
-    if image_phash and flier_history is not None:
-        try:
-            await flier_history.register_image_hash(session_id, image_phash)
-        except Exception as exc:
-            _logger.warning("phash_registration_failed", error=str(exc))
+        flier_image = FlierImage(
+            id=session_id,
+            filename=file.filename or "unknown",
+            content_type=content_type,
+            file_size=len(image_data),
+            image_hash=image_hash,
+            image_phash=image_phash,
+        )
+        # Attach raw image bytes to the PrivateAttr on the frozen Pydantic model.
+        # PrivateAttr fields bypass Pydantic's immutability checks, allowing us
+        # to store the binary data without it appearing in serialization (JSON).
+        flier_image.__pydantic_private__["_image_data"] = image_data
 
-    # --- Run Phase 1 (OCR + Entity Extraction) ---
-    state = PipelineState(session_id=session_id, flier=flier_image)
-    state = await pipeline.run_phase_1(state)
-    session_states[session_id] = state
+        # --- Register perceptual hash for future duplicate detection ---
+        if image_phash and flier_history is not None:
+            try:
+                await flier_history.register_image_hash(session_id, image_phash)
+            except Exception as exc:
+                _logger.warning("phash_registration_failed", error=str(exc))
+
+        # --- Run Phase 1 (OCR + Entity Extraction) ---
+        state = PipelineState(session_id=session_id, flier=flier_image)
+        state = await pipeline.run_phase_1(state)
+        session_states[session_id] = state
 
     # --- Submit to confirmation gate for user review ---
     await gate.submit_for_review(state)

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import io
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from PIL import Image
@@ -48,7 +47,13 @@ class EasyOCRProvider(IOCRProvider):
     # ------------------------------------------------------------------
 
     async def extract_text(self, image: FlierImage) -> OCRResult:
-        """Extract text from a flier image using EasyOCR with multi-pass OCR."""
+        """Extract text from a flier image using EasyOCR with multi-pass OCR.
+
+        Passes are processed **sequentially** via :meth:`iter_ocr_passes` so
+        only one preprocessed variant is held in memory at a time.  This
+        trades thread-pool parallelism for a ~75% reduction in peak
+        preprocessing memory — critical on the 512 MB Render instance.
+        """
         start = time.perf_counter()
         try:
             image_bytes = image.image_data
@@ -59,32 +64,19 @@ class EasyOCRProvider(IOCRProvider):
                 )
 
             original = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-            passes = self._build_passes(original)
             reader = self._get_reader()
 
             all_results: list[dict | None] = []
+            pass_count = 0
 
-            def _run_pass(args: tuple[str, Image.Image]) -> dict | None:
-                pass_name, pass_image = args
-                self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="easyocr")
-                try:
-                    result = self._run_easyocr(reader, pass_image)
-                    if result is not None:
-                        result["pass_name"] = pass_name
-                    return result
-                except Exception as exc:
-                    self._logger.warning(
-                        "ocr_pass_failed",
-                        pass_name=pass_name,
-                        provider="easyocr",
-                        error=str(exc),
-                    )
-                    return None
-
-            # EasyOCR releases the GIL during C++ inference, so threads
-            # give real parallelism on multi-core machines.
-            with ThreadPoolExecutor(max_workers=min(4, len(passes))) as pool:
-                all_results = list(pool.map(_run_pass, passes))
+            # Process each preprocessing variant one at a time.  The
+            # generator yields a single (name, image) pair, we run
+            # EasyOCR on it, collect the result, and the image becomes
+            # eligible for GC before the next variant is created.
+            for pass_name, pass_image in self._preprocessor.iter_ocr_passes(original):
+                pass_count += 1
+                result = self._run_single_pass(reader, pass_name, pass_image)
+                all_results.append(result)
 
             elapsed = time.perf_counter() - start
 
@@ -98,7 +90,7 @@ class EasyOCRProvider(IOCRProvider):
             self._logger.info(
                 "ocr_extraction_complete",
                 provider="easyocr",
-                passes_run=len(passes),
+                passes_run=pass_count,
                 confidence=round(merged["confidence"], 4),
                 num_regions=len(merged["bounding_boxes"]),
                 processing_time=round(elapsed, 3),
@@ -155,13 +147,28 @@ class EasyOCRProvider(IOCRProvider):
             self.__reader = easyocr.Reader(["en"], gpu=False)
         return self.__reader
 
-    def _build_passes(self, original: Image.Image) -> list[tuple[str, Image.Image]]:
-        """Build (pass_name, preprocessed_image) pairs for multi-pass OCR.
+    def _run_single_pass(
+        self, reader: object, pass_name: str, pass_image: Image.Image,
+    ) -> dict | None:
+        """Run EasyOCR on one preprocessing pass and return the result.
 
-        Delegates preprocessing to :meth:`ImagePreprocessor.build_ocr_passes`
-        which caches results so fallback providers skip redundant work.
+        Wraps :meth:`_run_easyocr` with logging and error handling so the
+        sequential loop in :meth:`extract_text` stays clean.
         """
-        return self._preprocessor.build_ocr_passes(original)
+        self._logger.debug("running_ocr_pass", pass_name=pass_name, provider="easyocr")
+        try:
+            result = self._run_easyocr(reader, pass_image)
+            if result is not None:
+                result["pass_name"] = pass_name
+            return result
+        except Exception as exc:
+            self._logger.warning(
+                "ocr_pass_failed",
+                pass_name=pass_name,
+                provider="easyocr",
+                error=str(exc),
+            )
+            return None
 
     def _run_easyocr(self, reader, pass_image: Image.Image) -> dict | None:  # noqa: ANN001
         """Run EasyOCR on a single image and return results dict or None."""
