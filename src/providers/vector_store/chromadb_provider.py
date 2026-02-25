@@ -11,11 +11,19 @@ import os
 from datetime import date
 from typing import Any
 
-# Disable ChromaDB PostHog telemetry before importing chromadb.
-# Defense-in-depth: the Dockerfile also sets this env var, but setting
-# it here ensures telemetry is disabled in all execution contexts
-# (local dev, tests, CI) where the Dockerfile ENV may not be present.
-os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+# Disable ChromaDB telemetry completely before importing chromadb.
+# ChromaDB uses PostHog for anonymous telemetry, but a version mismatch
+# between ChromaDB's bundled PostHog client and the installed version
+# causes "capture() takes 1 positional argument but 3 were given" errors.
+# Three layers of defense:
+#   1. ANONYMIZED_TELEMETRY env var — respected by some ChromaDB versions
+#   2. posthog.disabled = True — disables the PostHog SDK directly
+#   3. Settings(anonymized_telemetry=False) — passed to PersistentClient
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
+import posthog
+
+posthog.disabled = True
 
 import chromadb
 import structlog
