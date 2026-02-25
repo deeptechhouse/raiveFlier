@@ -443,9 +443,10 @@ const Recommendations = (() => {
 
     _isLoadingFull = true;
 
-    // If panel is open and we have partial results, re-render to show the
-    // backfill indicator (small spinner at the bottom of the card list)
-    if (_isOpen && _recommendations.length > 0) {
+    // If panel is open, re-render to show appropriate UI: either the
+    // backfill indicator (small spinner below existing cards) or a full
+    // loading spinner (when quick returned empty and full is our only hope).
+    if (_isOpen) {
       _renderResults();
     }
 

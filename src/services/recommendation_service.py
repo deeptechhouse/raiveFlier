@@ -220,11 +220,11 @@ class RecommendationService:
             label_mates, shared_flier, shared_lineup,
         )
 
+        # Tier 1 may be empty (no Discogs data, no flier history, no RAG
+        # matches).  That's fine — the combined LLM step below fills up to
+        # 10 slots from genre/style/scene context.
         if not tier1_candidates:
-            raise LLMError(
-                message="Recommendation pipeline produced zero candidates across all tiers",
-                provider_name=self._llm.get_provider_name(),
-            )
+            self._logger.info("tier1_candidates_empty_will_use_llm_fill")
 
         # Steps 6+7 — Combined LLM fill + explanation pass.
         # A single LLM call handles both: (a) generating LLM-tier
