@@ -369,11 +369,18 @@ class RecommendationService:
             *(_fetch_label(lid, lname) for lid, lname, _aname in label_tasks)
         )
 
-        # Merge fetched releases into candidate map
+        # Merge fetched releases into candidate map.
+        # Each Release has an .artist field populated by the provider
+        # (e.g., Discogs API returns the artist name per release).
+        # Fall back to parsing "Artist - Title" from the title string
+        # for providers that don't populate the artist field directly.
         candidate_map: dict[str, dict[str, Any]] = {}
         for (_, label_name, artist_name), releases in zip(label_tasks, fetched):
             for release in releases:
-                release_artist = self._extract_artist_from_release(release.title)
+                release_artist = (
+                    release.artist
+                    or self._extract_artist_from_release(release.title)
+                )
                 if not release_artist:
                     continue
 

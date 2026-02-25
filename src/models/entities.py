@@ -104,6 +104,7 @@ class Release(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     title: str                          # Release title (e.g. "Windowlicker")
+    artist: str | None = None           # Artist name from the release (used by label-mate discovery)
     label: str                          # Label name (plain string, not a Label object)
     catalog_number: str | None = None   # Catalog number (e.g. "WAP105") from Discogs
     year: int | None = None             # Release year
@@ -123,14 +124,16 @@ class EventAppearance(BaseModel):
     if two artists have EventAppearances at the same venue/event, they
     may be musically related and worth recommending together.
 
-    Note: This model is currently not populated by any researcher.  The
-    interconnection service discovers shared events via direct ChromaDB
-    RA event queries instead of through this model.
+    .. note::
+        This model is currently not populated by any researcher.  The
+        interconnection service discovers shared events via direct
+        ChromaDB RA event queries instead of through this model.
 
-    TODO: Wire EventAppearance population into ArtistResearcher so artist
-    research results include event history from RA corpus data.  This
-    would also enable _extract_artist_geography() to infer an artist's
-    geographic base from their appearance patterns.
+    .. todo::
+        Wire EventAppearance population into ArtistResearcher so artist
+        research results include event history from RA corpus data.
+        This would also enable ``_extract_artist_geography()`` to infer
+        an artist's geographic base from their appearance patterns.
     """
 
     model_config = ConfigDict(frozen=True)

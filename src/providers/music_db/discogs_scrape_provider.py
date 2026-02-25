@@ -404,6 +404,7 @@ class DiscogsScrapeProvider(IMusicDatabaseProvider):
             releases.append(
                 Release(
                     title=display_title,
+                    artist=artist_name or None,
                     label=label_name,
                     year=year,
                     format=format_str,
