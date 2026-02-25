@@ -84,6 +84,12 @@ const Results = (() => {
   let _rawData = null;
   // The current session ID, used for API calls (dismiss, Q&A, ratings)
   let _sessionId = null;
+  // Citation log — all structured citations from the API response, stored
+  // for the collapsible "Citation Log" panel in the interconnections section.
+  let _citationLog = [];
+  // Set of [n] citation numbers extracted from the narrative text during
+  // _formatNarrative().  Used to show which numbered sources were referenced.
+  let _referencedCitationNumbers = new Set();
 
   // ------------------------------------------------------------------
   // Utility helpers
@@ -121,22 +127,80 @@ const Results = (() => {
   }
 
   /**
-   * Format narrative text: escape HTML, convert [n] citation refs to
-   * styled superscript marks, and split into paragraphs.
+   * Format narrative text: escape HTML, strip [n] citation refs from
+   * display (they are preserved in the citation log), and split into
+   * paragraphs.  Before stripping, all referenced citation numbers are
+   * collected into _referencedCitationNumbers for the citation log panel.
    */
   function _formatNarrative(text) {
     if (!text) return "";
     // Escape HTML first
     let safe = _esc(text);
-    // Convert [n] references to superscript citation marks
-    safe = safe.replace(
-      /\[(\d+)\]/g,
-      '<sup class="cite-ref" title="Source [$1]">[$1]</sup>'
-    );
+    // Extract all [n] citation numbers for the citation log before stripping
+    const refs = safe.matchAll(/\[(\d+)\]/g);
+    for (const m of refs) {
+      _referencedCitationNumbers.add(parseInt(m[1], 10));
+    }
+    // Strip [n] references from visible text and clean up leftover whitespace
+    safe = safe.replace(/\s*\[\d+\]/g, "");
+    safe = safe.replace(/ {2,}/g, " ");
     // Split into paragraphs on double newlines
     const paragraphs = safe.split(/\n\s*\n/).filter((p) => p.trim());
     if (paragraphs.length <= 1) return `<p>${safe}</p>`;
     return paragraphs.map((p) => `<p>${p.trim()}</p>`).join("\n");
+  }
+
+  /**
+   * Render a collapsible citation log panel.  Shows all structured citations
+   * from the analysis for later review.  The panel is collapsed by default
+   * so it doesn't clutter the main results view.
+   *
+   * @param {Array} citations — Array of {text, source, url, tier} objects
+   *   from the normalized API response.
+   * @returns {string} HTML string for the citation log panel.
+   */
+  function _renderCitationLog(citations) {
+    if (!citations || citations.length === 0) return "";
+
+    const count = citations.length;
+    const refCount = _referencedCitationNumbers.size;
+
+    let html = '<div class="citation-log">';
+    html += '<button type="button" class="citation-log__toggle" aria-expanded="false">';
+    html += `<svg class="citation-log__chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">`;
+    html += '<path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    html += "</svg>";
+    html += `Citation Log (${count} sources`;
+    if (refCount > 0) {
+      html += `, ${refCount} referenced in narrative`;
+    }
+    html += ")</button>";
+
+    html += '<div class="citation-log__body" hidden>';
+    html += '<table class="citation-log__table">';
+    html += "<thead><tr>";
+    html += '<th class="citation-log__th">Tier</th>';
+    html += '<th class="citation-log__th">Source</th>';
+    html += '<th class="citation-log__th">Claim</th>';
+    html += "</tr></thead><tbody>";
+
+    citations.forEach((c) => {
+      const tierCls = c.tier <= 2 ? "citation-log__tier--high"
+                    : c.tier <= 4 ? "citation-log__tier--mid"
+                    : "citation-log__tier--low";
+      const sourceCell = c.url
+        ? `<a href="${_esc(c.url)}" target="_blank" rel="noopener noreferrer">${_esc(c.source)}</a>`
+        : _esc(c.source);
+
+      html += "<tr>";
+      html += `<td class="citation-log__td"><span class="citation-log__tier ${tierCls}">T${c.tier}</span></td>`;
+      html += `<td class="citation-log__td">${sourceCell}</td>`;
+      html += `<td class="citation-log__td citation-log__claim">${_esc(c.text)}</td>`;
+      html += "</tr>";
+    });
+
+    html += "</tbody></table></div></div>";
+    return html;
   }
 
   // ------------------------------------------------------------------
@@ -1063,6 +1127,10 @@ const Results = (() => {
       html += "</div>";
     }
 
+    // Citation log — collapsible panel listing all citations for later analysis.
+    // Citations are stripped from the narrative display but preserved here.
+    html += _renderCitationLog(data.citations || []);
+
     html += "</div>"; // results-section
     return html;
   }
@@ -1371,6 +1439,9 @@ const Results = (() => {
   function renderResults(data) {
     _rawData = _rawData || data;
     _sessionId = data.session_id || null;
+    // Reset citation tracking for this render pass
+    _citationLog = data.citations || [];
+    _referencedCitationNumbers = new Set();
     const resultsView = document.getElementById("results-view");
     if (!resultsView) return;
 
@@ -1396,9 +1467,11 @@ const Results = (() => {
     // Section 5: Interconnections
     html += _renderInterconnections(data);
 
-    // Section 6: Citations — logged but not displayed
+    // Citation log — structured citation data logged for debugging/export.
+    // The citation log panel is rendered inside the interconnections section.
     if (data.citations && data.citations.length > 0) {
-      console.log("[Results] All citations (%d):", data.citations.length, data.citations);
+      console.log("[Results] Citation log (%d sources, %d narrative refs):",
+        data.citations.length, _referencedCitationNumbers.size, data.citations);
     }
 
     // Export JSON button (standalone, not inside citations)
@@ -1423,6 +1496,19 @@ const Results = (() => {
     // Initialize recommendations panel (lazy — fetches on first open)
     if (typeof Recommendations !== "undefined" && Recommendations.init) {
       Recommendations.init(_sessionId);
+    }
+
+    // Citation log toggle — expand/collapse the citation table
+    const citLogToggle = resultsView.querySelector(".citation-log__toggle");
+    if (citLogToggle) {
+      citLogToggle.addEventListener("click", () => {
+        const body = citLogToggle.nextElementSibling;
+        const expanded = body && !body.hidden;
+        if (body) body.hidden = expanded;
+        citLogToggle.setAttribute("aria-expanded", String(!expanded));
+        const chevron = citLogToggle.querySelector(".citation-log__chevron");
+        if (chevron) chevron.style.transform = expanded ? "" : "rotate(180deg)";
+      });
     }
 
     // Export button

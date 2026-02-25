@@ -139,12 +139,20 @@ const QA = (() => {
     return `<div class="qa-message qa-message--user"><p>${_esc(text)}</p></div>`;
   }
 
+  /** Strip [n] citation numbers from text for clean display.
+   *  The structured citation data is shown separately as tier badges. */
+  function _stripCiteRefs(text) {
+    if (!text) return text;
+    return text.replace(/\s*\[\d+\]/g, "").replace(/ {2,}/g, " ");
+  }
+
   /** Render an assistant answer with citations and related fact chips. */
   function _renderAssistantMessage(answer, citations, facts, question) {
     let html = '<div class="qa-message qa-message--assistant">';
 
-    // Answer text (preserve paragraphs)
-    const paragraphs = answer.split("\n\n").filter(Boolean);
+    // Answer text — strip inline [n] refs (citations shown as tier badges below)
+    const cleaned = _stripCiteRefs(answer);
+    const paragraphs = cleaned.split("\n\n").filter(Boolean);
     paragraphs.forEach((p) => {
       html += `<p>${_esc(p)}</p>`;
     });

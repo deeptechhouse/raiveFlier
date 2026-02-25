@@ -1,0 +1,4794 @@
+Resident Advisor Event History: Wisconsin
+
+Source: Resident Advisor (ra.co)
+Coverage: 2016-2026
+Total events: 491
+
+---
+
+Event: 4B - Smookie Illson at Miramar Theater
+Date: 2016-01-09
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/787379
+Attending: 1
+
+---
+
+Event: Mr Carmack
+Date: 2016-01-14
+Venue: Miramar Theatre
+Artists: Sam Gellaitry
+City: Wisconsin
+URL: https://ra.co/events/787092
+Attending: 1
+
+---
+
+Event: Apart presents Christian Martin, Aubrey Lee b2b X the Owl
+Date: 2016-01-15
+Venue: Studio 200
+Artists: Christian Martin, Aubrey, X the Owl
+City: Wisconsin
+URL: https://ra.co/events/791453
+Attending: 1
+
+---
+
+Event: Habstrakt - Tombz
+Date: 2016-01-16
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/787397
+Attending: 1
+
+---
+
+Event: Bridge (Apart Oak React Wi present Lee Foss
+Date: 2016-01-21
+Venue: Oak Lounge
+Artists: Lee Foss, JC Hanna
+City: Wisconsin
+URL: https://ra.co/events/796396
+Attending: 2
+
+---
+
+Event: Bridge feat. Lee Foss
+Date: 2016-01-21
+Venue: Oak Lounge
+Artists: Lee Foss
+City: Wisconsin
+URL: https://ra.co/events/796842
+Attending: 1
+
+---
+
+Event: Winter Warmer 2016
+Date: 2016-01-28
+Venue: Olympia Resort
+Artists: Drumsound & Bassline Smith, Mark Farina, Derek Plaslaiko, Danny The Wildchild, Doug English, Wissota, Tavish, Adorio, Greenie
+City: Wisconsin
+URL: https://ra.co/events/797950
+Attending: 2
+
+---
+
+Event: Trippy Turtle
+Date: 2016-01-28
+Venue: Majestic Theatre
+Artists: Trippy Turtle
+City: Wisconsin
+URL: https://ra.co/events/792646
+Attending: 1
+
+---
+
+Event: Tomsize - Rckt PWR - Crystal Knives
+Date: 2016-01-30
+Venue: Miramar Theatre
+Artists: Tomsize
+City: Wisconsin
+URL: https://ra.co/events/792677
+Attending: 1
+
+---
+
+Event: Alison Wonderland
+Date: 2016-02-04
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/795728
+Attending: 1
+
+---
+
+Event: Apart presents Ben Silver w/ Wangzoom, Barnacle Boys & Dola
+Date: 2016-02-05
+Venue: Studio 200
+Artists: Ben Silver, Wangzoom
+City: Wisconsin
+URL: https://ra.co/events/804715
+Attending: 1
+
+---
+
+Event: Alison Wonderland – Golden Features
+Date: 2016-02-05
+Venue: Majestic Theatre
+City: Wisconsin
+URL: https://ra.co/events/798306
+Attending: 1
+
+---
+
+Event: Valetine's Day Throw Down Ft: Thrasher b2b Jen Sob, JC Hanna b2b Angel Eyes
+Date: 2016-02-13
+Venue: Studio 200
+Artists: Thrasher, JC Hanna
+City: Wisconsin
+URL: https://ra.co/events/804716
+Attending: 1
+
+---
+
+Event: Intoxicated Ft. Jevon Jackson, Mahogany & Furious Stylez
+Date: 2016-02-13
+Venue: Club Voodoo
+Artists: Jevon Jackson, Shawn Paul
+City: Wisconsin
+URL: https://ra.co/events/804062
+
+---
+
+Event: Sound Travels - The Valentine's Day Edition
+Date: 2016-02-14
+Venue: Nomad World Pub
+Artists: Soulphonetics
+City: Wisconsin
+URL: https://ra.co/events/803069
+Attending: 3
+
+---
+
+Event: Victor Niglio – Dubloadz 
+Date: 2016-02-19
+Venue: Miramar Theatre
+Artists: Niglio
+City: Wisconsin
+URL: https://ra.co/events/803456
+Attending: 1
+
+---
+
+Event: Infected Mushroom at Miramar Theater
+Date: 2016-03-03
+Venue: Miramar Theatre
+Artists: Infected Mushroom, Randy Seidman, Thrasher
+City: Wisconsin
+URL: https://ra.co/events/805947
+
+---
+
+Event: G Jones – Nasty Nasty at Majestic
+Date: 2016-03-04
+Venue: Majestic Theatre
+Artists: G Jones
+City: Wisconsin
+URL: https://ra.co/events/811218
+Attending: 1
+
+---
+
+Event: A F T E R S 0 0 1
+Date: 2016-03-05
+Venue: TBA - Wisconsin
+Artists: Wyatt Agard
+City: Wisconsin
+URL: https://ra.co/events/808199
+Attending: 15
+
+---
+
+Event: K Theory – Instant Party at Miramar
+Date: 2016-03-11
+Venue: Miramar Theatre
+Artists: K Theory
+City: Wisconsin
+URL: https://ra.co/events/811230
+Attending: 1
+
+---
+
+Event: Paul Van Dyk
+Date: 2016-03-11
+Venue: Oak Lounge
+Artists: Paul Van Dyk
+City: Wisconsin
+URL: https://ra.co/events/811246
+Attending: 1
+
+---
+
+Event: Intoxicated with Tazl, Aztech & Furious Stylez
+Date: 2016-03-12
+Venue: Club Voodoo
+Artists: Shawn Paul
+City: Wisconsin
+URL: https://ra.co/events/805915
+Attending: 1
+
+---
+
+Event: Lookas & James Dece
+Date: 2016-03-24
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/817461
+Attending: 1
+
+---
+
+Event: Bridge: MK
+Date: 2016-04-07
+Venue: Oak Lounge
+City: Wisconsin
+URL: https://ra.co/events/824371
+Attending: 2
+
+---
+
+Event: Loudpvck
+Date: 2016-04-08
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/824390
+Attending: 1
+
+---
+
+Event: A F T E R S 0 0 2
+Date: 2016-04-09
+Venue: TBA - Wisconsin
+Artists: Gene Farris, Wyatt Agard, Danny Digable, Wangzoom
+City: Wisconsin
+URL: https://ra.co/events/818272
+Attending: 51
+
+---
+
+Event: Intoxicated ft. TCB, Kidd & Furious Stylez
+Date: 2016-04-09
+Venue: Club Voodoo
+Artists: TCB, Shawn Paul
+City: Wisconsin
+URL: https://ra.co/events/818086
+Attending: 1
+
+---
+
+Event: ETC! ETC! – Spag Heddy at Miramar
+Date: 2016-04-22
+Venue: Miramar Theatre
+Artists: Spag Heddy
+City: Wisconsin
+URL: https://ra.co/events/829476
+Attending: 1
+
+---
+
+Event: Louis Futon - Melvv - Futon Takes America Tour
+Date: 2016-04-29
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/830085
+Attending: 1
+
+---
+
+Event: Dirty South
+Date: 2016-04-29
+Venue: Oak Lounge
+Artists: Dirty South
+City: Wisconsin
+URL: https://ra.co/events/832077
+Attending: 1
+
+---
+
+Event: Lumberjvck & Midnight Tyrannosaurus
+Date: 2016-04-30
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/832094
+Attending: 1
+
+---
+
+Event: Symbion Project 
+Date: 2016-05-05
+Venue: 42 Lounge
+Artists: Symbion Project
+City: Wisconsin
+URL: https://ra.co/events/828137
+Attending: 1
+
+---
+
+Event: Marshall Applewhite & The Friend 
+Date: 2016-05-13
+Venue: Cardinal Bar
+Artists: Marshall Applewhite, The Friend
+City: Wisconsin
+URL: https://ra.co/events/833911
+Attending: 1
+
+---
+
+Event: Wherehouse Kizomba
+Date: 2016-05-13
+Venue: Wherehouse / Hot Water
+Artists: Just Jacob
+City: Wisconsin
+URL: https://ra.co/events/844059
+Attending: 1
+
+---
+
+Event: Intoxicated feat. Niki Kitz - Advancer - Furious Stylez
+Date: 2016-05-14
+Venue: Club Voodoo
+Artists: Niki Kitz, Shawn Paul
+City: Wisconsin
+URL: https://ra.co/events/819058
+Attending: 1
+
+---
+
+Event: Sound Travels Live - Memorial Day Weekend
+Date: 2016-05-29
+Venue: Nomad World Pub
+Artists: Soulphonetics
+City: Wisconsin
+URL: https://ra.co/events/841821
+Attending: 3
+
+---
+
+Event: Musique Electronique 2016
+Date: 2016-07-15
+Venue: The High Noon Saloon
+Artists: Stacey Pullen, Kid Koala, Chrissy, Sassmouth, Brian Gillespie, Niki Kitz, Wangzoom
+City: Wisconsin
+URL: https://ra.co/events/827641
+Attending: 5
+
+---
+
+Event: Grae Cycle 1
+Date: 2016-07-16
+Venue: Studio 200
+Artists: Jedidiah
+City: Wisconsin
+URL: https://ra.co/events/866912
+
+---
+
+Event: Summer Set Music Festival 2016
+Date: 2016-08-12
+Venue: Somerset Amphitheater
+Artists: Skrillex, Bassnectar, Steve Aoki, Gramatik, Flux Pavilion, DJ Mustard, Infected Mushroom, Classixx, Black Tiger Sex Machine, Autograf, Claptone, Mija, G Jones
+City: Wisconsin
+URL: https://ra.co/events/834625
+Attending: 1
+
+---
+
+Event: Eaux Claires
+Date: 2016-08-12
+Venue: TBA - Wisconsin
+Artists: James Blake
+City: Wisconsin
+URL: https://ra.co/events/845565
+Attending: 1
+
+---
+
+Event: Square One Special All Vinyl Night feat. Kiddo, Mahogany, Just Elmo, and Carrick
+Date: 2016-08-12
+Venue: Cardinal Bar
+City: Wisconsin
+URL: https://ra.co/events/868593
+Attending: 1
+
+---
+
+Event: Intoxicated feat. Jonn Hawley, Umi & Furious Stylez
+Date: 2016-08-13
+Venue: The Wisco
+Artists: Jonn Hawley
+City: Wisconsin
+URL: https://ra.co/events/868187
+Attending: 1
+
+---
+
+Event: Apart presents: Kiddo, Home Team, Discoah
+Date: 2016-08-13
+Venue: Studio 200
+City: Wisconsin
+URL: https://ra.co/events/868596
+Attending: 1
+
+---
+
+Event: Even Furthur
+Date: 2016-08-19
+Venue: TBA - Wisconsin
+Artists: DJ Rap, Miles Maeda, Sunshine Jones, Treavor Moontribe, Lenny Dee, Baseck, Drumcell, Terence Fixmer, Dustin Zahn, Frankie Bones, Tim Sweeney, The Demix, idiom, Love & Logic, Shadow People, Michael Wenz, Pinion, Construct, Wangzoom, Thrasher, Microdot, Chris Grant, Tinhead, Bucky Fargo, Fixon, Axkan, Mike Wlkr, Pete Board, Danny The Wildchild, Renan, Mystic Bill, Dar Embarks, Luis Baro, Frankie Vega, Mark Angel, Project 313, Tim Vitek, Derek Specs, Komprezzor, Centrific, Mike Gervais, The Worm, Julian Rivera, Rob Gee, Krikett
+City: Wisconsin
+URL: https://ra.co/events/857941
+Attending: 31
+
+---
+
+Event: Even Furthur Diyss Come2gether
+Date: 2016-08-19
+Venue: TBA - Wisconsin
+Artists: Mystic Bill, Chuck Daniels, Luis Baro, Frankie Vega, Mark Angel, Project 313, Tim Vitek, Derek Specs, Komprezzor, Corbin Davis, Anthony Jimenez, Hiroko Yamamura, SOMBIONX, Andy Stroble
+City: Wisconsin
+URL: https://ra.co/events/869182
+Attending: 3
+
+---
+
+Event: Broken feat. Wavewhore
+Date: 2016-08-27
+Venue: Door No. 7
+Artists: Wavewhore, Thrasher
+City: Wisconsin
+URL: https://ra.co/events/871461
+Attending: 1
+
+---
+
+Event: Below 07
+Date: 2016-10-20
+Venue: Sotto
+Artists: Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/892028
+Attending: 1
+
+---
+
+Event: Green Velvet
+Date: 2016-11-04
+Venue: Site 1A
+Artists: Green Velvet
+City: Wisconsin
+URL: https://ra.co/events/895022
+Attending: 1
+
+---
+
+Event: Precognition 1 Year Anniversary
+Date: 2016-11-05
+Venue: Quarters
+Artists: Jarvi, Asher Gray
+City: Wisconsin
+URL: https://ra.co/events/892595
+Attending: 2
+
+---
+
+Event: Precognition with Chris Widman (Abstract Science, Chicago)
+Date: 2016-12-09
+Venue: Quarters
+Artists: Chris Widman
+City: Wisconsin
+URL: https://ra.co/events/904482
+Attending: 2
+
+---
+
+Event: Bremenhain: Deep, Dark, Dance
+Date: 2016-12-23
+Venue: Bremen Cafe
+Artists: Hiroko Yamamura, Skooma
+City: Wisconsin
+URL: https://ra.co/events/912539
+Attending: 1
+
+---
+
+Event: NYE 2017
+Date: 2016-12-31
+Venue: Nomad World Pub
+City: Wisconsin
+URL: https://ra.co/events/917066
+Attending: 2
+
+---
+
+Event: Dantiez Saunderson with DJ Ashoka & Ginjahvitiz
+Date: 2017-02-25
+Venue: The Rigby
+Artists: DJ Ashoka, Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/933748
+Attending: 6
+
+---
+
+Event: Club Ritual
+Date: 2017-04-01
+Venue: Quarters
+Artists: Asher Gray
+City: Wisconsin
+URL: https://ra.co/events/953303
+Attending: 1
+
+---
+
+Event: Apart presents 100 [007] - Paul Birken & Jack Carpenter
+Date: 2017-04-08
+Venue: TBA - Wisconsin
+Artists: Paul Birken, Jack Carpenter
+City: Wisconsin
+URL: https://ra.co/events/956875
+Attending: 1
+
+---
+
+Event: Apart presents 100 [008] - Fortune & Discoah
+Date: 2017-04-15
+Venue: TBA - Wisconsin
+City: Wisconsin
+URL: https://ra.co/events/956876
+Attending: 2
+
+---
+
+Event: Apart presents 100 [009] - Ardalan
+Date: 2017-04-22
+Venue: TBA - Wisconsin
+Artists: Ardalan
+City: Wisconsin
+URL: https://ra.co/events/956871
+Attending: 1
+
+---
+
+Event: Whateverfest 666
+Date: 2017-04-26
+Venue: Quarters
+Artists: Seanni B
+City: Wisconsin
+URL: https://ra.co/events/959133
+Attending: 1
+
+---
+
+Event: Sound Travels
+Date: 2017-05-14
+Venue: Nomad World Pub
+Artists: Soulphonetics
+City: Wisconsin
+URL: https://ra.co/events/969760
+Attending: 1
+
+---
+
+Event: Sound Travels - Madison
+Date: 2017-05-14
+Venue: Nomad World Pub - Madison
+Artists: Soulphonetics
+City: Wisconsin
+URL: https://ra.co/events/969761
+Attending: 1
+
+---
+
+Event: Bonobo
+Date: 2017-05-19
+Venue: Turner Hall Ballroom
+Artists: Bonobo
+City: Wisconsin
+URL: https://ra.co/events/898653
+Attending: 3
+
+---
+
+Event: Bonobo
+Date: 2017-05-20
+Venue: Orpheum
+Artists: Bonobo
+City: Wisconsin
+URL: https://ra.co/events/898654
+
+---
+
+Event: Wednesday Warm-Up
+Date: 2017-05-24
+Venue: James Madison Park Shelter
+Artists: Michael Serafini
+City: Wisconsin
+URL: https://ra.co/events/971106
+Attending: 2
+
+---
+
+Event: Below with Depthcharge, Clownbaby, Ginjahvitiz & Eman
+Date: 2017-07-07
+Venue: Mediterranean Hookah Lounge
+Artists: Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/985669
+Attending: 1
+
+---
+
+Event: Ben Silver 
+Date: 2017-07-08
+Venue: Memorial Union Terrace
+Artists: Ben Silver, Orchard Lounge
+City: Wisconsin
+URL: https://ra.co/events/986868
+Attending: 1
+
+---
+
+Event: Musique Èlectronique 2017 at La Fete de Marquette
+Date: 2017-07-14
+Venue: The High Noon Saloon
+Artists: Kevin Saunderson, Octo Octa, Miles Maeda, Golden Donna
+City: Wisconsin
+URL: https://ra.co/events/966516
+Attending: 8
+
+---
+
+Event: Precognition with Kiernan Laveaux, Father of Two & Adab
+Date: 2017-07-14
+Venue: Quarters
+Artists: Kiernan Laveaux, Father Of Two, ADAB
+City: Wisconsin
+URL: https://ra.co/events/986456
+Attending: 2
+
+---
+
+Event: Even Furthur 2017
+Date: 2017-08-18
+Venue: TBA - Wisconsin
+Artists: Josh Wink, Perc, Jlin, Black Asteroid, Anklepants, Ancient Methods, Daniel Bell, Prototype 909, Ocelot, Tommie Sunshine, Alfonz De La Mota, Mark Angel
+City: Wisconsin
+URL: https://ra.co/events/974922
+Attending: 15
+
+---
+
+Event: Cult House: Elysia Crampton
+Date: 2017-08-23
+Venue: Gates Of Heaven
+Artists: Elysia Crampton
+City: Wisconsin
+URL: https://ra.co/events/1000686
+
+---
+
+Event: Brian Bradley Audio Visual Concert
+Date: 2017-09-08
+Venue: Arts + Literature Laboratory
+City: Wisconsin
+URL: https://ra.co/events/999677
+Attending: 2
+
+---
+
+Event: Below: One Year Anniversary Party
+Date: 2017-09-08
+Venue: Robinia Courtyard
+Artists: Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1004560
+Attending: 1
+
+---
+
+Event: Precognition with Jasmine Infiniti
+Date: 2017-09-08
+Venue: Quarters
+Artists: Jasmine Infiniti
+City: Wisconsin
+URL: https://ra.co/events/1007785
+Attending: 1
+
+---
+
+Event: 2017 Secret Circus Camping & Music Festival
+Date: 2017-09-15
+Venue: Apple River Hideaway Somerset
+Artists: Wissota, DJ Encounter
+City: Wisconsin
+URL: https://ra.co/events/1213935
+
+---
+
+Event: Willy Street Beats at Willy Street Fair
+Date: 2017-09-16
+Venue: The High Noon Saloon
+Artists: Claude Young, Bill Converse, Sassmouth
+City: Wisconsin
+URL: https://ra.co/events/1008452
+Attending: 2
+
+---
+
+Event: Thundercat
+Date: 2017-09-19
+Venue: Majestic Theatre
+Artists: Thundercat
+City: Wisconsin
+URL: https://ra.co/events/972430
+
+---
+
+Event: Kaskade - Redux Tour
+Date: 2017-09-28
+Venue: Site 1A
+Artists: Kaskade
+City: Wisconsin
+URL: https://ra.co/events/1018858
+Attending: 1
+
+---
+
+Event: Bridge Movement Feat. Will Clarke
+Date: 2017-09-29
+Venue: Site 1A
+Artists: Will Clarke
+City: Wisconsin
+URL: https://ra.co/events/1018861
+Attending: 2
+
+---
+
+Event: Bridge Movement Feat. Moon Boots
+Date: 2017-10-13
+Venue: Site 1A
+Artists: Moon Boots, Asher Gray
+City: Wisconsin
+URL: https://ra.co/events/1018867
+Attending: 1
+
+---
+
+Event: Bridge Movement Feat. Claude Von Stroke
+Date: 2017-10-14
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1018869
+Attending: 1
+
+---
+
+Event: Bridge Movement Feat. Golf Clap
+Date: 2017-10-20
+Venue: Site 1A
+Artists: Golf Clap
+City: Wisconsin
+URL: https://ra.co/events/1018862
+Attending: 1
+
+---
+
+Event: Jerome Derradji // sold
+Date: 2017-10-21
+Venue: Robinia Courtyard
+Artists: Jerome Derradji, sold
+City: Wisconsin
+URL: https://ra.co/events/1018404
+Attending: 4
+
+---
+
+Event: Precognition with Eris Drew
+Date: 2017-10-21
+Venue: Quarters
+Artists: Eris Drew
+City: Wisconsin
+URL: https://ra.co/events/1024190
+Attending: 3
+
+---
+
+Event: Markus Schulz [at] 
+Date: 2017-10-27
+Venue: Site 1A
+Artists: Markus Schulz
+City: Wisconsin
+URL: https://ra.co/events/1031938
+Attending: 1
+
+---
+
+Event: Bridge Movement Feat. Sonny Fodera
+Date: 2017-11-03
+Venue: Site 1A
+Artists: Sonny Fodera, Shadow People
+City: Wisconsin
+URL: https://ra.co/events/1018871
+Attending: 1
+
+---
+
+Event: Precognition 2-Year Anniversary with Ash Lauryn
+Date: 2017-11-04
+Venue: Quarters
+Artists: Ash Lauryn
+City: Wisconsin
+URL: https://ra.co/events/1025359
+Attending: 1
+
+---
+
+Event: Paul Oakenfold
+Date: 2017-11-10
+Venue: Site 1A
+Artists: Paul Oakenfold
+City: Wisconsin
+URL: https://ra.co/events/1031939
+Attending: 1
+
+---
+
+Event: Rabit
+Date: 2017-11-17
+Venue: Art In
+Artists: Rabit
+City: Wisconsin
+URL: https://ra.co/events/1016779
+Attending: 3
+
+---
+
+Event: AC Slater
+Date: 2017-11-17
+Venue: Site 1A
+Artists: AC Slater
+City: Wisconsin
+URL: https://ra.co/events/1031940
+Attending: 1
+
+---
+
+Event: BT
+Date: 2017-12-01
+Venue: Site 1A
+Artists: BT
+City: Wisconsin
+URL: https://ra.co/events/1031941
+Attending: 2
+
+---
+
+Event: Shiba SAN
+Date: 2017-12-08
+Venue: Site 1A
+Artists: Shiba San
+City: Wisconsin
+URL: https://ra.co/events/1031942
+Attending: 3
+
+---
+
+Event: Crystal Method
+Date: 2017-12-15
+Venue: Site 1A
+Artists: Thrasher
+City: Wisconsin
+URL: https://ra.co/events/1044456
+Attending: 1
+
+---
+
+Event: Vanilla Ace & Treasure Fingers
+Date: 2017-12-22
+Venue: Site 1A
+Artists: Vanilla Ace, Treasure Fingers
+City: Wisconsin
+URL: https://ra.co/events/1044457
+Attending: 1
+
+---
+
+Event: Garden Party with Beaner
+Date: 2017-12-30
+Venue: Robinia Courtyard
+Artists: Beaner
+City: Wisconsin
+URL: https://ra.co/events/1038020
+Attending: 2
+
+---
+
+Event: Wax Motif
+Date: 2018-01-12
+Venue: Site 1A
+Artists: Wax Motif
+City: Wisconsin
+URL: https://ra.co/events/1058838
+Attending: 1
+
+---
+
+Event: Bridge Movement Feat. Sage Armstrong
+Date: 2018-01-19
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1061239
+Attending: 1
+
+---
+
+Event: FORMA
+Date: 2018-01-25
+Venue: Cactus Club
+Artists: FORMA, Golden Donna
+City: Wisconsin
+URL: https://ra.co/events/1057720
+
+---
+
+Event: FORMA
+Date: 2018-01-26
+Venue: Mickey's Tavern
+Artists: FORMA, Golden Donna
+City: Wisconsin
+URL: https://ra.co/events/1057716
+Attending: 1
+
+---
+
+Event: Tommie Sunshine
+Date: 2018-02-02
+Venue: Site 1A
+Artists: Tommie Sunshine
+City: Wisconsin
+URL: https://ra.co/events/1058839
+Attending: 2
+
+---
+
+Event: Bridge Movement Feat: Billy Kenny
+Date: 2018-02-09
+Venue: Site 1A
+Artists: Billy Kenny
+City: Wisconsin
+URL: https://ra.co/events/1047570
+Attending: 2
+
+---
+
+Event: Wuki
+Date: 2018-02-16
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1058840
+Attending: 1
+
+---
+
+Event: Drezo
+Date: 2018-02-23
+Venue: Site 1A
+Artists: Gone Rogue
+City: Wisconsin
+URL: https://ra.co/events/1058842
+Attending: 1
+
+---
+
+Event: Two Friends
+Date: 2018-03-02
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1058843
+Attending: 1
+
+---
+
+Event: Transistor Bass 5
+Date: 2018-03-03
+Venue: TBA - Milwaukee
+Artists: Hiroko Yamamura
+City: Wisconsin
+URL: https://ra.co/events/1074569
+Attending: 1
+
+---
+
+Event: Quix
+Date: 2018-03-08
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1082443
+Attending: 1
+
+---
+
+Event: Black Asteroid 'Thrust' Album Tour
+Date: 2018-03-10
+Venue: TBA - Milwaukee
+Artists: Black Asteroid, Hiroko Yamamura
+City: Wisconsin
+URL: https://ra.co/events/1080237
+
+---
+
+Event: Luca Lush
+Date: 2018-03-16
+Venue: Site 1A
+Artists: LUCA LUSH
+City: Wisconsin
+URL: https://ra.co/events/1082445
+Attending: 1
+
+---
+
+Event: Vindata & Electric Mantis
+Date: 2018-03-23
+Venue: Site 1A
+Artists: Vindata
+City: Wisconsin
+URL: https://ra.co/events/1082447
+Attending: 1
+
+---
+
+Event: John B
+Date: 2018-03-30
+Venue: Studio 200
+City: Wisconsin
+URL: https://ra.co/events/1078281
+Attending: 2
+
+---
+
+Event: Bridge Movement Feat. Ardalan with Codes
+Date: 2018-03-30
+Venue: Site 1A
+Artists: Ardalan
+City: Wisconsin
+URL: https://ra.co/events/1082448
+Attending: 2
+
+---
+
+Event: Breaking Techno
+Date: 2018-03-31
+Venue: Studio 200
+Artists: Drumcell, Jerome Baker
+City: Wisconsin
+URL: https://ra.co/events/1082330
+Attending: 2
+
+---
+
+Event: Party Thieves & Ricky Remedy
+Date: 2018-04-06
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1082449
+Attending: 1
+
+---
+
+Event: Darude
+Date: 2018-04-13
+Venue: Site 1A
+Artists: Darude
+City: Wisconsin
+URL: https://ra.co/events/1058844
+Attending: 1
+
+---
+
+Event: Jams with Eris Drew
+Date: 2018-04-14
+Venue: Robinia Courtyard
+Artists: Eris Drew, DJ UMI
+City: Wisconsin
+URL: https://ra.co/events/1086563
+Attending: 5
+
+---
+
+Event: The Bassment Series: Episode 18
+Date: 2018-04-20
+Venue: John's Bar
+Artists: DJ Encounter
+City: Wisconsin
+URL: https://ra.co/events/1213020
+
+---
+
+Event: Bridge Movement Feat. Mark Farina
+Date: 2018-04-27
+Venue: Site 1A
+Artists: Mark Farina
+City: Wisconsin
+URL: https://ra.co/events/1082450
+Attending: 5
+
+---
+
+Event: DF - Underground Event
+Date: 2018-04-27
+Venue: TBA - Milwaukee
+Artists: DJ Hyperactive, Hiroko Yamamura
+City: Wisconsin
+URL: https://ra.co/events/1101421
+Attending: 2
+
+---
+
+Event: Shaun Frank
+Date: 2018-05-04
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1082451
+Attending: 1
+
+---
+
+Event: Earth Angel with False Witness
+Date: 2018-05-11
+Venue: Club Anything
+Artists: False Witness, Jack Carpenter
+City: Wisconsin
+URL: https://ra.co/events/1106034
+Attending: 3
+
+---
+
+Event: LO'99
+Date: 2018-05-11
+Venue: Site 1A
+Artists: LO'99
+City: Wisconsin
+URL: https://ra.co/events/1104795
+Attending: 2
+
+---
+
+Event: Kill Paris
+Date: 2018-05-18
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1088487
+Attending: 1
+
+---
+
+Event: Jams with Ciel
+Date: 2018-05-19
+Venue: Robinia Courtyard
+Artists: Ciel
+City: Wisconsin
+URL: https://ra.co/events/1086565
+Attending: 4
+
+---
+
+Event: Jack Beats
+Date: 2018-05-25
+Venue: Site 1A
+Artists: Jack Beats, Born Dirty
+City: Wisconsin
+URL: https://ra.co/events/1082453
+Attending: 1
+
+---
+
+Event: Sound Travels Live
+Date: 2018-05-27
+Venue: Nomad World Pub
+Artists: Soulphonetics
+City: Wisconsin
+URL: https://ra.co/events/1116852
+Attending: 1
+
+---
+
+Event: Breathe Carolina
+Date: 2018-06-01
+Venue: Site 1A
+Artists: Carolina
+City: Wisconsin
+URL: https://ra.co/events/1110401
+Attending: 1
+
+---
+
+Event: Below x Triple Threat
+Date: 2018-06-02
+Venue: Press Play Studio
+Artists: Jungle Jimn, Vincent R, Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1113239
+Attending: 3
+
+---
+
+Event: Morgan Page
+Date: 2018-06-15
+Venue: Site 1A
+Artists: Morgan Page
+City: Wisconsin
+URL: https://ra.co/events/1110400
+Attending: 1
+
+---
+
+Event: Jams with Jex Opolis
+Date: 2018-06-16
+Venue: Robinia Courtyard
+Artists: Jex Opolis
+City: Wisconsin
+URL: https://ra.co/events/1111527
+Attending: 5
+
+---
+
+Event: Apart presents: Nirvana - Private Event (Madison)
+Date: 2018-06-22
+Venue: Press Play Studio
+Artists: Wangzoom, Liara Tsai
+City: Wisconsin
+URL: https://ra.co/events/1123408
+Attending: 4
+
+---
+
+Event: Vibe Night
+Date: 2018-06-22
+Venue: Nomad World Pub - Madison
+Artists: DJ Encounter
+City: Wisconsin
+URL: https://ra.co/events/1213019
+
+---
+
+Event: Chris Lake
+Date: 2018-07-06
+Venue: Site 1A
+Artists: Chris Lake
+City: Wisconsin
+URL: https://ra.co/events/1110402
+Attending: 1
+
+---
+
+Event: Musique Èlectronique
+Date: 2018-07-13
+Venue: Central Park
+Artists: Derrick Carter, Mike Huckaby, Carlos Souffront, Niki Kitz
+City: Wisconsin
+URL: https://ra.co/events/1099681
+Attending: 12
+
+---
+
+Event: Bridge Feat. Christian Martin (Dirtybird)
+Date: 2018-07-13
+Venue: Site 1A
+Artists: Christian Martin
+City: Wisconsin
+URL: https://ra.co/events/1133125
+Attending: 1
+
+---
+
+Event: DF - 5
+Date: 2018-07-20
+Venue: TBA - Milwaukee
+Artists: Hiroko Yamamura
+City: Wisconsin
+URL: https://ra.co/events/1128017
+Attending: 3
+
+---
+
+Event: Jams with Chrissy
+Date: 2018-07-21
+Venue: Robinia Courtyard
+City: Wisconsin
+URL: https://ra.co/events/1133904
+Attending: 1
+
+---
+
+Event: Low Steppa
+Date: 2018-07-29
+Venue: Site 1A
+Artists: Low Steppa, Breezah
+City: Wisconsin
+URL: https://ra.co/events/1110403
+Attending: 1
+
+---
+
+Event: Doormouse & Anonymous / Gein / Stunt Rock / The Demix / Sir. Vixx / Black Lines, Din Sky
+Date: 2018-08-04
+Venue: Mad Planet
+Artists: Doormouse
+City: Wisconsin
+URL: https://ra.co/events/1112764
+Attending: 2
+
+---
+
+Event: Even Furthur 2018
+Date: 2018-08-10
+Venue: Highbridge Hills Sports Complex
+Artists: Underground Resistance, Luke Vibert, EPROM, Perc, Ansome, Original Sin, Antenes, Otto Von Schirach, DJ Huggie, Hieroglyphic Being, Ternion Sound, Mark EG, DELTA 9, Luke Hess, Danny The Wildchild, DJ Slugo, Freddy Fresh, Centrific, Golden Donna, TML, Imaginary Friend, Mike G, Andy Fitton, Axkan, Daniel Paul Cortez, DJ Warp, Gabriel Palomo, Henry Vengeance, DJ Hyperactive, idiom, Jerome Baker, Lester Fitzpatrick, Loopity Goofs, Mark Angel, Midnight Music Club, Mike Wlkr, Miss Elaine Eos, Miz Megs, Niki Kitz, Paul Birken, Pete Board, OOZE, Sari Postol, Shadow People, Tre Technics, USUK, Virgo, Eckblad
+City: Wisconsin
+URL: https://ra.co/events/1112154
+Attending: 24
+
+---
+
+Event: Morgan Page (Rescheduled Date)
+Date: 2018-08-10
+Venue: Site 1A
+Artists: Morgan Page
+City: Wisconsin
+URL: https://ra.co/events/1133126
+Attending: 1
+
+---
+
+Event: Sander Kleinenberg
+Date: 2018-08-17
+Venue: Site 1A
+Artists: Sander Kleinenberg
+City: Wisconsin
+URL: https://ra.co/events/1133130
+Attending: 1
+
+---
+
+Event: Jams with Garrett David
+Date: 2018-08-18
+Venue: Robinia Courtyard
+Artists: Garrett David
+City: Wisconsin
+URL: https://ra.co/events/1133903
+Attending: 2
+
+---
+
+Event: Golf Clap
+Date: 2018-08-24
+Venue: Site 1A
+Artists: Golf Clap
+City: Wisconsin
+URL: https://ra.co/events/1133127
+Attending: 1
+
+---
+
+Event: Willy Street Beats
+Date: 2018-09-15
+Venue: The High Noon Saloon
+Artists: Jon Hester, Byron The Aquarius, Sage Caswell, Berndt
+City: Wisconsin
+URL: https://ra.co/events/1146407
+Attending: 4
+
+---
+
+Event: 2018 Secret Circus Music Festival
+Date: 2018-09-20
+Venue: Apple River Hideaway Somerset
+Artists: Wissota, DJ Encounter
+City: Wisconsin
+URL: https://ra.co/events/1213028
+
+---
+
+Event: Grandtheft & Krane
+Date: 2018-09-21
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1164317
+Attending: 1
+
+---
+
+Event: Jams with CCL Sage Caswell
+Date: 2018-09-22
+Venue: Robinia Courtyard
+Artists: CCL, Sage Caswell
+City: Wisconsin
+URL: https://ra.co/events/1136296
+Attending: 4
+
+---
+
+Event: =
+Date: 2018-09-22
+Venue: TBA - Wisconsin
+Artists: Mike Dearborn, Justin Aulis Long, Hiroko Yamamura
+City: Wisconsin
+URL: https://ra.co/events/1158975
+Attending: 1
+
+---
+
+Event: Missy Jay US Tour with Fiamma Fumana
+Date: 2018-09-26
+Venue: Memorial Union Terrace
+Artists: Missy Jay
+City: Wisconsin
+URL: https://ra.co/events/1137962
+
+---
+
+Event: Missy Jay US Tour with Fiamma Fumana
+Date: 2018-09-27
+Venue: Mabel Tainter Theatre
+Artists: Missy Jay
+City: Wisconsin
+URL: https://ra.co/events/1137854
+
+---
+
+Event: Destination Fucked 666
+Date: 2018-10-12
+Venue: TBA - Milwaukee
+Artists: MVSB, Black Asteroid, Perc, Tunnel, DJ Hyperactive, Henry Vengeance, Karl Meier, The Demix, Centrific, Eckblad, mrBlaQ
+City: Wisconsin
+URL: https://ra.co/events/1165007
+Attending: 11
+
+---
+
+Event: Blackgummy presents Obsidian
+Date: 2018-10-12
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1164318
+Attending: 1
+
+---
+
+Event: Jams with Flørist 
+Date: 2018-10-13
+Venue: Robinia Courtyard
+Artists: Flørist
+City: Wisconsin
+URL: https://ra.co/events/1153089
+Attending: 2
+
+---
+
+Event: Kill Frenzy
+Date: 2018-11-02
+Venue: Site 1A
+Artists: Kill Frenzy
+City: Wisconsin
+URL: https://ra.co/events/1164319
+Attending: 1
+
+---
+
+Event: Ac Slater
+Date: 2018-11-16
+Venue: Site 1A
+Artists: AC Slater
+City: Wisconsin
+URL: https://ra.co/events/1164320
+Attending: 1
+
+---
+
+Event: Jams with Kiernan Laveaux, Father of Two
+Date: 2018-11-17
+Venue: Robinia Courtyard
+Artists: Kiernan Laveaux, Father Of Two
+City: Wisconsin
+URL: https://ra.co/events/1164288
+Attending: 1
+
+---
+
+Event: Spheres
+Date: 2018-11-17
+Venue: TBA - Wisconsin
+Artists: DJ Heather, DJ UMI
+City: Wisconsin
+URL: https://ra.co/events/1178889
+Attending: 1
+
+---
+
+Event: Bridge Movement Feat. Mark Farina
+Date: 2018-11-23
+Venue: Site 1A
+Artists: Mark Farina
+City: Wisconsin
+URL: https://ra.co/events/1164321
+Attending: 3
+
+---
+
+Event: Bridge Movement Feat. Derrick Carter
+Date: 2018-11-30
+Venue: Site 1A
+Artists: Derrick Carter, John Stuart
+City: Wisconsin
+URL: https://ra.co/events/1164322
+Attending: 5
+
+---
+
+Event: Jams with Project Pablo
+Date: 2018-12-15
+Venue: Robinia Courtyard
+Artists: Project Pablo, Rouse
+City: Wisconsin
+URL: https://ra.co/events/1174458
+Attending: 6
+
+---
+
+Event: Darkness
+Date: 2018-12-29
+Venue: Bremen Cafe
+Artists: Hiroko Yamamura, Sari Postol
+City: Wisconsin
+URL: https://ra.co/events/1200353
+Attending: 2
+
+---
+
+Event: Frisson: Clownbaby, Geoff K
+Date: 2019-01-11
+Venue: The Crucible
+Artists: Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1200144
+Attending: 3
+
+---
+
+Event: Molecular Ontology: Antenes
+Date: 2019-01-12
+Venue: Robinia Courtyard
+Artists: Antenes, David Last, DJ Speedsick
+City: Wisconsin
+URL: https://ra.co/events/1192659
+Attending: 7
+
+---
+
+Event: Jams with AceMo
+Date: 2019-01-19
+Venue: Robinia Courtyard
+Artists: AceMo, DJ UMI
+City: Wisconsin
+URL: https://ra.co/events/1192658
+Attending: 4
+
+---
+
+Event: Pagan Birthday Brunch
+Date: 2019-01-20
+Venue: Robinia Courtyard
+City: Wisconsin
+URL: https://ra.co/events/1207079
+Attending: 4
+
+---
+
+Event: Jams x 2MR with Sage Caswell and Savile
+Date: 2019-02-16
+Venue: Robinia Courtyard
+Artists: Sage Caswell
+City: Wisconsin
+URL: https://ra.co/events/1212305
+Attending: 1
+
+---
+
+Event: Static Cling
+Date: 2019-02-28
+Venue: Quarters
+City: Wisconsin
+URL: https://ra.co/events/1228120
+Attending: 2
+
+---
+
+Event: Molecular Ontology: IVVY
+Date: 2019-03-02
+Venue: Robinia Courtyard
+Artists: IVVY
+City: Wisconsin
+URL: https://ra.co/events/1223991
+Attending: 3
+
+---
+
+Event: Jams with DJ Holographic
+Date: 2019-03-09
+Venue: Robinia Courtyard
+Artists: DJ Holographic
+City: Wisconsin
+URL: https://ra.co/events/1223993
+Attending: 4
+
+---
+
+Event: Absorb presents: Ryan Crosson (Visionquest)
+Date: 2019-03-22
+Venue: The Cooperage
+Artists: Ryan Crosson, Visionquest, Hunter Sanchez, Plus Plus, John Stuart
+City: Wisconsin
+URL: https://ra.co/events/1209158
+Attending: 3
+
+---
+
+Event: Underbelly: Chrissy and DJ Umi
+Date: 2019-03-22
+Venue: Robinia Courtyard
+Artists: DJ UMI
+City: Wisconsin
+URL: https://ra.co/events/1241145
+Attending: 1
+
+---
+
+Event: SCP presents: Nolephant
+Date: 2019-04-06
+Venue: The Abbey Pub & Grub
+Artists: DJ Encounter
+City: Wisconsin
+URL: https://ra.co/events/1248706
+Attending: 2
+
+---
+
+Event: Jams with Cromie
+Date: 2019-04-13
+Venue: Robinia Courtyard
+Artists: Cromie
+City: Wisconsin
+URL: https://ra.co/events/1250683
+Attending: 2
+
+---
+
+Event: Yheti & Nastynasty - Night One
+Date: 2019-04-13
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/1240337
+Attending: 2
+
+---
+
+Event: Yheti & Nastynasty - Night Two
+Date: 2019-04-14
+Venue: Miramar Theatre
+City: Wisconsin
+URL: https://ra.co/events/1240339
+Attending: 2
+
+---
+
+Event: DF7
+Date: 2019-04-19
+Venue: TBA - Wisconsin
+City: Wisconsin
+URL: https://ra.co/events/1240187
+Attending: 1
+
+---
+
+Event: Yheti & Nastynasty
+Date: 2019-05-01
+Venue: The Annex
+City: Wisconsin
+URL: https://ra.co/events/1240677
+Attending: 3
+
+---
+
+Event: Jams - Harry Cross
+Date: 2019-05-18
+Venue: Robinia Courtyard
+Artists: Harry Cross, The Hermit, MCG
+City: Wisconsin
+URL: https://ra.co/events/1256111
+Attending: 3
+
+---
+
+Event: Jams - Francis Inferno Orchestra
+Date: 2019-06-15
+Venue: Robinia Courtyard
+Artists: Francis Inferno Orchestra, Home Team
+City: Wisconsin
+URL: https://ra.co/events/1271131
+Attending: 4
+
+---
+
+Event: DJ Summit Apex Challenge
+Date: 2019-07-05
+Venue: Liquid Madison
+Artists: AL GROOVE
+City: Wisconsin
+URL: https://ra.co/events/1287538
+Attending: 1
+
+---
+
+Event: Sunday Jams - Sandboards
+Date: 2019-07-07
+Venue: Robinia Courtyard
+Artists: Sandboards, Tamahori, MCG, Natural Language
+City: Wisconsin
+URL: https://ra.co/events/1282926
+Attending: 4
+
+---
+
+Event: Musique Electronique
+Date: 2019-07-12
+Venue: The High Noon Saloon
+Artists: Stacey Pullen, Umfang, Turtle Bugg, Sassmouth, Golden Donna, The Hermit, Tinhead
+City: Wisconsin
+URL: https://ra.co/events/1250168
+Attending: 21
+
+---
+
+Event: Local Jams
+Date: 2019-07-20
+Venue: Robinia Courtyard
+Artists: Natural Language, MCG
+City: Wisconsin
+URL: https://ra.co/events/1282932
+Attending: 3
+
+---
+
+Event: Doormouse & Anonymous // The Demix // Black Lines, Din Sky
+Date: 2019-07-27
+Venue: Club Garibaldis
+Artists: Doormouse, The Demix
+City: Wisconsin
+URL: https://ra.co/events/1274000
+Attending: 5
+
+---
+
+Event: The Bassment Series: Episode 19
+Date: 2019-07-27
+Venue: John's Bar
+Artists: DJ Encounter
+City: Wisconsin
+URL: https://ra.co/events/1285260
+Attending: 1
+
+---
+
+Event: Ame's Official Even Furthur Pre-Party Feat. Alberto Ruiz
+Date: 2019-08-02
+Venue: Studio 200
+Artists: Alberto Ruiz, PALMA, AZA
+City: Wisconsin
+URL: https://ra.co/events/1278484
+Attending: 6
+
+---
+
+Event: Even Furthur 2019
+Date: 2019-08-08
+Venue: Highbridge Hills Sports Complex
+Artists: The Mover, Woody McBride, DJ Hyperactive, DVS1, Ray Keith, Joe Nice, Volvox, Erika, Baseck, Felisha Ledesma, Paul Birken, Marc Acardipane, Burn Baby, Voltron, Dustin Zahn, Centrific, Christian James, Sari Postol, T.Linder, Andy Fitton, Nigel Richards, Tommie Sunshine, DJ Frenchy, Audio Soul Project, Jonn Hawley, USUK, Bombardier, Michael Wenz, Pete Board, Mike Wlkr, Paul Johnson, Jerome Baker, Lester Fitzpatrick, Robert Armani, Tim Baker, Derek Specs, Twitchin Skratch, Theodore, Decibel, Virgo, Wissota, The Demix, idiom, DICA (FR), Dustmite, The Hermit, Andrew Emil, Daniel Paul Cortez, Devil Girl, Miss Elaine Eos, Julian Rivera, Mojave, Jason Healey
+City: Wisconsin
+URL: https://ra.co/events/1260394
+Attending: 21
+
+---
+
+Event: Absorb presents Dani Marcu
+Date: 2019-08-11
+Venue: The Cooperage
+Artists: Dani Marcu, Hunter Sanchez
+City: Wisconsin
+URL: https://ra.co/events/1300520
+Attending: 2
+
+---
+
+Event: Jams - Seb Wildblood
+Date: 2019-08-17
+Venue: Robinia Courtyard
+Artists: Seb Wildblood, Ben Silver, MCG
+City: Wisconsin
+URL: https://ra.co/events/1270609
+Attending: 6
+
+---
+
+Event: Flying Lotus
+Date: 2019-08-21
+Venue: The Sylvee
+Artists: Flying Lotus
+City: Wisconsin
+URL: https://ra.co/events/1264983
+Attending: 2
+
+---
+
+Event: Willy Street Beats
+Date: 2019-09-14
+Venue: The High Noon Saloon
+Artists: Mike Servito, Lauren Flax, Ian Lehman
+City: Wisconsin
+URL: https://ra.co/events/1295368
+Attending: 6
+
+---
+
+Event: Retrospect
+Date: 2019-09-21
+Venue: Studio 200
+Artists: Henry Vengeance, MCG
+City: Wisconsin
+URL: https://ra.co/events/1284958
+Attending: 4
+
+---
+
+Event: Jams - Ali Berger
+Date: 2019-09-28
+Venue: Robinia Courtyard
+Artists: Ali Berger
+City: Wisconsin
+URL: https://ra.co/events/1296711
+Attending: 2
+
+---
+
+Event: Tropical Futurism
+Date: 2019-10-05
+Venue: Robinia Courtyard
+Artists: Bumbac Joe, Color Swim
+City: Wisconsin
+URL: https://ra.co/events/1320616
+Attending: 2
+
+---
+
+Event: Retrospect Jungle Edition v4 Feat. DJ Hook (Chi)
+Date: 2019-10-19
+Venue: Studio 200
+Artists: The Hermit
+City: Wisconsin
+URL: https://ra.co/events/1328818
+Attending: 1
+
+---
+
+Event: Snake On The Lake
+Date: 2019-10-19
+Venue: The Sett, Union South
+Artists: Sage Caswell, DJ Taye, Delano Smith
+City: Wisconsin
+URL: https://ra.co/events/1334177
+Attending: 1
+
+---
+
+Event: Trauma
+Date: 2019-10-25
+Venue: Robinia Courtyard
+Artists: Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1333742
+Attending: 2
+
+---
+
+Event: Sitemare: Nero [at] SITE 1A
+Date: 2019-10-31
+Venue: Site 1A
+City: Wisconsin
+URL: https://ra.co/events/1336433
+Attending: 1
+
+---
+
+Event: Tropical Futurism with Bumbac Joe
+Date: 2019-11-02
+Venue: Robinia Courtyard
+Artists: Bumbac Joe
+City: Wisconsin
+URL: https://ra.co/events/1339526
+
+---
+
+Event: Jams - Leesh
+Date: 2019-12-14
+Venue: Robinia Courtyard
+Artists: Leesh
+City: Wisconsin
+URL: https://ra.co/events/1347367
+Attending: 3
+
+---
+
+Event: Dubndoom: Year Zero with Dela (Mindshake Records) / Selector Max / Bvdvpple
+Date: 2019-12-20
+Venue: Bremen Cafe
+Artists: Dela
+City: Wisconsin
+URL: https://ra.co/events/1358127
+Attending: 1
+
+---
+
+Event: Futures Past - Darkness in the Light: NYE 2020 MKE
+Date: 2019-12-31
+Venue: Walker's Point Music Hall
+Artists: Black Asteroid, Anthony Jimenez, Teri Bristol, Chris Grant, Mark Angel
+City: Wisconsin
+URL: https://ra.co/events/1357895
+Attending: 4
+
+---
+
+Event: Jams - Flower Food
+Date: 2020-01-18
+Venue: Robinia Courtyard
+Artists: flower food, DJ UMI
+City: Wisconsin
+URL: https://ra.co/events/1368345
+Attending: 2
+
+---
+
+Event: Retrospect Drum & Bass Edition
+Date: 2020-01-25
+Venue: Studio 200
+Artists: The Hermit
+City: Wisconsin
+URL: https://ra.co/events/1376973
+Attending: 1
+
+---
+
+Event: Octo Octa B2B Eris Drew with Ariel Zetina
+Date: 2020-01-31
+Venue: The Sett, Union South
+Artists: Ariel Zetina, Eris Drew, Octo Octa
+City: Wisconsin
+URL: https://ra.co/events/1361855
+Attending: 8
+
+---
+
+Event: Shiba San
+Date: 2020-02-21
+Venue: Liquid Madison
+Artists: Shiba San
+City: Wisconsin
+URL: https://ra.co/events/1378729
+Attending: 3
+
+---
+
+Event: Jams - JKriv
+Date: 2020-02-22
+Venue: Robinia Courtyard
+Artists: JKriv, MCG
+City: Wisconsin
+URL: https://ra.co/events/1368347
+Attending: 2
+
+---
+
+Event: Guest Pass DJ Event Series
+Date: 2020-02-22
+Venue: TBA - The Root Note
+Artists: DJ Encounter, Ross Mt. Park
+City: Wisconsin
+URL: https://ra.co/events/1733609
+
+---
+
+Event: Bremenhain feat. Monix with Support From Xexyz and RYN
+Date: 2020-02-28
+Venue: Bremen Cafe
+Artists: Monix, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1397484
+Attending: 1
+
+---
+
+Event: Stellar Spark Events and Massive present: Bad Boy Bill - The Return of The Bassment
+Date: 2020-03-07
+Venue: The Rave/Eagles Club
+Artists: The Bassment, Bad Boy Bill
+City: Wisconsin
+URL: https://ra.co/events/1400282
+Attending: 1
+
+---
+
+Event: Cancelled: Jams - Davis Galvin
+Date: 2020-03-21
+Venue: Robinia Courtyard
+Artists: Davis Galvin, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1380404
+Attending: 2
+
+---
+
+Event: Local Jams
+Date: 2020-04-25
+Venue: Robinia Courtyard
+Artists: MCG, DJ UMI
+City: Wisconsin
+URL: https://ra.co/events/1403430
+Attending: 2
+
+---
+
+Event: 2shortspalooza
+Date: 2020-08-08
+Venue: Jefferson Wisconsin Festival
+Artists: Dahnéza, Joey Russo
+City: Wisconsin
+URL: https://ra.co/events/1436559
+
+---
+
+Event: [RESCHEDULED] Fleetmac Wood presents Rumours Rave - Milwaukee
+Date: 2020-12-11
+Venue: Site 1A
+Artists: Fleetmac Wood, Roxanne Roll, Smooth Sailing
+City: Wisconsin
+URL: https://ra.co/events/1400325
+Attending: 10
+
+---
+
+Event: Remain in Night
+Date: 2021-07-10
+Venue: The High Noon Saloon
+Artists: Patrick Russell, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1450404
+Attending: 1
+
+---
+
+Event: Tropical Futurism
+Date: 2021-08-06
+Venue: Robinia Courtyard
+Artists: Bumbac Joe
+City: Wisconsin
+URL: https://ra.co/events/1454663
+
+---
+
+Event: Pulse at Bremen with Shaun J. Wright
+Date: 2021-08-13
+Venue: Bremen Cafe
+Artists: Shaun J. Wright, Kitty Spit, honeyboy
+City: Wisconsin
+URL: https://ra.co/events/1450384
+Attending: 1
+
+---
+
+Event: Shiba San
+Date: 2021-08-21
+Venue: The Rave/Eagles Club
+Artists: Shiba San, LP Giobbi
+City: Wisconsin
+URL: https://ra.co/events/1450084
+Attending: 1
+
+---
+
+Event: Tropical Futurism
+Date: 2021-09-04
+Venue: Robinia Courtyard
+Artists: Bumbac Joe
+City: Wisconsin
+URL: https://ra.co/events/1459438
+Attending: 1
+
+---
+
+Event: Willy Street Beats 10 Year Celebration
+Date: 2021-09-18
+Venue: The High Noon Saloon
+Artists: Fred P, DJ Nola, Home Team, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1458195
+Attending: 2
+
+---
+
+Event: Friday Night Retro Dance Party (DJ Andrew Optimist)
+Date: 2021-11-19
+Venue: Mad Planet
+City: Wisconsin
+URL: https://ra.co/events/1479475
+Attending: 1
+
+---
+
+Event: Oh! You Pretty Things! New Year's Eve
+Date: 2021-12-31
+Venue: Quarters
+Artists: follidh, Kitty Spit, The Hermit, Curator Kitty
+City: Wisconsin
+URL: https://ra.co/events/1485388
+Attending: 3
+
+---
+
+Event: Remain In Night
+Date: 2022-02-19
+Venue: The High Noon Saloon
+Artists: Volvox, Antenes
+City: Wisconsin
+URL: https://ra.co/events/1494678
+Attending: 1
+
+---
+
+Event: Lake EFX Day Party
+Date: 2022-02-26
+Venue: The Cooperage
+City: Wisconsin
+URL: https://ra.co/events/1489406
+Attending: 2
+
+---
+
+Event: LUST
+Date: 2022-03-12
+Venue: Quarters
+Artists: Henry Vengeance
+City: Wisconsin
+URL: https://ra.co/events/1516202
+
+---
+
+Event: Pulse presents D. Strange [LIVE]
+Date: 2022-04-16
+Venue: Quarter's Rock n Roll Palace
+Artists: D. Strange, Kitty Spit, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1515439
+Attending: 1
+
+---
+
+Event: Gene Farris
+Date: 2022-04-22
+Venue: Miramar Theatre
+Artists: Gene Farris
+City: Wisconsin
+URL: https://ra.co/events/1526919
+
+---
+
+Event: Cultivate.034 - Garrett David b2b Home Team
+Date: 2022-04-23
+Venue: Electric Lounge
+Artists: Garrett David, Home Team
+City: Wisconsin
+URL: https://ra.co/events/1518624
+Attending: 1
+
+---
+
+Event: JAMS - follidh
+Date: 2022-04-30
+Venue: Robinia Courtyard
+Artists: Natural Language
+City: Wisconsin
+URL: https://ra.co/events/1522136
+Attending: 2
+
+---
+
+Event: PULSE with BRAULIO [LIVE] // Xexyz [LIVE] // JULES b2b MIKA
+Date: 2022-05-21
+Venue: Quarters
+Artists: Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1529909
+Attending: 2
+
+---
+
+Event: Vinyl and Bass, First Fridays: June 3 with Gettoblaster
+Date: 2022-06-03
+Venue: The Crucible
+Artists: Gettoblaster
+City: Wisconsin
+URL: https://ra.co/events/1536921
+
+---
+
+Event: PULSE w// Boo Lean // Clownbaby // Xexyz
+Date: 2022-06-18
+Venue: Quarters
+Artists: Boo Lean, Clownbaby, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1532422
+Attending: 4
+
+---
+
+Event: Pulse 1-Year Anniversary Kadish Park Jam & Mad Planet After-Party
+Date: 2022-06-25
+Venue: Mad Planet
+Artists: Ilana Ariella, Nuvoq, honeyboy
+City: Wisconsin
+URL: https://ra.co/events/1551893
+Attending: 1
+
+---
+
+Event: Musique Électronique v10
+Date: 2022-07-15
+Venue: The High Noon Saloon
+Artists: Kenny Dope, Freddy K, Chez Damier, Danny Daze, DJ Minx, Overland, Boo Lean, flower food, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1514277
+Attending: 13
+
+---
+
+Event: PULSE with Kobe Dupree // Jeremiah Meece // Maze
+Date: 2022-07-23
+Venue: Quarters
+Artists: Kobe Dupree, Jeremiah Meece
+City: Wisconsin
+URL: https://ra.co/events/1558034
+Attending: 1
+
+---
+
+Event: JAMS - Peter Croce
+Date: 2022-07-30
+Venue: Robinia Courtyard
+Artists: Peter Croce, MCG
+City: Wisconsin
+URL: https://ra.co/events/1557394
+Attending: 1
+
+---
+
+Event: Pulse with Lorna Dune, Keith Sweaty, T-Dizzle, Steb, Boosquad
+Date: 2022-08-14
+Venue: The Cooperage
+Artists: Lorna Dune
+City: Wisconsin
+URL: https://ra.co/events/1570111
+Attending: 2
+
+---
+
+Event: PULSE with Sard [LIVE] // Kona FM // D. Strange // JULES
+Date: 2022-08-20
+Venue: Quarters
+Artists: Sard, Kona FM, D. Strange
+City: Wisconsin
+URL: https://ra.co/events/1570118
+Attending: 4
+
+---
+
+Event: JAMS - Michael Serafini
+Date: 2022-08-20
+Venue: Robinia Courtyard
+Artists: Michael Serafini
+City: Wisconsin
+URL: https://ra.co/events/1561680
+
+---
+
+Event: Vinyl Eyes: Bottoni: J3: The Hermit: Jason Bentley
+Date: 2022-09-02
+Venue: The Crucible
+Artists: The Hermit
+City: Wisconsin
+URL: https://ra.co/events/1574694
+Attending: 1
+
+---
+
+Event: Issa Party Presents: Jana Rush • Cid Ikarus • Liquid City Motors • Julio Córdova
+Date: 2022-09-03
+Venue: Cactus Club
+Artists: Jana Rush, Liquid City Motors
+City: Wisconsin
+URL: https://ra.co/events/1568399
+Attending: 3
+
+---
+
+Event: PULSE with 2Lanes [LIVE] / Kitty Spit / frail808 / Clownbaby
+Date: 2022-09-17
+Venue: Quarters
+Artists: 2Lanes, Kitty Spit, Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1577335
+Attending: 2
+
+---
+
+Event: JAMS - Christian James
+Date: 2022-09-24
+Venue: Robinia Courtyard
+Artists: Christian James, MCG
+City: Wisconsin
+URL: https://ra.co/events/1581233
+Attending: 1
+
+---
+
+Event: PULSE with FUJ / Cid Ikarus / Xexyz (DJ set) / Mika
+Date: 2022-10-15
+Venue: Quarters
+Artists: Cid Ikarus, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1597538
+Attending: 1
+
+---
+
+Event: JAMS - flower food
+Date: 2022-10-22
+Venue: Robinia Courtyard
+Artists: flower food, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1601195
+
+---
+
+Event: PULSE presents - HALLOWEEN at BOUNCE MILWAUKEE
+Date: 2022-10-28
+Venue: TBA
+Artists: Ian Lehman, Kona FM, Kitty Spit, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1605824
+Attending: 2
+
+---
+
+Event: Remain in Night
+Date: 2022-11-12
+Venue: The High Noon Saloon
+Artists: Mike Servito, Carlos Souffront, Fabiola, Lorelei
+City: Wisconsin
+URL: https://ra.co/events/1598843
+Attending: 11
+
+---
+
+Event: PULSE with Sevron / Chachi Guerrero / JULES
+Date: 2022-11-19
+Venue: Quarters
+Artists: Sevron, Chachi Guerrero
+City: Wisconsin
+URL: https://ra.co/events/1613701
+Attending: 3
+
+---
+
+Event: PULSE with Lychee / Leesh / Kitty Spit
+Date: 2022-12-17
+Venue: Quarters
+Artists: Lychee, Leesh, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1620310
+Attending: 2
+
+---
+
+Event: MELT on XMAS EVE
+Date: 2022-12-24
+Venue: Quarters
+Artists: The Demix
+City: Wisconsin
+URL: https://ra.co/events/1631887
+
+---
+
+Event: Repent NYE: Sinners Welcome ft Frankie Bones, Nikki Nair & CPTL PNSHMNT
+Date: 2022-12-30
+Venue: TBA
+Artists: Frankie Bones, Nikki Nair, Mizeyesis, Jerome Baker, Microdot, AXION, OTTO (2), Evil Twin
+City: Wisconsin
+URL: https://ra.co/events/1633516
+
+---
+
+Event: PULSE with J37H3R [LIVE] / MIKA / T-DIZZLE / STEB
+Date: 2023-01-07
+Venue: Quarters
+City: Wisconsin
+URL: https://ra.co/events/1637818
+Attending: 1
+
+---
+
+Event: MELT: Niki Kitz, Delilac, The Demix
+Date: 2023-01-28
+Venue: Quarters
+Artists: Niki Kitz, The Demix
+City: Wisconsin
+URL: https://ra.co/events/1643720
+Attending: 2
+
+---
+
+Event: PULSE with Alejandro Marenco / DJ Chia Pudding / Mika
+Date: 2023-02-04
+Venue: Quarters
+Artists: Alejandro Marenco, DJ Chia Pudding
+City: Wisconsin
+URL: https://ra.co/events/1650324
+Attending: 1
+
+---
+
+Event: Remain in Night
+Date: 2023-02-18
+Venue: The High Noon Saloon
+Artists: Akua, Juana, Sassmouth
+City: Wisconsin
+URL: https://ra.co/events/1637159
+Attending: 6
+
+---
+
+Event: PULSE at TIMBUKTU with D. Strange / Kitty Spit / Clownbaby / Xexyz / Jules / Mika
+Date: 2023-02-18
+Venue: Club Timbuktu
+Artists: D. Strange, Kitty Spit, Clownbaby, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1650325
+Attending: 2
+
+---
+
+Event: Doormouse / DJ SPEEDSICK / The Demix
+Date: 2023-02-25
+Venue: X-Ray Arcade
+Artists: Doormouse, DJ Speedsick, The Demix
+City: Wisconsin
+URL: https://ra.co/events/1643727
+Attending: 1
+
+---
+
+Event: Cactus Club + Club Ritual Present: Mall Grab
+Date: 2023-03-02
+Venue: Cactus Club
+Artists: Mall Grab, Angelia Word
+City: Wisconsin
+URL: https://ra.co/events/1646085
+Attending: 9
+
+---
+
+Event: PULSE with Miss Twink USA / Niiiiggggaaaaa / Molly Millions
+Date: 2023-03-04
+Venue: Quarters
+Artists: Miss Twink USA, Niiiiggggaaaaa
+City: Wisconsin
+URL: https://ra.co/events/1661747
+Attending: 2
+
+---
+
+Event: MELT: Antisummer Club SPC-700 Release Event
+Date: 2023-03-25
+Venue: Quarters
+Artists: Nullsleep, The Demix
+City: Wisconsin
+URL: https://ra.co/events/1673052
+
+---
+
+Event: Pulse x Golfshoe Music [LIVE]
+Date: 2023-04-01
+Venue: Quarters
+Artists: Tarek Sabbar
+City: Wisconsin
+URL: https://ra.co/events/1672433
+Attending: 1
+
+---
+
+Event: PULSE with Lorelei + Fabiola / Xexyz
+Date: 2023-05-06
+Venue: Quarters
+Artists: Lorelei, Fabiola, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1690543
+Attending: 3
+
+---
+
+Event: JAMS - Daisychain: 5 Years of Rave
+Date: 2023-05-20
+Venue: Robinia Courtyard
+Artists: Leesh, cay horiuchi
+City: Wisconsin
+URL: https://ra.co/events/1704545
+Attending: 3
+
+---
+
+Event: PULSE with MIKA, T-DIZZLE & CALAHAN
+Date: 2023-06-03
+Venue: Quarters
+Artists: Mika (2)
+City: Wisconsin
+URL: https://ra.co/events/1708771
+Attending: 2
+
+---
+
+Event: AUGUST AUX
+Date: 2023-06-10
+Venue: Robinia Courtyard
+Artists: Paul Gordon, Samuel Wallner, Ido Haber
+City: Wisconsin
+URL: https://ra.co/events/1717429
+Attending: 3
+
+---
+
+Event: A Spring Thingamajing - Ft. Drumcell (Los Angeles)
+Date: 2023-06-10
+Venue: TBA - Electric Lounge - 405 E Parkway Ave - Oshkosh, WI. 
+City: Wisconsin
+URL: https://ra.co/events/1684559
+Attending: 1
+
+---
+
+Event: JAMS - El Niño Indigo
+Date: 2023-06-17
+Venue: Robinia Courtyard
+Artists: El Niño indigo, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/1720583
+Attending: 2
+
+---
+
+Event: PULSE Two-Year Anniversary
+Date: 2023-06-18
+Venue: Kadish Park
+Artists: frail808, Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1724127
+Attending: 1
+
+---
+
+Event: PULSE with Tammy Lakkis / Hot Science [Live] / Mika
+Date: 2023-07-01
+Venue: Quarters
+Artists: Tammy Lakkis, Mika (2)
+City: Wisconsin
+URL: https://ra.co/events/1729641
+Attending: 2
+
+---
+
+Event: Musique Électronique
+Date: 2023-07-14
+Venue: The High Noon Saloon
+Artists: DJ Bone, DJ Sneak, DVS1, Kai Alce, LADYMONIX, Powder
+City: Wisconsin
+URL: https://ra.co/events/1680555
+Attending: 27
+
+---
+
+Event: PULSE! 2-YEAR ANNIVERSARY
+Date: 2023-07-15
+Venue: Mad Planet
+Artists: frail808, Mika (2)
+City: Wisconsin
+URL: https://ra.co/events/1730460
+Attending: 1
+
+---
+
+Event: AUXILIARY
+Date: 2023-07-20
+Venue: Robinia Courtyard
+Artists: Samuel Wallner
+City: Wisconsin
+URL: https://ra.co/events/1756059
+
+---
+
+Event: JAMS - Lorelei
+Date: 2023-07-22
+Venue: Robinia Courtyard
+Artists: Lorelei
+City: Wisconsin
+URL: https://ra.co/events/1741436
+
+---
+
+Event: PULSE with Clarisa Kimskii / Kitty Spit / Mika
+Date: 2023-08-05
+Venue: Quarters
+Artists: Clarisa Kimskii, Kitty Spit, Mika (2)
+City: Wisconsin
+URL: https://ra.co/events/1736372
+Attending: 4
+
+---
+
+Event: AUXILIARY
+Date: 2023-08-05
+Venue: Robinia Courtyard
+Artists: Ido Haber, Access Granted
+City: Wisconsin
+URL: https://ra.co/events/1756060
+
+---
+
+Event: JAMS with Natural Language
+Date: 2023-08-12
+Venue: Robinia Courtyard
+City: Wisconsin
+URL: https://ra.co/events/1750230
+Attending: 3
+
+---
+
+Event: SV + CC PRESENT: p1nkstar - Agua de Rosas - Jenniferfauxxpez
+Date: 2023-08-25
+Venue: Cactus Club
+Artists: p1nkstar, J. Córdova, karennoid
+City: Wisconsin
+URL: https://ra.co/events/1759083
+Attending: 1
+
+---
+
+Event: PULSE with Huey Mnemonic / Adrian More / Mika
+Date: 2023-09-09
+Venue: Quarters
+Artists: Huey Mnemonic, Adrian More, Mika (2)
+City: Wisconsin
+URL: https://ra.co/events/1754247
+Attending: 6
+
+---
+
+Event: 909 DAY MKE // GEIN, IDIOM, DANKIN, The Demix, Doormouse
+Date: 2023-09-09
+Venue: TBA - it's at X-Ray Arcade
+Artists: idiom, The Demix, Doormouse
+City: Wisconsin
+URL: https://ra.co/events/1735896
+Attending: 4
+
+---
+
+Event: Willy Street Beats at The Willy Street Fair
+Date: 2023-09-16
+Venue: The High Noon Saloon
+Artists: DJ Minx, Ron Like Hell, Sam Link
+City: Wisconsin
+URL: https://ra.co/events/1759030
+Attending: 8
+
+---
+
+Event: AUXILIARY
+Date: 2023-09-28
+Venue: Cardinal Bar
+Artists: Ido Haber
+City: Wisconsin
+URL: https://ra.co/events/1785717
+
+---
+
+Event: AUXILIARY
+Date: 2023-10-12
+Venue: Robinia Courtyard
+Artists: missmittens, Golden Donna
+City: Wisconsin
+URL: https://ra.co/events/1785719
+Attending: 1
+
+---
+
+Event: AUXILIARY
+Date: 2023-10-13
+Venue: Robinia Courtyard
+Artists: Golden Donna
+City: Wisconsin
+URL: https://ra.co/events/1788081
+Attending: 2
+
+---
+
+Event: JAMS - Home Team
+Date: 2023-10-21
+Venue: Robinia Courtyard
+Artists: Home Team
+City: Wisconsin
+URL: https://ra.co/events/1790537
+
+---
+
+Event: hot@nite freakshow
+Date: 2023-10-27
+Venue: Cardinal Bar
+Artists: missmittens
+City: Wisconsin
+URL: https://ra.co/events/1790962
+Attending: 2
+
+---
+
+Event: JAMS - Steve Noah
+Date: 2023-11-04
+Venue: Robinia Courtyard
+Artists: Steve Noah, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1796130
+Attending: 4
+
+---
+
+Event: Remain in Night
+Date: 2023-11-18
+Venue: The High Noon Saloon
+Artists: Function, Antenes
+City: Wisconsin
+URL: https://ra.co/events/1779170
+Attending: 10
+
+---
+
+Event: umru ᴠs Petal Supply: Tour-Based Combatᴺᴬ
+Date: 2023-11-18
+Venue: Cactus Club
+Artists: umru, Petal Supply
+City: Wisconsin
+URL: https://ra.co/events/1797795
+Attending: 3
+
+---
+
+Event: AUGUST AUX 028
+Date: 2023-11-25
+Venue: Robinia Courtyard
+Artists: Samuel Wallner
+City: Wisconsin
+URL: https://ra.co/events/1810233
+Attending: 1
+
+---
+
+Event: Midwest Freaks
+Date: 2023-12-09
+Venue: TBA - Madison Area Warehouse
+Artists: AZA, BMG, Centrific, Erika, Kitty Spit, Lonefront, Scott Zacharias
+City: Wisconsin
+URL: https://ra.co/events/1791679
+Attending: 400
+
+---
+
+Event: HOT NEW YEAR
+Date: 2023-12-31
+Venue: Cardinal Bar
+Artists: missmittens
+City: Wisconsin
+URL: https://ra.co/events/1834793
+
+---
+
+Event: System Reboot 03 feat. Kitty Spit, Liquid City Motors, Stecks
+Date: 2024-01-13
+Venue: TBA - 701 E Center St, Milwaukee, WI 
+Artists: Kitty Spit, Liquid City Motors, Stecks
+City: Wisconsin
+URL: https://ra.co/events/1831535
+Attending: 20
+
+---
+
+Event: kinoaudio
+Date: 2024-02-03
+Venue: TBA - 701 E Center St, Milwaukee, WI 
+Artists: tori drake, DATAEXIT, Stecks, Access Granted
+City: Wisconsin
+URL: https://ra.co/events/1839559
+Attending: 7
+
+---
+
+Event: System Reboot 04 feat. Josh Tong, Stecks, Warmcore
+Date: 2024-02-10
+Venue: TBA - 701 E Center St
+Artists: Josh Tong, Stecks
+City: Wisconsin
+URL: https://ra.co/events/1846362
+Attending: 30
+
+---
+
+Event: 6 Years of Agua de Rosas – MJ Nebreda
+Date: 2024-02-10
+Venue: Cactus Club
+Artists: MJ Nebreda, karennoid, J. Córdova, DJ Aguara'i
+City: Wisconsin
+URL: https://ra.co/events/1847141
+Attending: 1
+
+---
+
+Event: JAMS - Ricardo Roessel
+Date: 2024-02-17
+Venue: Robinia Courtyard
+Artists: Ricardo Roessel, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/1856169
+Attending: 6
+
+---
+
+Event: Remain in Night
+Date: 2024-02-24
+Venue: The High Noon Saloon
+Artists: Overland, Darwin, Patrick Russell
+City: Wisconsin
+URL: https://ra.co/events/1834571
+Attending: 16
+
+---
+
+Event: HOUSE PARTY
+Date: 2024-02-24
+Venue: Robinia Courtyard
+Artists: missmittens
+City: Wisconsin
+URL: https://ra.co/events/1853981
+Attending: 2
+
+---
+
+Event: RDPW presents: Smöl Moon Party
+Date: 2024-02-24
+Venue: TBA - High Dive Milwaukee
+City: Wisconsin
+URL: https://ra.co/events/1869982
+
+---
+
+Event: kinoaudio
+Date: 2024-03-02
+Venue: TBA - 701 E Center St, Milwaukee
+Artists: Moorhaus, DATAEXIT, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/1861402
+Attending: 5
+
+---
+
+Event: System Reboot 05 - Cultivate Showcase
+Date: 2024-03-09
+Venue: TBA - 701 E Center
+Artists: Home Team, Access Granted, Stecks
+City: Wisconsin
+URL: https://ra.co/events/1867326
+Attending: 4
+
+---
+
+Event: MELT: The Demix 'ARRIVAL' RELEASE EVENT
+Date: 2024-03-30
+Venue: Club Garibaldis
+Artists: The Demix
+City: Wisconsin
+URL: https://ra.co/events/1880791
+Attending: 3
+
+---
+
+Event: Doormouse, Gartex, Care Online, The Demix
+Date: 2024-04-05
+Venue: TBA - Bremen Cafe
+City: Wisconsin
+URL: https://ra.co/events/1880051
+Attending: 72
+
+---
+
+Event: JUST ACID. | POSTHUMAN | APRIL 6 MILWAUKEE
+Date: 2024-04-06
+Venue: TBA - Milwaukee
+Artists: Posthuman, Autokinetic, DJ Warp, Stecks
+City: Wisconsin
+URL: https://ra.co/events/1877069
+Attending: 20
+
+---
+
+Event: System Reboot 06 feat. Xexyz, S.Lyre, Mina Mills, Care Online
+Date: 2024-04-13
+Venue: TBA - 701 E Center
+Artists: Xexyz, Mina Mills
+City: Wisconsin
+URL: https://ra.co/events/1883941
+Attending: 10
+
+---
+
+Event: System Reboot 06
+Date: 2024-04-13
+Venue: High Dive
+Artists: Xexyz, Mina Mills
+City: Wisconsin
+URL: https://ra.co/events/1902058
+Attending: 3
+
+---
+
+Event: I <3 BPPPM
+Date: 2024-04-19
+Venue: Quarters
+Artists: Bryak
+City: Wisconsin
+URL: https://ra.co/events/1887836
+Attending: 14
+
+---
+
+Event: JAMS - Chrissy 4/20 Special!
+Date: 2024-04-20
+Venue: Robinia Courtyard
+Artists: Chrissy, Home Team
+City: Wisconsin
+URL: https://ra.co/events/1903010
+Attending: 4
+
+---
+
+Event: Left Foot Forward with Angelia Word
+Date: 2024-04-27
+Venue: Robinia Courtyard
+Artists: Angelia Word, Clownbaby
+City: Wisconsin
+URL: https://ra.co/events/1884168
+Attending: 47
+
+---
+
+Event: kino volume 3
+Date: 2024-04-27
+Venue: High Dive
+Artists: Chadnorlondo, ZER0 L0AN$, Access Granted
+City: Wisconsin
+URL: https://ra.co/events/1900256
+Attending: 7
+
+---
+
+Event: MAYDAY w/ ADAM X + MORE
+Date: 2024-05-04
+Venue: TBA
+Artists: Adam X, Toyacoyah, Merrick Brown
+City: Wisconsin
+URL: https://ra.co/events/1908589
+Attending: 12
+
+---
+
+Event: System Reboot 07 feat. Club Ritual
+Date: 2024-05-04
+Venue: High Dive
+Artists: Asher Gray, Stecks
+City: Wisconsin
+URL: https://ra.co/events/1914324
+Attending: 4
+
+---
+
+Event: All Vinyl, All Night
+Date: 2024-05-17
+Venue: Cardinal Bar
+Artists: DJ DH
+City: Wisconsin
+URL: https://ra.co/events/1923067
+Attending: 1
+
+---
+
+Event: Otto Von Schirach, Doormouse, The Demix
+Date: 2024-05-18
+Venue: X-Ray Arcade
+Artists: Otto Von Schirach, Doormouse, The Demix
+City: Wisconsin
+URL: https://ra.co/events/1880788
+Attending: 5
+
+---
+
+Event: kino volume 4
+Date: 2024-05-25
+Venue: High Dive
+City: Wisconsin
+URL: https://ra.co/events/1922110
+Attending: 3
+
+---
+
+Event: KINO PRESENTS: A TRIP TO THE MOON
+Date: 2024-06-15
+Venue: TBA - 2220 N Farwell Ave
+Artists: Moorhaus, Fusegrade
+City: Wisconsin
+URL: https://ra.co/events/1923667
+Attending: 3
+
+---
+
+Event: Club Ritual Summer Soulstice
+Date: 2024-06-15
+Venue: Black Cat Alley
+City: Wisconsin
+URL: https://ra.co/events/1945761
+
+---
+
+Event: Rapid Fire 12: Lose Yourself
+Date: 2024-06-20
+Venue: The Crucible
+Artists: DJ Acey
+City: Wisconsin
+URL: https://ra.co/events/1933019
+Attending: 5
+
+---
+
+Event: System Reboot 08 ft.Techno Temple
+Date: 2024-06-21
+Venue: High Dive
+Artists: operator, Sighmurai
+City: Wisconsin
+URL: https://ra.co/events/1937241
+Attending: 8
+
+---
+
+Event: ONE NIGHT ONLY with DJ Slugo
+Date: 2024-06-22
+Venue: The Crucible
+Artists: DJ Slugo, Brian Gillespie
+City: Wisconsin
+URL: https://ra.co/events/1882946
+Attending: 92
+
+---
+
+Event: 160 Heaters: DJ Manny, DJ Hank in Milwaukee
+Date: 2024-06-22
+Venue: Club Timbuktu
+Artists: DJ Manny, DJ Hank (US), Xavier LeBlanc
+City: Wisconsin
+URL: https://ra.co/events/1935971
+Attending: 2
+
+---
+
+Event: Token Tekno '24
+Date: 2024-06-27
+Venue: Token Creek County Park
+Artists: Angel Alanis, Maria Goetz, Geto Mark, Thrasher
+City: Wisconsin
+URL: https://ra.co/events/1939643
+Attending: 3
+
+---
+
+Event: Summerfest
+Date: 2024-06-27
+Venue: TBA - Henry Maier Festival Park
+Artists: Ian Asher
+City: Wisconsin
+URL: https://ra.co/events/1889342
+
+---
+
+Event: Daydream
+Date: 2024-06-29
+Venue: James Madison Park
+Artists: Home Team, Yukiko, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/1890106
+Attending: 14
+
+---
+
+Event: ARTICULATION.1
+Date: 2024-07-05
+Venue: Gamma Ray Bar
+Artists: Tarek Sabbar
+City: Wisconsin
+URL: https://ra.co/events/1945781
+Attending: 2
+
+---
+
+Event: DECLARE - Jevon Jackson, E-Rock, j37h3r, MICRO HEATHEN
+Date: 2024-07-06
+Venue: Quarters
+Artists: Jevon Jackson, BASSBOSS
+City: Wisconsin
+URL: https://ra.co/events/1944186
+Attending: 4
+
+---
+
+Event: Musique Électronique 2024
+Date: 2024-07-12
+Venue: The High Noon Saloon
+Artists: Luke Slater, Derrick Carter, Rene Wise, Waajeed, JADALAREIGN, Father Dukes, Lonefront
+City: Wisconsin
+URL: https://ra.co/events/1882107
+Attending: 49
+
+---
+
+Event: System Reboot 09
+Date: 2024-07-13
+Venue: High Dive
+Artists: Angelia Word, Vorp, W.T. Snacks
+City: Wisconsin
+URL: https://ra.co/events/1958817
+Attending: 8
+
+---
+
+Event: DETROIT TECHNO MILITIA PRESENTED BY KINO
+Date: 2024-07-13
+Venue: TBA - 2220 N Farwell Ave, Milwaukee, Wisconsin
+Artists: Paul Gordon, Detroit Techno Militia 2x4
+City: Wisconsin
+URL: https://ra.co/events/1963779
+Attending: 2
+
+---
+
+Event: Reciprocal Rhythm 03 - LEFT FOOT FORWARD TAKEOVER: Ian Adkins, Paul Gordon, Moorhaus
+Date: 2024-07-19
+Venue: High Dive
+Artists: Paul Gordon, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/1959238
+Attending: 11
+
+---
+
+Event: kino volume 6
+Date: 2024-07-20
+Venue: High Dive
+Artists: tori drake, Bryak
+City: Wisconsin
+URL: https://ra.co/events/1962350
+Attending: 5
+
+---
+
+Event: JAMS: Fortune
+Date: 2024-07-20
+Venue: Gamma Ray Bar
+Artists: Fortune (US)
+City: Wisconsin
+URL: https://ra.co/events/1962196
+Attending: 4
+
+---
+
+Event: KINO presents: Detroit Techno Militia
+Date: 2024-07-25
+Venue: Landmark Lanes
+Artists: DJ Seoul, T.Linder, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/1964871
+Attending: 6
+
+---
+
+Event: DETROIT TECHNO MILITIA: PRESENTED BY KINO
+Date: 2024-07-25
+Venue: TBA - Landmark Lanes, 2220 N Farwell Ave, Milwaukee
+Artists: Paul Gordon, Detroit Techno Militia 2x4
+City: Wisconsin
+URL: https://ra.co/events/1964867
+Attending: 1
+
+---
+
+Event: Modern Life Records x Symphony of Brotherhood
+Date: 2024-07-26
+Venue: The Mousetrap Tavern
+Artists: andrew baschyn, haute carl
+City: Wisconsin
+URL: https://ra.co/events/1964907
+
+---
+
+Event: Music To Leave Work By
+Date: 2024-08-10
+Venue: Gamma Ray Bar
+Artists: Moorhaus, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/1971519
+Attending: 3
+
+---
+
+Event: Reciprocal Rhythm 04: JJ Illgen, DJ DH, Moorhaus
+Date: 2024-08-16
+Venue: High Dive
+Artists: DJ DH, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/1976636
+Attending: 4
+
+---
+
+Event: JAMS 360 with John Manhard
+Date: 2024-08-17
+Venue: Gamma Ray Bar
+Artists: MCG, QJ (2)
+City: Wisconsin
+URL: https://ra.co/events/1978532
+Attending: 4
+
+---
+
+Event: LFFxRIN presents: Daniel Bell
+Date: 2024-08-24
+Venue: Gamma Ray Bar
+Artists: Daniel Bell
+City: Wisconsin
+URL: https://ra.co/events/1894509
+Attending: 14
+
+---
+
+Event: Summer Sweat
+Date: 2024-08-24
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/1982751
+Attending: 2
+
+---
+
+Event: Big times! Big fun!
+Date: 2024-08-30
+Venue: High Dive
+Artists: Seanni B, Chadnorlondo, DATAEXIT
+City: Wisconsin
+URL: https://ra.co/events/1985418
+Attending: 3
+
+---
+
+Event: KINO VOLUME 7: ASHER GREY, DON BLACK, Stecks
+Date: 2024-08-31
+Venue: Landmark Lanes
+Artists: Asher Gray, Stecks
+City: Wisconsin
+URL: https://ra.co/events/1985993
+Attending: 7
+
+---
+
+Event: SASS-N-KITTIES
+Date: 2024-09-07
+Venue: TBA
+Artists: Esther Dune, Gene Hunt, Josh Tong
+City: Wisconsin
+URL: https://ra.co/events/1981763
+Attending: 18
+
+---
+
+Event: Dreaming of a Disco - Tommaso
+Date: 2024-09-07
+Venue: Cardinal Bar
+Artists: Tommaso (IT), DJ DH, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/1990088
+Attending: 5
+
+---
+
+Event: MELT: Friday the 13th
+Date: 2024-09-13
+Venue: Club Garibaldis
+Artists: The Demix, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/1983528
+Attending: 3
+
+---
+
+Event: Transport
+Date: 2024-09-20
+Venue: Cactus Club
+Artists: Mecániko, Language Models
+City: Wisconsin
+URL: https://ra.co/events/1998420
+Attending: 5
+
+---
+
+Event: Willy Street Beats
+Date: 2024-09-21
+Venue: The High Noon Saloon
+Artists: Mike Servito, livwutang, Shaun J. Wright, Asher Gray
+City: Wisconsin
+URL: https://ra.co/events/1981781
+Attending: 17
+
+---
+
+Event: KINO PRESENTS: GREYSTAR, HYP.EXT, Access Granted, VAUGHN
+Date: 2024-09-21
+Venue: High Dive
+Artists: Access Granted
+City: Wisconsin
+URL: https://ra.co/events/1999731
+Attending: 6
+
+---
+
+Event: Certified Drip
+Date: 2024-09-21
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/2001377
+Attending: 1
+
+---
+
+Event: JAMS
+Date: 2024-09-28
+Venue: Gamma Ray Bar
+Artists: DJ Chia Pudding, Natural Language
+City: Wisconsin
+URL: https://ra.co/events/2002934
+Attending: 4
+
+---
+
+Event: Dancing in September
+Date: 2024-09-28
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/2001383
+
+---
+
+Event: Public Speaking, The Smudge, Lorna Dune
+Date: 2024-09-29
+Venue: TBA - Jazz Gallery Center for the Arts
+Artists: Public Speaking, Lorna Dune
+City: Wisconsin
+URL: https://ra.co/events/1998521
+Attending: 1
+
+---
+
+Event: Reciprocal Rhythm 05: Josh Tong, Moorhaus
+Date: 2024-10-04
+Venue: High Dive
+Artists: Josh Tong, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2007457
+Attending: 7
+
+---
+
+Event: Make My Day
+Date: 2024-10-05
+Venue: Token Creek County Park
+Artists: flower food, Liquid City Motors
+City: Wisconsin
+URL: https://ra.co/events/2010538
+Attending: 2
+
+---
+
+Event: Dreaming of a Disco: DJ DH, Abesm, and Nate Zukas
+Date: 2024-10-11
+Venue: Cardinal Bar
+Artists: DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2016421
+Attending: 1
+
+---
+
+Event: ARTICULATION.2
+Date: 2024-10-12
+Venue: Gamma Ray Bar
+Artists: Tarek Sabbar
+City: Wisconsin
+URL: https://ra.co/events/2002946
+Attending: 2
+
+---
+
+Event: Reciprocal Rhythm 06: Home Team b2b Greyhound (3hr Set), Moorhaus
+Date: 2024-10-18
+Venue: High Dive
+Artists: Home Team, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2019015
+Attending: 2
+
+---
+
+Event: AS ONE featuring DJ DAN **10 Year Anneversary Show**
+Date: 2024-10-19
+Venue: Electric Lounge
+Artists: DJ Dan
+City: Wisconsin
+URL: https://ra.co/events/2021772
+
+---
+
+Event: Power
+Date: 2024-10-20
+Venue: High Dive
+Artists: Kitty Spit, CONFLICT BUREAU
+City: Wisconsin
+URL: https://ra.co/events/2021002
+Attending: 2
+
+---
+
+Event: Gatekeepers
+Date: 2024-10-26
+Venue: Gamma Ray Bar
+Artists: Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/2020997
+Attending: 6
+
+---
+
+Event: Haunted House (music)
+Date: 2024-10-26
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/2025261
+Attending: 3
+
+---
+
+Event: Graveyard - Day Of The Dead
+Date: 2024-11-02
+Venue: TBA
+Artists: Ken Ishii, Doormouse, Traxman, Flores Negras, Phantom 45, Ian Lehman, Moorhaus, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2013861
+Attending: 20
+
+---
+
+Event: THE END presented by Barcode, Club Ritual, & Reciprocal Rhythm
+Date: 2024-11-02
+Venue: Crossroads Collective
+Artists: Asher Gray, Moorhaus, Riptide
+City: Wisconsin
+URL: https://ra.co/events/2025064
+Attending: 2
+
+---
+
+Event: Halloween at High Dive III
+Date: 2024-11-02
+Venue: High Dive
+Artists: DATAEXIT
+City: Wisconsin
+URL: https://ra.co/events/2031366
+Attending: 1
+
+---
+
+Event: Djs At The Polls
+Date: 2024-11-05
+Venue: TBA
+City: Wisconsin
+URL: https://ra.co/events/2034686
+
+---
+
+Event: Dreaming of a Disco - Asher Gray
+Date: 2024-11-08
+Venue: Cardinal Bar
+Artists: Asher Gray, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2028953
+Attending: 2
+
+---
+
+Event: Resonant HIFI
+Date: 2024-11-15
+Venue: High Light Lounge
+City: Wisconsin
+URL: https://ra.co/events/2041389
+Attending: 2
+
+---
+
+Event: ASSORTED FLAVORS | DJ Abilities
+Date: 2024-11-22
+Venue: Gamma Ray Bar
+Artists: Wangzoom
+City: Wisconsin
+URL: https://ra.co/events/2024499
+Attending: 1
+
+---
+
+Event: Transport
+Date: 2024-11-23
+Venue: Cactus Club
+Artists: Language Models
+City: Wisconsin
+URL: https://ra.co/events/2040829
+Attending: 2
+
+---
+
+Event: Submersive Friendsgiving - Featuring Headless Horseman (DJ Set) - [Berlin / Utica]
+Date: 2024-11-23
+Venue: The Crucible
+Artists: Headless Horseman
+City: Wisconsin
+URL: https://ra.co/events/2048818
+Attending: 1
+
+---
+
+Event: Reciprocal Rhythm 07: Twan, Moorhaus
+Date: 2024-11-23
+Venue: High Dive
+Artists: Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2046125
+
+---
+
+Event: System Reboot 1 Year Anniversary
+Date: 2024-11-29
+Venue: High Dive
+Artists: J. Córdova
+City: Wisconsin
+URL: https://ra.co/events/2042642
+Attending: 5
+
+---
+
+Event: Bath 002
+Date: 2024-12-06
+Venue: The Crucible
+Artists: Centrific, Samuel Wallner
+City: Wisconsin
+URL: https://ra.co/events/2023547
+Attending: 11
+
+---
+
+Event: Remain In Night w/ Kerrie & Antenes
+Date: 2024-12-07
+Venue: Gamma Ray Bar
+Artists: Kerrie, Antenes
+City: Wisconsin
+URL: https://ra.co/events/2027916
+Attending: 13
+
+---
+
+Event: Dreaming of a Disco: Greyhound, Paul Gordon, & DJ Yuppie
+Date: 2024-12-13
+Venue: Cardinal Bar
+Artists: Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2055118
+Attending: 2
+
+---
+
+Event: Reciprocal Rhythm 08 - MADISON: Steve Noah, Bledat, Moorhaus b2b Paul Gordon
+Date: 2024-12-14
+Venue: Gamma Ray Bar
+Artists: Steve Noah, Moorhaus, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2050602
+Attending: 7
+
+---
+
+Event: CLUB RITUAL x CACTUS CLUB Pres: B8B
+Date: 2024-12-14
+Venue: Cactus Club
+Artists: Asher Gray, Liquid City Motors, DATAEXIT
+City: Wisconsin
+URL: https://ra.co/events/2061834
+Attending: 2
+
+---
+
+Event: Reciprocal Rhythm takeover @Jiggy Jamz
+Date: 2024-12-14
+Venue: Jiggy Jamz
+Artists: Steve Noah, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2062686
+Attending: 2
+
+---
+
+Event: ECHO 6.0
+Date: 2024-12-20
+Venue: Quarters
+City: Wisconsin
+URL: https://ra.co/events/2086728
+Attending: 1
+
+---
+
+Event: Ho-Ho Home For The Holidays
+Date: 2024-12-21
+Venue: Miramar Theatre
+Artists: Gettoblaster, Frankie Bones, Tommie Sunshine, Blaze Orange, Uriah G
+City: Wisconsin
+URL: https://ra.co/events/2042475
+Attending: 5
+
+---
+
+Event: PRE:PENT | NYEEEE | December 28 Milwaukee
+Date: 2024-12-28
+Venue: TBA - Rock Country MKE
+Artists: Blush Response, Umfang
+City: Wisconsin
+URL: https://ra.co/events/2056121
+Attending: 9
+
+---
+
+Event: Transport: Enterprise
+Date: 2024-12-31
+Venue: Cactus Club
+Artists: Language Models
+City: Wisconsin
+URL: https://ra.co/events/2058125
+Attending: 2
+
+---
+
+Event: Dreaming of a Disco - Natural Language B2B MCGinnis
+Date: 2025-01-10
+Venue: Cardinal Bar
+Artists: McGinnis
+City: Wisconsin
+URL: https://ra.co/events/2070279
+Attending: 4
+
+---
+
+Event: KINO PRESENTS: HEAT
+Date: 2025-01-11
+Venue: Club Timbuktu
+Artists: Kitty Spit, NAILBITER (US)
+City: Wisconsin
+URL: https://ra.co/events/2076140
+Attending: 11
+
+---
+
+Event: Scout's Honor
+Date: 2025-01-11
+Venue: TBA
+Artists: Jerome Baker (US), Microdot, Fortune (US), Andrew Emil
+City: Wisconsin
+URL: https://ra.co/events/2028059
+Attending: 6
+
+---
+
+Event: DJ DH at Nattspil
+Date: 2025-01-16
+Venue: Nattspil
+Artists: DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2080543
+Attending: 2
+
+---
+
+Event: Reciprocal Rhythm 09 - Stecks b2b Warmcore, Moorhaus
+Date: 2025-01-17
+Venue: High Dive
+Artists: Moorhaus, Stecks
+City: Wisconsin
+URL: https://ra.co/events/2073166
+Attending: 10
+
+---
+
+Event: Dance For Relief
+Date: 2025-01-24
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/2088440
+
+---
+
+Event: JAMS - Peter Croce + Y.U.K.IKO
+Date: 2025-01-25
+Venue: The High Noon Saloon
+Artists: Peter Croce, Yukiko, McGinnis
+City: Wisconsin
+URL: https://ra.co/events/2085480
+Attending: 1
+
+---
+
+Event: bimbofication – dyke dance party
+Date: 2025-01-25
+Venue: Cactus Club
+City: Wisconsin
+URL: https://ra.co/events/2088460
+
+---
+
+Event: Reciprocal Rhythm 10 - RESIDENT'S NIGHT: Moorhaus b2b Paul Gordon (All Night Long)
+Date: 2025-02-07
+Venue: High Dive
+Artists: Moorhaus, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2091888
+Attending: 7
+
+---
+
+Event: JAMS - Miss Twink USA
+Date: 2025-02-07
+Venue: The Crucible
+Artists: Miss Twink USA, Home Team, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/2085363
+Attending: 2
+
+---
+
+Event: Dreaming of a Disco - DJ Zip Disk, Sarah Akawa, & DJ Dreamgirl
+Date: 2025-02-14
+Venue: Cardinal Bar
+City: Wisconsin
+URL: https://ra.co/events/2091720
+Attending: 1
+
+---
+
+Event: Remain In Night: Rrose, Convextion aka E.R.P. (LIVE), Hodge
+Date: 2025-02-15
+Venue: The High Noon Saloon
+Artists: Rrose, Convextion, E.R.P., Hodge
+City: Wisconsin
+URL: https://ra.co/events/2059828
+Attending: 25
+
+---
+
+Event: LOVE GUN
+Date: 2025-02-15
+Venue: TBA - Rock Country MKE
+Artists: DJ Hell, Jana Rush, Brunson, Angel of the Bottomless Pit, Xexyz
+City: Wisconsin
+URL: https://ra.co/events/2077243
+Attending: 17
+
+---
+
+Event: Transport V. 6: D. Untethered and Del1lac
+Date: 2025-02-21
+Venue: Cactus Club
+Artists: del1lac
+City: Wisconsin
+URL: https://ra.co/events/2086526
+Attending: 4
+
+---
+
+Event: RDPW Uptowner Show
+Date: 2025-02-22
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/2108008
+
+---
+
+Event: umru • Ninajirachi
+Date: 2025-02-27
+Venue: Cactus Club
+Artists: umru, Ninajirachi
+City: Wisconsin
+URL: https://ra.co/events/2088463
+Attending: 7
+
+---
+
+Event: CINEMA BY KINO AUDIO
+Date: 2025-03-01
+Venue: Quarters
+Artists: Sard
+City: Wisconsin
+URL: https://ra.co/events/2106983
+Attending: 9
+
+---
+
+Event: Modular Residence
+Date: 2025-03-07
+Venue: Gamma Ray Bar
+Artists: Bumbac Joe
+City: Wisconsin
+URL: https://ra.co/events/2109087
+Attending: 6
+
+---
+
+Event: FANTASTIC PLANET
+Date: 2025-03-08
+Venue: Mad Planet
+Artists: Soulphonetics
+City: Wisconsin
+URL: https://ra.co/events/2118124
+Attending: 1
+
+---
+
+Event: Dreaming Of A Disco
+Date: 2025-03-14
+Venue: Cardinal Bar
+Artists: Leja Hazer, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2113406
+Attending: 4
+
+---
+
+Event: JAMS x Music To Leave Work By
+Date: 2025-03-15
+Venue: Gamma Ray Bar
+Artists: jayah, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2113442
+Attending: 6
+
+---
+
+Event: RDPW
+Date: 2025-03-15
+Venue: High Dive
+City: Wisconsin
+URL: https://ra.co/events/2123433
+Attending: 1
+
+---
+
+Event: Reciprocal Rhythm 11 - McGinnis, Abesm, Moorhaus
+Date: 2025-03-21
+Venue: High Dive
+Artists: McGinnis, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2120792
+Attending: 13
+
+---
+
+Event: Kaho Matsui + Dierdre Fromberg, Cambodian Sim Card, Singing In The Rain
+Date: 2025-03-30
+Venue: TBA - Venmo @Deirdre-Fromberg for presale price tickets and to receive the venue location before the day of the show.
+Artists: Kaho Matsui
+City: Wisconsin
+URL: https://ra.co/events/2110920
+Attending: 4
+
+---
+
+Event: JAMS - Liquid Earth
+Date: 2025-04-04
+Venue: The Crucible
+Artists: Liquid Earth, Natural Language
+City: Wisconsin
+URL: https://ra.co/events/2128625
+Attending: 7
+
+---
+
+Event: KINO AUDIO PRESENTS: Alex Wilcox ON TOUR
+Date: 2025-04-05
+Venue: Club Timbuktu
+Artists: Alex Wilcox, Stecks
+City: Wisconsin
+URL: https://ra.co/events/2128406
+Attending: 8
+
+---
+
+Event: KINO Audio presents: Legion Of Doom
+Date: 2025-04-11
+Venue: Cactus Club
+Artists: Miss Twink USA
+City: Wisconsin
+URL: https://ra.co/events/2133908
+Attending: 6
+
+---
+
+Event: Dreaming Of A Disco
+Date: 2025-04-11
+Venue: Cardinal Bar
+Artists: DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2143934
+Attending: 2
+
+---
+
+Event: Reciprocal Rhythm presents - Justin Cudmore
+Date: 2025-04-12
+Venue: Gamma Ray Bar
+Artists: Justin Cudmore, Moorhaus, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2105962
+Attending: 13
+
+---
+
+Event: RSD 2025 Shindigz
+Date: 2025-04-12
+Venue: Jiggy Jamz Records
+Artists: Paul Gordon, Sam Link, The Hermit
+City: Wisconsin
+URL: https://ra.co/events/2148037
+Attending: 2
+
+---
+
+Event: Matthew Ryals - 2025 West Coast, Midwest, & Ontario Tour
+Date: 2025-04-17
+Venue: Jazz Gallery Center for the Arts
+Artists: Matthew Ryals
+City: Wisconsin
+URL: https://ra.co/events/2126855
+Attending: 1
+
+---
+
+Event: Transport Vol. 7
+Date: 2025-04-25
+Venue: Cactus Club
+Artists: Kitty Spit, Language Models
+City: Wisconsin
+URL: https://ra.co/events/2149622
+Attending: 3
+
+---
+
+Event: JAMS - Ladymonix
+Date: 2025-05-02
+Venue: The Crucible
+Artists: LADYMONIX, Home Team
+City: Wisconsin
+URL: https://ra.co/events/2146244
+Attending: 3
+
+---
+
+Event: MAY DAY
+Date: 2025-05-03
+Venue: TBA
+Artists: Lindsey Herbert, Ron Carroll, Lester Fitzpatrick
+City: Wisconsin
+URL: https://ra.co/events/2143899
+Attending: 5
+
+---
+
+Event: Dreaming of a Disco: DJ DH B2B Moorhaus
+Date: 2025-05-09
+Venue: Cardinal Bar
+Artists: DJ DH, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2146058
+Attending: 5
+
+---
+
+Event: Transport vol. 8: Asher Gray b2b Greyhound
+Date: 2025-05-30
+Venue: Cactus Club
+Artists: Asher Gray, Language Models
+City: Wisconsin
+URL: https://ra.co/events/2172909
+Attending: 2
+
+---
+
+Event: Make My Day
+Date: 2025-05-31
+Venue: TBA - James Madison Park
+Artists: Paul Gordon, Wangzoom
+City: Wisconsin
+URL: https://ra.co/events/2138575
+Attending: 10
+
+---
+
+Event: JAMS: Lee Reynolds
+Date: 2025-06-06
+Venue: The Crucible
+Artists: Lee Reynolds
+City: Wisconsin
+URL: https://ra.co/events/2168087
+Attending: 1
+
+---
+
+Event: Dreaming of a Disco
+Date: 2025-06-13
+Venue: Cardinal Bar
+Artists: Tommaso (IT), DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2191159
+Attending: 1
+
+---
+
+Event: Summer Soulstice
+Date: 2025-06-14
+Venue: TBA - Black Cat Alley
+Artists: Moorhaus, JUNIOR KURTIS, Angelia Word
+City: Wisconsin
+URL: https://ra.co/events/2165965
+Attending: 3
+
+---
+
+Event: A Spring Thingamajing
+Date: 2025-06-14
+Venue: Electric Lounge
+Artists: Mike Dearborn
+City: Wisconsin
+URL: https://ra.co/events/2157376
+Attending: 2
+
+---
+
+Event: Daydream: Tommaso, DJ DH, Sarah Akawa, & Abesm
+Date: 2025-06-14
+Venue: TBA - James Madison Park
+Artists: Tommaso (IT), DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2191160
+Attending: 1
+
+---
+
+Event: BARCODE PRESET: CARLOS PINEDA
+Date: 2025-06-21
+Venue: Saint Bibiana
+City: Wisconsin
+URL: https://ra.co/events/2197101
+
+---
+
+Event: Musique Électronique 2025
+Date: 2025-07-11
+Venue: The High Noon Saloon
+Artists: Ceri, Dee Diggs, DJ Stingray 313, Ian Pooley, Mark Broom, Mozhgan, Octave One, Sunshine Jones, Todd Terry, DJ Nola, Kitty Spit, Paul Gordon, Shanti
+City: Wisconsin
+URL: https://ra.co/events/2109182
+Attending: 64
+
+---
+
+Event: Toyacoyah, Warmcore, Peetest
+Date: 2025-07-12
+Venue: High Dive
+Artists: Toyacoyah
+City: Wisconsin
+URL: https://ra.co/events/2204743
+Attending: 1
+
+---
+
+Event: STRETCH
+Date: 2025-07-19
+Venue: Cactus Club
+City: Wisconsin
+URL: https://ra.co/events/2201606
+Attending: 2
+
+---
+
+Event: split/shift pool party 002
+Date: 2025-08-02
+Venue: Nova MKE
+Artists: Geff Bohm
+City: Wisconsin
+URL: https://ra.co/events/2218859
+Attending: 4
+
+---
+
+Event: Yup!
+Date: 2025-08-02
+Venue: Gib's Bar
+Artists: Paul Gordon, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2227500
+
+---
+
+Event: H.O.T.H
+Date: 2025-08-05
+Venue: Cactus Club
+Artists: Beau Wanzer
+City: Wisconsin
+URL: https://ra.co/events/2229883
+
+---
+
+Event: Dreaming of a Disco: Asher Gray B2B Greyhound
+Date: 2025-08-08
+Venue: Cardinal Bar
+Artists: Asher Gray
+City: Wisconsin
+URL: https://ra.co/events/2232222
+Attending: 2
+
+---
+
+Event: Words with Nerds
+Date: 2025-08-21
+Venue: Crucible
+City: Wisconsin
+URL: https://ra.co/events/2206301
+Attending: 1
+
+---
+
+Event: Transport v. 10: Sian Nevenicola • Language Models
+Date: 2025-08-22
+Venue: Cactus Club
+Artists: Sian Nevenicola, Language Models
+City: Wisconsin
+URL: https://ra.co/events/2233511
+Attending: 6
+
+---
+
+Event: Outhere
+Date: 2025-08-23
+Venue: TBA - Kern Park Riverwest
+Artists: Jace Inman
+City: Wisconsin
+URL: https://ra.co/events/2240082
+Attending: 2
+
+---
+
+Event: House Your Body
+Date: 2025-08-23
+Venue: Mad Planet
+Artists: Jonn Hawley
+City: Wisconsin
+URL: https://ra.co/events/2240334
+Attending: 2
+
+---
+
+Event: Club Ritual: River Dance Vol. 2
+Date: 2025-08-29
+Venue: TBA - The Vista King
+City: Wisconsin
+URL: https://ra.co/events/2230645
+
+---
+
+Event: JAMS: Hush Hush
+Date: 2025-09-05
+Venue: Cardinal Bar
+Artists: Hush Hush (US), Home Team
+City: Wisconsin
+URL: https://ra.co/events/2230931
+Attending: 6
+
+---
+
+Event: Dreaming of a Disco: Boogietraxx
+Date: 2025-09-12
+Venue: Cardinal Bar
+Artists: Boogietraxx, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2242062
+Attending: 5
+
+---
+
+Event: split/shift / mke & friends 001 - benefiting Hunger Task Force
+Date: 2025-09-19
+Venue: High Dive
+Artists: Geff Bohm
+City: Wisconsin
+URL: https://ra.co/events/2225387
+Attending: 9
+
+---
+
+Event: House Calls MKE
+Date: 2025-09-19
+Venue: TBA - PILOT PROJECT BREWING 1128 N NINTH ST.
+Artists: Terry Hunter, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2251052
+Attending: 3
+
+---
+
+Event: Willy Street Beats
+Date: 2025-09-20
+Venue: The High Noon Saloon
+Artists: Eddie Fowlkes, Overland, Kiddo, Kitty Spit, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2258252
+Attending: 2
+
+---
+
+Event: Transport Vol. 11
+Date: 2025-09-26
+Venue: Cactus Club
+Artists: ~~ (Tildetilde), Language Models
+City: Wisconsin
+URL: https://ra.co/events/2254659
+Attending: 1
+
+---
+
+Event: Beet Street Fall Festival 2025: Afterparty
+Date: 2025-10-04
+Venue: Cactus Club
+Artists: HiTech, Nanoos, The Mall
+City: Wisconsin
+URL: https://ra.co/events/2240339
+Attending: 6
+
+---
+
+Event: A Night At Gib's
+Date: 2025-10-04
+Venue: Gib's
+Artists: Paul Gordon, Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2270672
+Attending: 2
+
+---
+
+Event: DJ Zip Disk b2b Natural Language, DJ DH b2b DJ Dreamgirl
+Date: 2025-10-04
+Venue: Cielo Madison
+Artists: Natural Language, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2270685
+Attending: 1
+
+---
+
+Event: The Generator
+Date: 2025-10-10
+Venue: TBA - 43.124260 N, 89.402940 W
+City: Wisconsin
+URL: https://ra.co/events/2277478
+Attending: 12
+
+---
+
+Event: MELT: Convergence
+Date: 2025-10-10
+Venue: Canni Infusion Bar & Cafe
+Artists: The Demix, ~~ (Tildetilde)
+City: Wisconsin
+URL: https://ra.co/events/2253231
+Attending: 3
+
+---
+
+Event: Dreaming Of A Disco
+Date: 2025-10-10
+Venue: Cardinal Bar
+Artists: Pen Pals
+City: Wisconsin
+URL: https://ra.co/events/2270679
+Attending: 1
+
+---
+
+Event: Sonic Resonance
+Date: 2025-10-20
+Venue: TBA - LOCATION ANNOUNCED DAY OF VIA EMAIL
+Artists: Tdy (1), Swan Drama, Vesolo, BLESSTONIO, JULLS
+City: Wisconsin
+URL: https://ra.co/events/2287069
+Attending: 3
+
+---
+
+Event: The Return of the Generator
+Date: 2025-10-25
+Venue: TBA - The Generator
+Artists: Zenith (3), Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2287048
+Attending: 6
+
+---
+
+Event: Transport v. 12: Inquilab & Xexyz & Lorna Dune & Johnny Yamaha
+Date: 2025-10-30
+Venue: Cactus Club
+Artists: Inquilab, Xexyz, Lorna Dune
+City: Wisconsin
+URL: https://ra.co/events/2283821
+Attending: 4
+
+---
+
+Event: Zack Fox (DJ Set)
+Date: 2025-10-30
+Venue: The Rave / Eagles Club
+Artists: Zack Fox, Asher Gray, del1lac
+City: Wisconsin
+URL: https://ra.co/events/2293310
+
+---
+
+Event: Halloween at Cielo
+Date: 2025-10-31
+Venue: Cielo Madison
+Artists: DJ DH, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2293612
+Attending: 1
+
+---
+
+Event: Monster Mash, Graveyard Smash
+Date: 2025-11-01
+Venue: Castle Bass
+Artists: Intergalactic Gary, Submerge, Gant-Man, Danny The Wildchild, Kitty Spit, Steve Noah, Lovecraft, NAILBITER (US), Flapjack
+City: Wisconsin
+URL: https://ra.co/events/2267019
+Attending: 13
+
+---
+
+Event: JAMS: Glen S
+Date: 2025-11-07
+Venue: Cardinal Bar
+Artists: Glen S, Natural Language, Samuel Wallner
+City: Wisconsin
+URL: https://ra.co/events/2293586
+Attending: 2
+
+---
+
+Event: High Dive 002 - benefiting Hunger Task Force
+Date: 2025-11-14
+Venue: High Dive
+City: Wisconsin
+URL: https://ra.co/events/2258447
+Attending: 6
+
+---
+
+Event: Dreaming Of A Disco: Inés, Absem
+Date: 2025-11-14
+Venue: Cardinal Bar
+Artists: Inés (US)
+City: Wisconsin
+URL: https://ra.co/events/2293604
+Attending: 4
+
+---
+
+Event: JUST ACID.
+Date: 2025-11-21
+Venue: Castle Bass
+Artists: DJ Pierre, Posthuman, DJ Warp
+City: Wisconsin
+URL: https://ra.co/events/2304094
+Attending: 12
+
+---
+
+Event: Jace Inman & Language Models
+Date: 2025-11-22
+Venue: Cactus Club
+Artists: Jace Inman, Language Models
+City: Wisconsin
+URL: https://ra.co/events/2299940
+Attending: 5
+
+---
+
+Event: Transport v. 13: Mecániko, Scatterbrainmane, DJ Sarnal Key, Language Models
+Date: 2025-11-28
+Venue: Cactus Club
+Artists: Mecániko, Language Models
+City: Wisconsin
+URL: https://ra.co/events/2304113
+Attending: 5
+
+---
+
+Event: 5th House 001
+Date: 2025-11-29
+Venue: TBA - 43.02° North  -87.91° West
+Artists: Asher Gray, lalafroufrou
+City: Wisconsin
+URL: https://ra.co/events/2300966
+Attending: 55
+
+---
+
+Event: JAMS - Buen Viaje
+Date: 2025-12-05
+Venue: Cardinal Bar
+Artists: Buen Viaje, McGinnis, Paul Gordon
+City: Wisconsin
+URL: https://ra.co/events/2310814
+Attending: 3
+
+---
+
+Event: Dreaming of a Disco - Twan & DJ DH
+Date: 2025-12-12
+Venue: Cardinal Bar
+Artists: Twan (US), DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2317287
+Attending: 1
+
+---
+
+Event: dj patience
+Date: 2025-12-13
+Venue: Uptowner
+City: Wisconsin
+URL: https://ra.co/events/2280421
+Attending: 3
+
+---
+
+Event: split/shift presents: tat/tunes 001 with LOW Rain & Discourse, feat. Blaze Orange & Queen Méabh
+Date: 2025-12-14
+Venue: LOW Rain
+Artists: Blaze Orange
+City: Wisconsin
+URL: https://ra.co/events/2277467
+Attending: 5
+
+---
+
+Event: MWRCA: Travel Through The Infinite Loop
+Date: 2025-12-20
+Venue: Electric Lounge
+Artists: DJ Hyperactive, Kitty Spit
+City: Wisconsin
+URL: https://ra.co/events/2325447
+Attending: 5
+
+---
+
+Event: Club Ritual presents NYE at High Dive
+Date: 2025-12-31
+Venue: High Dive
+City: Wisconsin
+URL: https://ra.co/events/2325574
+Attending: 61
+
+---
+
+Event: Transport: Atlantis
+Date: 2025-12-31
+Venue: Cactus Club
+Artists: Tekk Nikk, ~~ (Tildetilde)
+City: Wisconsin
+URL: https://ra.co/events/2324606
+Attending: 5
+
+---
+
+Event: Air Rarefied
+Date: 2025-12-31
+Venue: Cielo Madison
+Artists: Sean Parks, DJ UMI, Kitty Spit, Wangzoom
+City: Wisconsin
+URL: https://ra.co/events/2322553
+Attending: 4
+
+---
+
+Event: Sian's New Year's Eve VIP Party at The Apis
+Date: 2025-12-31
+Venue: TBA - The Apis Hotel & Restaurant 
+Artists: Sian Nevenicola
+City: Wisconsin
+URL: https://ra.co/events/2334768
+
+---
+
+Event: JAMS x Dreaming of a Disco: DJ Heather
+Date: 2026-01-09
+Venue: Cardinal Bar
+Artists: DJ Heather, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2328162
+Attending: 5
+
+---
+
+Event: MELT 15 YEAR ANNVRSRY
+Date: 2026-01-10
+Venue: Canni Infusion Bar & Cafe
+Artists: The Demix, Tunnel, Xexyz, Lorna Dune
+City: Wisconsin
+URL: https://ra.co/events/2324527
+Attending: 6
+
+---
+
+Event: Out! - An Alternative Queer Dance Party (Vinyl Edition)
+Date: 2026-01-10
+Venue: The Wiggle Room
+City: Wisconsin
+URL: https://ra.co/events/2340098
+Attending: 1
+
+---
+
+Event: 5th House 002
+Date: 2026-01-16
+Venue: Likewise Coffee - Milwaukee
+Artists: Asher Gray, lalafroufrou
+City: Wisconsin
+URL: https://ra.co/events/2342597
+Attending: 16
+
+---
+
+Event: Cruel & Unusual
+Date: 2026-01-17
+Venue: The Rigby
+Artists: Paul Gordon, Zenith (3)
+City: Wisconsin
+URL: https://ra.co/events/2341495
+Attending: 87
+
+---
+
+Event: Snow Strippers
+Date: 2026-01-23
+Venue: Majestic Theatre
+Artists: Snow Strippers, Eera
+City: Wisconsin
+URL: https://ra.co/events/2298772
+Attending: 5
+
+---
+
+Event: split/shift presents: High Dive 003 - benefiting Hunger Task Force
+Date: 2026-01-24
+Venue: High Dive
+City: Wisconsin
+URL: https://ra.co/events/2346001
+Attending: 3
+
+---
+
+Event: JAMS Takeover
+Date: 2026-01-24
+Venue: Gibs
+City: Wisconsin
+URL: https://ra.co/events/2348206
+Attending: 2
+
+---
+
+Event: RAVE
+Date: 2026-01-24
+Venue: TBA - 2122 N. Oakland Ave
+Artists: Moorhaus
+City: Wisconsin
+URL: https://ra.co/events/2353609
+
+---
+
+Event: Submerged: aka ieuan, DJ I.V., Jae Hanz
+Date: 2026-01-30
+Venue: The Crucible
+Artists: aka ieuan, DJ I.V.
+City: Wisconsin
+URL: https://ra.co/events/2350541
+Attending: 5
+
+---
+
+Event: Hard House Rebels
+Date: 2026-01-31
+Venue: High Dive
+Artists: Flores Negras
+City: Wisconsin
+URL: https://ra.co/events/2347287
+Attending: 42
+
+---
+
+Event: Cultivate 002
+Date: 2026-02-05
+Venue: High Dive
+Artists: BPMSLIDE
+City: Wisconsin
+URL: https://ra.co/events/2355147
+Attending: 2
+
+---
+
+Event: Press Play: A Barcode Initiative
+Date: 2026-02-07
+Venue: TBA - Falcon Bowl
+Artists: Mike Dunn, Twan (US), Riptide
+City: Wisconsin
+URL: https://ra.co/events/2358349
+Attending: 8
+
+---
+
+Event: JAMS x Wax Appeal
+Date: 2026-02-07
+Venue: Cardinal Bar
+Artists: Michael Serafini, McGinnis, Home Team
+City: Wisconsin
+URL: https://ra.co/events/2365764
+
+---
+
+Event: Dreaming of a Disco
+Date: 2026-02-13
+Venue: Cardinal Bar
+Artists: DJ Nola, DJ DH
+City: Wisconsin
+URL: https://ra.co/events/2352556
+Attending: 5
+
+---
+
+Event: PumpUpTheJam Volume 3
+Date: 2026-02-13
+Venue: TBA - Pumphouse Regional Arts Center - La Crosse WI
+City: Wisconsin
+URL: https://ra.co/events/2358912
+
+---
+
+Event: VALENTINES DAY
+Date: 2026-02-14
+Venue: High Dive
+Artists: Adrian More
+City: Wisconsin
+URL: https://ra.co/events/2360206
+Attending: 8
+
+---
+
+Event: Nightmare on Valentines feat. Kyle Geiger and Phantom 45
+Date: 2026-02-14
+Venue: Rock Country MKE
+Artists: Kyle Geiger, BERLIN, Phantom 45, Jungle (UK), Tinhead, Core, The Hermit
+City: Wisconsin
+URL: https://ra.co/events/2352384
+Attending: 6
+
+---
+
+Event: Rips N' Spins
+Date: 2026-02-14
+Venue: TBA -  Dank Of America
+City: Wisconsin
+URL: https://ra.co/events/2352313
+Attending: 2
+
+---
+
+Event: Body Contact
+Date: 2026-02-20
+Venue: The Rigby
+City: Wisconsin
+URL: https://ra.co/events/2358323
+Attending: 6
+
+---
+
+Event: Night Shift
+Date: 2026-02-21
+Venue: TBA
+City: Wisconsin
+URL: https://ra.co/events/2375584
+Attending: 2
+
+---
+
+Event: Transport: Kajunga
+Date: 2026-02-28
+Venue: Cactus Club
+Artists: Berndt, Ryote, Lanny, del1lac
+City: Wisconsin
+URL: https://ra.co/events/2369740
+Attending: 2

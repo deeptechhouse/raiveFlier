@@ -1522,7 +1522,8 @@ body {
 /* ---- Narrative Prose (Section 5: Interconnections) ----
    A styled text block for the LLM-generated interconnection narrative.
    Uses wider line spacing (--leading-loose) for readability. Inline [n] citation
-   references are converted to styled superscripts (.cite-ref) by results.js. */
+   references are stripped from display; citations are tracked in the citation
+   log panel below the interconnections section. */
 .narrative-prose {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1556,6 +1557,113 @@ body {
 
 .cite-ref:hover {
   opacity: 1;
+}
+
+
+/* ---- Citation Log (collapsible panel) ----
+   A table-based panel listing all structured citations for later analysis.
+   Collapsed by default; toggled via the header button. */
+.citation-log {
+  margin-top: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.citation-log__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.citation-log__toggle:hover {
+  color: var(--color-text-primary);
+}
+
+.citation-log__chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.citation-log__body {
+  padding: 0 var(--space-4) var(--space-4);
+  overflow-x: auto;
+}
+
+.citation-log__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.citation-log__th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.citation-log__td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  vertical-align: top;
+}
+
+.citation-log__td a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.citation-log__td a:hover {
+  text-decoration: underline;
+}
+
+.citation-log__claim {
+  color: var(--color-text-secondary);
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.citation-log__tier {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.citation-log__tier--high {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-accent);
+}
+
+.citation-log__tier--mid {
+  background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.citation-log__tier--low {
+  background: color-mix(in srgb, var(--color-text-secondary) 10%, transparent);
+  color: var(--color-text-secondary);
+  opacity: 0.7;
 }
 
 

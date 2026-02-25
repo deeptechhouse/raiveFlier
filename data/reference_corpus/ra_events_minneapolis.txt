@@ -1,0 +1,8229 @@
+Resident Advisor Event History: Minneapolis
+
+Source: Resident Advisor (ra.co)
+Coverage: 2016-2026
+Total events: 852
+
+---
+
+Event: Some Dude's Crazy Liquor, Techno, and Bowling Party: Sloslylove, Akwius, Occult Holiday, and La
+Date: 2016-01-15
+Venue: Memory Lanes (Minneapolis)
+Artists: AKWIUS, Occult, Lazer Mission
+City: Minneapolis
+URL: https://ra.co/events/789646
+Attending: 1
+
+---
+
+Event: System is House Proud! feat. Mike Gervais, Aaron Litschke & Bryan Gerrard
+Date: 2016-02-05
+Venue: Honey Lounge
+Artists: Mike Gervais, Aaron Litschke
+City: Minneapolis
+URL: https://ra.co/events/796877
+Attending: 3
+
+---
+
+Event: Moved to Official Event Listing
+Date: 2016-02-05
+Venue: Honey Lounge
+City: Minneapolis
+URL: https://ra.co/events/802757
+Attending: 1
+
+---
+
+Event: Groove. with Berndt & Brooks
+Date: 2016-02-06
+Venue: Asian Taste
+City: Minneapolis
+URL: https://ra.co/events/802754
+Attending: 1
+
+---
+
+Event: Kfai Selective Service
+Date: 2016-02-19
+Venue: Eagles Club #34
+Artists: AKWIUS
+City: Minneapolis
+URL: https://ra.co/events/804162
+Attending: 1
+
+---
+
+Event: Animal Collective
+Date: 2016-02-28
+Venue: First Avenue Mainroom
+Artists: Animal Collective
+City: Minneapolis
+URL: https://ra.co/events/783426
+Attending: 1
+
+---
+
+Event: Julia Holter
+Date: 2016-03-01
+Venue: 7th Street Entry
+Artists: Julia Holter
+City: Minneapolis
+URL: https://ra.co/events/784186
+
+---
+
+Event: Red Bull Sound Select Presents: Oneohtrix Point Never
+Date: 2016-03-09
+Venue: Triple Rock Social Lounge
+Artists: Oneohtrix Point Never
+City: Minneapolis
+URL: https://ra.co/events/813874
+Attending: 1
+
+---
+
+Event: Revelry
+Date: 2016-03-26
+Venue: Reverie Cafe Bar
+Artists: AKWIUS, CORA
+City: Minneapolis
+URL: https://ra.co/events/817686
+Attending: 1
+
+---
+
+Event: Deep Medi 10 Year Anniversary Tour: Mala, Kahn
+Date: 2016-04-05
+Venue: The Exchange
+Artists: Mala, Neek, Gorgon Sound, Om Unit
+City: Minneapolis
+URL: https://ra.co/events/816792
+Attending: 1
+
+---
+
+Event: Kfai's Selective Service
+Date: 2016-04-08
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/820827
+Attending: 1
+
+---
+
+Event: Red Bull Sound Select presents: Twin Cities Father / Bobby Raps / Martin $KY
+Date: 2016-04-08
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/825133
+
+---
+
+Event: St Germain
+Date: 2016-04-11
+Venue: Fitzgerald Theater
+Artists: St Germain
+City: Minneapolis
+URL: https://ra.co/events/774538
+Attending: 3
+
+---
+
+Event: Symbionproject 
+Date: 2016-05-04
+Venue: Bedlam Lowertown
+Artists: Symbion Project
+City: Minneapolis
+URL: https://ra.co/events/828134
+Attending: 1
+
+---
+
+Event: Bounce with Scrubfish, Hotdish, Bryan Gerrard & Jake Encinas
+Date: 2016-05-13
+Venue: Asian Taste
+Artists: Nate Laurence
+City: Minneapolis
+URL: https://ra.co/events/832759
+
+---
+
+Event: Four Tet & Ben UFO
+Date: 2016-05-19
+Venue: The Loft
+Artists: Four Tet, Ben UFO
+City: Minneapolis
+URL: https://ra.co/events/805111
+Attending: 8
+
+---
+
+Event: Red Bull Sound Select presents: Twin Cities Empress Of / Dizzy Fae / Roniia
+Date: 2016-05-19
+Venue: Amsterdam Bar & Hall
+City: Minneapolis
+URL: https://ra.co/events/836582
+
+---
+
+Event: Brain Dance
+Date: 2016-05-21
+Venue: Reverie Cafe Bar
+Artists: Kindohm, Lazer Mission
+City: Minneapolis
+URL: https://ra.co/events/822249
+Attending: 2
+
+---
+
+Event: Jessy Lanza, DJ Taye
+Date: 2016-06-17
+Venue: Triple Rock Social Lounge
+Artists: Jessy Lanza, DJ Taye
+City: Minneapolis
+URL: https://ra.co/events/828146
+Attending: 3
+
+---
+
+Event: Red Bull Sound Select presents: Lil Yachty, Jace & Drelli
+Date: 2016-06-18
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/849832
+Attending: 1
+
+---
+
+Event: Bounce with Della, Private Guy, Ryote, Jake Encinas
+Date: 2016-07-08
+Venue: Asian Taste
+Artists: DELLA, Ryote
+City: Minneapolis
+URL: https://ra.co/events/850207
+Attending: 1
+
+---
+
+Event: Blend Session
+Date: 2016-07-23
+Venue: The Loft
+Artists: Teddy Mac
+City: Minneapolis
+URL: https://ra.co/events/860732
+Attending: 1
+
+---
+
+Event: Snes, Tunes, and Beers
+Date: 2016-07-28
+Venue: Parkway Pizza
+City: Minneapolis
+URL: https://ra.co/events/862505
+
+---
+
+Event: Systemthree
+Date: 2016-08-13
+Venue: TBA - Minnesota
+Artists: Anthony Jimenez, Project 313, Andy Fitton
+City: Minneapolis
+URL: https://ra.co/events/863356
+Attending: 19
+
+---
+
+Event: Red Bull Sound Select presents: Twin Cities D.R.A.M.
+Date: 2016-08-20
+Venue: Varsity Theater
+City: Minneapolis
+URL: https://ra.co/events/870376
+Attending: 1
+
+---
+
+Event: Red Bull Sound Select presents Twin Cities: Junior Boys, River Tiber and FOG
+Date: 2016-09-14
+Venue: Turf Club
+Artists: Junior Boys
+City: Minneapolis
+URL: https://ra.co/events/879502
+Attending: 1
+
+---
+
+Event: Systemfour
+Date: 2016-10-01
+Venue: TBA - Minnesota
+Artists: The Worm, Mike Gervais, Rachel Palmer
+City: Minneapolis
+URL: https://ra.co/events/883252
+Attending: 5
+
+---
+
+Event: SYSTEMfive
+Date: 2016-10-29
+Venue: TBA - Minnesota
+Artists: Pinion, AKWIUS, Andy Fitton, Christian James, Centrific, Lonefront, mrBlaQ
+City: Minneapolis
+URL: https://ra.co/events/890995
+Attending: 5
+
+---
+
+Event: System 6 Year Anniversary - Ben Sims b2b Truncate
+Date: 2016-11-04
+Venue: The Pourhouse
+Artists: Ben Sims, Truncate, Mike Gervais, Rachel Palmer
+City: Minneapolis
+URL: https://ra.co/events/887798
+Attending: 10
+
+---
+
+Event: Nicolas Jaar
+Date: 2016-11-07
+Venue: First Avenue Mainroom
+Artists: Nicolas Jaar
+City: Minneapolis
+URL: https://ra.co/events/879384
+Attending: 4
+
+---
+
+Event: Rufus Du Sol
+Date: 2016-11-12
+Venue: Fine Line Music Cafe
+Artists: Roland Tings, Dena Amy
+City: Minneapolis
+URL: https://ra.co/events/905674
+Attending: 1
+
+---
+
+Event: Los Lokos presents: Axkan, Paul Birken, Andy Fitton, Broadway Jones
+Date: 2016-11-18
+Venue: Asian Taste
+Artists: Axkan, Paul Birken, Andy Fitton, Broadway Jones
+City: Minneapolis
+URL: https://ra.co/events/899177
+Attending: 4
+
+---
+
+Event: 1 Year of Thaw
+Date: 2016-12-29
+Venue: The Red Herring
+Artists: Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/915028
+Attending: 1
+
+---
+
+Event: Crystal Ball 2017
+Date: 2016-12-31
+Venue: International Market Square
+City: Minneapolis
+URL: https://ra.co/events/900463
+
+---
+
+Event: Dark Energy // 1 Year Anniversary with Xeno & Oaklander
+Date: 2017-01-27
+Venue: Triple Rock Social Lounge
+Artists: Xeno & Oaklander, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/925140
+Attending: 1
+
+---
+
+Event: Black Mass
+Date: 2017-01-29
+Venue: The Exchange
+Artists: Jesse Jacob, Kyle Wyld, Jacob Hoffman
+City: Minneapolis
+URL: https://ra.co/events/928323
+Attending: 1
+
+---
+
+Event: Los Lokos presents: Anodic Mélange
+Date: 2017-02-17
+Venue: Asian Taste
+Artists: Lazer Mission
+City: Minneapolis
+URL: https://ra.co/events/935995
+Attending: 1
+
+---
+
+Event: Black Mass with Karl Meier
+Date: 2017-02-19
+Venue: The Exchange
+Artists: Karl Meier, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/928342
+Attending: 4
+
+---
+
+Event: Thundercat
+Date: 2017-02-24
+Venue: Fine Line Music Cafe
+Artists: Thundercat
+City: Minneapolis
+URL: https://ra.co/events/928093
+
+---
+
+Event: Systemeight
+Date: 2017-02-25
+Venue: TBA - Minnesota
+Artists: Ben Sims, Mike Gervais
+City: Minneapolis
+URL: https://ra.co/events/936697
+Attending: 6
+
+---
+
+Event: House Proud Hosts: Nicewon Recordings / Release Party
+Date: 2017-04-07
+Venue: Honey Lounge
+Artists: Christian James, Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/945494
+Attending: 2
+
+---
+
+Event: Moodymann at First Avenue - Deep Purple: A Prince Tribute For The Heads
+Date: 2017-04-21
+Venue: 7th Street Entry
+Artists: Moodymann, Daniel Paul Cortez, Christian James, Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/956664
+Attending: 5
+
+---
+
+Event: Technoir
+Date: 2017-04-27
+Venue: The Red Sea Restaurant
+Artists: Seanni B, ORM-D
+City: Minneapolis
+URL: https://ra.co/events/957797
+Attending: 1
+
+---
+
+Event: Bonobo
+Date: 2017-05-21
+Venue: First Avenue Mainroom
+Artists: Bonobo
+City: Minneapolis
+URL: https://ra.co/events/898656
+Attending: 2
+
+---
+
+Event: Nada presents: Justin Meyers / Casey Deming / Michael Flora
+Date: 2017-05-26
+Venue: Studio Z
+City: Minneapolis
+URL: https://ra.co/events/965218
+
+---
+
+Event: Brian Bradley Audio Visual Concert
+Date: 2017-08-24
+Venue: The Red Herring Lounge
+City: Minneapolis
+URL: https://ra.co/events/990868
+Attending: 1
+
+---
+
+Event: The Current's Music-on-a-Stick
+Date: 2017-09-02
+Venue: Minnesota State Fair Grandstand
+Artists: Phantogram
+City: Minneapolis
+URL: https://ra.co/events/1028901
+Attending: 1
+
+---
+
+Event: Brian Bradley Audio Visual Concert
+Date: 2017-09-06
+Venue: Icehouse
+City: Minneapolis
+URL: https://ra.co/events/987619
+Attending: 1
+
+---
+
+Event: Brian Bradley Audio Visual Concert
+Date: 2017-09-09
+Venue: Owatonna Arts Center
+City: Minneapolis
+URL: https://ra.co/events/992031
+Attending: 1
+
+---
+
+Event: Kajunga presents Mike Huckaby
+Date: 2017-09-15
+Venue: Honey Lounge
+Artists: Mike Huckaby, Daniel Paul Cortez
+City: Minneapolis
+URL: https://ra.co/events/1007326
+Attending: 5
+
+---
+
+Event: Thundercat
+Date: 2017-09-17
+Venue: First Avenue Mainroom
+Artists: Thundercat
+City: Minneapolis
+URL: https://ra.co/events/972429
+
+---
+
+Event: Gorillaz North American Tour
+Date: 2017-09-20
+Venue: Roy Wilkins Auditorium
+Artists: Gorillaz
+City: Minneapolis
+URL: https://ra.co/events/960253
+
+---
+
+Event: Hans- Joachim Roedelius with Paris1919
+Date: 2017-09-25
+Venue: Amsterdam Bar & Hall
+Artists: Roedelius, Paris1919, XAMBUCA
+City: Minneapolis
+URL: https://ra.co/events/1129794
+Attending: 1
+
+---
+
+Event: Chosen By The Funk presents Rick Wilhite
+Date: 2017-10-13
+Venue: Hook and Ladder Theater
+Artists: Rick Wilhite, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1016823
+Attending: 3
+
+---
+
+Event: Hodge
+Date: 2017-10-18
+Venue: Honey Lounge
+Artists: Hodge
+City: Minneapolis
+URL: https://ra.co/events/1017535
+
+---
+
+Event: Peverelist with Ryan C. and Nicky Boy Floyd
+Date: 2017-10-25
+Venue: Honey Lounge
+Artists: Peverelist
+City: Minneapolis
+URL: https://ra.co/events/1029097
+
+---
+
+Event: Kelela
+Date: 2017-11-05
+Venue: 7th Street Entry
+Artists: Kelela
+City: Minneapolis
+URL: https://ra.co/events/1003328
+
+---
+
+Event: LCD Soundsystem
+Date: 2017-11-09
+Venue: Roy Wilkins Auditorium
+Artists: LCD Soundsystem
+City: Minneapolis
+URL: https://ra.co/events/983043
+Attending: 1
+
+---
+
+Event: Flying Lotus in 3D
+Date: 2017-11-15
+Venue: First Avenue Mainroom
+Artists: Flying Lotus
+City: Minneapolis
+URL: https://ra.co/events/1005791
+
+---
+
+Event: Objekt with TML, Andrew Broder and Angelica Ottavia Iannitti
+Date: 2017-11-16
+Venue: Honey Lounge
+Artists: Objekt, TML
+City: Minneapolis
+URL: https://ra.co/events/1032142
+Attending: 3
+
+---
+
+Event: House Proud
+Date: 2017-12-01
+Venue: Honey Lounge
+Artists: Midnight Music Club, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/1088257
+Attending: 1
+
+---
+
+Event: Ground-Under Session 03
+Date: 2017-12-21
+Venue: Conga Lounge
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213541
+Attending: 1
+
+---
+
+Event: DJ Earl & Nick Hook
+Date: 2017-12-22
+Venue: 7th Street Entry
+Artists: DJ Earl, Nick Hook
+City: Minneapolis
+URL: https://ra.co/events/1044126
+
+---
+
+Event: Ground-Under Session04 - Birthday Edition
+Date: 2017-12-28
+Venue: Conga Lounge
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213542
+Attending: 1
+
+---
+
+Event: Blend Session
+Date: 2017-12-30
+Venue: Bar Fly
+Artists: DJ Encounter, Jeilah, Teddy Mac
+City: Minneapolis
+URL: https://ra.co/events/1213033
+
+---
+
+Event: Deep After Dark S:2 Ep:9
+Date: 2018-01-11
+Venue: Kitty Cat Klub
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213547
+
+---
+
+Event: Deep Werk Ft. Jeff Swiff, Aaron Brooks, Discoah B2B Jake Encinas
+Date: 2018-01-12
+Venue: Azul Nightclub and Lounge
+Artists: Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1056598
+Attending: 1
+
+---
+
+Event: JTC with Niki Kitz and Sloslylove at Honey
+Date: 2018-01-18
+Venue: Honey Lounge
+Artists: JTC, Niki Kitz
+City: Minneapolis
+URL: https://ra.co/events/1049678
+Attending: 3
+
+---
+
+Event: Spektrum Progressive - Tee So, DJ Encounter, Colin Udvig
+Date: 2018-01-19
+Venue: Bar Fly
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213551
+
+---
+
+Event: Drone Not Drones
+Date: 2018-01-26
+Venue: Cedar Cultural Center
+Artists: Loscil, Ka Baird, FORMA, Sarah Davachi, Tortoise, Omni
+City: Minneapolis
+URL: https://ra.co/events/1041057
+Attending: 2
+
+---
+
+Event: Sacha Robotti
+Date: 2018-02-02
+Venue: Conga Lounge
+Artists: Sacha Robotti, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213018
+Attending: 1
+
+---
+
+Event: Travis Scott Super Bowl 2018 Weekend in Minneapolis (Feb 3rd)
+Date: 2018-02-03
+Venue: Myth
+City: Minneapolis
+URL: https://ra.co/events/1066266
+
+---
+
+Event: Call Super with m50 and Amy Pickett b2b Ben Brumm
+Date: 2018-02-15
+Venue: Honey Lounge
+Artists: Call Super, m50
+City: Minneapolis
+URL: https://ra.co/events/1059583
+Attending: 8
+
+---
+
+Event: Dark Energy presents Adult. with Hide & Plack Blague
+Date: 2018-02-15
+Venue: 7th Street Entry
+Artists: ADULT.
+City: Minneapolis
+URL: https://ra.co/events/1052973
+Attending: 2
+
+---
+
+Event: Luuuvvvv: DC Expansion Vol. 2
+Date: 2018-02-15
+Venue: Kingman Studios
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213553
+Attending: 1
+
+---
+
+Event: Russell E.L. Butler with Berndt, Lonefront and Sasha Conda at Honey
+Date: 2018-02-28
+Venue: Honey Lounge
+Artists: Russell E.L. Butler, Berndt, Lonefront
+City: Minneapolis
+URL: https://ra.co/events/1070949
+Attending: 3
+
+---
+
+Event: Heartbreak Hotel 4: Get Lucky! // The Infamous Hotel Takeover
+Date: 2018-03-17
+Venue: Albert Lea Econolodge
+Artists: Andy Fitton, Berndt, Broadway Jones, Centrific, DJ Encounter, James Patrick, Ian James, Jacob Hoffman, Jeff Swiff, Joey P, Kyle Wyld, Lonefront, Matt Rissi, Miss Elaine Eos, Niki Kitz, Patrick Blin, Ryote, Virgo
+City: Minneapolis
+URL: https://ra.co/events/1214003
+Attending: 1
+
+---
+
+Event: Sam Binga with Virgo b2b Ryan C. and Johnny Foreplay at Honey
+Date: 2018-03-25
+Venue: Honey Lounge
+Artists: Sam Binga, Virgo
+City: Minneapolis
+URL: https://ra.co/events/1078743
+Attending: 1
+
+---
+
+Event: Josey Rebelle and Martyn with Special Guest Jeff Swiff at Honey
+Date: 2018-04-12
+Venue: Honey Lounge
+Artists: Josey Rebelle, Martyn, Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1085198
+Attending: 3
+
+---
+
+Event: Cassette - Prince Tribute ft. Traxx (Chicago)
+Date: 2018-04-19
+Venue: Kitty Cat Klub
+Artists: Traxx
+City: Minneapolis
+URL: https://ra.co/events/1099703
+Attending: 4
+
+---
+
+Event: Kahn & Neek with Subsequential DJs and Feel Free Hi Fi
+Date: 2018-04-19
+Venue: Honey Lounge
+Artists: Kahn, Neek
+City: Minneapolis
+URL: https://ra.co/events/1082403
+Attending: 3
+
+---
+
+Event: Twin Cities Techno Takeover Keller Bar presented by The Downlow
+Date: 2018-04-19
+Venue: Red Carpet Nightclub
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1212796
+
+---
+
+Event: Bump City - Purple Haze Loft Edition
+Date: 2018-04-20
+Venue: Nomad World Pub
+Artists: Traxx, Focus, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/1099709
+Attending: 7
+
+---
+
+Event: Spektrum presents: Quivver
+Date: 2018-04-20
+Venue: TBA - Minnesota
+Artists: Quivver
+City: Minneapolis
+URL: https://ra.co/events/1090000
+Attending: 3
+
+---
+
+Event: Midwest Funk Association feat. Carl Craig, Waajeed, and More.
+Date: 2018-04-21
+Venue: 7th Street Entry
+Artists: Carl Craig, Waajeed, DJ Nola, Focus
+City: Minneapolis
+URL: https://ra.co/events/1088824
+Attending: 5
+
+---
+
+Event: Intellephunk20
+Date: 2018-04-28
+Venue: TBA - Minnesota
+Artists: Ambivalent, Karl Meier, Justin Aulis Long, Dani Lehman
+City: Minneapolis
+URL: https://ra.co/events/1089537
+Attending: 13
+
+---
+
+Event: rRoxymore and Pangaea with Special Guest Doubt
+Date: 2018-05-03
+Venue: Honey Lounge
+Artists: rRoxymore, Pangaea, Doubt
+City: Minneapolis
+URL: https://ra.co/events/1094674
+Attending: 4
+
+---
+
+Event: Shiba San at REV
+Date: 2018-05-04
+Venue: Rev Ultra Lounge
+Artists: Shiba San
+City: Minneapolis
+URL: https://ra.co/events/1379472
+Attending: 1
+
+---
+
+Event: Kangding Ray
+Date: 2018-05-04
+Venue: Kitty Cat Klub
+Artists: Kangding Ray
+City: Minneapolis
+URL: https://ra.co/events/1094472
+
+---
+
+Event: Goth-Trad and Tsuruda with Special Guest Xanja
+Date: 2018-05-07
+Venue: Honey Lounge
+Artists: Goth-Trad, Tsuruda
+City: Minneapolis
+URL: https://ra.co/events/1103631
+Attending: 3
+
+---
+
+Event: Temple of Boom
+Date: 2018-05-12
+Venue: The Red Herring
+Artists: Gettoblaster, Midnight Music Club
+City: Minneapolis
+URL: https://ra.co/events/1105163
+Attending: 1
+
+---
+
+Event: Shanti Celeste and Objekt with Special Guest Andy Fitton at Honey
+Date: 2018-05-17
+Venue: Honey Lounge
+Artists: Shanti Celeste, Objekt, Andy Fitton
+City: Minneapolis
+URL: https://ra.co/events/1103131
+Attending: 5
+
+---
+
+Event: Communion Opening Party 2018
+Date: 2018-05-20
+Venue: The Hideout - The Pourhouse
+Artists: Freddy Fresh, Paul Birken, Jacob Hoffman, DJ Encounter, Mike Gervais
+City: Minneapolis
+URL: https://ra.co/events/1213478
+Attending: 1
+
+---
+
+Event: Machinedrum with Lone, Ghostband and Angelica Ottavia
+Date: 2018-05-23
+Venue: 7th Street Entry
+Artists: Machinedrum, Lone
+City: Minneapolis
+URL: https://ra.co/events/1112232
+Attending: 3
+
+---
+
+Event: Unified Field of Consciousness
+Date: 2018-06-01
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: Centrific, Jade Reed, Echtoo, Virgo
+City: Minneapolis
+URL: https://ra.co/events/1112784
+Attending: 1
+
+---
+
+Event: Nada presents: An Evening of Audiovisual Performance
+Date: 2018-06-08
+Venue: Studio Z
+Artists: Spednar, Kindohm
+City: Minneapolis
+URL: https://ra.co/events/1110847
+Attending: 3
+
+---
+
+Event: DJ Taye with Purple Orange Beach, Andrew Broder and Ghostband at Honey
+Date: 2018-06-19
+Venue: Honey Lounge
+Artists: DJ Taye
+City: Minneapolis
+URL: https://ra.co/events/1119235
+Attending: 4
+
+---
+
+Event: Kode Nation / Mick Wills North American Tour 2018
+Date: 2018-06-29
+Venue: Nomad World Pub
+Artists: Mick Wills, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/1120272
+Attending: 7
+
+---
+
+Event: Adult Swim: On The Green
+Date: 2018-06-30
+Venue: The Commons
+Artists: Zack Fox
+City: Minneapolis
+URL: https://ra.co/events/1130567
+Attending: 1
+
+---
+
+Event: Hodge and Stefan Goldmann with Special Guest Nancy Cheng at Honey
+Date: 2018-07-12
+Venue: Honey Lounge
+Artists: Hodge, Stefan Goldmann
+City: Minneapolis
+URL: https://ra.co/events/1123018
+Attending: 6
+
+---
+
+Event: Dosem
+Date: 2018-07-13
+Venue: The Hideout - The Pourhouse
+Artists: Dosem
+City: Minneapolis
+URL: https://ra.co/events/1129640
+Attending: 1
+
+---
+
+Event: Nightspace, Lynn Avery, Booboo, Bamban
+Date: 2018-07-17
+Venue: TBA - Minnesota
+Artists: Lynn Avery
+City: Minneapolis
+URL: https://ra.co/events/1123944
+Attending: 2
+
+---
+
+Event: Randomer with Daniel Paul Cortez and Ryote at Honey
+Date: 2018-07-19
+Venue: Honey Lounge
+Artists: Randomer, Daniel Paul Cortez, Ryote
+City: Minneapolis
+URL: https://ra.co/events/1123022
+Attending: 4
+
+---
+
+Event: Headless Horseman
+Date: 2018-07-20
+Venue: TBA - Minnesota
+Artists: Headless Horseman
+City: Minneapolis
+URL: https://ra.co/events/1124007
+Attending: 4
+
+---
+
+Event: Total Science with Blazzphema and MBC
+Date: 2018-07-23
+Venue: Honey Lounge
+Artists: Total Science
+City: Minneapolis
+URL: https://ra.co/events/1124459
+Attending: 4
+
+---
+
+Event: SYSTEM
+Date: 2018-07-28
+Venue: TBA - Minnesota
+Artists: DJ Hyperactive, Black Asteroid, Mike Gervais
+City: Minneapolis
+URL: https://ra.co/events/1137214
+Attending: 6
+
+---
+
+Event: Pearson Sound with Special Guest James Patrick at Honey
+Date: 2018-08-16
+Venue: Honey Lounge
+Artists: Pearson Sound, James Patrick
+City: Minneapolis
+URL: https://ra.co/events/1141657
+Attending: 3
+
+---
+
+Event: Swan Meat, Lynn Avery, Amati
+Date: 2018-08-16
+Venue: Moon Palace
+Artists: Swan Meat, Lynn Avery
+City: Minneapolis
+URL: https://ra.co/events/1138616
+Attending: 2
+
+---
+
+Event: Communion Closing Party 2018
+Date: 2018-09-02
+Venue: The Pourhouse
+Artists: Kyle Wyld, Jeff Swiff, Christian James, Centrific, DJ Encounter, Aaron Litschke, Dirty McKenzie, Lonefront, Niki Kitz, Andy Fitton, Jacob Hoffman, Teddy Mac, Matt Rissi, Daniel Paul Cortez
+City: Minneapolis
+URL: https://ra.co/events/1213480
+Attending: 1
+
+---
+
+Event: Red Bull Music Pres. Doomtree Forest
+Date: 2018-09-07
+Venue: Familia HQ
+City: Minneapolis
+URL: https://ra.co/events/1155797
+Attending: 1
+
+---
+
+Event: Om Unit with Anthony Kasper, Ghostband and Juke Nukem
+Date: 2018-09-17
+Venue: 7th Street Entry
+Artists: Om Unit
+City: Minneapolis
+URL: https://ra.co/events/1152079
+Attending: 2
+
+---
+
+Event: Pinch and Peverelist with Special Guest Newnumbertwo 
+Date: 2018-09-26
+Venue: Honey Lounge
+Artists: Pinch, Peverelist, Newnumbertwo
+City: Minneapolis
+URL: https://ra.co/events/1156178
+Attending: 2
+
+---
+
+Event: Jungle Love 3: Axis Mundi
+Date: 2018-09-28
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: DJ Eclipse, DJ Encounter, Echtoo, EKIM, Krikett, La Belle, Mizeyesis, FRENCH TOAST, Virgo
+City: Minneapolis
+URL: https://ra.co/events/1144695
+Attending: 2
+
+---
+
+Event: System - Andy Fitton, Truncate, Drumcell
+Date: 2018-09-29
+Venue: TBA - Minnesota
+Artists: Andy Fitton, Truncate, Drumcell
+City: Minneapolis
+URL: https://ra.co/events/1161617
+Attending: 7
+
+---
+
+Event: DjRUM with Special Guests Nola and ORM-D at Honey
+Date: 2018-10-02
+Venue: Honey Lounge
+Artists: DjRUM, ORM-D
+City: Minneapolis
+URL: https://ra.co/events/1160061
+Attending: 2
+
+---
+
+Event: Black Moth Super Rainbow
+Date: 2018-10-16
+Venue: Fine Line Music Cafe
+Artists: Black Moth Super Rainbow
+City: Minneapolis
+URL: https://ra.co/events/1136755
+Attending: 1
+
+---
+
+Event: Black Mass - Hiroko Yamamura b2b Submerge
+Date: 2018-10-21
+Venue: The Pourhouse
+Artists: Hiroko Yamamura, Submerge, Centrific, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1174021
+Attending: 1
+
+---
+
+Event: Karen Gwyer with Special Guests Heckadecimal, Ghostband and The Radar Threat
+Date: 2018-10-24
+Venue: Honey Lounge
+Artists: Karen Gwyer
+City: Minneapolis
+URL: https://ra.co/events/1171729
+Attending: 5
+
+---
+
+Event: Yaeji
+Date: 2018-10-26
+Venue: Fine Line Music Cafe
+Artists: Yaeji
+City: Minneapolis
+URL: https://ra.co/events/1128536
+Attending: 3
+
+---
+
+Event: Scott L. Miller / Pooch Karton / Michael M Flora
+Date: 2018-10-27
+Venue: Center for Performing Arts
+City: Minneapolis
+URL: https://ra.co/events/1176374
+Attending: 1
+
+---
+
+Event: Deep After Dark S:3 Ep:5
+Date: 2018-11-08
+Venue: Kitty Cat Klub
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213546
+
+---
+
+Event: Rhythm&Soul - 'Muertos' feat. Leo Leal
+Date: 2018-11-09
+Venue: Conga Lounge
+Artists: Leo Leal, Daniel Paul Cortez, 88project
+City: Minneapolis
+URL: https://ra.co/events/1179502
+Attending: 3
+
+---
+
+Event: System - mrBlaQ, Centrific
+Date: 2018-11-17
+Venue: TBA - Minneapolis
+Artists: mrBlaQ, Centrific
+City: Minneapolis
+URL: https://ra.co/events/1186891
+Attending: 2
+
+---
+
+Event: Red Bull Music presents Twin Cities
+Date: 2018-11-18
+Venue: Loring Theater
+Artists: Deka
+City: Minneapolis
+URL: https://ra.co/events/1179116
+Attending: 2
+
+---
+
+Event: Growltiger at Multiverse
+Date: 2018-11-23
+Venue: Bar Fly
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213544
+
+---
+
+Event: Acropora Music presents: Live and Local Electronica Showcase
+Date: 2018-11-25
+Venue: First Avenue Mainroom
+Artists: Hydrah
+City: Minneapolis
+URL: https://ra.co/events/1173446
+Attending: 1
+
+---
+
+Event: Martyn Live at Honey with Special Guests TML and Elaborate Heist
+Date: 2018-11-28
+Venue: Honey Lounge
+Artists: Martyn, TML
+City: Minneapolis
+URL: https://ra.co/events/1183516
+Attending: 4
+
+---
+
+Event: Moodymann plays Paisley Park
+Date: 2018-12-01
+Venue: Paisley Park
+Artists: Moodymann
+City: Minneapolis
+URL: https://ra.co/events/1186917
+Attending: 8
+
+---
+
+Event: Ulterior Motive with Special Guests Anthony Kasper and Westin
+Date: 2018-12-04
+Venue: Honey Lounge
+Artists: Ulterior Motive
+City: Minneapolis
+URL: https://ra.co/events/1187319
+Attending: 1
+
+---
+
+Event: Naughty or Spice
+Date: 2018-12-12
+Venue: The Other Side
+Artists: Paul Birken, DJ Encounter, Broadway Jones, Jacob Hoffman
+City: Minneapolis
+URL: https://ra.co/events/1213496
+
+---
+
+Event: Techno Tuesday feat. Niki Kitz
+Date: 2018-12-18
+Venue: Amsterdam Bar & Hall
+Artists: Niki Kitz, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213489
+Attending: 2
+
+---
+
+Event: Burning Toilet Paper Roll Man 11
+Date: 2019-01-12
+Venue: Chicago Avenue Fire Arts Center
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213493
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Autokinetic
+Date: 2019-01-15
+Venue: Amsterdam Bar & Hall
+Artists: Autokinetic, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1211096
+Attending: 1
+
+---
+
+Event: Blend Session
+Date: 2019-01-19
+Venue: Barfly
+Artists: Teddy Mac
+City: Minneapolis
+URL: https://ra.co/events/1212786
+Attending: 1
+
+---
+
+Event: DJ Abe with Delain John Wayne and Dj Encounter - Multiverse
+Date: 2019-01-26
+Venue: Bar Fly
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1211768
+Attending: 1
+
+---
+
+Event: Cassette
+Date: 2019-01-30
+Venue: Honey Lounge
+Artists: Hieroglyphic Being, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/1215095
+Attending: 1
+
+---
+
+Event: DJ Encounter and Friends presents Space Munky
+Date: 2019-02-15
+Venue: Bar Fly
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1220905
+Attending: 1
+
+---
+
+Event: Blend Session - DJ ESP - Late Night Drives World Tour Kick off
+Date: 2019-02-16
+Venue: Bar Fly
+Artists: Woody McBride, Guy Jean, Broadway Jones, Jeilah, Teddy Mac, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1222419
+Attending: 2
+
+---
+
+Event: Techno Tuesday feat. Centrific
+Date: 2019-02-19
+Venue: Amsterdam Bar & Hall
+Artists: Centrific, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1213357
+Attending: 1
+
+---
+
+Event: James Blake
+Date: 2019-03-04
+Venue: Palace Theatre
+Artists: James Blake
+City: Minneapolis
+URL: https://ra.co/events/1195278
+Attending: 1
+
+---
+
+Event: Robyn
+Date: 2019-03-05
+Venue: Palace Theatre
+Artists: Robyn
+City: Minneapolis
+URL: https://ra.co/events/1186456
+Attending: 2
+
+---
+
+Event: Renick Bell, Kindohm, Jesse Whitney, Paperbark
+Date: 2019-03-05
+Venue: Honey Lounge
+Artists: Renick Bell, Kindohm
+City: Minneapolis
+URL: https://ra.co/events/1214207
+Attending: 2
+
+---
+
+Event: Shiba San with Tim Baresko
+Date: 2019-03-16
+Venue: Rev Ultra Lounge
+Artists: Shiba San, Tim Baresko
+City: Minneapolis
+URL: https://ra.co/events/1378800
+Attending: 1
+
+---
+
+Event: Apex Projekt and DJ Encounter
+Date: 2019-03-22
+Venue: Bar Fly
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1233765
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Los Lokos
+Date: 2019-03-26
+Venue: Amsterdam Bar & Hall
+Artists: Broadway Jones, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1228337
+Attending: 1
+
+---
+
+Event: Hieroglyphic Being Live at Cassette
+Date: 2019-03-28
+Venue: Honey Lounge
+Artists: Hieroglyphic Being, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/1234175
+Attending: 1
+
+---
+
+Event: Moresounds with Special Guests Ghostband, Juke Nukem and Feel Free Hi Fi
+Date: 2019-04-02
+Venue: Honey Lounge
+Artists: Moresounds
+City: Minneapolis
+URL: https://ra.co/events/1236712
+Attending: 1
+
+---
+
+Event: Goth-Trad with Special Guests Nicky Boy Floyd b2b Necromancer and Ghostband (Live)
+Date: 2019-04-17
+Venue: Honey Lounge
+Artists: Goth-Trad
+City: Minneapolis
+URL: https://ra.co/events/1244724
+Attending: 2
+
+---
+
+Event: Electronica feat. Monstergetdown (Mau5trap)
+Date: 2019-04-19
+Venue: Conga Lounge
+Artists: Monstergetdown, Andy Fitton, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1215882
+Attending: 2
+
+---
+
+Event: Midwest Funk Association feat. Ron Trent, Midnight Music Club, Aaron Brooks
+Date: 2019-04-20
+Venue: 7th Street Entry
+Artists: Ron Trent, Midnight Music Club
+City: Minneapolis
+URL: https://ra.co/events/1236301
+Attending: 5
+
+---
+
+Event: Techno Tuesday Feat. Rodd Sim & Maximium
+Date: 2019-04-24
+Venue: Amsterdam Bar & Hall
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1244941
+Attending: 1
+
+---
+
+Event: Goodnight, Daylight.
+Date: 2019-04-27
+Venue: TBA - Minneapolis
+Artists: Lucy, Dustin Zahn, Truncate, Z.I.P.P.O, Centrific
+City: Minneapolis
+URL: https://ra.co/events/1238469
+Attending: 18
+
+---
+
+Event: Yheti & Nastynasty
+Date: 2019-05-02
+Venue: The Exchange
+City: Minneapolis
+URL: https://ra.co/events/1240680
+Attending: 1
+
+---
+
+Event: D Double E, Joe Nice, A Hundred Drums and DRTY Hbtz
+Date: 2019-05-07
+Venue: Honey Lounge
+Artists: D Double E, Joe Nice, DRTY
+City: Minneapolis
+URL: https://ra.co/events/1250019
+Attending: 1
+
+---
+
+Event: Multiverse feat. Nolephant and Jai Soleil
+Date: 2019-05-11
+Venue: Hypergalaxy.FM
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1272634
+Attending: 1
+
+---
+
+Event: Ben UFO at Honey
+Date: 2019-05-15
+Venue: Honey Lounge
+Artists: Ben UFO
+City: Minneapolis
+URL: https://ra.co/events/1259389
+Attending: 2
+
+---
+
+Event: Techno Tuesday -Tanya Leigh & Kyle King
+Date: 2019-05-21
+Venue: Amsterdam Bar & Hall
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1272428
+Attending: 2
+
+---
+
+Event: Courtesy with Special Guest Angelica at Honey
+Date: 2019-05-22
+Venue: Honey Lounge
+Artists: Courtesy
+City: Minneapolis
+URL: https://ra.co/events/1259393
+Attending: 1
+
+---
+
+Event: Official Soundset After Party
+Date: 2019-05-26
+Venue: First Avenue Mainroom
+Artists: DJ Dan
+City: Minneapolis
+URL: https://ra.co/events/1264197
+Attending: 1
+
+---
+
+Event: Hyper Hyper Helium Karaoke & Dance Party
+Date: 2019-05-30
+Venue: Skyway Theatre
+Artists: FRZNTE
+City: Minneapolis
+URL: https://ra.co/events/1272356
+Attending: 1
+
+---
+
+Event: Jubei and SP:MC present Zones Mpls with Total Science at Honey
+Date: 2019-06-17
+Venue: Honey Lounge
+Artists: Total Science, Jubei, SP:MC
+City: Minneapolis
+URL: https://ra.co/events/1273701
+Attending: 1
+
+---
+
+Event: Multiverse - Multigenre Music Night feat. Slippers
+Date: 2019-06-21
+Venue: Bar Fly
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1273318
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Devil Girl
+Date: 2019-06-25
+Venue: Amsterdam Bar & Hall
+Artists: Devil Girl, Ross Mt. Park, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1272627
+Attending: 2
+
+---
+
+Event: OMEN Recordings US Tour MSP with UVB, Manni Dee, Axkan and Tanya Leigh
+Date: 2019-06-28
+Venue: The Hideout at The Pourhouse
+Artists: Manni Dee, UVB, Axkan
+City: Minneapolis
+URL: https://ra.co/events/1279497
+Attending: 7
+
+---
+
+Event: OMEN Recordings US Tour MSP with UVB, Manni Dee, Axkan and Tanya Leigh
+Date: 2019-06-28
+Venue: The Hideout - The Pourhouse
+Artists: UVB, Manni Dee, Axkan
+City: Minneapolis
+URL: https://ra.co/events/1280057
+Attending: 4
+
+---
+
+Event: Grind - Core
+Date: 2019-07-18
+Venue: Kitty Cat Klub
+Artists: The Demix
+City: Minneapolis
+URL: https://ra.co/events/1281854
+Attending: 2
+
+---
+
+Event: The Silver Factory Feat. DJ W!ld
+Date: 2019-07-19
+Venue: Conga Lounge
+Artists: DJ W!ld, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1271351
+Attending: 6
+
+---
+
+Event: Techno Tuesday feat. Ryote & Modwell
+Date: 2019-07-23
+Venue: Amsterdam Bar & Hall
+Artists: Ryote
+City: Minneapolis
+URL: https://ra.co/events/1286676
+Attending: 1
+
+---
+
+Event: Nada presents: New Works For Unorthodox Loudspeaker Arrangements
+Date: 2019-07-26
+Venue: Flux Arts Building
+City: Minneapolis
+URL: https://ra.co/events/1285421
+Attending: 1
+
+---
+
+Event: Mor Elian and rRoxymore at Honey
+Date: 2019-07-31
+Venue: Honey Lounge
+Artists: Mor Elian, rRoxymore
+City: Minneapolis
+URL: https://ra.co/events/1286636
+Attending: 6
+
+---
+
+Event: Doc Scott with Special Guests Ghostband and Echtoo
+Date: 2019-08-06
+Venue: Honey Lounge
+Artists: Doc Scott, Echtoo
+City: Minneapolis
+URL: https://ra.co/events/1287723
+Attending: 1
+
+---
+
+Event: Fabio and Kode9 at Honey
+Date: 2019-08-13
+Venue: Honey Lounge
+Artists: Fabio, Kode9
+City: Minneapolis
+URL: https://ra.co/events/1295509
+Attending: 4
+
+---
+
+Event: True Funk Army Label Night
+Date: 2019-08-17
+Venue: Spring Street
+Artists: Autokinetic, Midnight Music Club
+City: Minneapolis
+URL: https://ra.co/events/1274530
+Attending: 2
+
+---
+
+Event: Flying Lotus
+Date: 2019-08-20
+Venue: First Avenue Mainroom
+Artists: Flying Lotus
+City: Minneapolis
+URL: https://ra.co/events/1264980
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Space Munky
+Date: 2019-08-27
+Venue: Amsterdam Bar & Hall
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1298929
+Attending: 2
+
+---
+
+Event: Communion Closing Party 2019
+Date: 2019-09-01
+Venue: The Pourhouse
+Artists: Matt Rissi, Fortune (UK), Dustin Zahn, Centrific, Christian James, Dirty McKenzie, James Patrick, Kyle Wyld, Naughty Wood, Jacob Hoffman, DJ Encounter, mrBlaQ
+City: Minneapolis
+URL: https://ra.co/events/1731068
+
+---
+
+Event: Hodge with Special Guest Lonefront at Honey
+Date: 2019-09-03
+Venue: Honey Lounge
+Artists: Hodge, Lonefront
+City: Minneapolis
+URL: https://ra.co/events/1306032
+Attending: 4
+
+---
+
+Event: Wax Poets. feat. Olin (Smartbar Chicago)
+Date: 2019-09-05
+Venue: Loring Bar
+Artists: Olin, Heckadecimal, 88project
+City: Minneapolis
+URL: https://ra.co/events/1306379
+Attending: 1
+
+---
+
+Event: Madam X with Special Guest Xanja
+Date: 2019-09-10
+Venue: Honey Lounge
+Artists: Madam X
+City: Minneapolis
+URL: https://ra.co/events/1306033
+Attending: 2
+
+---
+
+Event: Massive Attack
+Date: 2019-09-10
+Venue: Palace Theatre
+Artists: Massive Attack
+City: Minneapolis
+URL: https://ra.co/events/1238905
+Attending: 2
+
+---
+
+Event: Polo & Pan
+Date: 2019-09-18
+Venue: First Avenue Mainroom
+Artists: Polo & Pan
+City: Minneapolis
+URL: https://ra.co/events/1314907
+Attending: 2
+
+---
+
+Event: *Cancelled* Dom & Roland with Special Guests Easyrider and Ghostband at Honey *Cancelled*
+Date: 2019-09-25
+Venue: Honey Lounge
+Artists: Dom & Roland
+City: Minneapolis
+URL: https://ra.co/events/1317846
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Glove
+Date: 2019-10-08
+Venue: Amsterdam Bar & Hall
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1322503
+Attending: 1
+
+---
+
+Event: Wax Sessions 10-26-2019 All Vinyl Night
+Date: 2019-10-26
+Venue: TBA - Day Block Brewing Company
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1731112
+
+---
+
+Event: Stefan Goldmann and Doppler Gang at Honey
+Date: 2019-10-27
+Venue: Honey Lounge
+Artists: Stefan Goldmann
+City: Minneapolis
+URL: https://ra.co/events/1329940
+Attending: 2
+
+---
+
+Event: Blend Session
+Date: 2019-11-09
+Venue: Bar Fly
+Artists: Teddy Mac
+City: Minneapolis
+URL: https://ra.co/events/1345100
+Attending: 1
+
+---
+
+Event: Objekt (3 Hour Set) at Honey
+Date: 2019-11-12
+Venue: Honey Lounge
+Artists: Objekt
+City: Minneapolis
+URL: https://ra.co/events/1340269
+Attending: 5
+
+---
+
+Event: Techno Tuesday feat. Bruce Lee Press On Nails
+Date: 2019-11-12
+Venue: Amsterdam Bar & Hall
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1333049
+Attending: 2
+
+---
+
+Event: ***Cancelled*** Goth-Trad (3 Hour Set) at Honey ***Cancelled***
+Date: 2019-11-18
+Venue: Honey Lounge
+Artists: Goth-Trad
+City: Minneapolis
+URL: https://ra.co/events/1347815
+Attending: 1
+
+---
+
+Event: Remix - Local Dj's at Green Lantern
+Date: 2019-11-23
+Venue: Green Lantern St. Paul
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1333074
+Attending: 2
+
+---
+
+Event: Muzikbox
+Date: 2019-11-23
+Venue: Ginger Hop
+City: Minneapolis
+URL: https://ra.co/events/1346435
+Attending: 1
+
+---
+
+Event: Divas '98
+Date: 2019-11-30
+Venue: TBA - Minneapolis
+Artists: Jasmine Infiniti, Gemini, MadreTRosa, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1346449
+Attending: 23
+
+---
+
+Event: Michael MASARU Flora - Dynamical Systems for Twelve Loudspeakers
+Date: 2019-11-30
+Venue: Co Exhibitions
+Artists: FLORA
+City: Minneapolis
+URL: https://ra.co/events/1344021
+Attending: 1
+
+---
+
+Event: House Proud at Honey
+Date: 2019-12-06
+Venue: Honey Lounge
+Artists: Phriz
+City: Minneapolis
+URL: https://ra.co/events/1356716
+Attending: 1
+
+---
+
+Event: Android Assassins
+Date: 2019-12-07
+Venue: Kitty Cat Klub
+Artists: BPMF, Paul Birken, Autokinetic, Devil Girl
+City: Minneapolis
+URL: https://ra.co/events/1333553
+Attending: 1
+
+---
+
+Event: Remix - Local Dj's - Multi Genre
+Date: 2019-12-07
+Venue: Ox Cart Arcade
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1352624
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Mike Gervais
+Date: 2019-12-10
+Venue: Amsterdam Bar & Hall
+Artists: Mike Gervais
+City: Minneapolis
+URL: https://ra.co/events/1347130
+Attending: 1
+
+---
+
+Event: Clyde P in Minneapolis
+Date: 2019-12-13
+Venue: The Hideout - The Pourhouse
+Artists: Clyde P
+City: Minneapolis
+URL: https://ra.co/events/1347843
+Attending: 2
+
+---
+
+Event: Nocturnal: Rinzen with 3hr Set
+Date: 2019-12-14
+Venue: The Hideout - The Pourhouse
+Artists: DJ Encounter, Rinzen
+City: Minneapolis
+URL: https://ra.co/events/1731088
+
+---
+
+Event: Fabio with Special Guest Kasper
+Date: 2019-12-17
+Venue: Honey Lounge
+Artists: Fabio
+City: Minneapolis
+URL: https://ra.co/events/1355534
+Attending: 3
+
+---
+
+Event: Juicy Jams Vol 6 - DJ ESP Woody Mcbride
+Date: 2019-12-28
+Venue: The Famous Brass Rail
+Artists: Woody McBride, Axkan, Yaleb Villalobos
+City: Minneapolis
+URL: https://ra.co/events/1360798
+Attending: 3
+
+---
+
+Event: House Proud 
+Date: 2020-01-03
+Venue: Honey Lounge
+Artists: Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1359936
+Attending: 1
+
+---
+
+Event: Remix - Local Dj's - Multi Genre
+Date: 2020-01-04
+Venue: Green Lantern St. Paul
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1360719
+Attending: 2
+
+---
+
+Event: Unbothered
+Date: 2020-01-10
+Venue: Conga Latin Bistro
+Artists: Miss Twink USA
+City: Minneapolis
+URL: https://ra.co/events/1362438
+Attending: 9
+
+---
+
+Event: Techno Tuesday feat. Modwell
+Date: 2020-01-14
+Venue: Amsterdam Bar & Hall
+Artists: Lonefront, Julian Rivera
+City: Minneapolis
+URL: https://ra.co/events/1360717
+Attending: 3
+
+---
+
+Event: System Minneapolis presents Joton + RØTTER
+Date: 2020-01-18
+Venue: TBA - Minneapolis
+Artists: Joton, RØTTER, Mike Gervais
+City: Minneapolis
+URL: https://ra.co/events/1374132
+Attending: 5
+
+---
+
+Event: Darwin at Honey (3 Hour Set)
+Date: 2020-01-21
+Venue: Honey Lounge
+Artists: Darwin
+City: Minneapolis
+URL: https://ra.co/events/1370043
+Attending: 5
+
+---
+
+Event: Luis Flores Live Juicy Jams Vol. 7
+Date: 2020-01-24
+Venue: The Famous Brass Rail
+Artists: Luis Flores, Tanya Leigh, Yaleb Villalobos
+City: Minneapolis
+URL: https://ra.co/events/1376995
+Attending: 1
+
+---
+
+Event: Ploy at Honey (3 Hour Set)
+Date: 2020-02-04
+Venue: Honey Lounge
+Artists: Ploy
+City: Minneapolis
+URL: https://ra.co/events/1377310
+Attending: 2
+
+---
+
+Event: House Proud at Honey
+Date: 2020-02-07
+Venue: Honey Lounge
+Artists: Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1371288
+Attending: 1
+
+---
+
+Event: Creators Space Boiler Room Performance Series
+Date: 2020-02-07
+Venue: TBA - Creators Space - Saint Paul
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1733613
+
+---
+
+Event: Justin Jay
+Date: 2020-02-08
+Venue: Rev Ultra Lounge
+Artists: Justin Jay
+City: Minneapolis
+URL: https://ra.co/events/1364806
+Attending: 3
+
+---
+
+Event: The Scratch Mill: House Music All Day Long- Free
+Date: 2020-02-08
+Venue: Number 12 Cider
+Artists: Dirty McKenzie, Christian James, Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1374502
+Attending: 2
+
+---
+
+Event: Techno Tuesday feat. Ian Lehman
+Date: 2020-02-11
+Venue: Amsterdam Bar & Hall
+Artists: Ian Lehman, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1378071
+Attending: 3
+
+---
+
+Event: Bakongo at Honey (3 Hour Set)
+Date: 2020-02-11
+Venue: Honey Lounge
+City: Minneapolis
+URL: https://ra.co/events/1377307
+Attending: 2
+
+---
+
+Event: T.F. House Party // EDM Mankato + Triple Falls
+Date: 2020-02-14
+Venue: TBA - The What's Up Lounge - Mankato
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1733611
+
+---
+
+Event: Good presents JT Donaldson
+Date: 2020-02-15
+Venue: Beast Barbecue
+Artists: JT Donaldson
+City: Minneapolis
+URL: https://ra.co/events/1380773
+Attending: 2
+
+---
+
+Event: Command Strange with Special Guest Echtoo
+Date: 2020-02-18
+Venue: Honey Lounge
+Artists: Command Strange, Echtoo
+City: Minneapolis
+URL: https://ra.co/events/1379189
+Attending: 1
+
+---
+
+Event: Disco Interactive Art Exhibition
+Date: 2020-02-21
+Venue: Sandbox Theatre x Henry Studios
+City: Minneapolis
+URL: https://ra.co/events/1393001
+Attending: 1
+
+---
+
+Event: Pariah and Brame & Hamo
+Date: 2020-02-24
+Venue: Honey Lounge
+Artists: Pariah, Brame & Hamo
+City: Minneapolis
+URL: https://ra.co/events/1389433
+Attending: 3
+
+---
+
+Event: Studio Deep: Rissa Garcia
+Date: 2020-02-28
+Venue: AC Hotel Minneapolis Downtown
+Artists: Rissa Garcia
+City: Minneapolis
+URL: https://ra.co/events/1381952
+Attending: 4
+
+---
+
+Event: Telefon Tel Aviv
+Date: 2020-03-02
+Venue: 7th Street Entry
+Artists: Telefon Tel Aviv, Steve Hauschildt
+City: Minneapolis
+URL: https://ra.co/events/1381653
+Attending: 2
+
+---
+
+Event: House Proud Mpls
+Date: 2020-03-06
+Venue: Honey Lounge
+Artists: Mutual Identities, Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/1390462
+Attending: 4
+
+---
+
+Event: Drum
+Date: 2020-03-07
+Venue: Just/us Eatery
+Artists: Jeff Hunter, actuator
+City: Minneapolis
+URL: https://ra.co/events/1381069
+Attending: 1
+
+---
+
+Event: Techno Tuesday feat. Mr. Blaq
+Date: 2020-03-10
+Venue: Amsterdam Bar & Hall
+Artists: mrBlaQ, Jacob Hoffman
+City: Minneapolis
+URL: https://ra.co/events/1393154
+Attending: 2
+
+---
+
+Event: Bruce and Sam Binga at Honey
+Date: 2020-03-10
+Venue: Honey Lounge
+Artists: Sam Binga, Bruce
+City: Minneapolis
+URL: https://ra.co/events/1394940
+Attending: 2
+
+---
+
+Event: House Proud Mpls at Honey
+Date: 2020-04-03
+Venue: Honey Lounge
+City: Minneapolis
+URL: https://ra.co/events/1404494
+Attending: 1
+
+---
+
+Event: Sarah Davachi w/ Thom Yorke
+Date: 2020-04-05
+Venue: Xcel Energy Center
+Artists: Sarah Davachi, Thom Yorke
+City: Minneapolis
+URL: https://ra.co/events/1395974
+
+---
+
+Event: Om Unit with Special Guest Descem at Honey
+Date: 2020-04-07
+Venue: Honey Lounge
+Artists: Om Unit
+City: Minneapolis
+URL: https://ra.co/events/1401750
+Attending: 1
+
+---
+
+Event: Yves Tumor & Its Band
+Date: 2020-04-11
+Venue: Fine Line Music Cafe
+Artists: Yves Tumor
+City: Minneapolis
+URL: https://ra.co/events/1373906
+Attending: 2
+
+---
+
+Event: Bizarre
+Date: 2020-04-11
+Venue: Warehouse
+City: Minneapolis
+URL: https://ra.co/events/1388525
+Attending: 2
+
+---
+
+Event: Hammock
+Date: 2020-05-11
+Venue: Ramsey Market
+City: Minneapolis
+URL: https://ra.co/events/1408665
+Attending: 1
+
+---
+
+Event: Kraftwerk 50th Anniversary 3-D Tour
+Date: 2020-07-22
+Venue: The Armory
+Artists: Kraftwerk
+City: Minneapolis
+URL: https://ra.co/events/1394958
+Attending: 1
+
+---
+
+Event: Bizarre
+Date: 2021-07-24
+Venue: Part Wolf
+City: Minneapolis
+URL: https://ra.co/events/1451197
+Attending: 2
+
+---
+
+Event: The Great Beyond 2021
+Date: 2021-07-30
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: Antenes, Aurora Halal, Centrific, Drumcell, Dustin Zahn, Mor Elian, Patrick Russell, Paul Birken, Silent Servant, TML, Truncate, Uun, Volvox, Christian James, Lindsey Herbert, Lonefront, Mike Gervais, Niki Kitz, Ryote, Berndt, Devil Girl, DJ Nola, DJ Nola, Dustmite, Eckblad, Elysium Alps, flower food, Henry Vengeance, James Patrick, Julian Rivera, Khadija, Lauryn Lesley, Mad Max, Malion, Matt Rissi, Max Gardner, Mike Derer, Jacob Hoffman, Patrick Blin, ~~ (Tildetilde), ~~ (Tildetilde), Sari Postol, The Hermit, Xexyz, Eckblad
+City: Minneapolis
+URL: https://ra.co/events/1442707
+Attending: 27
+
+---
+
+Event: Reemergence with Tanya Leigh, KPT
+Date: 2021-08-07
+Venue: Solsta Records
+Artists: Tanya Leigh, KPT
+City: Minneapolis
+URL: https://ra.co/events/1452076
+Attending: 2
+
+---
+
+Event: Swimming To America Tour: Whales
+Date: 2021-10-15
+Venue: Skyway Theatre
+Artists: Whales
+City: Minneapolis
+URL: https://ra.co/events/1459169
+Attending: 1
+
+---
+
+Event: Split
+Date: 2021-10-16
+Venue: Rev Ultra Lounge
+City: Minneapolis
+URL: https://ra.co/events/1466263
+Attending: 79
+
+---
+
+Event: CON.Jure
+Date: 2021-10-29
+Venue: Conga Lounge
+Artists: Mike Gervais, Elysium Alps, ficshe
+City: Minneapolis
+URL: https://ra.co/events/1469946
+Attending: 205
+
+---
+
+Event: Overlook Festival: New Year's Eve 2021/ New Year's Day 2022
+Date: 2021-12-31
+Venue: Historic Concord Exchange
+Artists: ADULT., Mike Servito, Rhys Fulber, Hieroglyphic Being, Rubidium, Centrific, Niki Kitz, Lonefront, Naughty Wood, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1483623
+Attending: 2
+
+---
+
+Event: Rhyze presents: Darwin Theory, DJ Encounter, Sama Rama
+Date: 2022-03-03
+Venue: Red Carpet Nightclub
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1733567
+
+---
+
+Event: PARADOX 03.11.22: DJ Voices
+Date: 2022-03-11
+Venue: Conga Lounge
+Artists: DJ Voices, Ricardo Roessel, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1499972
+Attending: 7
+
+---
+
+Event: Scuba with re:ni and TML
+Date: 2022-03-11
+Venue: Rev Ultra Lounge
+Artists: Scuba, re:ni, TML
+City: Minneapolis
+URL: https://ra.co/events/1505422
+Attending: 5
+
+---
+
+Event: Gene Farris in Minneapolis
+Date: 2022-04-23
+Venue: The Pourhouse
+Artists: Gene Farris
+City: Minneapolis
+URL: https://ra.co/events/1526921
+Attending: 1
+
+---
+
+Event: Cut Copy
+Date: 2022-05-12
+Venue: First Avenue Mainroom
+Artists: Cut Copy, Suzanne Kraft
+City: Minneapolis
+URL: https://ra.co/events/1508793
+Attending: 3
+
+---
+
+Event: Housewerk at Beast 4th Fridays
+Date: 2022-05-27
+Venue: Beast Barbecue
+Artists: Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/1539600
+Attending: 1
+
+---
+
+Event: Kraftwerk 3-D
+Date: 2022-06-01
+Venue: State Theatre
+Artists: Kraftwerk
+City: Minneapolis
+URL: https://ra.co/events/1477281
+Attending: 5
+
+---
+
+Event: Rubber Pickle Rave
+Date: 2022-06-11
+Venue: TBA - Ask a punk
+Artists: Ron A.D.
+City: Minneapolis
+URL: https://ra.co/events/1538622
+Attending: 5
+
+---
+
+Event: SINNERS [06.25.22]
+Date: 2022-06-25
+Venue: TBA - SECRET LOCATION , MINNEAPOLIS MN 55414
+Artists: DJ Wawa, Centrific, El Niño indigo, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/1546451
+Attending: 4
+
+---
+
+Event: PARADOX 07.08.22
+Date: 2022-07-08
+Venue: Conga Lounge
+Artists: Kush Jones, BYZARRA, Elysium Alps, Deka
+City: Minneapolis
+URL: https://ra.co/events/1546444
+Attending: 4
+
+---
+
+Event: Mechanix presents... Tim Reaper
+Date: 2022-07-13
+Venue: Eagles Club #34
+Artists: Tim Reaper
+City: Minneapolis
+URL: https://ra.co/events/1552984
+Attending: 1
+
+---
+
+Event: The Great Beyond
+Date: 2022-07-29
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: The Advent, Centrific, Cinthie, D.Dan, DJ Nobu, DJ Qu, Dustin Zahn, DVS1, Erika, Juana, Lindsey Herbert, Mozhgan, Myles Sergé, Overland, Replicant, Rrose, Wata Igarashi, Berndt, Christian James, Detroit Techno Militia 2x4, Henry Chow, Holden Federico, Lonefront, JX-216, Max Gardner, Niki Kitz, Project 313, Rubidium, Ryote, ~~ (Tildetilde), ~~ (Tildetilde), Colin Cook, Damon Bradley, DJ Nola, DJ Nola, Eckblad, Elysium Alps, ficshe, Icarus, Khadija, Kitty Spit, Lauryn Lesley, Malion, Matt Rissi, Mike Derer, Phriz, Sharlese, NIKK, Tinhead
+City: Minneapolis
+URL: https://ra.co/events/1496222
+Attending: 64
+
+---
+
+Event: Word Sound Power
+Date: 2022-08-13
+Venue: TBA - Block party Northeast Minneapolis
+Artists: Subatomic Sound System, Cut Chemist, The Scientist, DJ SOUL SLINGER, Joe Nice, JEEVES
+City: Minneapolis
+URL: https://ra.co/events/1544064
+
+---
+
+Event: SINNERS [09.10.22]
+Date: 2022-09-10
+Venue: TBA - SECRET LOCATION , MINNEAPOLIS MN 55414
+Artists: Ayesha, El Niño indigo, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/1574112
+Attending: 2
+
+---
+
+Event: REARRANGEMENT with Double Diamond Sun Body, EbE404 and Tiree & Hutch
+Date: 2022-09-10
+Venue: Solsta Records
+City: Minneapolis
+URL: https://ra.co/events/1577554
+Attending: 2
+
+---
+
+Event: Communion S16EP15 Crew Edition
+Date: 2022-09-18
+Venue: The Pourhouse
+Artists: Eckblad, DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1733583
+
+---
+
+Event: Sorry For Party Rocking (2010-2015 POP & EDM BANGERS ALL NIGHT LONG)
+Date: 2022-09-23
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1578825
+Attending: 1
+
+---
+
+Event: More D4ta
+Date: 2022-09-29
+Venue: Palace Theatre
+Artists: Moderat
+City: Minneapolis
+URL: https://ra.co/events/1487700
+Attending: 6
+
+---
+
+Event: PARADOX
+Date: 2022-09-30
+Venue: Conga Lounge
+Artists: MoMA Ready, El Niño indigo, Elysium Alps, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/1574116
+Attending: 4
+
+---
+
+Event: PARADOX 11.11.22
+Date: 2022-11-11
+Venue: Conga Lounge
+Artists: livwutang, Daniel Paul Cortez
+City: Minneapolis
+URL: https://ra.co/events/1602040
+Attending: 6
+
+---
+
+Event: UNBOTHERED presents... Ash Lauryn (Underground and Black)
+Date: 2022-11-19
+Venue: The Red Sea Restaurant
+Artists: Ash Lauryn
+City: Minneapolis
+URL: https://ra.co/events/1599293
+Attending: 4
+
+---
+
+Event: NYE 2023 Party
+Date: 2022-12-31
+Venue: Skyway Theatre
+Artists: Gettoblaster
+City: Minneapolis
+URL: https://ra.co/events/1617701
+Attending: 1
+
+---
+
+Event: NYE 2023
+Date: 2022-12-31
+Venue: Skyway Theatre
+Artists: Gettoblaster
+City: Minneapolis
+URL: https://ra.co/events/1623361
+
+---
+
+Event: New Years Day, Minneapolis Hard Core
+Date: 2023-01-01
+Venue: The Red Sea Restaurant
+Artists: Devil Girl
+City: Minneapolis
+URL: https://ra.co/events/1631235
+Attending: 1
+
+---
+
+Event: Sorry For Party Rocking [2010-2015 Pop & EDM Bangers All Night Long!]
+Date: 2023-01-28
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1648076
+Attending: 1
+
+---
+
+Event: Remix
+Date: 2023-01-28
+Venue: TBA - ROK Eatery
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1733569
+
+---
+
+Event: PARABLE
+Date: 2023-02-17
+Venue: TBA
+Artists: Akua, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/1656003
+Attending: 8
+
+---
+
+Event: ENIGMA - Akko b2b Jack Bleaser // Dazzle // Elysium Alps // Fluid Tranquility
+Date: 2023-02-25
+Venue: The Red Sea Restaurant
+Artists: Akko, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1744428
+
+---
+
+Event: Acid Flashback
+Date: 2023-03-03
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/1660099
+Attending: 1
+
+---
+
+Event: Dance Floor Sorcery
+Date: 2023-03-04
+Venue: TBA - Ask For Address
+City: Minneapolis
+URL: https://ra.co/events/1663806
+Attending: 1
+
+---
+
+Event: SINNERS [03.11.23]
+Date: 2023-03-11
+Venue: TBA
+Artists: Kush Jones, deep creep, BYZARRA, LLYYNNXX
+City: Minneapolis
+URL: https://ra.co/events/1654123
+Attending: 3
+
+---
+
+Event: Remix
+Date: 2023-03-18
+Venue: TBA - ROK Eatery
+Artists: DJ Encounter
+City: Minneapolis
+URL: https://ra.co/events/1733571
+
+---
+
+Event: Sound In Motion Techno
+Date: 2023-03-24
+Venue: Rev Ultra Lounge
+City: Minneapolis
+URL: https://ra.co/events/1674527
+Attending: 2
+
+---
+
+Event: PARADOX 03.31.23
+Date: 2023-03-31
+Venue: Conga Lounge
+Artists: Sister Zo, Amelia Holt, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1654114
+Attending: 3
+
+---
+
+Event: The Deep End
+Date: 2023-04-07
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/1678782
+Attending: 2
+
+---
+
+Event: Freak Of The Week with DJ Nola
+Date: 2023-04-14
+Venue: TBA - Beast Barbeque Minneapolis, Minnesota
+Artists: DJ Cent, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1667824
+Attending: 1
+
+---
+
+Event: ENIGMA - Centrific // Akko // FNK // Wheelbite
+Date: 2023-04-15
+Venue: The Red Sea Restaurant
+Artists: Akko, Centrific, Wheelbite
+City: Minneapolis
+URL: https://ra.co/events/1744426
+
+---
+
+Event: PARADOX 05.12.23
+Date: 2023-05-12
+Venue: Conga Lounge
+Artists: Doctor Jeep, DJ Healthy, El Niño indigo
+City: Minneapolis
+URL: https://ra.co/events/1689691
+Attending: 1
+
+---
+
+Event: Freak of the Week
+Date: 2023-05-12
+Venue: TBA - Beast Barbecue Minneapolis
+Artists: Brenda, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1694107
+Attending: 1
+
+---
+
+Event: BIRD FEED
+Date: 2023-05-12
+Venue: Eagles Club #34
+Artists: Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/1697243
+Attending: 1
+
+---
+
+Event: Mechanix: Echo Brown, Defecks, Renno, Kani
+Date: 2023-05-26
+Venue: Eagles Club #34
+Artists: Echo Brown
+City: Minneapolis
+URL: https://ra.co/events/1706160
+
+---
+
+Event: DADDY ISSUES BAD DECISIONS
+Date: 2023-05-27
+Venue: TBA
+Artists: POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/1724863
+
+---
+
+Event: Freak of the Week
+Date: 2023-06-09
+Venue: TBA - Beast Barbecue
+Artists: Jerome Baker (US), DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1721035
+Attending: 1
+
+---
+
+Event: Mechanix: Aphrodite, Jon Dent & LØSTGIRL
+Date: 2023-06-23
+Venue: Eagles Club #34
+Artists: Aphrodite
+City: Minneapolis
+URL: https://ra.co/events/1721253
+Attending: 1
+
+---
+
+Event: WARM LEATHERETTE
+Date: 2023-06-24
+Venue: Bolt Underground
+Artists: POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/1726664
+
+---
+
+Event: Crimes Against Ravers
+Date: 2023-06-27
+Venue: Mortimer's
+Artists: avas, thirtyonetwentyfive
+City: Minneapolis
+URL: https://ra.co/events/1730043
+Attending: 1
+
+---
+
+Event: Enigma
+Date: 2023-07-01
+Venue: The Red Sea Restaurant
+Artists: Akko, Sard, Eckblad
+City: Minneapolis
+URL: https://ra.co/events/1733507
+Attending: 2
+
+---
+
+Event: Tsuruda at Lumber Exchange [360 Show]
+Date: 2023-07-08
+Venue: The Exchange
+Artists: Tsuruda
+City: Minneapolis
+URL: https://ra.co/events/1729594
+
+---
+
+Event: Ratio
+Date: 2023-07-08
+Venue: TBA - ROK Eatery
+Artists: Beab, Xminus1
+City: Minneapolis
+URL: https://ra.co/events/1734516
+
+---
+
+Event: PARADOX 07.14.23
+Date: 2023-07-14
+Venue: Conga Lounge
+Artists: DJ Voices, TML
+City: Minneapolis
+URL: https://ra.co/events/1723498
+Attending: 2
+
+---
+
+Event: Mechanix: Bass Banditz, Easyrider, Natosha, Emcee Brace
+Date: 2023-07-21
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/1740822
+Attending: 1
+
+---
+
+Event: MEOW MIX
+Date: 2023-07-22
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/1726665
+Attending: 2
+
+---
+
+Event: The Great Beyond 2023
+Date: 2023-07-28
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: Amotik, Aurora Halal, Carlos Souffront, Centrific, Danny Daze, Decoder, DJ Minx, Dustin Zahn, FLAWS, Function, James Ruskin, Juana, Julia Govor, Kangding Ray, Lonefront, Marco Shuttle, Mike Parker, Mystic Bill, PLO Man, Wata Igarashi, Anthony Jimenez, Auspex, Autokinetic, Forest Management, Furtive, Gunjack, Jacob Hoffman, Kitty Spit, Lychee, Ryote, Sard, Stephen Disario, U-SRD, agraybé, Berndt, Binah, BYZARRA, DJ Chia Pudding, DJ Nola, Eckblad, Elysium Alps, DJ Encounter, flower food, Fortune (UK), Greg (2), Henry Chow, Kate Rowe, Kobe Dupree, Lanny, Lauryn Lesley, LYCHEE (3), Marteka Fair, Max Ellington, Midnight Music Club, Mike Derer, Real Girl, Steve Noah, Tekk Nikk, ~~ (Tildetilde), Wangzoom
+City: Minneapolis
+URL: https://ra.co/events/1645362
+Attending: 88
+
+---
+
+Event: Communion S17:EP08
+Date: 2023-08-06
+Venue: The Pourhouse
+Artists: Lanny, Akko, Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/1751887
+Attending: 1
+
+---
+
+Event: Wax Appeal - Elsewarehouse Rooftop
+Date: 2023-08-11
+Venue: TBA
+Artists: MCG
+City: Minneapolis
+URL: https://ra.co/events/1740947
+Attending: 2
+
+---
+
+Event: Freak of the Week
+Date: 2023-08-11
+Venue: TBA
+Artists: Akko, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/1753538
+
+---
+
+Event: ACME-MANIA
+Date: 2023-08-12
+Venue: TBA - Minneapolis, MN 
+Artists: CCL, El Niño indigo
+City: Minneapolis
+URL: https://ra.co/events/1746704
+Attending: 3
+
+---
+
+Event: Mechanix: Toyacoyah, Jen Symmetry, The Baders, Ph03nix Fir3
+Date: 2023-08-18
+Venue: Eagles Club #34
+Artists: Toyacoyah
+City: Minneapolis
+URL: https://ra.co/events/1752986
+Attending: 2
+
+---
+
+Event: Cyber City Disco
+Date: 2023-08-18
+Venue: TBA - Belly of the Beast - 825 East Hennepin, Minneapolis
+Artists: Centrific, Liara Tsai, Beab
+City: Minneapolis
+URL: https://ra.co/events/1758324
+
+---
+
+Event: Enlace
+Date: 2023-08-19
+Venue: The Red Sea Ethiopian Restaurant
+Artists: moreit
+City: Minneapolis
+URL: https://ra.co/events/1741276
+Attending: 3
+
+---
+
+Event: Decadance
+Date: 2023-08-25
+Venue: TBA - James Ballentine Uptown VFW
+Artists: Akko
+City: Minneapolis
+URL: https://ra.co/events/1761231
+
+---
+
+Event: SHAUN J. WRIGHT AT THE FINE LINE MINNEAPOLIS
+Date: 2023-08-26
+Venue: Fine Line Music Cafe
+Artists: Shaun J. Wright
+City: Minneapolis
+URL: https://ra.co/events/1760495
+Attending: 2
+
+---
+
+Event: CYBER CITY DISCO - TEKK NIKK, TML, XMINUS1
+Date: 2023-09-15
+Venue: TBA - Beast Barbecue NE Minneapolis.
+Artists: Tekk Nikk, TML, Xminus1
+City: Minneapolis
+URL: https://ra.co/events/1769397
+Attending: 1
+
+---
+
+Event: Communion: S17:E15
+Date: 2023-09-17
+Venue: The Pourhouse
+Artists: Eckblad
+City: Minneapolis
+URL: https://ra.co/events/1774080
+
+---
+
+Event: PARADOX 9.22.23
+Date: 2023-09-22
+Venue: Conga Lounge
+Artists: DJ Wawa, BYZARRA, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/1758932
+Attending: 4
+
+---
+
+Event: DJs: Jam E.Z., AllDay, haute carl 9/22 at HouseWerk18 Beast Barbecue
+Date: 2023-09-22
+Venue: TBA - Beast Barbecue NE Minneapolis.
+Artists: haute carl
+City: Minneapolis
+URL: https://ra.co/events/1768013
+Attending: 2
+
+---
+
+Event: Mechanix: Seminal Sounds Takeover
+Date: 2023-09-22
+Venue: Eagles Club #34
+Artists: Alpinist
+City: Minneapolis
+URL: https://ra.co/events/1768017
+Attending: 2
+
+---
+
+Event: ENIGMA - Akko // KEMA // M. GOALEN // mitchell
+Date: 2023-09-23
+Venue: The Red Sea Restaurant
+Artists: Akko, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/1761233
+
+---
+
+Event: Communion S17:E16 (Summer 2023 Closing Party)
+Date: 2023-09-24
+Venue: The Pourhouse
+Artists: DJ Qu, DJ Hyperactive
+City: Minneapolis
+URL: https://ra.co/events/1774083
+Attending: 2
+
+---
+
+Event: JUMPSUIT - YASMEENAH, POUR HOMMES, JAYCEE LIVES
+Date: 2023-10-07
+Venue: TBA - Black Hart of St. Paul
+City: Minneapolis
+URL: https://ra.co/events/1784890
+Attending: 1
+
+---
+
+Event: Stacey Hotwaxx Hale
+Date: 2023-10-07
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Stacey Hotwaxx Hale
+City: Minneapolis
+URL: https://ra.co/events/1787362
+Attending: 1
+
+---
+
+Event: Freak of the Week
+Date: 2023-10-13
+Venue: TBA - Beast Barbecue
+Artists: sillygirlcarmen, DJ Nola, Akko, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/1781254
+Attending: 1
+
+---
+
+Event: Fleetmac Wood presents Silver Storms Ball - Minneapolis
+Date: 2023-10-14
+Venue: Fine Line Music Cafe
+Artists: Fleetmac Wood, Roxanne Roll
+City: Minneapolis
+URL: https://ra.co/events/1743992
+Attending: 19
+
+---
+
+Event: CYBER CITY DISCO - Berndt, ORI THE GHOST, HAUTECARL
+Date: 2023-10-20
+Venue: TBA - Belly of the Beast - 825 East Hennepin, Minneapolis
+Artists: Berndt, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/1784892
+Attending: 1
+
+---
+
+Event: Official Duluth Halloween Bar Crawl
+Date: 2023-10-21
+Venue: Carmody Irish Pub
+City: Minneapolis
+URL: https://ra.co/events/1769915
+
+---
+
+Event: Wax Appeal ft Mike Pifer
+Date: 2023-11-04
+Venue: TBA
+Artists: Mike Pifer, MCG
+City: Minneapolis
+URL: https://ra.co/events/1788579
+Attending: 2
+
+---
+
+Event: Strictly Butter
+Date: 2023-11-04
+Venue: TBA
+Artists: m50, r.ss
+City: Minneapolis
+URL: https://ra.co/events/1803569
+Attending: 1
+
+---
+
+Event: PARADOX
+Date: 2023-11-10
+Venue: Conga Lounge
+Artists: Succubass, Lonefront, BYZARRA, Dazzle, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/1794025
+Attending: 6
+
+---
+
+Event: ENIGMA - Lauryn Lesley // D. Frequency // Paul Chang // Akko
+Date: 2023-11-11
+Venue: The Red Sea Restaurant
+Artists: Lauryn Lesley, Akko
+City: Minneapolis
+URL: https://ra.co/events/1793843
+Attending: 5
+
+---
+
+Event: CYBER CITY DISCO - ROSS H., QUEEN OF THE MOLE PEOPLE, EVIAN RAVE
+Date: 2023-11-17
+Venue: TBA - Beast Barbecue NE Minneapolis
+Artists: Lonefront, Devil Girl
+City: Minneapolis
+URL: https://ra.co/events/1805333
+Attending: 3
+
+---
+
+Event: Terra w/ Amor Satyr & Siu Mata
+Date: 2023-11-24
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Amor Satyr, Akko
+City: Minneapolis
+URL: https://ra.co/events/1796444
+Attending: 1
+
+---
+
+Event: MASSIVE
+Date: 2023-11-25
+Venue: TBA - Beast 825 E Hennepin Ave, Minneapolis, MN 55414
+Artists: POUR HOMMES, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1810138
+Attending: 2
+
+---
+
+Event: JUMPSUIT - Akko, TML, STORMY
+Date: 2023-12-02
+Venue: TBA - Black Hart of St. Paul
+Artists: Akko, TML
+City: Minneapolis
+URL: https://ra.co/events/1811508
+Attending: 1
+
+---
+
+Event: CYBER CITY DISCO - Ryote, HONESTY IN MOTION, PRØGRAMM⁶¹²
+Date: 2023-12-15
+Venue: TBA - Belly of the Beast (825 E Hennepin, Minneapolis)
+Artists: Ryote
+City: Minneapolis
+URL: https://ra.co/events/1818224
+Attending: 3
+
+---
+
+Event: Housewerk with Kyle King and Phriz
+Date: 2023-12-22
+Venue: TBA - Beast Barbecue NE Minneapolis.
+Artists: Phriz
+City: Minneapolis
+URL: https://ra.co/events/1823556
+Attending: 5
+
+---
+
+Event: Shrimpnose - As It Seems Tour with BLOOD $MOKE BODY, Phib b2b WNDRLND, student 1, TaliaKnight
+Date: 2023-12-28
+Venue: 7th Street Entry
+City: Minneapolis
+URL: https://ra.co/events/1794816
+Attending: 1
+
+---
+
+Event: Hypnotonic
+Date: 2023-12-31
+Venue: TBA - call 507-246-6667 for addy xoxo
+Artists: Pauli Cakes, Omari
+City: Minneapolis
+URL: https://ra.co/events/1831998
+Attending: 19
+
+---
+
+Event: JUMPSUIT - D UNTETHERED, POUR HOMMES, JEN-E
+Date: 2024-01-06
+Venue: TBA - Black Hart of St. Paul 1415 University Ave W, St Paul, MN 55104
+Artists: POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/1830220
+Attending: 3
+
+---
+
+Event: G Jones with Mala, Saka, Sayer
+Date: 2024-01-12
+Venue: TBA - The Fillmore Minneapolis
+Artists: Mala
+City: Minneapolis
+URL: https://ra.co/events/1744894
+Attending: 2
+
+---
+
+Event: Crystallize
+Date: 2024-01-19
+Venue: The Red Sea Ethiopian Restaurant
+Artists: 747, Kerosine, Malion, Niki Kitz
+City: Minneapolis
+URL: https://ra.co/events/1820062
+Attending: 15
+
+---
+
+Event: CYBER CITY DISCO - BYZARRA B2B Dazzle, JAMEEN, STORMY
+Date: 2024-01-19
+Venue: TBA - Belly of the Beast - 825 East Hennepin, Minneapolis
+Artists: BYZARRA, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/1842205
+Attending: 1
+
+---
+
+Event: The Great Northern Festival
+Date: 2024-01-25
+Venue: Cedar Cultural Center
+City: Minneapolis
+URL: https://ra.co/events/1847287
+Attending: 1
+
+---
+
+Event: Obscura II - NuWorld
+Date: 2024-01-25
+Venue: TBA - Artery for the Arts
+City: Minneapolis
+URL: https://ra.co/events/1847505
+
+---
+
+Event: Housewerk with DJs Underground Sequence, Girl-E and Neil Fox
+Date: 2024-01-26
+Venue: TBA - Beast Barbecue NE Minneapolis.
+City: Minneapolis
+URL: https://ra.co/events/1840486
+Attending: 2
+
+---
+
+Event: Ratio
+Date: 2024-02-02
+Venue: TBA - Rök Music Lounge St.Paul
+Artists: Atrevido, Xminus1, Beab
+City: Minneapolis
+URL: https://ra.co/events/1832843
+Attending: 14
+
+---
+
+Event: JUMPSUIT - DEDICATED ENEMY, ORI THE GHOST, REBEL MAGIC
+Date: 2024-02-02
+Venue: TBA - Black Hart of St Paul (1415 University Ave. W.)
+Artists: Dedicated Enemy, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/1848592
+Attending: 2
+
+---
+
+Event: Too Much Love
+Date: 2024-02-03
+Venue: 7th Street Entry
+Artists: TML
+City: Minneapolis
+URL: https://ra.co/events/1854874
+Attending: 1
+
+---
+
+Event: Freak of the Week
+Date: 2024-02-09
+Venue: TBA - Beast Barbecue
+Artists: Devil Girl, DJ Nola, Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/1844934
+Attending: 5
+
+---
+
+Event: ENIGMA - Sard (live) // Lonefront (live) // Programm612 // Akko
+Date: 2024-02-10
+Venue: The Red Sea Restaurant
+Artists: Lonefront, Sard, Akko
+City: Minneapolis
+URL: https://ra.co/events/1842675
+Attending: 5
+
+---
+
+Event: Carbon Sound presents: HEART BEATS
+Date: 2024-02-13
+Venue: 7th Street Entry
+Artists: Dazegxd, Dazzle, echo (3)
+City: Minneapolis
+URL: https://ra.co/events/1858759
+Attending: 1
+
+---
+
+Event: SINNERS
+Date: 2024-02-16
+Venue: Conga Lounge
+Artists: El Niño indigo, Real Girl, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/1857442
+Attending: 3
+
+---
+
+Event: CYBER CITY DISCO - NOLA RAVE, D UNTETHERED, DR. TRAXUIT
+Date: 2024-02-16
+Venue: TBA - BEAST BARBECUE 825 E Hennepin
+Artists: DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1860600
+Attending: 2
+
+---
+
+Event: Crimes Against Ravers - Joe Cross, Soupka, avas, Cumstain/Glomp, Metal Gear Eric
+Date: 2024-02-17
+Venue: TBA - Secret Location
+Artists: avas
+City: Minneapolis
+URL: https://ra.co/events/1865467
+Attending: 1
+
+---
+
+Event: HouseWerk at Beast 23 Feb Michael Todd Grey with resident MissElaineEos
+Date: 2024-02-23
+Venue: TBA - Beast BBQ NE Minneapolis
+Artists: Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/1858894
+Attending: 3
+
+---
+
+Event: Sammy Virji
+Date: 2024-02-24
+Venue: Skyway Theatre
+Artists: Sammy Virji
+City: Minneapolis
+URL: https://ra.co/events/1841088
+Attending: 2
+
+---
+
+Event: Winter Warmup
+Date: 2024-03-02
+Venue: TBA - RÖK Music Lounge
+City: Minneapolis
+URL: https://ra.co/events/1861422
+Attending: 2
+
+---
+
+Event: PRØGRAMM [Vol.1 Ep.4]
+Date: 2024-03-02
+Venue: TBA
+Artists: Kobe Dupree, Josh Tong, barbuhh, Inquilab, Tekk Nikk
+City: Minneapolis
+URL: https://ra.co/events/1870409
+Attending: 19
+
+---
+
+Event: Liquid Dreams (Aquatic)
+Date: 2024-03-02
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Eckblad, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/1858680
+Attending: 4
+
+---
+
+Event: JUMPSUIT - Berndt, AFRO, ERLAAB
+Date: 2024-03-02
+Venue: TBA - Black Hart of St. Paul 1415 University Ave W, St Paul, MN 55104
+Artists: Berndt
+City: Minneapolis
+URL: https://ra.co/events/1866784
+Attending: 3
+
+---
+
+Event: Kinetic Spring
+Date: 2024-03-08
+Venue: The Red Sea Restaurant
+Artists: andrew baschyn
+City: Minneapolis
+URL: https://ra.co/events/1876170
+
+---
+
+Event: ENIGMA - Overland // Akko B2B Fluidtranquility
+Date: 2024-03-09
+Venue: The Red Sea Restaurant
+Artists: Overland, Akko
+City: Minneapolis
+URL: https://ra.co/events/1865429
+Attending: 5
+
+---
+
+Event: CYBER CITY DISCO: MUTUAL IDENTITIES, Elysium Alps, MOMMY LONG LEGS
+Date: 2024-03-15
+Venue: TBA - BELLY OF THE BEAST 825 E HENNEPIN
+Artists: Mutual Identities, Elysium Alps, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/1873566
+Attending: 2
+
+---
+
+Event: 612-JUKE - DJ Manny and DJ Phil in Minneapolis
+Date: 2024-03-16
+Venue: Eagles Club #34
+Artists: DJ Manny, DJ Phil
+City: Minneapolis
+URL: https://ra.co/events/1846439
+Attending: 6
+
+---
+
+Event: Afrobeats To The World ( MINNEAPOLIS )
+Date: 2024-03-16
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1883279
+Attending: 1
+
+---
+
+Event: Future Music at Housewerk with Marcos Romero, Jobot & Neil Fox
+Date: 2024-03-22
+Venue: TBA - Beast BBQ NE Minneapolis
+City: Minneapolis
+URL: https://ra.co/events/1881361
+Attending: 10
+
+---
+
+Event: PARADOX
+Date: 2024-03-22
+Venue: Conga Lounge
+Artists: Regal86, El Niño indigo, Elysium Alps, Ori The Ghost, LLYYNNXX
+City: Minneapolis
+URL: https://ra.co/events/1854794
+Attending: 7
+
+---
+
+Event: Wax Appeal: Christian James, Jeff Swiff, The Excavators
+Date: 2024-03-22
+Venue: The Red Sea Ethiopian Restaurant
+Artists: MCG, QJ (2), Jeff Swiff, Christian James
+City: Minneapolis
+URL: https://ra.co/events/1862300
+Attending: 4
+
+---
+
+Event: Kajunga Records presents Marcellus Pittman
+Date: 2024-03-30
+Venue: The Hideout - The Pourhouse
+Artists: Marcellus Pittman, Berndt
+City: Minneapolis
+URL: https://ra.co/events/1872508
+Attending: 16
+
+---
+
+Event: Ratio
+Date: 2024-04-05
+Venue: TBA - Rök
+Artists: Ori The Ghost, Tekk Nikk, Beab, Eckblad
+City: Minneapolis
+URL: https://ra.co/events/1877363
+Attending: 7
+
+---
+
+Event: House Proud Mpls
+Date: 2024-04-05
+Venue: TBA -  Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/1887220
+Attending: 1
+
+---
+
+Event: FIRST FRIDAY'S
+Date: 2024-04-05
+Venue: Blackstack Brewing
+City: Minneapolis
+URL: https://ra.co/events/1898009
+
+---
+
+Event: JUMPSUIT - AMY PICKETT, Real Girl, DJ LUZIA FUCHSIA
+Date: 2024-04-06
+Venue: TBA - Black Hart of St. Paul 1415 University Ave W, St Paul, MN 55104
+Artists: Real Girl
+City: Minneapolis
+URL: https://ra.co/events/1889192
+Attending: 1
+
+---
+
+Event: Freak Of The Week
+Date: 2024-04-12
+Venue: Beast Barbecue
+Artists: DJ T-1000, DJ Nola, Tekk Nikk
+City: Minneapolis
+URL: https://ra.co/events/1901970
+Attending: 5
+
+---
+
+Event: Sorry For Party Rocking (2010-2015 Pop & EDM All Night Long!)
+Date: 2024-04-12
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1892049
+Attending: 1
+
+---
+
+Event: CYBER CITY DISCO - 15MM, DANA KAZUKO, HCEU
+Date: 2024-04-19
+Venue: TBA - Belly of the Beast - 825 East Hennepin, Minneapolis
+Artists: Mina Mills, Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/1897010
+
+---
+
+Event: Mechanix presents: DJ Trace
+Date: 2024-04-19
+Venue: Eagles Club #34
+Artists: DJ Trace, Echtoo
+City: Minneapolis
+URL: https://ra.co/events/1904421
+
+---
+
+Event: UNBOTHERED presents Kai Alcé, Jeff Swiff, and DJ Etta
+Date: 2024-04-20
+Venue: The Red Sea Restaurant
+Artists: Kai Alce, DJ Etta (US), Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1890373
+Attending: 9
+
+---
+
+Event: SINNERS [04.26.24]
+Date: 2024-04-26
+Venue: Conga Lounge
+Artists: Jdotbalance, Mike Gervais, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/1900938
+Attending: 4
+
+---
+
+Event: House Proud with Master Kev (NYC)
+Date: 2024-05-03
+Venue: TBA -  Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/1901581
+Attending: 2
+
+---
+
+Event: Crimes Against Ravers
+Date: 2024-05-03
+Venue: RÖK Music Lounge
+Artists: thirtyonetwentyfive, avas
+City: Minneapolis
+URL: https://ra.co/events/1914700
+Attending: 1
+
+---
+
+Event: FIRST FRIDAY'S @BLACKSTACK
+Date: 2024-05-03
+Venue: Blackstack Brewing
+City: Minneapolis
+URL: https://ra.co/events/1913254
+
+---
+
+Event: DISCLOSURE VS. FRED AGAIN.. TRIBUTE DANCE PARTY
+Date: 2024-05-04
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1898872
+Attending: 3
+
+---
+
+Event: JUMPSUIT - Dazzle, STORMY, XMINUS1
+Date: 2024-05-04
+Venue: TBA - Black Hart of St. Paul 1415 University Ave W, St Paul, MN 55104
+Artists: Dazzle, Xminus1
+City: Minneapolis
+URL: https://ra.co/events/1910204
+
+---
+
+Event: May Day THC
+Date: 2024-05-05
+Venue: Powderhorn Park
+Artists: Phriz, Julian Rivera, Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/1917471
+Attending: 2
+
+---
+
+Event: Wax Appeal feat. Peter Croce & Yukiko - Official Movement Pre-party
+Date: 2024-05-10
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Peter Croce, Yukiko, DJ Blue Funk, Phriz
+City: Minneapolis
+URL: https://ra.co/events/1899545
+Attending: 39
+
+---
+
+Event: Mind Control Made Easy
+Date: 2024-05-11
+Venue: TBA
+Artists: Kr!z, livwutang, Dustin Zahn, Centrific
+City: Minneapolis
+URL: https://ra.co/events/1910023
+Attending: 10
+
+---
+
+Event: Horizon: Sean Tyas
+Date: 2024-05-11
+Venue: Skyway Theatre
+Artists: Sean Tyas
+City: Minneapolis
+URL: https://ra.co/events/1908753
+
+---
+
+Event: Enlace
+Date: 2024-05-17
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Ori The Ghost, moreit
+City: Minneapolis
+URL: https://ra.co/events/1904318
+Attending: 3
+
+---
+
+Event: CYBER CITY DISCO - KYLE KING, LORRAINE + SERGIO, JAMEEN
+Date: 2024-05-17
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/1920713
+Attending: 2
+
+---
+
+Event: Choices
+Date: 2024-05-18
+Venue: 56 Brewing
+Artists: Christian James, Jeff Swiff, DJ Nola, Beab
+City: Minneapolis
+URL: https://ra.co/events/1911297
+Attending: 11
+
+---
+
+Event: ENIGMA - BABYHEX || Duck Trash || Akko
+Date: 2024-05-18
+Venue: The Red Sea Restaurant
+Artists: Akko, Duck Trash, Daisy Hex
+City: Minneapolis
+URL: https://ra.co/events/1906716
+Attending: 5
+
+---
+
+Event: Hellavision Television Network Flea Market
+Date: 2024-05-18
+Venue: Tyler Street Stacks
+Artists: avas
+City: Minneapolis
+URL: https://ra.co/events/1923024
+Attending: 1
+
+---
+
+Event: UMEK
+Date: 2024-05-18
+Venue: Reign Event Center
+Artists: Umek
+City: Minneapolis
+URL: https://ra.co/events/1928201
+
+---
+
+Event: Area 51 - El Niño indigo, LLYYNNXX, Joe Cross, Metal Gear Eric, avas, Soupka & Daisy Hex
+Date: 2024-05-24
+Venue: First Avenue Mainroom
+Artists: El Niño indigo, LLYYNNXX, avas, Daisy Hex
+City: Minneapolis
+URL: https://ra.co/events/1893397
+Attending: 3
+
+---
+
+Event: Housewerk
+Date: 2024-05-24
+Venue: Beast Barbecue
+Artists: Phriz, Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/1926844
+Attending: 3
+
+---
+
+Event: Horizon: Rinaly
+Date: 2024-05-24
+Venue: Skyway Theatre
+Artists: Chris Blackburn
+City: Minneapolis
+URL: https://ra.co/events/1901940
+
+---
+
+Event: 612-JUKE Vol. 2 - Heavee in Minneapolis
+Date: 2024-05-25
+Venue: Eagles Club #34
+Artists: Heavee, Toyacoyah, Deejay YB, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/1913253
+Attending: 9
+
+---
+
+Event: Rakta ꒷꒦ ꒷꒦ ꒷꒦ ꒷꒦ ꒷꒦
+Date: 2024-05-30
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/1895118
+Attending: 2
+
+---
+
+Event: PRØGRAMM Vol.1 Ep.7
+Date: 2024-05-31
+Venue: TBA
+Artists: Akko, Colin Cook (US)
+City: Minneapolis
+URL: https://ra.co/events/1931968
+Attending: 126
+
+---
+
+Event: JUMPSUIT - Real Girl, DANA KAZUKO, PRØGRAMM⁶¹²
+Date: 2024-06-01
+Venue: TBA - Black Hart of St. Paul 1415 University Ave W, St Paul, MN 55104
+Artists: Real Girl, Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/1924940
+Attending: 2
+
+---
+
+Event: Communion Opening Party 2024
+Date: 2024-06-02
+Venue: The Pourhouse
+Artists: flower food, Steve Noah, Andy Stroble, Josh Tong, barbuhh
+City: Minneapolis
+URL: https://ra.co/events/1929339
+Attending: 13
+
+---
+
+Event: PARADOX
+Date: 2024-06-07
+Venue: Conga Lounge
+Artists: Huerco S., TML, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/1912132
+Attending: 14
+
+---
+
+Event: Dedicated Enemy, Daisy Hex, The Muatas, Magenta Vice
+Date: 2024-06-07
+Venue: Cloudland Theater
+Artists: Dedicated Enemy, Daisy Hex
+City: Minneapolis
+URL: https://ra.co/events/1941364
+Attending: 1
+
+---
+
+Event: House Proud wsg/ Allen Hz
+Date: 2024-06-07
+Venue: Beast Barbecue
+Artists: Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1940419
+
+---
+
+Event: Lizzy Jane
+Date: 2024-06-08
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1918575
+Attending: 1
+
+---
+
+Event: minnElectro Brunch @ The Joint with Real Girl
+Date: 2024-06-08
+Venue: The Joint
+Artists: Real Girl
+City: Minneapolis
+URL: https://ra.co/events/1941374
+
+---
+
+Event: Communion S18:EP02
+Date: 2024-06-09
+Venue: The Pourhouse
+Artists: Christian James, Tekk Nikk, Xavier LeBlanc, IDBH
+City: Minneapolis
+URL: https://ra.co/events/1939613
+Attending: 4
+
+---
+
+Event: Interstellar Signals
+Date: 2024-06-13
+Venue: Dusty's Bar
+Artists: Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/1944171
+
+---
+
+Event: Carbon Sound x Unbothered present: Blackmoonchild, Yasmeenah, and echo
+Date: 2024-06-14
+Venue: The Red Sea Restaurant
+Artists: Blackmoonchild, YASMEENAH (2), echo (3)
+City: Minneapolis
+URL: https://ra.co/events/1933888
+Attending: 5
+
+---
+
+Event: Freak of the Week
+Date: 2024-06-14
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/1944166
+Attending: 1
+
+---
+
+Event: Kinetic Summer
+Date: 2024-06-15
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Lester Fitzpatrick, andrew baschyn, Lonefront, Mutual Identities, Mike Pifer
+City: Minneapolis
+URL: https://ra.co/events/1930408
+Attending: 10
+
+---
+
+Event: Kajunga presents ☼ Choices
+Date: 2024-06-15
+Venue: 56 Brewing
+Artists: Real Girl, Phriz
+City: Minneapolis
+URL: https://ra.co/events/1944162
+Attending: 3
+
+---
+
+Event: Zuezeu
+Date: 2024-06-15
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1918538
+Attending: 1
+
+---
+
+Event: Daddy Issues: Pride Kickoff!
+Date: 2024-06-15
+Venue: Beast Barbecue
+Artists: POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/1944159
+Attending: 1
+
+---
+
+Event: Cantina Pride Block Party
+Date: 2024-06-15
+Venue: The Pourhouse
+Artists: Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/1944164
+
+---
+
+Event: Communion S18:EP03
+Date: 2024-06-16
+Venue: The Pourhouse
+Artists: Centrific, Autokinetic, Gunjack
+City: Minneapolis
+URL: https://ra.co/events/1943286
+Attending: 3
+
+---
+
+Event: Grooves: DJ JEN-E
+Date: 2024-06-18
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/1947392
+
+---
+
+Event: Channel One Sound System
+Date: 2024-06-20
+Venue: Unifiedtheorycollective
+Artists: Channel One Sound
+City: Minneapolis
+URL: https://ra.co/events/1947387
+Attending: 3
+
+---
+
+Event: DJ in the Park with DJ Yasmeenah
+Date: 2024-06-20
+Venue: Loring Park
+Artists: YASMEENAH (2)
+City: Minneapolis
+URL: https://ra.co/events/1947390
+Attending: 1
+
+---
+
+Event: PRØGRAMM Vol.1 Ep.8
+Date: 2024-06-21
+Venue: TBA - somewhere in minneapolis.
+Artists: Dazzle
+City: Minneapolis
+URL: https://ra.co/events/1941484
+Attending: 121
+
+---
+
+Event: CYBER CITY DISCO - YASMEENAH, NANCY YAMACOOCHIE, ORI THE GHOST
+Date: 2024-06-21
+Venue: Beast Barbecue
+Artists: YASMEENAH (2), Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/1941341
+Attending: 3
+
+---
+
+Event: Mechanix feat Shawn Who, Catalyst, Mezz, Jenn Symmetry
+Date: 2024-06-21
+Venue: Eagles Club #34
+Artists: catalyst
+City: Minneapolis
+URL: https://ra.co/events/1947382
+
+---
+
+Event: Wax Appeal: Rooftop Record Exchange
+Date: 2024-06-22
+Venue: Elsewarehouse
+Artists: Jeff Swiff, M. Goalen, Mike Pifer
+City: Minneapolis
+URL: https://ra.co/events/1947379
+Attending: 2
+
+---
+
+Event: House Sessions feat. Michael Grey & DJ JEN-E
+Date: 2024-06-22
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/1947373
+Attending: 1
+
+---
+
+Event: Communion Pride Party '24 (Communion S18:EP04)
+Date: 2024-06-23
+Venue: The Pourhouse
+Artists: Loren, Liara Tsai, Beab, Dana Kazuko, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/1947350
+Attending: 8
+
+---
+
+Event: Disco Brunch - Sunday Social Club
+Date: 2024-06-23
+Venue: Bricksworth - North Loop
+City: Minneapolis
+URL: https://ra.co/events/1947499
+Attending: 2
+
+---
+
+Event: PRØGRAMM Vol. 1 Ep. 9 [ 612_UNDERGROUND 1 Year Anniversary ]
+Date: 2024-06-28
+Venue: TBA - somewhere in minneapolis.
+Artists: Myles Sergé
+City: Minneapolis
+URL: https://ra.co/events/1947627
+Attending: 91
+
+---
+
+Event: The Deep End
+Date: 2024-06-28
+Venue: Eagles Club #34
+Artists: Jacob Hoffman, Autokinetic
+City: Minneapolis
+URL: https://ra.co/events/1949028
+Attending: 3
+
+---
+
+Event: Breakaway Minnesota Promo Code
+Date: 2024-06-28
+Venue: TBA - Allianz Field 
+Artists: Kaskade, Audien, Austin Millz, Matroda, Tsunami
+City: Minneapolis
+URL: https://ra.co/events/1927668
+
+---
+
+Event: Breakaway Minnesota 2024 Promo Code: ENCORE
+Date: 2024-06-28
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/1873393
+
+---
+
+Event: ENIGMA - Kanyon (live) || JAkko || Xminus1 ||
+Date: 2024-06-29
+Venue: The Red Sea Restaurant
+Artists: Kanyon, Akko, Xminus1
+City: Minneapolis
+URL: https://ra.co/events/1941296
+Attending: 16
+
+---
+
+Event: GAG: Eagle Mpls PRIDE
+Date: 2024-06-29
+Venue: Eagle Mpls
+Artists: Boyfriend Dick, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/1932657
+Attending: 7
+
+---
+
+Event: Carry The Fire with Bensley, Justin Hawkes, and Kumarion
+Date: 2024-06-29
+Venue: Skyway Theatre
+Artists: Bensley
+City: Minneapolis
+URL: https://ra.co/events/1918568
+
+---
+
+Event: House Proud Mpls
+Date: 2024-07-05
+Venue: Beast Barbecue
+Artists: Phriz, Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1948469
+Attending: 1
+
+---
+
+Event: TrancenDance at RaptureMN
+Date: 2024-07-05
+Venue: Ground Zero Nightclub
+Artists: Kelsifer
+City: Minneapolis
+URL: https://ra.co/events/1941350
+
+---
+
+Event: Turno (360 Set)
+Date: 2024-07-06
+Venue: Skyway Theatre
+Artists: Turno
+City: Minneapolis
+URL: https://ra.co/events/1918570
+Attending: 2
+
+---
+
+Event: JUMPSUIT - JAM E.Z., JOCKO, Akko
+Date: 2024-07-06
+Venue: TBA - Black Hart of St. Paul 1415 University Ave W, St Paul, MN 55104
+Artists: Akko
+City: Minneapolis
+URL: https://ra.co/events/1947473
+Attending: 2
+
+---
+
+Event: Communion S18:EP06
+Date: 2024-07-07
+Venue: The Pourhouse
+Artists: Lonefront
+City: Minneapolis
+URL: https://ra.co/events/1951718
+Attending: 5
+
+---
+
+Event: James Hype w Jake Shore
+Date: 2024-07-11
+Venue: Skyway Theatre
+Artists: James Hype (UK)
+City: Minneapolis
+URL: https://ra.co/events/1934836
+Attending: 3
+
+---
+
+Event: ECOPHONIC HiFi PopUp
+Date: 2024-07-12
+Venue: TBA - Mother Co Plants
+Artists: Mike Pifer, MCG
+City: Minneapolis
+URL: https://ra.co/events/1962561
+Attending: 2
+
+---
+
+Event: Freak Of The Week
+Date: 2024-07-12
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/1949023
+Attending: 1
+
+---
+
+Event: Marvel Years & Vincent Antone
+Date: 2024-07-12
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1926760
+
+---
+
+Event: Corrupt (UK)
+Date: 2024-07-13
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1918596
+
+---
+
+Event: The 7th Annual Stillwater Bar Crawl - Saturday July 13th, 2024
+Date: 2024-07-13
+Venue: Portside
+City: Minneapolis
+URL: https://ra.co/events/1955774
+
+---
+
+Event: Communion S18:EP07
+Date: 2024-07-14
+Venue: The Pourhouse
+Artists: TML
+City: Minneapolis
+URL: https://ra.co/events/1961321
+Attending: 2
+
+---
+
+Event: Day Funk 1 Year Anniversary: Ron Carroll
+Date: 2024-07-14
+Venue: Eat Street Crossing
+Artists: Ron Carroll, Nate Laurence, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/1961337
+Attending: 2
+
+---
+
+Event: DISCO NOLO with The Excavators
+Date: 2024-07-19
+Venue: TBA - AVA
+Artists: MCG, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/1964282
+Attending: 3
+
+---
+
+Event: CYBER CITY DISCO | ANDROID ASSASSINS TAKEOVER
+Date: 2024-07-19
+Venue: Beast Barbecue
+Artists: Ron S., DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1964882
+Attending: 3
+
+---
+
+Event: Cyber City Disco ANDROID ASSASSINS TAKEOVER
+Date: 2024-07-19
+Venue: TBA - Belly of the Beast - 825 East Hennepin, Minneapolis
+Artists: Ron S., DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1949975
+Attending: 1
+
+---
+
+Event: MACHAKI
+Date: 2024-07-19
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1926757
+
+---
+
+Event: SORRY FOR PARTY ROCKING (2010 - 2015 Pop & EDM All Night Long)
+Date: 2024-07-20
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1940420
+
+---
+
+Event: Communion S18:EP08
+Date: 2024-07-21
+Venue: The Pourhouse
+Artists: Mike Gervais, Mutual Identities, Ron S.
+City: Minneapolis
+URL: https://ra.co/events/1964956
+Attending: 2
+
+---
+
+Event: Vibe Brunch - Sunday Social Club at Bricksworth North Loop
+Date: 2024-07-21
+Venue: Bricksworth - North Loop
+City: Minneapolis
+URL: https://ra.co/events/1960538
+
+---
+
+Event: The Great Beyond 2024
+Date: 2024-07-26
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: BMG, Centrific, Clarisa Kimskii, Daniel Bell, Detroit Techno Militia 2x4, DJ Hyperactive, Dustin Zahn, Lindsey Herbert, Lonefront, Lychee, jay york, Neel, Overland, Polygonia, Rhyw, Rødhåd, Sandrien, Shaun J. Wright, Steve Rachmad, Ternion Sound, Wata Igarashi, AZA, Berndt, Eckblad, Forest Management, Furtive, Henry Chow, Jason Patrick, Kobe Dupree, Max Gardner, Ne/Re/A, PLEASURES (US), Ryote, Sard, ~~ (Tildetilde), agraybé, Beab, Christian James, Jeff Swiff, Chachi Guerrero, Circumscums, DJ Nola, Duck Trash, Elysium Alps, ficshe, Jacob Hoffman, Josh Tong, Kitty Spit, Lanny, Merrick Brown, Miss Elaine Eos, Modest, Ms. Ed, Phriz, Secret Raver, Steve Noah, Tekk Nikk, The GOAT, Yamanaka
+City: Minneapolis
+URL: https://ra.co/events/1850084
+Attending: 101
+
+---
+
+Event: Flamingo Pier live
+Date: 2024-07-30
+Venue: Cedar Cultural Center
+Artists: Flamingo Pier
+City: Minneapolis
+URL: https://ra.co/events/1930319
+Attending: 1
+
+---
+
+Event: House Proud // 13 YR with E-TONES~
+Date: 2024-08-02
+Venue: Beast Barbecue
+Artists: Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/1964348
+Attending: 7
+
+---
+
+Event: Jersey Club Dance Night
+Date: 2024-08-02
+Venue: 7th Street Entry
+City: Minneapolis
+URL: https://ra.co/events/1972581
+Attending: 1
+
+---
+
+Event: FIRST FRIDAY - You're Friends Favorite Dance Party
+Date: 2024-08-02
+Venue: TBA - SECRET WAREHOUSE LOCATION - MINNEAPOLIS 
+City: Minneapolis
+URL: https://ra.co/events/1975309
+
+---
+
+Event: Club Nowhere [Issue #1]
+Date: 2024-08-03
+Venue: TBA
+Artists: Phriz
+City: Minneapolis
+URL: https://ra.co/events/1967806
+Attending: 97
+
+---
+
+Event: JUMPSUIT - PRIVATE GUY, Real Girl, BLUE FUNK
+Date: 2024-08-03
+Venue: Black Hart of St. Paul
+Artists: Real Girl, DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/1966546
+Attending: 3
+
+---
+
+Event: Communion S18:EP09
+Date: 2024-08-04
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/1975937
+Attending: 4
+
+---
+
+Event: 160 Heaters: Gunjack, WT Snacks, DJ2Tall, Ori The Ghost
+Date: 2024-08-09
+Venue: Eagles Club #34
+Artists: Gunjack, W.T. Snacks, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/1972196
+Attending: 1
+
+---
+
+Event: Beyond The Pines
+Date: 2024-08-09
+Venue: TBA - Chains Edge Disc Golf, Ogilvie, MN
+Artists: Amtrac, Le Youth, Nandu, Pig&Dan, Sam Shure, Sinca, Will Clarke
+City: Minneapolis
+URL: https://ra.co/events/1970642
+
+---
+
+Event: Wax Appeal: Rooftop Record Exchange
+Date: 2024-08-10
+Venue: TBA - Elsewarehouse
+Artists: Phriz, DJ Blue Funk, Kerosine, Adam S., haute carl, Mike Pifer, MCG
+City: Minneapolis
+URL: https://ra.co/events/1962067
+Attending: 4
+
+---
+
+Event: DANG! - A Soulful Electronic Dance Night
+Date: 2024-08-10
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1969812
+Attending: 1
+
+---
+
+Event: Vibe Brunch: Sunday Social Club at Bricksworth North Loop
+Date: 2024-08-10
+Venue: Bricksworth - North Loop
+City: Minneapolis
+URL: https://ra.co/events/1978811
+
+---
+
+Event: Communion S18:EP10
+Date: 2024-08-11
+Venue: Cabooze
+Artists: Dustin Zahn, Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/1978473
+Attending: 3
+
+---
+
+Event: Horizon: atDusk Magic Hour Tour Minneapolis
+Date: 2024-08-16
+Venue: TBA - Union Rooftop
+City: Minneapolis
+URL: https://ra.co/events/1959418
+
+---
+
+Event: CYBER CITY DISCO - DJ AFRO, TML, Daisy Hex
+Date: 2024-08-16
+Venue: Beast Barbecue
+Artists: TML, Daisy Hex
+City: Minneapolis
+URL: https://ra.co/events/1978890
+Attending: 3
+
+---
+
+Event: Crystal Sky 2024 - Open-Air Psytrance Festival
+Date: 2024-08-16
+Venue: Minnesota River Valley Sanctuary and Retreat
+City: Minneapolis
+URL: https://ra.co/events/1941346
+Attending: 3
+
+---
+
+Event: Communion S18:EP11 (Unbothered Takeover)
+Date: 2024-08-18
+Venue: Cabooze
+Artists: Ash Lauryn, YASMEENAH (2)
+City: Minneapolis
+URL: https://ra.co/events/1981766
+Attending: 2
+
+---
+
+Event: BEAU WANZER X SHARLESE X NAUGHTY WOOD X BANKIE PHONES
+Date: 2024-08-23
+Venue: Beast Barbecue
+Artists: Beau Wanzer, Sharlese, Naughty Wood, Bankie Phones
+City: Minneapolis
+URL: https://ra.co/events/1985949
+Attending: 5
+
+---
+
+Event: SINNERS
+Date: 2024-08-23
+Venue: Conga Lounge
+Artists: El Niño indigo
+City: Minneapolis
+URL: https://ra.co/events/1984197
+Attending: 3
+
+---
+
+Event: PRØGRAMM [Vol. 2 Ep.1]
+Date: 2024-08-24
+Venue: TBA - somewhere in minneapolis.
+Artists: Lonefront, Lauryn Lesley, ficshe
+City: Minneapolis
+URL: https://ra.co/events/1983608
+Attending: 129
+
+---
+
+Event: DISCO NOLO with The Excavators
+Date: 2024-08-30
+Venue: TBA - AVA
+Artists: MCG, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/1985420
+Attending: 2
+
+---
+
+Event: Komprezzor: Machines Live
+Date: 2024-08-31
+Venue: The Red Sea Restaurant
+Artists: Komprezzor, andrew baschyn
+City: Minneapolis
+URL: https://ra.co/events/1986689
+Attending: 6
+
+---
+
+Event: DJ BORING
+Date: 2024-08-31
+Venue: Skyway Theatre
+Artists: DJ BORING
+City: Minneapolis
+URL: https://ra.co/events/1939534
+Attending: 4
+
+---
+
+Event: FRIENDLY FIRE
+Date: 2024-08-31
+Venue: First Avenue Mainroom
+Artists: El Niño indigo, Real Girl, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/1984195
+Attending: 3
+
+---
+
+Event: SIM Shows presents: Pleasant Audio + echo
+Date: 2024-08-31
+Venue: The Vault
+Artists: echo (3), Piersmog
+City: Minneapolis
+URL: https://ra.co/events/1986694
+Attending: 1
+
+---
+
+Event: Communion S18:EP12
+Date: 2024-09-01
+Venue: Cabooze
+Artists: The Worm, DJ Nola, Phriz
+City: Minneapolis
+URL: https://ra.co/events/1990345
+Attending: 3
+
+---
+
+Event: House Proud Mpls
+Date: 2024-09-06
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/1978800
+Attending: 6
+
+---
+
+Event: haute carl presents Vinyl + Vibes
+Date: 2024-09-06
+Venue: James Ballentine "Uptown" VFW Post 246
+Artists: Miss Elaine Eos, Adam S.
+City: Minneapolis
+URL: https://ra.co/events/1993805
+Attending: 4
+
+---
+
+Event: FIRST FRIDAY - You're Friend's Favorite Dance Party
+Date: 2024-09-06
+Venue: Minneapolis
+Artists: RULO
+City: Minneapolis
+URL: https://ra.co/events/1998515
+
+---
+
+Event: Communion S18:EP13
+Date: 2024-09-08
+Venue: Cabooze
+Artists: Lanny, Berndt
+City: Minneapolis
+URL: https://ra.co/events/1995815
+Attending: 1
+
+---
+
+Event: Wax Appeal: Berndt, Christian James, The Excavators
+Date: 2024-09-13
+Venue: The Red Sea Restaurant
+Artists: Berndt, Christian James, MCG, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/1978321
+Attending: 30
+
+---
+
+Event: Freak of the Week
+Date: 2024-09-13
+Venue: Beast Barbecue
+Artists: AZA, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/1998717
+Attending: 3
+
+---
+
+Event: CUTS
+Date: 2024-09-13
+Venue: TBA - Location revealed to ticket holders day-of
+Artists: DJ Nola, Phriz, Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/2000708
+Attending: 1
+
+---
+
+Event: SORRY FOR PARTY ROCKING (2010-2015 Pop & EDM All Night Long!)
+Date: 2024-09-13
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1982733
+
+---
+
+Event: ENIGMA - ONLY FOREVER || Autokinetic || Mutual Identities || BCUBED
+Date: 2024-09-14
+Venue: The Red Sea Restaurant
+Artists: Autokinetic, Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/1989195
+Attending: 6
+
+---
+
+Event: Communion S18:EP14
+Date: 2024-09-15
+Venue: Cabooze
+Artists: E Tones
+City: Minneapolis
+URL: https://ra.co/events/1999701
+Attending: 5
+
+---
+
+Event: PARADOX
+Date: 2024-09-20
+Venue: Conga Lounge
+Artists: 1morning, BYZARRA, Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/1965683
+Attending: 6
+
+---
+
+Event: CYBER CITY DISCO - DANA KAZUKO, ECHO, PHRIZ DA BEATZ
+Date: 2024-09-20
+Venue: Beast Barbecue
+Artists: Dana Kazuko, Phriz
+City: Minneapolis
+URL: https://ra.co/events/1999879
+Attending: 4
+
+---
+
+Event: KLOUD
+Date: 2024-09-20
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/1939529
+Attending: 1
+
+---
+
+Event: Club Nowhere [Issue #2]
+Date: 2024-09-21
+Venue: TBA - somewhere in minneapolis.
+City: Minneapolis
+URL: https://ra.co/events/1998452
+Attending: 171
+
+---
+
+Event: Ecophonic VOL3
+Date: 2024-09-21
+Venue: Mother Plants
+Artists: Jeff Swiff, Mike Pifer, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/1990453
+Attending: 9
+
+---
+
+Event: Communion Closing Party 2024
+Date: 2024-09-22
+Venue: Cabooze
+Artists: DVS1
+City: Minneapolis
+URL: https://ra.co/events/2004181
+Attending: 10
+
+---
+
+Event: DayFunk | Johnny Fiasco
+Date: 2024-09-22
+Venue: Eat Street Crossing
+Artists: Johnny Fiasco, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/1978502
+Attending: 3
+
+---
+
+Event: Bingo Loco - World's Biggest Bingo Party - September 28, 2024
+Date: 2024-09-28
+Venue: Granada Theater - Minneapolis
+City: Minneapolis
+URL: https://ra.co/events/1963990
+
+---
+
+Event: Ratio
+Date: 2024-10-04
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Bill Converse, Lonefront, Beab
+City: Minneapolis
+URL: https://ra.co/events/1989670
+Attending: 29
+
+---
+
+Event: House Proud Mpls with Mike Gervais and Jeff Swiff
+Date: 2024-10-04
+Venue: Beast Barbecue
+Artists: Mike Gervais, Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/2005344
+Attending: 5
+
+---
+
+Event: Mechanix feat Klippee, Jen Symmetry, Blazz & Skavi
+Date: 2024-10-04
+Venue: Eagles Club #34
+Artists: Klippee
+City: Minneapolis
+URL: https://ra.co/events/2016693
+Attending: 1
+
+---
+
+Event: Nitty Gritty 3-Year Anniversary Party
+Date: 2024-10-04
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2016696
+Attending: 1
+
+---
+
+Event: JUMPSUIT - Ori The Ghost, HAUTE CARL, Real Girl
+Date: 2024-10-05
+Venue: Black Hart of St. Paul
+Artists: Ori The Ghost, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2013693
+Attending: 4
+
+---
+
+Event: ALESSANDRO CORTINI with TBD special guest
+Date: 2024-10-07
+Venue: Cedar Cultural Center
+Artists: Alessandro Cortini
+City: Minneapolis
+URL: https://ra.co/events/2016701
+
+---
+
+Event: Freak of the Week
+Date: 2024-10-11
+Venue: Beast Barbecue
+Artists: DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2016707
+Attending: 1
+
+---
+
+Event: Club Nowhere [Issue #3]
+Date: 2024-10-12
+Venue: TBA - Nowhere in Minneapolis
+Artists: Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2016101
+Attending: 156
+
+---
+
+Event: Wax Appeal Rooftop Record Exchange
+Date: 2024-10-12
+Venue: TBA - Elsewarehouse
+Artists: Nick Gunz, Akko, QJ (2), MCG
+City: Minneapolis
+URL: https://ra.co/events/2008851
+Attending: 9
+
+---
+
+Event: Late Night Lounge: El Niño indigo
+Date: 2024-10-12
+Venue: TBA - Berlin MPLS
+Artists: El Niño indigo
+City: Minneapolis
+URL: https://ra.co/events/2022686
+
+---
+
+Event: CYBER CITY DISCO - Lauryn Lesley, Ryote, JOBOT
+Date: 2024-10-18
+Venue: Beast Barbecue
+Artists: Lauryn Lesley, Ryote
+City: Minneapolis
+URL: https://ra.co/events/2025952
+Attending: 4
+
+---
+
+Event: Mechanix: Des McMahon, Fervor, JEEVES & Illuz1an
+Date: 2024-10-18
+Venue: Eagles Club #34
+Artists: JEEVES
+City: Minneapolis
+URL: https://ra.co/events/2020153
+Attending: 1
+
+---
+
+Event: ENIGMA - Elysium Alps || Wheelbite || Akko || UWE
+Date: 2024-10-19
+Venue: The Red Sea Restaurant
+Artists: Elysium Alps, Wheelbite, Akko
+City: Minneapolis
+URL: https://ra.co/events/2015777
+Attending: 7
+
+---
+
+Event: tanzklub. volume 2.
+Date: 2024-10-19
+Venue: James Ballentine VFW - Post 246
+Artists: IDBH
+City: Minneapolis
+URL: https://ra.co/events/2018838
+Attending: 2
+
+---
+
+Event: BIZARRE : HALLOWEEN EDITION
+Date: 2024-10-19
+Venue: Zhora Darling
+City: Minneapolis
+URL: https://ra.co/events/2018861
+
+---
+
+Event: Fractal Geometry Iteration 3.1
+Date: 2024-10-22
+Venue: The Red Sea Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2018867
+
+---
+
+Event: Shalva
+Date: 2024-10-24
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/1985356
+Attending: 3
+
+---
+
+Event: An Unbothered Halloween
+Date: 2024-10-26
+Venue: TBA - 2718 E 27th St Minneapels.MN
+Artists: Tekk Nikk, YASMEENAH (2)
+City: Minneapolis
+URL: https://ra.co/events/2021124
+Attending: 10
+
+---
+
+Event: Halloweekend Hangover Bar Crawl Minneapolis
+Date: 2024-10-26
+Venue: Minneapolis
+City: Minneapolis
+URL: https://ra.co/events/1996245
+
+---
+
+Event: Blu & Exile
+Date: 2024-10-30
+Venue: 7th Street Entry
+City: Minneapolis
+URL: https://ra.co/events/1979577
+
+---
+
+Event: Halloween with Skream: Open To Close
+Date: 2024-11-01
+Venue: Green Room
+Artists: Skream
+City: Minneapolis
+URL: https://ra.co/events/1999831
+Attending: 7
+
+---
+
+Event: FIRST FRIDAY ANNIVERSARY - You're Friend's Favorite Dance Party
+Date: 2024-11-01
+Venue: TBA - SECRET WAREHOUSE LOCATION - MINNEAPOLIS 
+City: Minneapolis
+URL: https://ra.co/events/2030842
+Attending: 4
+
+---
+
+Event: Pivot Presents: Deep Alley Desires II (Restricted Spells)
+Date: 2024-11-01
+Venue: The Red Sea Restaurant
+Artists: Beab, Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2019851
+Attending: 2
+
+---
+
+Event: House Proud Mpls
+Date: 2024-11-01
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/2028061
+Attending: 2
+
+---
+
+Event: JUMPSUIT - POUR HOMMES, HARDY, Real Girl
+Date: 2024-11-02
+Venue: Black Hart of St. Paul
+Artists: POUR HOMMES, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2026667
+Attending: 3
+
+---
+
+Event: 612-JUKE: DJ Clent, Juke Nukem, Groovetronixx in Minneapolis
+Date: 2024-11-09
+Venue: Eagles Club #34
+Artists: DJ Clent
+City: Minneapolis
+URL: https://ra.co/events/2011696
+Attending: 6
+
+---
+
+Event: ENIGMA - Yasmeenah || Paul Chang || Akko
+Date: 2024-11-09
+Venue: The Red Sea Restaurant
+Artists: YASMEENAH (2), Akko
+City: Minneapolis
+URL: https://ra.co/events/2028944
+Attending: 3
+
+---
+
+Event: PARADOX
+Date: 2024-11-15
+Venue: Conga Lounge
+Artists: DJ SWISHA, El Niño indigo, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/2022681
+Attending: 6
+
+---
+
+Event: CYBER CITY DISCO
+Date: 2024-11-15
+Venue: Beast Barbecue
+Artists: Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2041350
+Attending: 2
+
+---
+
+Event: haute carl presents vinyl + vibes: an all-vinyl house night, vol. 2
+Date: 2024-11-16
+Venue: James Ballentine VFW - Post 246
+Artists: haute carl, DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2016705
+Attending: 6
+
+---
+
+Event: Housewerk #31 Akko and The Salty Owl ~~ Grooveaton
+Date: 2024-11-22
+Venue: Beast Barbecue
+Artists: Akko
+City: Minneapolis
+URL: https://ra.co/events/2040831
+Attending: 1
+
+---
+
+Event: SORRY FOR PARTY ROCKING (2010-2015 Pop & EDM All Night Long!)
+Date: 2024-11-22
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/2026016
+
+---
+
+Event: SHINE ON
+Date: 2024-11-23
+Venue: TBA - Tickets at the door, address available day of event.
+Artists: Centrific, Lonefront
+City: Minneapolis
+URL: https://ra.co/events/2028988
+Attending: 34
+
+---
+
+Event: BORA presents: seep
+Date: 2024-11-23
+Venue: The Red Sea Restaurant
+Artists: ~~ (Tildetilde), Tekk Nikk, Ryote
+City: Minneapolis
+URL: https://ra.co/events/2029149
+Attending: 8
+
+---
+
+Event: Ratio
+Date: 2024-12-06
+Venue: The Red Sea Restaurant
+Artists: Asher Gray, Ori The Ghost, Real Girl, Akko, Beab
+City: Minneapolis
+URL: https://ra.co/events/2041302
+Attending: 34
+
+---
+
+Event: ECOPHONIC
+Date: 2024-12-07
+Venue: Mother Plants
+Artists: Mike Pifer, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2043202
+Attending: 11
+
+---
+
+Event: JUMPSUIT - ECHO, Real Girl, KITTEN CANDY
+Date: 2024-12-07
+Venue: Black Hart of St. Paul
+Artists: Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2052416
+Attending: 3
+
+---
+
+Event: Freak Of The Week
+Date: 2024-12-13
+Venue: Beast Barbecue
+Artists: DJ T-1000, DJ Nola, Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/2043229
+Attending: 15
+
+---
+
+Event: Wax Appeal Record Exchange
+Date: 2024-12-14
+Venue: TBA - TRXX WRHS
+Artists: Kerosine, St. Xose, Phriz, McGinnis, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2046241
+Attending: 14
+
+---
+
+Event: DayFunk: Records Only
+Date: 2024-12-15
+Venue: Eat Street Crossing
+Artists: haute carl, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2060802
+Attending: 4
+
+---
+
+Event: Fractal Geometry: Dec 2024
+Date: 2024-12-19
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Paradaux, Eckblad
+City: Minneapolis
+URL: https://ra.co/events/2060805
+
+---
+
+Event: CYBER CITY DISCO - Dazzle, Beab, Lorraine
+Date: 2024-12-20
+Venue: Beast Barbecue
+Artists: Dazzle, Beab
+City: Minneapolis
+URL: https://ra.co/events/2062502
+Attending: 8
+
+---
+
+Event: Mechanix: 10 Year Anniversary
+Date: 2024-12-20
+Venue: Eagles Club #34
+Artists: Sinistarr, Echtoo
+City: Minneapolis
+URL: https://ra.co/events/2055248
+Attending: 3
+
+---
+
+Event: TELEPORT 001: Sophia Amare, Ancient Fruit, Shawn Raja
+Date: 2024-12-20
+Venue: James Ballentine VFW - Post 246
+City: Minneapolis
+URL: https://ra.co/events/2060811
+Attending: 1
+
+---
+
+Event: Nila's Basement
+Date: 2024-12-21
+Venue: TBA - text 3.0 to 612-492-1186 for info
+Artists: gender_error
+City: Minneapolis
+URL: https://ra.co/events/2066538
+Attending: 6
+
+---
+
+Event: Modern Life Records Kinetic Christmas
+Date: 2024-12-21
+Venue: The Red Sea Restaurant
+Artists: Paul Birken, Komprezzor, andrew baschyn
+City: Minneapolis
+URL: https://ra.co/events/2056180
+Attending: 2
+
+---
+
+Event: Playing House
+Date: 2024-12-22
+Venue: Green Room
+Artists: Soulful Tryst, Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2060815
+Attending: 1
+
+---
+
+Event: Housewerk #32 Medicinall, Dana Kazuko, earth
+Date: 2024-12-27
+Venue: Beast Barbecue
+Artists: Dana Kazuko, Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/2059783
+Attending: 8
+
+---
+
+Event: Get Down - Make Love - IPH:NYE24
+Date: 2024-12-31
+Venue: TBA
+Artists: Lauren Flax, Max Watts, KXAH, Duck Trash, Lauryn Lesley, IDBH, Colin Cook
+City: Minneapolis
+URL: https://ra.co/events/2060993
+Attending: 456
+
+---
+
+Event: JUMPSUIT - DEAN FRISBY, Real Girl, ERLAAB
+Date: 2025-01-04
+Venue: Black Hart of St. Paul
+Artists: Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2068382
+Attending: 3
+
+---
+
+Event: Freak of the Week 7 Year Anniversary
+Date: 2025-01-10
+Venue: Beast Barbecue
+Artists: Devil Girl, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2069864
+Attending: 12
+
+---
+
+Event: DayFunk: Daytime House Music Party - CZR
+Date: 2025-01-12
+Venue: Eat Street Crossing
+Artists: Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2073957
+Attending: 5
+
+---
+
+Event: Wax Appeal feat. E-TONES & The Excavators
+Date: 2025-01-17
+Venue: Zhora Darling
+Artists: E Tones, McGinnis, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2054429
+Attending: 12
+
+---
+
+Event: CYBER CITY DISCO x PUMP
+Date: 2025-01-17
+Venue: Beast Barbecue
+Artists: Akko, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/2082542
+Attending: 3
+
+---
+
+Event: tanzklub. presents: THE WERKHAUS
+Date: 2025-01-18
+Venue: TBA
+Artists: AceMo, Elysium Alps, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2076182
+Attending: 16
+
+---
+
+Event: PARADOX
+Date: 2025-01-24
+Venue: Conga Lounge
+Artists: MoMA Ready, El Niño indigo, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/2068554
+Attending: 14
+
+---
+
+Event: gradynotgrady, JoBot and MissElaineEos Housewerk #33
+Date: 2025-01-24
+Venue: Beast Barbecue
+Artists: Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/2083192
+Attending: 8
+
+---
+
+Event: Keith MacKenzie at The Vault
+Date: 2025-01-25
+Venue: TBA - The Vault @ Reign Nightclub
+Artists: Jeff Hunter
+City: Minneapolis
+URL: https://ra.co/events/2076246
+Attending: 2
+
+---
+
+Event: Low Visibility x Intellephunk present Convergence
+Date: 2025-02-01
+Venue: TBA
+Artists: Amotik, Inquilab, Kitty Spit, Tekk Nikk
+City: Minneapolis
+URL: https://ra.co/events/2076348
+Attending: 424
+
+---
+
+Event: JUMPSUIT - DJ Q, BLUE FUNK, Real Girl
+Date: 2025-02-01
+Venue: Black Hart of St. Paul
+Artists: DJ Blue Funk, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2092689
+
+---
+
+Event: Deep Alley Desires 3: Winter's Edge [presented by PIVOT]
+Date: 2025-02-07
+Venue: The Red Sea Restaurant
+Artists: Ori The Ghost, Xminus1, Dazzle, Eckblad
+City: Minneapolis
+URL: https://ra.co/events/2077476
+Attending: 23
+
+---
+
+Event: House Proud Mpls with Rimarkable
+Date: 2025-02-07
+Venue: Beast Barbecue
+Artists: Rimarkable
+City: Minneapolis
+URL: https://ra.co/events/2077091
+Attending: 11
+
+---
+
+Event: The Nitty Gritty
+Date: 2025-02-07
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2091839
+Attending: 3
+
+---
+
+Event: DayFunk: Daytime House Music Party - Stacy Kidd
+Date: 2025-02-09
+Venue: Eat Street Crossing
+Artists: Stacy Kidd, Dana Kazuko, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2073964
+Attending: 6
+
+---
+
+Event: Interstellar Signals
+Date: 2025-02-13
+Venue: Dusty's Bar
+Artists: Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/2099211
+Attending: 4
+
+---
+
+Event: Freak of the Week
+Date: 2025-02-14
+Venue: Beast Barbecue
+Artists: DJ Cent, DJ Nola, TML
+City: Minneapolis
+URL: https://ra.co/events/2080667
+Attending: 16
+
+---
+
+Event: UNBOTHERED presents: PARABLE
+Date: 2025-02-15
+Venue: TBA
+Artists: Analog Soul, DJ Slugo, echo (3), YASMEENAH (2)
+City: Minneapolis
+URL: https://ra.co/events/2073095
+Attending: 307
+
+---
+
+Event: DiscoKnect
+Date: 2025-02-15
+Venue: Utepils Brewing
+Artists: Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2073973
+Attending: 5
+
+---
+
+Event: CYBER CITY DISCO - DOUBLE D TAKEOVER
+Date: 2025-02-21
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/2105959
+Attending: 3
+
+---
+
+Event: Tinzo + Jojo Dial Up Tour: Minneapolis
+Date: 2025-02-22
+Venue: Varsity Theater
+Artists: Tinzo, Jojo Lorenzo
+City: Minneapolis
+URL: https://ra.co/events/2060766
+Attending: 16
+
+---
+
+Event: Æther Sound presents
+Date: 2025-02-22
+Venue: Eagles Club #34
+Artists: Matthew Ryals, Kindohm
+City: Minneapolis
+URL: https://ra.co/events/2075182
+Attending: 2
+
+---
+
+Event: Rave Of Love 2
+Date: 2025-02-22
+Venue: James Ballentine VFW - Post 246
+Artists: BYZARRA, Omari
+City: Minneapolis
+URL: https://ra.co/events/2107011
+Attending: 2
+
+---
+
+Event: Alexis Rose with Neil Fox - Housewerk #34
+Date: 2025-02-28
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/2112641
+Attending: 4
+
+---
+
+Event: JUMPSUIT - Ryote, DEDICATED ENEMY, Real Girl
+Date: 2025-03-01
+Venue: Black Hart of St. Paul
+Artists: Ryote, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2114347
+Attending: 5
+
+---
+
+Event: House Proud Mpls
+Date: 2025-03-07
+Venue: Beast Barbecue
+City: Minneapolis
+URL: https://ra.co/events/2102196
+Attending: 9
+
+---
+
+Event: Afrobeats to the World - Minneapolis
+Date: 2025-03-07
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2099083
+Attending: 6
+
+---
+
+Event: The Nitty Gritty - 7'' vinyl session
+Date: 2025-03-07
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2113346
+Attending: 5
+
+---
+
+Event: Midwest Freaks 2
+Date: 2025-03-08
+Venue: TBA
+Artists: Daniel Bell, BMG, Erika, Centrific, Lauryn Lesley
+City: Minneapolis
+URL: https://ra.co/events/2096206
+Attending: 411
+
+---
+
+Event: 612-JUKE: Cuenique, Yasmeenah, CURSXR, Uoglobe in Minneapolis
+Date: 2025-03-08
+Venue: Eagles Club #34
+Artists: Cuenique, YASMEENAH (2), Uoglobe
+City: Minneapolis
+URL: https://ra.co/events/2082672
+Attending: 18
+
+---
+
+Event: Crush of Souls • Winkie • Intercourse • Dedicated Enemy
+Date: 2025-03-08
+Venue: Cloudland Theater
+Artists: Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/2105611
+Attending: 3
+
+---
+
+Event: Interstellar Signals
+Date: 2025-03-13
+Venue: Dusty's Bar
+Artists: Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/2112547
+Attending: 4
+
+---
+
+Event: Freak of the Week
+Date: 2025-03-14
+Venue: Beast Barbecue
+Artists: Detroit Techno Militia 2x4, Real Girl, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2122504
+Attending: 7
+
+---
+
+Event: ENIGMA - SUBPLEASER || follidh || Akko
+Date: 2025-03-15
+Venue: The Red Sea Restaurant
+Artists: follidh, Akko
+City: Minneapolis
+URL: https://ra.co/events/2106043
+Attending: 14
+
+---
+
+Event: Haute Carl Presents: Vinyl + Vibes 4
+Date: 2025-03-15
+Venue: Hook and Ladder Theater
+Artists: haute carl
+City: Minneapolis
+URL: https://ra.co/events/2110896
+Attending: 4
+
+---
+
+Event: Elderbrook's North American Tour - Another Touch
+Date: 2025-03-17
+Venue: First Avenue/VIP Room
+Artists: Elderbrook
+City: Minneapolis
+URL: https://ra.co/events/2132756
+
+---
+
+Event: Cyber City Disco
+Date: 2025-03-21
+Venue: Beast Barbecue
+Artists: El Niño indigo
+City: Minneapolis
+URL: https://ra.co/events/2128885
+Attending: 6
+
+---
+
+Event: Keep it Deep
+Date: 2025-03-22
+Venue: TBA - Mailing List Announced.  (nicewonrecordings-dot-com)
+Artists: Rick Wade, Christian James, Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/2107257
+Attending: 53
+
+---
+
+Event: Dayfunk: Mike Winston (The Powerplant, Chicago)
+Date: 2025-03-23
+Venue: Eat Street Crossing
+Artists: Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2106086
+Attending: 10
+
+---
+
+Event: Focus and Adam S. - Housewerk #35
+Date: 2025-03-28
+Venue: Beast Barbecue
+Artists: Focus, Adam S.
+City: Minneapolis
+URL: https://ra.co/events/2126538
+Attending: 13
+
+---
+
+Event: Gateway - One Sound, One Soul
+Date: 2025-03-29
+Venue: TBA - Gateway
+Artists: Real Girl, Ori The Ghost, Dana Kazuko, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/2121225
+Attending: 137
+
+---
+
+Event: Decadance
+Date: 2025-03-29
+Venue: James Ballentine VFW - Post 246
+City: Minneapolis
+URL: https://ra.co/events/2110928
+Attending: 6
+
+---
+
+Event: Ratio
+Date: 2025-04-04
+Venue: The Red Sea Restaurant
+Artists: Angelia Word, BYZARRA, Beab
+City: Minneapolis
+URL: https://ra.co/events/2113730
+Attending: 41
+
+---
+
+Event: House Proud Mpls
+Date: 2025-04-04
+Venue: Beast Barbecue
+Artists: Kerosine
+City: Minneapolis
+URL: https://ra.co/events/2123647
+Attending: 11
+
+---
+
+Event: The Nitty Gritty April featuring The Excavators
+Date: 2025-04-04
+Venue: Dusty's Bar
+Artists: DJ Blue Funk, QJ (2), McGinnis
+City: Minneapolis
+URL: https://ra.co/events/2122465
+Attending: 5
+
+---
+
+Event: Wax Appeal Record Exchange
+Date: 2025-04-05
+Venue: TBA - TRXX WRHS
+Artists: Centrific, McGinnis, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2124640
+Attending: 14
+
+---
+
+Event: Interstellar Signals
+Date: 2025-04-10
+Venue: Dusty's Bar
+City: Minneapolis
+URL: https://ra.co/events/2142918
+Attending: 1
+
+---
+
+Event: PARADOX
+Date: 2025-04-11
+Venue: Conga Lounge
+Artists: Kush Jones, LLYYNNXX, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/2129549
+Attending: 17
+
+---
+
+Event: PROMISCUOUS - A 2000's Club Bangers Throwbacks Party
+Date: 2025-04-11
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2119986
+Attending: 8
+
+---
+
+Event: Mechanix: Ben Soundscape & Collette Warren
+Date: 2025-04-11
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/2137589
+Attending: 2
+
+---
+
+Event: Whole New World (Part 1)
+Date: 2025-04-12
+Venue: TBA - announced day of via email
+Artists: Zola Jesus, Xminus1
+City: Minneapolis
+URL: https://ra.co/events/2145367
+Attending: 9
+
+---
+
+Event: ECOPHONIC x SAUNA & SOBRIETY
+Date: 2025-04-12
+Venue: Superior Sauna
+City: Minneapolis
+URL: https://ra.co/events/2142573
+Attending: 3
+
+---
+
+Event: Goldie (Live)
+Date: 2025-04-17
+Venue: Fine Line Music Cafe
+Artists: Goldie
+City: Minneapolis
+URL: https://ra.co/events/2100017
+Attending: 11
+
+---
+
+Event: Daydreaming At Midnight
+Date: 2025-04-17
+Venue: TBA
+Artists: St. Xose, YASMEENAH (2)
+City: Minneapolis
+URL: https://ra.co/events/2150492
+Attending: 5
+
+---
+
+Event: CHRYSALIS
+Date: 2025-04-18
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/2142047
+Attending: 150
+
+---
+
+Event: Dayfunk: Halo Varga (Muted, Chicago / San Diego)
+Date: 2025-04-18
+Venue: Eat Street Crossing
+Artists: Halo Varga, Phriz, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2150542
+Attending: 2
+
+---
+
+Event: Liquid Dreams (Robotic)
+Date: 2025-04-19
+Venue: The Red Sea Restaurant
+Artists: Ori The Ghost, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2113658
+Attending: 14
+
+---
+
+Event: Whole New World (Part II)
+Date: 2025-04-19
+Venue: TBA - announced day of via email
+Artists: Lanny
+City: Minneapolis
+URL: https://ra.co/events/2150806
+Attending: 8
+
+---
+
+Event: Ministry Performs "With Sympathy and "Twitch"
+Date: 2025-04-20
+Venue: Palace Theatre
+City: Minneapolis
+URL: https://ra.co/events/2159629
+
+---
+
+Event: Mux Mool at Red Sea
+Date: 2025-04-24
+Venue: The Red Sea Restaurant
+Artists: Mux Mool, Xavier LeBlanc, Eckblad
+City: Minneapolis
+URL: https://ra.co/events/2134283
+Attending: 5
+
+---
+
+Event: Cyber City Disco
+Date: 2025-04-25
+Venue: TBA
+Artists: BYZARRA, Dana Kazuko, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/2151586
+Attending: 124
+
+---
+
+Event: Wax Appeal feat. Focus, QJ
+Date: 2025-04-25
+Venue: Zhora Darling
+Artists: Focus, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2135931
+Attending: 6
+
+---
+
+Event: All Kinds Of Heavy
+Date: 2025-04-26
+Venue: TBA
+Artists: Centrific, Dustin Zahn, Mike Parker
+City: Minneapolis
+URL: https://ra.co/events/2133707
+Attending: 290
+
+---
+
+Event: Galactipunk
+Date: 2025-04-27
+Venue: The Red Sea Ethiopian Restaurant
+Artists: DJ Q
+City: Minneapolis
+URL: https://ra.co/events/2158325
+Attending: 1
+
+---
+
+Event: The Nitty Gritty May 2025
+Date: 2025-05-02
+Venue: Dusty's Bar
+Artists: DJ Blue Funk, Phriz
+City: Minneapolis
+URL: https://ra.co/events/2153143
+Attending: 5
+
+---
+
+Event: JUMPSUIT - TENDER TONIC + M.YAEGER
+Date: 2025-05-03
+Venue: Black Hart of St. Paul
+Artists: Real Girl, Xminus1
+City: Minneapolis
+URL: https://ra.co/events/2160766
+Attending: 3
+
+---
+
+Event: Kinetic Spring
+Date: 2025-05-03
+Venue: The Red Sea Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2163939
+
+---
+
+Event: Mayday In The Park 2025
+Date: 2025-05-04
+Venue: TBA - Powderhorn Park
+City: Minneapolis
+URL: https://ra.co/events/2133922
+Attending: 17
+
+---
+
+Event: Interstellar Signals
+Date: 2025-05-08
+Venue: Dusty's Bar
+City: Minneapolis
+URL: https://ra.co/events/2161395
+Attending: 3
+
+---
+
+Event: Mechanix: Nautical Divine, Nick Merchant, Cosmic Bitch, Kema
+Date: 2025-05-09
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/2157530
+Attending: 2
+
+---
+
+Event: Subversion
+Date: 2025-05-10
+Venue: TBA
+Artists: Dazzle
+City: Minneapolis
+URL: https://ra.co/events/2159406
+Attending: 140
+
+---
+
+Event: Order & Chaos Club
+Date: 2025-05-10
+Venue: Zhora Darling
+Artists: McGinnis, Dedicated Enemy, POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/2161405
+Attending: 5
+
+---
+
+Event: PUMP
+Date: 2025-05-16
+Venue: TBA - Gateway
+Artists: Xavier LeBlanc, Daisy Hex
+City: Minneapolis
+URL: https://ra.co/events/2168210
+Attending: 45
+
+---
+
+Event: Woodland Vibration
+Date: 2025-05-16
+Venue: TBA - Send a message to MSP.RAVERCONNECTION@GMAIL.COM on May 15th, 2025 Use subject "Woodland Vibration" 
+Artists: Beab
+City: Minneapolis
+URL: https://ra.co/events/2170249
+Attending: 8
+
+---
+
+Event: Whimsical Alien Rave
+Date: 2025-05-16
+Venue: TBA - 1721 University Ave SE 
+City: Minneapolis
+URL: https://ra.co/events/2172349
+Attending: 1
+
+---
+
+Event: Sequence.
+Date: 2025-05-17
+Venue: James Ballentine VFW - Post 246
+Artists: Malion
+City: Minneapolis
+URL: https://ra.co/events/2160658
+Attending: 8
+
+---
+
+Event: Kajunga presents ☼ Choices
+Date: 2025-05-17
+Venue: 56 Brewing
+Artists: Daniel Paul Cortez, DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2167099
+Attending: 6
+
+---
+
+Event: City of Acid w T. Tauri - Mutual Identities - Medicinall - Jobot
+Date: 2025-05-23
+Venue: James Ballentine VFW - Post 246
+Artists: Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/2142824
+Attending: 14
+
+---
+
+Event: Darude
+Date: 2025-05-23
+Venue: Skyway Theatre
+Artists: Darude, KhoMha
+City: Minneapolis
+URL: https://ra.co/events/2173173
+Attending: 3
+
+---
+
+Event: Werkroom
+Date: 2025-05-24
+Venue: TBA - Red Lighthouse 
+City: Minneapolis
+URL: https://ra.co/events/2174620
+Attending: 3
+
+---
+
+Event: Yellow Claw - The Loft
+Date: 2025-05-25
+Venue: Skyway Theatre
+Artists: Yellow Claw
+City: Minneapolis
+URL: https://ra.co/events/2173179
+Attending: 2
+
+---
+
+Event: haute carl presents: vinyl & vibes V: St. Xose • Lustyr • haute carl
+Date: 2025-05-30
+Venue: James Ballentine VFW - Post 246
+Artists: St. Xose, haute carl
+City: Minneapolis
+URL: https://ra.co/events/2171433
+Attending: 6
+
+---
+
+Event: INNER-HÄVEN
+Date: 2025-05-31
+Venue: TBA - secret location
+Artists: Akko, St. Xose
+City: Minneapolis
+URL: https://ra.co/events/2170466
+Attending: 199
+
+---
+
+Event: AMEN
+Date: 2025-05-31
+Venue: TBA - Gateway
+Artists: Dazzle, Echtoo, 3AM, echo (3)
+City: Minneapolis
+URL: https://ra.co/events/2172275
+Attending: 128
+
+---
+
+Event: Totally Gross National Party '25
+Date: 2025-05-31
+Venue: Icehouse
+Artists: Elysia Crampton, Lauren Flax
+City: Minneapolis
+URL: https://ra.co/events/2171019
+Attending: 7
+
+---
+
+Event: DiscoKnect Sunset
+Date: 2025-05-31
+Venue: TBA - Lake Harriet
+Artists: Virgo, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2162805
+Attending: 6
+
+---
+
+Event: Communion Opening Party 2025
+Date: 2025-06-01
+Venue: Cabooze
+Artists: GiGi FM, Lauryn Lesley
+City: Minneapolis
+URL: https://ra.co/events/2152678
+Attending: 47
+
+---
+
+Event: Breakaway Minnesota 2025
+Date: 2025-06-06
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/2028886
+Attending: 9
+
+---
+
+Event: The Nitty Gritty feat. Brian Engel & Blue Funk
+Date: 2025-06-06
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2175263
+Attending: 4
+
+---
+
+Event: CLUB K-POP (K-POP Hits & K-EDM All Night Long!)
+Date: 2025-06-06
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2162775
+
+---
+
+Event: Breakaway Minnesota 2025
+Date: 2025-06-06
+Venue: TBA - Allianz Field Festival Grounds
+Artists: John Summit, Mary Droppinz, Cassian, KREAM, Max Styler
+City: Minneapolis
+URL: https://ra.co/events/2114099
+
+---
+
+Event: JUMPSUIT PRIDE KICKOFF
+Date: 2025-06-07
+Venue: Black Hart of St. Paul
+Artists: Dana Kazuko, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/2185469
+Attending: 3
+
+---
+
+Event: Communion S19:EP02 (All Day Zahn)
+Date: 2025-06-08
+Venue: Cabooze
+Artists: Dustin Zahn
+City: Minneapolis
+URL: https://ra.co/events/2185102
+Attending: 17
+
+---
+
+Event: Carbon Sound presents: SYNTHESIS
+Date: 2025-06-13
+Venue: The Red Sea Restaurant
+Artists: echo (3)
+City: Minneapolis
+URL: https://ra.co/events/2173886
+Attending: 22
+
+---
+
+Event: Communion S19:EP03
+Date: 2025-06-15
+Venue: Cabooze
+Artists: YASMEENAH (2), DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2189982
+Attending: 10
+
+---
+
+Event: Kyle Hall - Wax Appeal x HiFi PopUp with DPC, Mike Pifer, QJ
+Date: 2025-06-20
+Venue: 7th Street Entry
+Artists: Kyle Hall, Daniel Paul Cortez, Mike Pifer, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2154365
+Attending: 19
+
+---
+
+Event: CASA TULUM - A Tulum Inspired House Music Party
+Date: 2025-06-20
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2162781
+Attending: 8
+
+---
+
+Event: Mechanix: The Boatman, Eylxr, radiateELF, Echtoo
+Date: 2025-06-20
+Venue: Eagles Club #34
+Artists: Echtoo
+City: Minneapolis
+URL: https://ra.co/events/2185345
+Attending: 1
+
+---
+
+Event: PLUSH AND PROUD (A Modern Electronic Paradise Garage Tribute)
+Date: 2025-06-21
+Venue: TBA
+Artists: DJ Nola, Phriz, DJ Blue Funk, Dana Kazuko, St. Xose
+City: Minneapolis
+URL: https://ra.co/events/2179211
+Attending: 22
+
+---
+
+Event: Bou - The Loft
+Date: 2025-06-21
+Venue: Skyway Theatre
+Artists: Bou (UK)
+City: Minneapolis
+URL: https://ra.co/events/2173184
+Attending: 2
+
+---
+
+Event: Communion S19:EP:04
+Date: 2025-06-22
+Venue: Cabooze
+Artists: Centrific, Piersmog
+City: Minneapolis
+URL: https://ra.co/events/2195513
+Attending: 8
+
+---
+
+Event: Dombresky Rooftop
+Date: 2025-06-27
+Venue: Crave
+Artists: Dombresky
+City: Minneapolis
+URL: https://ra.co/events/2173279
+Attending: 5
+
+---
+
+Event: MALDITA
+Date: 2025-06-27
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/2197011
+Attending: 1
+
+---
+
+Event: Funk Liberation
+Date: 2025-06-28
+Venue: TBA - Gateway
+Artists: Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2173874
+Attending: 212
+
+---
+
+Event: Give me body! A Pride Street Party 
+Date: 2025-06-28
+Venue: The Famous Brass Rail
+Artists: Tommy Hart
+City: Minneapolis
+URL: https://ra.co/events/2162782
+Attending: 20
+
+---
+
+Event: Kajunga pres. Choices feat. BEIGE
+Date: 2025-06-28
+Venue: 56 Brewing
+Artists: BEIGE, Beab, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2197700
+Attending: 9
+
+---
+
+Event: United: Miyuki
+Date: 2025-06-28
+Venue: Granada Theater
+City: Minneapolis
+URL: https://ra.co/events/2193778
+
+---
+
+Event: Communion Pride 2025 (S19:EP:05)
+Date: 2025-06-29
+Venue: Cabooze
+Artists: Clarisa Kimskii, Beab, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/2199616
+Attending: 9
+
+---
+
+Event: The Nitty Gritty - July
+Date: 2025-07-04
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2199478
+Attending: 5
+
+---
+
+Event: Next Gen
+Date: 2025-07-05
+Venue: TBA - Gateway
+Artists: Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/2198886
+Attending: 82
+
+---
+
+Event: JUMPSUIT - JOCKO, Ori The Ghost, Real Girl
+Date: 2025-07-05
+Venue: Black Hart of St. Paul
+Artists: Ori The Ghost, Real Girl
+City: Minneapolis
+URL: https://ra.co/events/2204447
+Attending: 2
+
+---
+
+Event: Communion S19:EP:06
+Date: 2025-07-06
+Venue: Cabooze
+Artists: Christian James, McGinnis
+City: Minneapolis
+URL: https://ra.co/events/2204714
+Attending: 6
+
+---
+
+Event: Interstellar Signals
+Date: 2025-07-10
+Venue: Dusty's Bar
+Artists: Dedicated Enemy
+City: Minneapolis
+URL: https://ra.co/events/2209083
+Attending: 2
+
+---
+
+Event: PARADOX
+Date: 2025-07-11
+Venue: Conga Lounge
+Artists: James Bangura, El Niño indigo, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/2195664
+Attending: 10
+
+---
+
+Event: 612-JUKE: DJ Phil and Arielle Lana in Minneapolis
+Date: 2025-07-11
+Venue: Eagles Club #34
+Artists: DJ Phil, Arielle Lana
+City: Minneapolis
+URL: https://ra.co/events/2184113
+Attending: 7
+
+---
+
+Event: Summer Tales: Taiki Nulight
+Date: 2025-07-12
+Venue: Eat Street Crossing
+City: Minneapolis
+URL: https://ra.co/events/2212093
+Attending: 1
+
+---
+
+Event: HiFi Popup
+Date: 2025-07-12
+Venue: Moto-i
+Artists: Mike Pifer
+City: Minneapolis
+URL: https://ra.co/events/2212803
+
+---
+
+Event: Communion S19:EP:07 (Traxx presents: The Definition of House)
+Date: 2025-07-13
+Venue: Cabooze
+Artists: Traxx, Naughty Wood
+City: Minneapolis
+URL: https://ra.co/events/2209916
+Attending: 12
+
+---
+
+Event: DayFunk: Two Year Anniversary Party - Charles Feelgood
+Date: 2025-07-13
+Venue: Eat Street Crossing
+Artists: Quicktastic, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2196903
+Attending: 6
+
+---
+
+Event: Groove Co. presents: Bastian Bux
+Date: 2025-07-18
+Venue: Eat Street Crossing
+Artists: Bastian Bux
+City: Minneapolis
+URL: https://ra.co/events/2115951
+Attending: 96
+
+---
+
+Event: G4S PUMP
+Date: 2025-07-19
+Venue: TBA
+Artists: Fabiola, YASMEENAH (2)
+City: Minneapolis
+URL: https://ra.co/events/2191094
+Attending: 444
+
+---
+
+Event: Subversion Volume II
+Date: 2025-07-19
+Venue: TBA - Gateway
+Artists: Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2209190
+Attending: 45
+
+---
+
+Event: Bed By 10pm Is Coming To Minneapolis
+Date: 2025-07-19
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2129527
+Attending: 10
+
+---
+
+Event: Communion S19:EP:08
+Date: 2025-07-20
+Venue: Cabooze
+Artists: Eckblad
+City: Minneapolis
+URL: https://ra.co/events/2215942
+Attending: 6
+
+---
+
+Event: The Great Beyond 2025
+Date: 2025-07-25
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: Annika Wolfe, Antenes, Anthony Linell, Border One, Centrific, Dustin Zahn, Erik Luebs, Eris Drew, Furtive, Justin Aulis Long, livwutang, Lonefront, Mary Yuzovskaya, Overland, Planetary Assault Systems, Rene Wise, Quelza, Sandwell District, Takaaki Itoh, Wata Igarashi, Rrose, Autokinetic, Christian James, Faited, DJ Hockey, Lychee, Müzmin, Paul Fleetwood, Sanna Mun, Sard, TML, ~~ (Tildetilde), agraybé, Akko, Bankie Phones, Beab, Circumscums, CSILLA, Dedicated Enemy, Duck Trash, ECHO, Eckblad, Elysium Alps, E Tones, haute carl, Henry Chow, IDBH, Inquilab, Jacob Park, Jeff Swiff, JS Alvarez, Kaya, Kerosine, Kitty Spit, Kobe Dupree, KXAH, Lanny, Lauryn Lesley, Matthew Cha, Mutual Identities, Nick Dagher, Nola (US), Paul Gordon, Phriz, Screendoor, Shanti, Steve Noah, Tekk Nikk, Toyacoyah, Wheelbite
+City: Minneapolis
+URL: https://ra.co/events/2090145
+Attending: 161
+
+---
+
+Event: Oppidan - The Loft
+Date: 2025-07-26
+Venue: Skyway Theatre
+Artists: Oppidan
+City: Minneapolis
+URL: https://ra.co/events/2173215
+Attending: 13
+
+---
+
+Event: Summer Tales: Azzecca
+Date: 2025-08-01
+Venue: Eat Street Crossing
+Artists: Azzecca
+City: Minneapolis
+URL: https://ra.co/events/2212099
+Attending: 10
+
+---
+
+Event: The Nitty Gritty featuring DJ Stepmom (LA)
+Date: 2025-08-01
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2216922
+Attending: 5
+
+---
+
+Event: Wax Appeal Record Exchange
+Date: 2025-08-02
+Venue: TBA - Mother Co Plants
+Artists: Adam S., Jeff Swiff, McGinnis, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2203522
+Attending: 7
+
+---
+
+Event: Communion S19:EP:09
+Date: 2025-08-02
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2227536
+Attending: 4
+
+---
+
+Event: Mechanix: Alpinist, Blazz, sfunk, BrandenFace
+Date: 2025-08-08
+Venue: Eagles Club #34
+Artists: Alpinist
+City: Minneapolis
+URL: https://ra.co/events/2226621
+Attending: 1
+
+---
+
+Event: CHOICES ☼
+Date: 2025-08-09
+Venue: 56 Brewing
+Artists: ~~ (Tildetilde), Ryote
+City: Minneapolis
+URL: https://ra.co/events/2211069
+Attending: 20
+
+---
+
+Event: Direct Support presents: Amplify-Her
+Date: 2025-08-09
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/2232824
+Attending: 1
+
+---
+
+Event: Communion S19:EP:010
+Date: 2025-08-10
+Venue: Cabooze
+Artists: E Tones, Mutual Identities
+City: Minneapolis
+URL: https://ra.co/events/2229900
+Attending: 6
+
+---
+
+Event: Kiesza
+Date: 2025-08-11
+Venue: 7th Street Entry
+Artists: Kiesza
+City: Minneapolis
+URL: https://ra.co/events/2222466
+Attending: 1
+
+---
+
+Event: Groove Scenario
+Date: 2025-08-13
+Venue: The Red Sea Ethiopian Restaurant
+Artists: SOLANA
+City: Minneapolis
+URL: https://ra.co/events/2230005
+Attending: 1
+
+---
+
+Event: Sacred Earth Open-Air 2025
+Date: 2025-08-14
+Venue: Minnesota River Valley Sanctuary and Retreat
+Artists: Kelsifer, OOZE
+City: Minneapolis
+URL: https://ra.co/events/2245558
+Attending: 1
+
+---
+
+Event: Echobass MPLS: Infinity
+Date: 2025-08-15
+Venue: James Ballentine VFW - Post 246
+City: Minneapolis
+URL: https://ra.co/events/2235383
+
+---
+
+Event: DayFunk X Uptown Porchfest: Afterparty Pop-Up
+Date: 2025-08-16
+Venue: TBA - 2637 Dupont Avenue S : MPLS 55408
+Artists: Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2196620
+Attending: 16
+
+---
+
+Event: Discotheque
+Date: 2025-08-16
+Venue: Zhora Darling
+City: Minneapolis
+URL: https://ra.co/events/2207178
+Attending: 10
+
+---
+
+Event: Kinetic Summer
+Date: 2025-08-16
+Venue: The Red Sea Restaurant
+Artists: Woody McBride, andrew baschyn, Dana Kazuko, St. Xose, haute carl
+City: Minneapolis
+URL: https://ra.co/events/2231994
+Attending: 6
+
+---
+
+Event: Out Of Sight
+Date: 2025-08-16
+Venue: Hewing Hotel
+Artists: Jeff Swiff
+City: Minneapolis
+URL: https://ra.co/events/2232039
+Attending: 1
+
+---
+
+Event: DayFunk: Day Time House Music Party - Fortune
+Date: 2025-08-17
+Venue: Eat Street Crossing
+Artists: Fortune (US)
+City: Minneapolis
+URL: https://ra.co/events/2216399
+Attending: 8
+
+---
+
+Event: Communion S19:EP:011
+Date: 2025-08-17
+Venue: Cabooze
+Artists: Daniel Paul Cortez
+City: Minneapolis
+URL: https://ra.co/events/2236672
+Attending: 6
+
+---
+
+Event: Groove Scenario
+Date: 2025-08-20
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2230008
+Attending: 1
+
+---
+
+Event: Youth Code: Industrial Worship Tour
+Date: 2025-08-21
+Venue: Turf Club
+City: Minneapolis
+URL: https://ra.co/events/2234571
+
+---
+
+Event: BAILE MALUCA
+Date: 2025-08-22
+Venue: The Red Sea Restaurant
+Artists: Roiju
+City: Minneapolis
+URL: https://ra.co/events/2221879
+Attending: 4
+
+---
+
+Event: Amen volume 2
+Date: 2025-08-23
+Venue: TBA - Gateway
+Artists: Dazzle, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/2233030
+Attending: 45
+
+---
+
+Event: Warehouse District LIVE Block Party: Carl Craig
+Date: 2025-08-23
+Venue: TBA - N 1ST AVE & 4TH ST
+Artists: Carl Craig
+City: Minneapolis
+URL: https://ra.co/events/2217623
+Attending: 19
+
+---
+
+Event: HiFi Popup
+Date: 2025-08-23
+Venue: Moto-i
+Artists: DJ Blue Funk, Miss Elaine Eos, QJ (2), Mike Pifer
+City: Minneapolis
+URL: https://ra.co/events/2241983
+Attending: 9
+
+---
+
+Event: Big Love IV
+Date: 2025-08-23
+Venue: James Ballentine VFW - Post 246
+Artists: Centrific, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2215901
+Attending: 7
+
+---
+
+Event: BIG LOVE IV: Centrific • M. Goalen • Jocko 69
+Date: 2025-08-23
+Venue: James Ballentine VFW - Post 246
+Artists: Centrific, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2239439
+Attending: 1
+
+---
+
+Event: BIG LOVE IV: Centrific • M. Goalen • Jocko 69
+Date: 2025-08-23
+Venue: Minneapolis
+Artists: Centrific, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2239432
+
+---
+
+Event: Communion S19:EP:012
+Date: 2025-08-24
+Venue: Cabooze
+Artists: Wata Igarashi
+City: Minneapolis
+URL: https://ra.co/events/2239282
+Attending: 16
+
+---
+
+Event: Minnesota Welcome Week Rave
+Date: 2025-08-26
+Venue: Vanquish
+City: Minneapolis
+URL: https://ra.co/events/2147585
+
+---
+
+Event: Groove Scenario
+Date: 2025-08-27
+Venue: The Red Sea Ethiopian Restaurant
+Artists: Bsquared
+City: Minneapolis
+URL: https://ra.co/events/2230010
+Attending: 1
+
+---
+
+Event: Will Clarke
+Date: 2025-08-29
+Venue: Skyway Theatre
+Artists: Will Clarke
+City: Minneapolis
+URL: https://ra.co/events/2173219
+Attending: 8
+
+---
+
+Event: Mechanix Outdoor Sessions
+Date: 2025-08-29
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2241350
+Attending: 2
+
+---
+
+Event: Odd Mob
+Date: 2025-08-30
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/2173221
+Attending: 5
+
+---
+
+Event: Gothess Skate Night!!! (August)
+Date: 2025-08-30
+Venue: TBA - TCS STUDIO 3045 HENNEPIN
+City: Minneapolis
+URL: https://ra.co/events/2235502
+Attending: 3
+
+---
+
+Event: Valentino Khan
+Date: 2025-08-30
+Venue: Skyway Theatre
+City: Minneapolis
+URL: https://ra.co/events/2173237
+Attending: 2
+
+---
+
+Event: Communion S19:EP:013
+Date: 2025-08-31
+Venue: Cabooze
+Artists: Mike Servito, Centrific, Christian James, POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/2244765
+Attending: 5
+
+---
+
+Event: Groove Scenario
+Date: 2025-09-03
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2248115
+
+---
+
+Event: Freak of the Week Roller Disco
+Date: 2025-09-03
+Venue: Minneapolis
+Artists: Woody McBride, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2249121
+
+---
+
+Event: The Nitty Gritty with Grady Not Grady
+Date: 2025-09-05
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2243841
+Attending: 4
+
+---
+
+Event: Jan Jelinek + Alone-A
+Date: 2025-09-06
+Venue: Berlin Music Lounge
+Artists: Jan Jelinek
+City: Minneapolis
+URL: https://ra.co/events/2249967
+Attending: 4
+
+---
+
+Event: JUMPSUIT - V-STALKER, PET SOUNDS, TECHNO DOLL
+Date: 2025-09-06
+Venue: Black Hart of St. Paul
+City: Minneapolis
+URL: https://ra.co/events/2248850
+Attending: 3
+
+---
+
+Event: Communion S19:EP:014
+Date: 2025-09-07
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2250017
+Attending: 6
+
+---
+
+Event: SYNASTRY: girlblunt • GJ neckdrug • elysium alps • jam.la
+Date: 2025-09-07
+Venue: James Ballentine VFW - Post 246
+Artists: Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/2252355
+Attending: 1
+
+---
+
+Event: Groove Scenario
+Date: 2025-09-10
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2248119
+
+---
+
+Event: A Body Thing
+Date: 2025-09-13
+Venue: TBA - Gateway
+Artists: Dana Kazuko, Mommy Long Legs
+City: Minneapolis
+URL: https://ra.co/events/2241362
+Attending: 101
+
+---
+
+Event: North Loop Block Party
+Date: 2025-09-13
+Venue: Basement Bar
+Artists: X CLUB.
+City: Minneapolis
+URL: https://ra.co/events/2212087
+Attending: 17
+
+---
+
+Event: Freak of the Week
+Date: 2025-09-13
+Venue: TBA - The Terminal Bar Minneapolis
+Artists: TML, DJ Nola, Phriz
+City: Minneapolis
+URL: https://ra.co/events/2249792
+Attending: 2
+
+---
+
+Event: HAWT M3SS
+Date: 2025-09-13
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2237409
+Attending: 1
+
+---
+
+Event: Freak Of The Week
+Date: 2025-09-13
+Venue: TBA - The Terminal Bar Minneapolis
+Artists: TML, DJ Nola, Phriz
+City: Minneapolis
+URL: https://ra.co/events/2254674
+
+---
+
+Event: Communion S19:EP:015
+Date: 2025-09-14
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2254677
+Attending: 5
+
+---
+
+Event: Groove Scenario
+Date: 2025-09-17
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2248124
+
+---
+
+Event: ENIGMA - Overland, Piersmog B2B *67, Akko, ORO
+Date: 2025-09-19
+Venue: The Red Sea Restaurant
+Artists: Overland, Piersmog, Akko
+City: Minneapolis
+URL: https://ra.co/events/2238545
+Attending: 21
+
+---
+
+Event: OS2
+Date: 2025-09-19
+Venue: TBA - Minneapolis, MN-(northeast)
+City: Minneapolis
+URL: https://ra.co/events/2240229
+Attending: 18
+
+---
+
+Event: CHOICES ☼
+Date: 2025-09-20
+Venue: 56 Brewing
+Artists: Berndt, Lanny, Ryote
+City: Minneapolis
+URL: https://ra.co/events/2255584
+Attending: 12
+
+---
+
+Event: DayFunk: Day Time House Music Party - DJ Colette
+Date: 2025-09-21
+Venue: Eat Street Crossing
+Artists: DJ Colette, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2234728
+Attending: 8
+
+---
+
+Event: Communion S19:EP:016
+Date: 2025-09-21
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2261954
+Attending: 2
+
+---
+
+Event: Polo & Pan – Americas Tour 2025
+Date: 2025-09-23
+Venue: Palace Theatre
+Artists: Polo & Pan, Tycho
+City: Minneapolis
+URL: https://ra.co/events/2222476
+Attending: 3
+
+---
+
+Event: Squirt
+Date: 2025-09-27
+Venue: TBA - Gateway
+Artists: Duck Trash, Lauryn Lesley
+City: Minneapolis
+URL: https://ra.co/events/2253167
+Attending: 202
+
+---
+
+Event: Coven
+Date: 2025-09-27
+Venue: TBA
+Artists: Ori The Ghost, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/2259014
+Attending: 31
+
+---
+
+Event: Future Override [Vol. 1]
+Date: 2025-09-27
+Venue: TBA - somewhere in minneapolis.
+Artists: St. Xose
+City: Minneapolis
+URL: https://ra.co/events/2258003
+Attending: 25
+
+---
+
+Event: WEBUILDMACHINES & ENIGMA present: Resonance
+Date: 2025-09-27
+Venue: TBA - Mirror Lab
+Artists: Tunnel, Akko
+City: Minneapolis
+URL: https://ra.co/events/2243925
+Attending: 13
+
+---
+
+Event: Decadance
+Date: 2025-09-27
+Venue: James Ballentine VFW - Post 246
+Artists: Christian James, Centrific
+City: Minneapolis
+URL: https://ra.co/events/2245207
+Attending: 8
+
+---
+
+Event: Communion S19:EP:017 (Closing Party)
+Date: 2025-09-28
+Venue: Cabooze
+Artists: Polygonia, Danny Daze, Autokinetic, IDBH, Flange
+City: Minneapolis
+URL: https://ra.co/events/2267005
+Attending: 11
+
+---
+
+Event: Freak Of The Week
+Date: 2025-10-03
+Venue: Zhora Darling
+Artists: Kitty Spit, Ori The Ghost, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2235367
+Attending: 20
+
+---
+
+Event: The Nitty Gritty 4 Year Anniversary
+Date: 2025-10-03
+Venue: Dusty's Bar
+Artists: DJ Blue Funk, DJ Brian
+City: Minneapolis
+URL: https://ra.co/events/2259608
+Attending: 4
+
+---
+
+Event: Membrane at the red sea
+Date: 2025-10-04
+Venue: The Red Sea Restaurant
+Artists: gender_error
+City: Minneapolis
+URL: https://ra.co/events/2245001
+Attending: 20
+
+---
+
+Event: haute carl presents Vinyl + Vibes 6: BIRTHDAY BANGERS edition
+Date: 2025-10-04
+Venue: Zen Arcade
+Artists: Daniel Paul Cortez, haute carl
+City: Minneapolis
+URL: https://ra.co/events/2258503
+Attending: 11
+
+---
+
+Event: Mechanix
+Date: 2025-10-04
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2255574
+Attending: 8
+
+---
+
+Event: Groove Scenario at Uptown VFW
+Date: 2025-10-09
+Venue: James Ballentine VFW - Post 246
+Artists: Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/2269201
+Attending: 2
+
+---
+
+Event: BIZZARE
+Date: 2025-10-10
+Venue: Zhora Darling
+City: Minneapolis
+URL: https://ra.co/events/2278196
+Attending: 1
+
+---
+
+Event: FUSS
+Date: 2025-10-12
+Venue: James Ballentine VFW - Post 246
+Artists: Akko
+City: Minneapolis
+URL: https://ra.co/events/2270624
+Attending: 4
+
+---
+
+Event: Groove Scenario presents: Topiary Blush, Omari Eternal, Christian Music, DJ Alien Wife
+Date: 2025-10-17
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2248651
+Attending: 12
+
+---
+
+Event: City of Acid - acidbat (live) - jobot - andy fargo (live)
+Date: 2025-10-17
+Venue: James Ballentine VFW - Post 246
+City: Minneapolis
+URL: https://ra.co/events/2278404
+Attending: 5
+
+---
+
+Event: Warehouse Season 25/26 Opening Party
+Date: 2025-10-18
+Venue: TBA - Where House?
+Artists: Black Lotus, Lauren Flax, Truncate, Centrific, gender_error, Piersmog
+City: Minneapolis
+URL: https://ra.co/events/2276045
+Attending: 332
+
+---
+
+Event: Drunken Kong
+Date: 2025-10-18
+Venue: Union Rooftop
+Artists: Drunken Kong
+City: Minneapolis
+URL: https://ra.co/events/2267302
+Attending: 4
+
+---
+
+Event: BODY HIGH
+Date: 2025-10-19
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2277378
+Attending: 19
+
+---
+
+Event: ECHO HIGHWAY: The Resistance Transmission
+Date: 2025-10-24
+Venue: TBA - somewhere in minneapolis
+Artists: St. Xose, Adriatic
+City: Minneapolis
+URL: https://ra.co/events/2284554
+Attending: 35
+
+---
+
+Event: The Men's Room
+Date: 2025-10-24
+Venue: TBA
+Artists: POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/2270645
+Attending: 12
+
+---
+
+Event: Into the VOID
+Date: 2025-10-24
+Venue: Historic Concord Exchange
+City: Minneapolis
+URL: https://ra.co/events/2277307
+Attending: 10
+
+---
+
+Event: Sorry For Party Rocking (2010 - 2015 Pop & EDM Bangers All Night Long!)
+Date: 2025-10-24
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2252437
+Attending: 3
+
+---
+
+Event: Rooted Thru Sound Vol.2
+Date: 2025-10-24
+Venue: The Red Sea Restaurant
+Artists: Tor.Ma in Dub
+City: Minneapolis
+URL: https://ra.co/events/2286716
+
+---
+
+Event: 612-JUKE - Special Guest DJ HANNIBAL BURESS w/ Dj.Mc, DJ Spaldin
+Date: 2025-10-25
+Venue: Eagles Club #34
+Artists: DJ MC, Deejay YB
+City: Minneapolis
+URL: https://ra.co/events/2267282
+Attending: 5
+
+---
+
+Event: 10/25 Transcending Events PHANTOM FREQUENCY - Primordial Ooze, Spycht, Fervor, Miss Astrospook
+Date: 2025-10-25
+Venue: The Red Sea Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2247025
+Attending: 4
+
+---
+
+Event: DayFunk: Daytime House Music Party - Wayne Williams
+Date: 2025-10-26
+Venue: Eat Street Crossing
+Artists: Wayne Williams, Nate Laurence, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2257650
+Attending: 13
+
+---
+
+Event: Blood Rave
+Date: 2025-10-31
+Venue: TBA - Gateway
+Artists: Baher, Dazzle, Dana Kazuko, Elysium Alps
+City: Minneapolis
+URL: https://ra.co/events/2260822
+Attending: 340
+
+---
+
+Event: WERKHAUS 2: Electric Boogaloo
+Date: 2025-10-31
+Venue: TBA - TRXX WRHS
+Artists: AZA, Marco Passarani, Sweater On Polo
+City: Minneapolis
+URL: https://ra.co/events/2226515
+Attending: 249
+
+---
+
+Event: Arcane presents - Halloween Bash at The Moose
+Date: 2025-10-31
+Venue: Minneapolis
+City: Minneapolis
+URL: https://ra.co/events/2291535
+
+---
+
+Event: Enter The Matrix
+Date: 2025-10-31
+Venue: The Red Sea Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2292603
+
+---
+
+Event: JUMPSUIT - BLISS KITTY, Dana Kazuko, VIDEODRONE
+Date: 2025-11-01
+Venue: Black Hart of St. Paul
+Artists: Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2291592
+Attending: 5
+
+---
+
+Event: Dark Omens
+Date: 2025-11-01
+Venue: Red Carpet Nightclub
+City: Minneapolis
+URL: https://ra.co/events/2292573
+
+---
+
+Event: Freak of the Week
+Date: 2025-11-07
+Venue: Zhora Darling
+Artists: DJ Hyperactive, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2286965
+Attending: 22
+
+---
+
+Event: The Nitty Gritty featuring Mike Pifer
+Date: 2025-11-07
+Venue: Dusty's Bar
+Artists: DJ Blue Funk, Mike Pifer
+City: Minneapolis
+URL: https://ra.co/events/2285359
+Attending: 5
+
+---
+
+Event: FOOD IS A HUMAN RIGHT
+Date: 2025-11-07
+Venue: TBA - east river meadow (text 6513679311)
+City: Minneapolis
+URL: https://ra.co/events/2299092
+Attending: 1
+
+---
+
+Event: Trueque — EP Release Party
+Date: 2025-11-08
+Venue: TBA - Gateway
+City: Minneapolis
+URL: https://ra.co/events/2290625
+Attending: 33
+
+---
+
+Event: Fugue State
+Date: 2025-11-08
+Venue: Zen Arcade
+Artists: Akko
+City: Minneapolis
+URL: https://ra.co/events/2292583
+Attending: 6
+
+---
+
+Event: Envelop (Deep Listening Series)
+Date: 2025-11-13
+Venue: TBA - Mirror Lab - 3400 Cedar Ave. S, 55407
+City: Minneapolis
+URL: https://ra.co/events/2304194
+Attending: 2
+
+---
+
+Event: PARADOX
+Date: 2025-11-14
+Venue: Conga Lounge
+Artists: 8ULENTINA, Amelia Holt, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/2277991
+Attending: 20
+
+---
+
+Event: Soul Pour
+Date: 2025-11-14
+Venue: Steady Pour Mpls
+Artists: Nick Gunz, M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2292597
+Attending: 7
+
+---
+
+Event: Mersiv: The Audiosphere Tour
+Date: 2025-11-14
+Venue: Royalston Square
+City: Minneapolis
+URL: https://ra.co/events/2292593
+Attending: 2
+
+---
+
+Event: Channel One Soundsystem Ft. Ras Sherby
+Date: 2025-11-14
+Venue: Cabooze
+Artists: Channel One Sound
+City: Minneapolis
+URL: https://ra.co/events/2304196
+Attending: 1
+
+---
+
+Event: Disco After Dark
+Date: 2025-11-15
+Venue: Eagle Minneapolis
+Artists: Beab, Xminus1, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/2304201
+Attending: 4
+
+---
+
+Event: Disco After Dark: One Year Anniversary
+Date: 2025-11-15
+Venue: Eagle|Mpls
+Artists: Ori The Ghost, Xminus1, Beab
+City: Minneapolis
+URL: https://ra.co/events/2299853
+Attending: 1
+
+---
+
+Event: DayFunk: Daytime House Music Party - DJ Slugo
+Date: 2025-11-16
+Venue: Eat Street Crossing
+Artists: DJ Slugo, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2288430
+Attending: 22
+
+---
+
+Event: BODY HIGH
+Date: 2025-11-16
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2305972
+Attending: 5
+
+---
+
+Event: Freak of the Week
+Date: 2025-11-19
+Venue: TBA - The Terminal Bar
+Artists: DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2286993
+Attending: 2
+
+---
+
+Event: Groove Scenario presents: Freddy Fresh
+Date: 2025-11-20
+Venue: Cabooze
+Artists: Freddy Fresh, Devil Girl
+City: Minneapolis
+URL: https://ra.co/events/2269203
+Attending: 15
+
+---
+
+Event: FREEDOM FROM CHOICE
+Date: 2025-11-22
+Venue: TBA
+Artists: Ø [Phase], Convextion, Dustin Zahn, Centrific, Shanti
+City: Minneapolis
+URL: https://ra.co/events/2290581
+Attending: 330
+
+---
+
+Event: Baile Maluca Vol. 2 at Red Sea MPLS
+Date: 2025-11-22
+Venue: The Red Sea Restaurant
+Artists: St. Xose
+City: Minneapolis
+URL: https://ra.co/events/2300693
+Attending: 6
+
+---
+
+Event: Thunderdome
+Date: 2025-11-22
+Venue: TBA
+Artists: Gartex, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/2304207
+Attending: 3
+
+---
+
+Event: Club K-Pop
+Date: 2025-11-22
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2268017
+
+---
+
+Event: House Sessions
+Date: 2025-11-22
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2306940
+
+---
+
+Event: WEBUILDMACHINES & ENIGMA present: Resonance
+Date: 2025-11-27
+Venue: TBA - 3400 CEDAR AVE MPLS
+Artists: Tunnel, Kindohm
+City: Minneapolis
+URL: https://ra.co/events/2298018
+Attending: 4
+
+---
+
+Event: Mark Farina
+Date: 2025-11-28
+Venue: 56 Brewing
+Artists: Mark Farina
+City: Minneapolis
+URL: https://ra.co/events/2297959
+Attending: 11
+
+---
+
+Event: Mechanix: feat. Fervor, Eckblad, DDT, & Cosmic Bitch
+Date: 2025-11-28
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/2303119
+Attending: 8
+
+---
+
+Event: Midwest vs East Coast:  HeavyBass Championship
+Date: 2025-11-29
+Venue: TBA - Gateway Twin Cities (Addressed Announced Day Of Show)
+Artists: Tromac, Dazzle, Deejay YB, Uoglobe
+City: Minneapolis
+URL: https://ra.co/events/2274918
+Attending: 93
+
+---
+
+Event: Midwest vs East Coast: HeavyBass Championship
+Date: 2025-11-29
+Venue: TBA - Gateway Twin Cities
+City: Minneapolis
+URL: https://ra.co/events/2321563
+
+---
+
+Event: Kajunga 10 Year Anniversary Party: DJ Stingray 313 ⏐ AK ⏐ Berndt ⏐ Cloudy Kid
+Date: 2025-12-05
+Venue: TBA
+Artists: DJ Stingray 313, AK (US), Berndt
+City: Minneapolis
+URL: https://ra.co/events/2298159
+Attending: 62
+
+---
+
+Event: Groove Scenario at The Red Sea
+Date: 2025-12-05
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2311147
+Attending: 6
+
+---
+
+Event: The Nitty Gritty
+Date: 2025-12-05
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2310839
+Attending: 3
+
+---
+
+Event: Sleepyhead Night Market
+Date: 2025-12-06
+Venue: Familia HQ
+Artists: gender_error, mmluci
+City: Minneapolis
+URL: https://ra.co/events/2309641
+Attending: 75
+
+---
+
+Event: ENIGMA - Akko b2b Beab - Sam Lofthus - M. Yaeger
+Date: 2025-12-06
+Venue: The Red Sea Restaurant
+Artists: Akko, Beab
+City: Minneapolis
+URL: https://ra.co/events/2296527
+Attending: 17
+
+---
+
+Event: THE MEN'S ROOM with flirty800
+Date: 2025-12-06
+Venue: TBA
+Artists: flirty800, POUR HOMMES
+City: Minneapolis
+URL: https://ra.co/events/2304171
+Attending: 11
+
+---
+
+Event: Freak of the Week
+Date: 2025-12-06
+Venue: Zhora Darling
+Artists: DJ Nola, Miss Elaine Eos
+City: Minneapolis
+URL: https://ra.co/events/2312466
+Attending: 10
+
+---
+
+Event: Saturday Nite Series at Bar Harmony
+Date: 2025-12-06
+Venue: Minneapolis
+City: Minneapolis
+URL: https://ra.co/events/2305891
+Attending: 5
+
+---
+
+Event: Groove Co. presents: Jeff Sorkowitz
+Date: 2025-12-12
+Venue: Rev Ultra Lounge
+Artists: Jeff Sorkowitz
+City: Minneapolis
+URL: https://ra.co/events/2288914
+Attending: 22
+
+---
+
+Event: Doinks and Dubstep
+Date: 2025-12-12
+Venue: James Ballentine VFW - Post 246
+City: Minneapolis
+URL: https://ra.co/events/2308549
+Attending: 3
+
+---
+
+Event: DREAM
+Date: 2025-12-13
+Venue: TBA - Gateway
+Artists: mmluci, Dana Kazuko, Tekk Nikk
+City: Minneapolis
+URL: https://ra.co/events/2308146
+Attending: 131
+
+---
+
+Event: discodesque: electronique synthesis
+Date: 2025-12-13
+Venue: TBA - Disco Death Records 
+City: Minneapolis
+URL: https://ra.co/events/2318657
+Attending: 15
+
+---
+
+Event: I'll Be Home For DayFunk: December Daytime House Music Party
+Date: 2025-12-14
+Venue: Eat Street Crossing
+Artists: DJ Mes, Mazi, Nick Gunz, JMatthews
+City: Minneapolis
+URL: https://ra.co/events/2322502
+Attending: 4
+
+---
+
+Event: POPUP at Mortimer's: December Edition: "Robot Pet Woots" (Benefit for Roberto)
+Date: 2025-12-16
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2318413
+Attending: 1
+
+---
+
+Event: Head Case
+Date: 2025-12-19
+Venue: TBA - New World
+Artists: MANAPOOL, Ori The Ghost, BYZARRA, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/2322562
+Attending: 16
+
+---
+
+Event: Teleport 008 (One Year Anniversary)
+Date: 2025-12-19
+Venue: James Ballentine VFW - Post 246
+City: Minneapolis
+URL: https://ra.co/events/2324870
+Attending: 1
+
+---
+
+Event: Mechanix: feat. LO!, Echtoo b2b RadiateELF, Bern Higher, R.B.A
+Date: 2025-12-19
+Venue: Eagles Club #34
+Artists: Echtoo
+City: Minneapolis
+URL: https://ra.co/events/2327668
+
+---
+
+Event: Freak of the Week 12 Hours of Funkmas: A Whoville Boogie
+Date: 2025-12-20
+Venue: TBA - Minneapolis 
+Artists: The AM/AMX, Woody McBride, Freddy Fresh, Devil Girl, DJ Nola, Jacob Hoffman, mrBlaQ
+City: Minneapolis
+URL: https://ra.co/events/2291305
+Attending: 306
+
+---
+
+Event: Pinky Swear
+Date: 2025-12-20
+Venue: La Doña Cervecería
+City: Minneapolis
+URL: https://ra.co/events/2300931
+Attending: 180
+
+---
+
+Event: BODY HIGH
+Date: 2025-12-21
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2331155
+
+---
+
+Event: Groove Scenario presents: DJ King Otto
+Date: 2025-12-26
+Venue: The Red Sea Ethiopian Restaurant
+Artists: M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2304889
+Attending: 8
+
+---
+
+Event: WAX ON
+Date: 2025-12-26
+Venue: The Red Sea Ethiopian Restaurant
+Artists: St. Xose, dj madre
+City: Minneapolis
+URL: https://ra.co/events/2326801
+Attending: 4
+
+---
+
+Event: Dance Freq
+Date: 2025-12-27
+Venue: TBA
+City: Minneapolis
+URL: https://ra.co/events/2290387
+Attending: 36
+
+---
+
+Event: Wax Appeal Record Exchange
+Date: 2025-12-27
+Venue: TBA - TRXX WRHS
+Artists: M. Goalen, McGinnis, QJ (2)
+City: Minneapolis
+URL: https://ra.co/events/2311914
+Attending: 8
+
+---
+
+Event: SEED IPH:NYE25
+Date: 2025-12-31
+Venue: TBA
+Artists: Neel, Kerrie, Lonefront, Lauryn Lesley, Flange
+City: Minneapolis
+URL: https://ra.co/events/2307073
+Attending: 520
+
+---
+
+Event: Party Monster
+Date: 2025-12-31
+Venue: TBA - Gateway
+Artists: Dana Kazuko, Donald Glaude, Akko, Jeff Hunter
+City: Minneapolis
+URL: https://ra.co/events/2308162
+Attending: 193
+
+---
+
+Event: YEAR ONE
+Date: 2025-12-31
+Venue: TBA - address announced via email
+Artists: JESSXO, Daisy Hex
+City: Minneapolis
+URL: https://ra.co/events/2328747
+Attending: 288
+
+---
+
+Event: The Nitty Gritty with QJ
+Date: 2026-01-02
+Venue: Dusty's Bar
+Artists: QJ (2), DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2332061
+Attending: 4
+
+---
+
+Event: Freak Of The Week
+Date: 2026-01-03
+Venue: Zhora Darling
+Artists: Ron A.D., DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2322518
+Attending: 13
+
+---
+
+Event: 612-JUKE: Chappy Digital, THUG, LiKo Tunez 
+Date: 2026-01-03
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/2330457
+Attending: 6
+
+---
+
+Event: JUMPSUIT - Elysium Alps, Beab, Videodrone
+Date: 2026-01-03
+Venue: Black Hart of St. Paul
+Artists: Elysium Alps, Beab
+City: Minneapolis
+URL: https://ra.co/events/2333353
+Attending: 6
+
+---
+
+Event: Internet Kids after party: Friday Jan 9
+Date: 2026-01-09
+Venue: TBA - Gateway
+Artists: Daisy Hex, Ori The Ghost, Dana Kazuko, 99jakes
+City: Minneapolis
+URL: https://ra.co/events/2339185
+Attending: 26
+
+---
+
+Event: ----Behind The Curtain----
+Date: 2026-01-13
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2345953
+Attending: 1
+
+---
+
+Event: Groove Scenario at The Red Sea
+Date: 2026-01-16
+Venue: The Red Sea Ethiopian Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2311151
+Attending: 12
+
+---
+
+Event: Night Shift: ALADAG (Diynamic)
+Date: 2026-01-16
+Venue: Green Room
+Artists: ALADAG
+City: Minneapolis
+URL: https://ra.co/events/2340499
+Attending: 4
+
+---
+
+Event: Late Night Lounge
+Date: 2026-01-16
+Venue: TBA - Berlin MPLS 204 North First Street Minneapolis, MN 55401 United States
+Artists: Akko
+City: Minneapolis
+URL: https://ra.co/events/2347158
+Attending: 1
+
+---
+
+Event: Mechanix - Ryan C's Birthday Extravaganza
+Date: 2026-01-16
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/2347148
+
+---
+
+Event: discodesque: all vinyl
+Date: 2026-01-17
+Venue: TBA - Disco Death Records 
+Artists: M. Goalen
+City: Minneapolis
+URL: https://ra.co/events/2341396
+Attending: 13
+
+---
+
+Event: McGinnis at Bar Harmony
+Date: 2026-01-17
+Venue: TBA - Bar Harmony
+Artists: McGinnis
+City: Minneapolis
+URL: https://ra.co/events/2343055
+Attending: 3
+
+---
+
+Event: Benefit Against Federal Occupation
+Date: 2026-01-23
+Venue: TBA
+Artists: umru, Ori The Ghost
+City: Minneapolis
+URL: https://ra.co/events/2346145
+Attending: 134
+
+---
+
+Event: Freak of the Week 8 Year
+Date: 2026-01-23
+Venue: Cabooze
+Artists: Mystic Bill, Daniel Paul Cortez, DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2333685
+Attending: 24
+
+---
+
+Event: SUBSHIFT at The Loft, Skyway Theatre
+Date: 2026-01-23
+Venue: Skyway Theatre
+Artists: SUBSHIFT (UK)
+City: Minneapolis
+URL: https://ra.co/events/2354150
+
+---
+
+Event: [CANCELLED] Ratio
+Date: 2026-01-24
+Venue: TBA - New World
+Artists: Mitch Smith, wngdu, Beab
+City: Minneapolis
+URL: https://ra.co/events/2301944
+Attending: 31
+
+---
+
+Event: Snow Strippers
+Date: 2026-01-24
+Venue: Varsity Theater
+Artists: Snow Strippers, Eera
+City: Minneapolis
+URL: https://ra.co/events/2300672
+Attending: 10
+
+---
+
+Event: DayFunk: Daytime House Music Party - Kelly Reverb
+Date: 2026-01-25
+Venue: Eat Street Crossing
+Artists: Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2334317
+Attending: 5
+
+---
+
+Event: SPACE TRAIN 2: LOOSE Cabooze
+Date: 2026-01-25
+Venue: Cabooze
+City: Minneapolis
+URL: https://ra.co/events/2343505
+Attending: 4
+
+---
+
+Event: It's The F*ckin Cold Hardware Show
+Date: 2026-01-30
+Venue: 331 Club
+Artists: Dana Kazuko
+City: Minneapolis
+URL: https://ra.co/events/2358095
+Attending: 4
+
+---
+
+Event: PU$$Y CONTROL
+Date: 2026-01-31
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2358101
+Attending: 2
+
+---
+
+Event: Dutchess Presents ELYXR
+Date: 2026-01-31
+Venue: Hey Y'all Tipsy Taco Bar
+City: Minneapolis
+URL: https://ra.co/events/2358118
+
+---
+
+Event: In Defense of Our Community
+Date: 2026-02-05
+Venue: Fine Line Music Cafe
+City: Minneapolis
+URL: https://ra.co/events/2358106
+
+---
+
+Event: Freak of the Week
+Date: 2026-02-06
+Venue: Zhora Darling
+Artists: DJ Seoul, Beab, DJ Nola, QJ
+City: Minneapolis
+URL: https://ra.co/events/2339889
+Attending: 14
+
+---
+
+Event: The Nitty Gritty
+Date: 2026-02-06
+Venue: Dusty's Bar
+Artists: DJ Blue Funk
+City: Minneapolis
+URL: https://ra.co/events/2358936
+Attending: 3
+
+---
+
+Event: Drone Not Drones
+Date: 2026-02-06
+Venue: Cedar Cultural Center
+City: Minneapolis
+URL: https://ra.co/events/2365627
+
+---
+
+Event: Jumpsuit - Joe Delon, Amy Pickett, Allen Hz
+Date: 2026-02-07
+Venue: Black Hart of St. Paul
+Artists: Joe Delon
+City: Minneapolis
+URL: https://ra.co/events/2339093
+Attending: 22
+
+---
+
+Event: Clubnight
+Date: 2026-02-07
+Venue: James Ballentine VFW - Post 246
+Artists: DJ Nola
+City: Minneapolis
+URL: https://ra.co/events/2362747
+Attending: 1
+
+---
+
+Event: Breaker's Paradise: Volume 15
+Date: 2026-02-11
+Venue: Terminal Bar
+Artists: Modest, DJ NeKo
+City: Minneapolis
+URL: https://ra.co/events/2358126
+Attending: 1
+
+---
+
+Event: Teleport
+Date: 2026-02-13
+Venue: TBA - Gateway
+Artists: SergCo, Dana Kazuko, Dazzle
+City: Minneapolis
+URL: https://ra.co/events/2364635
+Attending: 88
+
+---
+
+Event: TANDEM
+Date: 2026-02-13
+Venue: The Red Sea Restaurant
+City: Minneapolis
+URL: https://ra.co/events/2347056
+Attending: 93
+
+---
+
+Event: Since I Been Lovin You
+Date: 2026-02-14
+Venue: TBA
+Artists: Lonefront, Centrific, Flange, gender_error
+City: Minneapolis
+URL: https://ra.co/events/2368350
+Attending: 242
+
+---
+
+Event: BODY HIGH
+Date: 2026-02-15
+Venue: Mortimer's
+City: Minneapolis
+URL: https://ra.co/events/2368631
+Attending: 8
+
+---
+
+Event: SEND IT
+Date: 2026-02-21
+Venue: TBA - Gateway
+Artists: Dazzle, BYZARRA
+City: Minneapolis
+URL: https://ra.co/events/2374740
+Attending: 42
+
+---
+
+Event: Jamaica Will Rise & Shine Again
+Date: 2026-02-21
+Venue: TBA
+Artists: Overland
+City: Minneapolis
+URL: https://ra.co/events/2358857
+Attending: 49
+
+---
+
+Event: Transcending Events presents: Keep Dancing, Keep Marching - New Location at FOE
+Date: 2026-02-21
+Venue: Eagles Club #34
+City: Minneapolis
+URL: https://ra.co/events/2336967
+Attending: 8
+
+---
+
+Event: DayFunk: Daytime House Music Party - Tyree Cooper
+Date: 2026-02-22
+Venue: Eat Street Crossing
+Artists: Tyree Cooper, Nick Gunz
+City: Minneapolis
+URL: https://ra.co/events/2354195
+Attending: 8
+
+---
+
+Event: Laraaji
+Date: 2026-02-25
+Venue: TBA - Club Berlin
+Artists: Laraaji
+City: Minneapolis
+URL: https://ra.co/events/2327569
+Attending: 9
+
+---
+
+Event: BODY HIGH: After Dark
+Date: 2026-02-27
+Venue: TBA - Announced via Email
+City: Minneapolis
+URL: https://ra.co/events/2372827
+Attending: 49
+
+---
+
+Event: Mala - Longform USA Tour - Minneapolis w/ Rugi
+Date: 2026-02-27
+Venue: James Ballentine VFW - Post 246
+Artists: Mala
+City: Minneapolis
+URL: https://ra.co/events/2358133
+Attending: 5
+
+---
+
+Event: PROMISCUOUS: A 2000's CLUB BANGERS THROWBACKS PARTY
+Date: 2026-02-27
+Venue: Green Room
+City: Minneapolis
+URL: https://ra.co/events/2354296
+Attending: 3
+
+---
+
+Event: Daniel Bell & Intellephunk present: BEYOND
+Date: 2026-02-28
+Venue: TBA
+Artists: Daniel Bell
+City: Minneapolis
+URL: https://ra.co/events/2324745
+Attending: 236
+
+---
+
+Event: steeped
+Date: 2026-02-28
+Venue: TBA - New World
+Artists: TML, 'nohup', Xminus1
+City: Minneapolis
+URL: https://ra.co/events/2340377
+Attending: 11
+
+---
+
+Event: HiFi Popup
+Date: 2026-02-28
+Venue: Moto-i
+Artists: Mike Pifer
+City: Minneapolis
+URL: https://ra.co/events/2372600
+Attending: 3
+
+---
+
+Event: Mechanix feat BCee (UK), Blazz, zttl and Nato
+Date: 2026-02-28
+Venue: Eagles Club #34
+Artists: BCee, Nato (FR)
+City: Minneapolis
+URL: https://ra.co/events/2375576
+Attending: 1
+
+---
+
+Event: Noise Party 13
+Date: 2026-03-01
+Venue: Cedar Cultural Center
+City: Minneapolis
+URL: https://ra.co/events/2347151
+Attending: 3
