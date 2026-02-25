@@ -950,7 +950,7 @@ async def _expand_query(llm: Any, query: str) -> str:
         expanded = await llm.complete(
             system_prompt=_EXPAND_SYSTEM_PROMPT,
             user_prompt=_EXPAND_USER_PROMPT.format(query=query),
-            temperature=0.3,
+            temperature=0.0,
             max_tokens=100,
         )
         result = expanded.strip() if expanded else query
@@ -1055,6 +1055,7 @@ async def corpus_search(
         pass  # domain_knowledge not yet available
 
     # HyDE-lite: expand short/vague queries with LLM
+    raw_query = query_text
     query_text = await _expand_query(llm, query_text)
 
     chunks = await vector_store.query(
@@ -1062,6 +1063,21 @@ async def corpus_search(
         top_k=body.top_k,
         filters=filters if filters else None,
     )
+
+    # Fallback: if the expanded query returned nothing but the raw query
+    # differs, retry with the original query.  LLM expansion can sometimes
+    # drift away from the user's intent, producing zero relevant hits.
+    if not chunks and query_text != raw_query:
+        _logger.debug(
+            "expanded_query_empty_fallback_to_raw",
+            expanded=query_text[:80],
+            raw=raw_query[:80],
+        )
+        chunks = await vector_store.query(
+            query_text=raw_query,
+            top_k=body.top_k,
+            filters=filters if filters else None,
+        )
 
     # Safety-net dedup by source_id — keep top 3 chunks per source
     _MAX_PER_SOURCE = 3

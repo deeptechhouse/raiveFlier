@@ -50,6 +50,7 @@ const Corpus = (() => {
   let _corpusStats = null;    // { total_chunks, total_sources } from /corpus/stats
   let _filtersOpen = false;   // Whether the filter panel is expanded
   let _debounceTimer = null;  // Timer ID for search input debouncing
+  let _searchError = null;    // Last search error message, if any
 
   // Resize state — managed by mouse event listeners on the drag handle
   let _isResizing = false;
@@ -218,10 +219,16 @@ const Corpus = (() => {
     }
 
     if (_results.length === 0 && _lastQuery) {
+      // Distinguish between "no matches" and "search error" so the user
+      // knows whether to rephrase or retry.
+      const title = _searchError ? "Search error" : "No results found";
+      const text = _searchError
+        ? _esc(_searchError) + " — try again or adjust filters."
+        : "Try a different search term or adjust filters.";
       container.innerHTML = `
         <div class="corpus-sidebar__empty">
-          <p class="corpus-sidebar__empty-title">No results found</p>
-          <p class="corpus-sidebar__empty-text">Try a different search term or adjust filters.</p>
+          <p class="corpus-sidebar__empty-title">${title}</p>
+          <p class="corpus-sidebar__empty-text">${text}</p>
         </div>
       `;
       return;
@@ -408,6 +415,8 @@ const Corpus = (() => {
     if (filters.entity_tag) body.entity_tag = filters.entity_tag;
     if (filters.geographic_tag) body.geographic_tag = filters.geographic_tag;
 
+    _searchError = null;
+
     try {
       const response = await fetch("/api/v1/corpus/search", {
         method: "POST",
@@ -424,6 +433,7 @@ const Corpus = (() => {
       _results = data.results || [];
     } catch (err) {
       _results = [];
+      _searchError = err.message || "Search failed";
       console.error("[Corpus] Search error:", err.message);
     }
 
