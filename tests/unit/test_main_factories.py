@@ -8,6 +8,7 @@ real network calls or API keys are required.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -1242,8 +1243,8 @@ class TestLifespan:
             mock_http.aclose.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_lifespan_calls_auto_ingest(self) -> None:
-        """_lifespan calls _auto_ingest_reference_corpus during startup."""
+    async def test_lifespan_schedules_auto_ingest(self) -> None:
+        """_lifespan schedules _auto_ingest_reference_corpus as a background task."""
         from src.main import _lifespan
 
         mock_components = {
@@ -1268,8 +1269,11 @@ class TestLifespan:
         with patch("src.main._build_all", return_value=mock_components), \
              patch("src.main._auto_ingest_reference_corpus", mock_auto_ingest):
             async with _lifespan(app):
-                pass
+                # The ingestion is scheduled as a background task, so we
+                # need to let the event loop run to execute it.
+                await asyncio.sleep(0)
 
+        # Background task should have called the function
         mock_auto_ingest.assert_awaited_once_with(app)
 
     @pytest.mark.asyncio

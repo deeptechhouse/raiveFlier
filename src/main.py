@@ -906,8 +906,17 @@ async def _lifespan(application: FastAPI):  # noqa: ANN201
     if hasattr(application.state, "feedback_provider"):
         await application.state.feedback_provider.initialize()
 
-    # Auto-ingest reference corpus on first boot (idempotent — skips if already populated)
-    await _auto_ingest_reference_corpus(application)
+    # Schedule corpus ingestion as a background task so it doesn't block
+    # the health check.  Large corpus files (12 city event files, ~72MB)
+    # can take many minutes to chunk, tag, and embed — blocking startup
+    # causes Render's health check to fail and the container to restart
+    # in an infinite loop.  The app starts serving immediately with
+    # whatever corpus is already in the vector store; new files are
+    # ingested in the background.
+    application.state._ingestion_task = asyncio.create_task(
+        _auto_ingest_reference_corpus(application),
+        name="auto_ingest_reference_corpus",
+    )
 
     _logger.info(
         "app_startup",
@@ -919,7 +928,13 @@ async def _lifespan(application: FastAPI):  # noqa: ANN201
 
     yield
 
-    # -- Shutdown: close shared httpx client --
+    # -- Shutdown --
+    # Cancel background ingestion if still running
+    ingestion_task = getattr(application.state, "_ingestion_task", None)
+    if ingestion_task and not ingestion_task.done():
+        ingestion_task.cancel()
+        _logger.info("app_shutdown", message="Cancelled background ingestion task")
+
     http_client: httpx.AsyncClient = components["http_client"]
     await http_client.aclose()
     _logger.info("app_shutdown", message="HTTP client closed")
