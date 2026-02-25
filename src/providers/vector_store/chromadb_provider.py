@@ -45,7 +45,14 @@ class ChromaDBProvider(IVectorStoreProvider):
         self._embedding_provider = embedding_provider
         self._persist_directory = persist_directory
         self._collection_name = collection_name
-        self._client = chromadb.PersistentClient(path=persist_directory)
+        # Disable ChromaDB's PostHog telemetry via Settings to prevent
+        # "capture() takes 1 positional argument but 3 were given" errors.
+        # The env var ANONYMIZED_TELEMETRY alone is insufficient for some
+        # ChromaDB versions — passing it through Settings is authoritative.
+        self._client = chromadb.PersistentClient(
+            path=persist_directory,
+            settings=chromadb.config.Settings(anonymized_telemetry=False),
+        )
         self._collection = self._client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},

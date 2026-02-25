@@ -427,6 +427,14 @@ class IngestionService:
     # Internals
     # ------------------------------------------------------------------
 
+    # Maximum number of chunks to embed and store in a single pass.
+    # On Render's 512 MB budget, holding thousands of embeddings
+    # (each 1024 floats) plus the chunk texts in memory at once can
+    # OOM-crash the container.  Processing in slices of 500 keeps
+    # peak memory bounded: ~500 chunks * ~2 KB text + ~500 * 4 KB
+    # embedding ≈ 3 MB per slice, well within budget.
+    _EMBED_STORE_BATCH = 500
+
     async def _tag_embed_store(
         self,
         chunks: list[DocumentChunk],
@@ -439,6 +447,10 @@ class IngestionService:
 
         This is the shared tail of every ``ingest_*`` method.  After format-specific
         processing and chunking, all paths converge here for the final three stages.
+
+        For large files (thousands of chunks), the embed and store steps
+        are batched in slices of ``_EMBED_STORE_BATCH`` to keep peak
+        memory bounded on the 512 MB Render instance.
         """
         if not chunks:
             return self._empty_result(title=title, source_id=source_id)
@@ -454,12 +466,20 @@ class IngestionService:
         else:
             tagged_chunks = await self._metadata_extractor.extract_batch(chunks)
 
-        # Step 4: generate dense vector embeddings for semantic search.
-        texts = [c.text for c in tagged_chunks]
-        embeddings = await self._embedding_provider.embed(texts)
+        # Steps 4-5: embed and store in batches to bound peak memory.
+        # Each slice embeds its chunk texts, stores the results, then
+        # releases the embedding vectors before the next slice starts.
+        total_stored = 0
+        batch = self._EMBED_STORE_BATCH
 
-        # Step 5: persist embedded chunks to the vector database (Qdrant).
-        stored = await self._vector_store.add_chunks(tagged_chunks, embeddings)
+        for i in range(0, len(tagged_chunks), batch):
+            slice_chunks = tagged_chunks[i : i + batch]
+            texts = [c.text for c in slice_chunks]
+            embeddings = await self._embedding_provider.embed(texts)
+            stored = await self._vector_store.add_chunks(slice_chunks, embeddings)
+            total_stored += stored
+            # embeddings and texts go out of scope here, allowing GC
+            # before the next slice allocates its own.
 
         elapsed = time.monotonic() - start
         total_tokens = sum(c.token_count for c in tagged_chunks)
@@ -467,7 +487,7 @@ class IngestionService:
         result = IngestionResult(
             source_id=source_id,
             source_title=title,
-            chunks_created=stored,
+            chunks_created=total_stored,
             total_tokens=total_tokens,
             ingestion_time=round(elapsed, 2),
         )
@@ -475,7 +495,7 @@ class IngestionService:
         logger.info(
             "ingestion_complete",
             source_title=title,
-            chunks=stored,
+            chunks=total_stored,
             tokens=total_tokens,
             time_s=result.ingestion_time,
         )
