@@ -1246,7 +1246,13 @@ async def corpus_search(
                         boost += 0.03
                         break
 
-        boosted[id(r)] = min(1.0, r.similarity_score + boost)
+        # RA event listings (source_type="event_listing") are deprioritized —
+        # they provide useful lineup data but are less meaningful as standalone
+        # search results compared to books, articles, and interviews.
+        if r.source_type == "event_listing":
+            boost -= 0.15
+
+        boosted[id(r)] = max(0.0, min(1.0, r.similarity_score + boost))
 
     def _score(r: CorpusSearchChunk) -> float:
         return boosted.get(id(r), r.similarity_score)
