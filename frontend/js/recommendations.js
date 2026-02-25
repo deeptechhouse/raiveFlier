@@ -7,20 +7,24 @@
  * recommendations derived from the flier analysis. This is the discovery
  * feature — it helps users find new artists related to the ones on the flier.
  *
- * SINGLE-FETCH STRATEGY
- * =====================
- * Calls a single endpoint on init():
- *   GET /api/v1/fliers/{session_id}/recommendations
+ * TWO-PHASE FETCH STRATEGY
+ * ========================
+ * Uses two sequential fetches for progressive loading:
  *
- * The endpoint runs the full 3-tier discovery pipeline on demand:
- *   - Tier 1a: Label-mates (via Discogs)
- *   - Tier 1b: Shared-flier artists (from flier history DB)
- *   - Tier 1c: Shared-lineup artists (from RAG corpus)
- *   - Tier 2:  LLM fill for remaining slots
- *   - Explanation pass: LLM-generated reason for each pick
+ *   Phase 1 — Quick (~3-5s):
+ *     GET /api/v1/fliers/{session_id}/recommendations?mode=quick
+ *     Shared-flier DB lookup + simple LLM suggestions.
+ *     Returns is_partial=true — displayed immediately as "Quick Picks".
  *
- * The fetch starts eagerly on init() — NOT when the user opens the panel.
- * By the time they click the toggle bar, results are typically ready.
+ *   Phase 2 — Deep (~10-60s):
+ *     GET /api/v1/fliers/{session_id}/recommendations?mode=full
+ *     Full 3-tier discovery (Discogs label-mates, RAG shared-lineup,
+ *     shared-flier) + LLM fill + LLM explanation pass.
+ *     Returns is_partial=false — replaces quick results with richer data.
+ *
+ * Both fetches start eagerly on init() — NOT when the user opens the panel.
+ * Quick results are typically ready before the user clicks the toggle bar.
+ * If the deep fetch fails or times out, quick results remain visible.
  *
  * THREE-TIER PRIORITY DISPLAY
  * ===========================
@@ -56,8 +60,9 @@ const Recommendations = (() => {
   let _sessionId = null;          // Pipeline session UUID for API calls
   let _recommendations = [];      // Array of recommendation objects from the API
   let _error = null;              // Last error message, if any
-  let _isLoading = false;         // Fetch in flight
-  let _hasFetched = false;        // Fetch completed (success or failure)
+  let _isLoading = false;         // Any fetch in flight (quick or deep)
+  let _hasFetched = false;        // At least quick results have arrived
+  let _deepDone = false;          // Full results arrived (or failed silently)
 
   // ------------------------------------------------------------------
   // Utility
@@ -145,8 +150,9 @@ const Recommendations = (() => {
     if (retryBtn) {
       retryBtn.addEventListener("click", () => {
         _hasFetched = false;
+        _deepDone = false;
         _error = null;
-        _fetchRecommendations();
+        _fetchQuick();
       });
     }
   }
@@ -188,7 +194,9 @@ const Recommendations = (() => {
 
     const count = _recommendations.length;
     if (count > 0) {
-      countEl.textContent = `${count} artists`;
+      // Show "+" suffix when deep fetch is still pending — signals more coming
+      const suffix = _deepDone ? "" : "+";
+      countEl.textContent = `${count}${suffix} artists`;
     } else {
       countEl.textContent = "";
     }
@@ -204,6 +212,9 @@ const Recommendations = (() => {
    *   - Connected-to line with label or event context (optional)
    *   - Connection strength bar (0-100% fill)
    *   - Rating widget (thumbs up/down via Rating module)
+   *
+   * When deep results are still loading, appends a small indicator
+   * at the bottom so the user knows more results are on the way.
    */
   function _renderResults() {
     const content = document.getElementById("reco-content");
@@ -270,6 +281,17 @@ const Recommendations = (() => {
       `;
     });
 
+    // Append deep-loading indicator when quick results are showing
+    // but the full pipeline is still running in the background.
+    if (!_deepDone) {
+      html += `
+        <div class="reco-panel__deep-loading" id="reco-deep-loading">
+          <div class="spinner spinner--small" aria-hidden="true"></div>
+          <span>Discovering deeper connections&hellip;</span>
+        </div>
+      `;
+    }
+
     content.innerHTML = html;
 
     // Post-render: inject Rating widgets into each card's footer placeholder.
@@ -287,20 +309,28 @@ const Recommendations = (() => {
     _updateCountBadge();
   }
 
+  /** Remove the deep-loading indicator (called when deep fetch completes). */
+  function _removeDeepLoading() {
+    const indicator = document.getElementById("reco-deep-loading");
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+
   // ------------------------------------------------------------------
-  // API interaction — single fetch
+  // API interaction — two-phase fetch (quick then deep)
   // ------------------------------------------------------------------
 
   /**
-   * Fetch recommendations from the backend.
+   * Phase 1 — Fetch quick recommendations.
    *
-   * Called eagerly from init() — NOT on panel open. This means the data
-   * starts loading as soon as the results view renders, so if the user
-   * clicks the toggle bar a few seconds later, results are already available.
+   * Called eagerly from init(). Uses mode=quick for fast results
+   * (SQLite + simple LLM, ~3-5 seconds). On success, renders cards
+   * immediately and starts the deep fetch in the background.
    *
-   * API: GET /api/v1/fliers/{session_id}/recommendations
+   * API: GET /api/v1/fliers/{session_id}/recommendations?mode=quick
    */
-  async function _fetchRecommendations() {
+  async function _fetchQuick() {
     if (_hasFetched || _isLoading || !_sessionId) return;
 
     _isLoading = true;
@@ -313,7 +343,7 @@ const Recommendations = (() => {
 
     try {
       const resp = await fetch(
-        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/recommendations`
+        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/recommendations?mode=quick`
       );
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
@@ -328,6 +358,9 @@ const Recommendations = (() => {
       if (_isOpen) {
         _renderResults();
       }
+
+      // Kick off deep fetch in the background — no await, runs independently
+      _fetchDeep();
     } catch (err) {
       _error = err.message || "Failed to load recommendations";
       if (_isOpen) {
@@ -335,6 +368,52 @@ const Recommendations = (() => {
       }
     } finally {
       _isLoading = false;
+    }
+  }
+
+  /**
+   * Phase 2 — Fetch deep recommendations.
+   *
+   * Called automatically after quick fetch succeeds. Uses mode=full
+   * for the complete pipeline (Discogs + RAG + full LLM, ~10-60s).
+   * On success, replaces quick results with richer data. On failure,
+   * quick results remain visible — the user is not interrupted.
+   *
+   * API: GET /api/v1/fliers/{session_id}/recommendations?mode=full
+   */
+  async function _fetchDeep() {
+    if (_deepDone || !_sessionId) return;
+
+    try {
+      const resp = await fetch(
+        `/api/v1/fliers/${encodeURIComponent(_sessionId)}/recommendations?mode=full`
+      );
+      if (!resp.ok) {
+        // Deep fetch failed — keep quick results, hide indicator silently
+        _deepDone = true;
+        _removeDeepLoading();
+        _updateCountBadge();
+        return;
+      }
+      const data = await resp.json();
+      const deepRecs = data.recommendations || [];
+
+      // Only replace if deep results are non-empty (avoid clearing quick results)
+      if (deepRecs.length > 0) {
+        _recommendations = deepRecs;
+      }
+
+      _deepDone = true;
+      _updateCountBadge();
+
+      if (_isOpen) {
+        _renderResults();
+      }
+    } catch {
+      // Deep fetch failed silently — quick results stay visible
+      _deepDone = true;
+      _removeDeepLoading();
+      _updateCountBadge();
     }
   }
 
@@ -347,7 +426,7 @@ const Recommendations = (() => {
    *
    * Called by Results.fetchAndDisplayResults() after the results view renders.
    * Resets all state, renders the collapsed toggle bar, and eagerly kicks
-   * off the recommendation fetch in the background.
+   * off the quick recommendation fetch in the background.
    *
    * @param {string} sessionId - The pipeline session UUID.
    */
@@ -356,12 +435,13 @@ const Recommendations = (() => {
     _isOpen = false;
     _isLoading = false;
     _hasFetched = false;
+    _deepDone = false;
     _recommendations = [];
     _error = null;
     _renderShell();
 
-    // Eagerly start fetch — results load while user reviews main analysis
-    _fetchRecommendations();
+    // Eagerly start quick fetch — results load while user reviews main analysis
+    _fetchQuick();
   }
 
   /**
@@ -382,7 +462,7 @@ const Recommendations = (() => {
     } else if (_error) {
       _renderError(_error);
     } else {
-      _fetchRecommendations();
+      _fetchQuick();
     }
   }
 

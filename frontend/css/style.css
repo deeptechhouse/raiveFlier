@@ -3606,6 +3606,21 @@ body {
   font-size: var(--text-sm);
 }
 
+/* Deep-loading indicator — shown below quick results while the full
+   pipeline (Discogs + RAG + LLM) is still running in the background. */
+.reco-panel__deep-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
+
 /* ---- Scrollbar (matching corpus sidebar) ---- */
 .reco-panel__body::-webkit-scrollbar {
   width: 6px;
