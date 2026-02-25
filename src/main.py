@@ -560,6 +560,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "feedback_provider": feedback_provider,
         "flier_history": flier_history,
         "recommendation_service": recommendation_service,
+        # Preloaded Tier 1 recommendation cache — populated by the
+        # background pipeline task after analysis completes, consumed
+        # by the /recommendations endpoints for instant results.
+        "_reco_preload": {},
     }
 
 

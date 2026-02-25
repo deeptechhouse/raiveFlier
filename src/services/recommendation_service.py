@@ -59,6 +59,7 @@ if TYPE_CHECKING:
 from src.models.analysis import InterconnectionMap
 from src.models.flier import ExtractedEntities
 from src.models.recommendation import (
+    PreloadedTier1,
     RecommendationResult,
     RecommendedArtist,
 )
@@ -70,6 +71,11 @@ from src.utils.text_normalizer import normalize_artist_name
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
 
 _MAX_RECOMMENDATIONS = 10
+
+# Cap the number of Discogs label-release queries to keep the quick
+# recommendation path under ~4 seconds.  Each query is serialized by
+# the Discogs 1-req/sec throttle, so N labels = N seconds minimum.
+_MAX_LABEL_QUERIES = 4
 
 # Source tier priority ordering (lower number = higher priority).
 # When two sources recommend the same artist, the higher-priority source
@@ -127,6 +133,7 @@ class RecommendationService:
         research_results: list[ResearchResult],
         entities: ExtractedEntities,
         interconnection_map: InterconnectionMap | None = None,
+        preloaded: PreloadedTier1 | None = None,
     ) -> RecommendationResult:
         """Run the full recommendation pipeline.
 
@@ -138,6 +145,11 @@ class RecommendationService:
             The raw extracted entities from the OCR / entity-extraction phase.
         interconnection_map:
             Optional interconnection analysis for additional context.
+        preloaded:
+            Optional pre-fetched Tier 1 discovery results from the
+            background preload task.  When provided, the service skips
+            the Discogs, flier-history, and RAG queries entirely,
+            cutting latency from 5-15+ seconds to near-zero.
 
         Returns
         -------
@@ -153,6 +165,7 @@ class RecommendationService:
             "recommendation_pipeline_start",
             research_count=len(research_results),
             artist_count=len(entities.artists),
+            using_preload=preloaded is not None,
         )
 
         # Step 1 -- build exclusion set.  We never want to recommend an
@@ -165,28 +178,33 @@ class RecommendationService:
             excluded_names=len(exclusion_set),
         )
 
-        # Collect artist names for shared-flier and shared-lineup queries
-        artist_names = [e.text for e in entities.artists]
+        # Steps 2-4 -- Tier 1 data-driven discovery.
+        # If preloaded results are available from the background preload
+        # task, use them directly — this avoids re-fetching from Discogs,
+        # flier history DB, and the RAG vector store.
+        if preloaded is not None:
+            self._logger.info("recommend_using_preloaded_tier1")
+            label_mates = list(preloaded.label_mates)
+            shared_flier = list(preloaded.shared_flier)
+            shared_lineup = list(preloaded.shared_lineup)
+        else:
+            # No preload cache — discover from scratch in parallel.
+            artist_names = [e.text for e in entities.artists]
+            label_mates_task = self._discover_label_mates(
+                research_results, exclusion_set,
+            )
+            shared_flier_task = self._discover_shared_flier_artists(
+                artist_names, exclusion_set,
+            )
+            shared_lineup_task = self._discover_shared_lineup_artists(
+                artist_names, exclusion_set,
+            )
 
-        # Steps 2-4 -- execute all three Tier 1 data-driven discovery methods
-        # in parallel via asyncio.gather.  This is a major latency win: each
-        # method queries a different external source (Discogs, flier history
-        # DB, RAG vector store) and they have no interdependencies.
-        label_mates_task = self._discover_label_mates(
-            research_results, exclusion_set,
-        )
-        shared_flier_task = self._discover_shared_flier_artists(
-            artist_names, exclusion_set,
-        )
-        shared_lineup_task = self._discover_shared_lineup_artists(
-            artist_names, exclusion_set,
-        )
-
-        label_mates, shared_flier, shared_lineup = await asyncio.gather(
-            label_mates_task,
-            shared_flier_task,
-            shared_lineup_task,
-        )
+            label_mates, shared_flier, shared_lineup = await asyncio.gather(
+                label_mates_task,
+                shared_flier_task,
+                shared_lineup_task,
+            )
 
         self._logger.info(
             "tier1_discovery_complete",
@@ -202,35 +220,24 @@ class RecommendationService:
             label_mates, shared_flier, shared_lineup,
         )
 
-        # Step 6 -- LLM fill: if Tier 1 produced fewer than 10 candidates,
-        # ask the LLM to suggest additional artists based on genre, style,
-        # and scene context.  This ensures we always return a full slate.
-        if len(tier1_candidates) < _MAX_RECOMMENDATIONS:
-            llm_candidates = await self._generate_llm_recommendations(
-                research_results,
-                entities,
-                interconnection_map,
-                exclusion_set,
-                len(tier1_candidates),
-            )
-            tier1_candidates.extend(llm_candidates)
-
-        # Cap at max
-        tier1_candidates = tier1_candidates[:_MAX_RECOMMENDATIONS]
-
         if not tier1_candidates:
             raise LLMError(
                 message="Recommendation pipeline produced zero candidates across all tiers",
                 provider_name=self._llm.get_provider_name(),
             )
 
-        # Step 7 -- LLM explanation pass.  A single LLM call generates a
-        # 2-3 sentence "reason" for EVERY candidate in one batch, rather
-        # than making one call per candidate (which would be N calls).
-        # If the LLM fails, fallback template reasons are used.
-        research_context = self._compile_research_summary(research_results)
-        recommendations = await self._generate_explanations(
-            tier1_candidates, research_context,
+        # Steps 6+7 — Combined LLM fill + explanation pass.
+        # A single LLM call handles both: (a) generating LLM-tier
+        # recommendations to fill remaining slots (if < 10 Tier 1
+        # candidates), and (b) writing 2-3 sentence explanations for
+        # ALL candidates.  This halves LLM round-trips vs. the old
+        # two-step approach, saving 2-5 seconds of latency.
+        recommendations = await self._generate_fill_and_explanations(
+            tier1_candidates=tier1_candidates,
+            research_results=research_results,
+            entities=entities,
+            interconnection_map=interconnection_map,
+            exclusion_set=exclusion_set,
         )
 
         # Step 8 — build result
@@ -260,20 +267,18 @@ class RecommendationService:
         self,
         research_results: list[ResearchResult],
         entities: ExtractedEntities,
+        preloaded: PreloadedTier1 | None = None,
     ) -> RecommendationResult:
         """Run the fast label-mate-only recommendation pass (no LLM calls).
 
         This is the "quick path" -- it skips shared-flier lookup, RAG
-        retrieval, and ALL LLM calls.  The only external dependency is
-        the Discogs/MusicBrainz label-release query, which typically
-        completes in 1-3 seconds.
+        retrieval, and ALL LLM calls.  When preloaded data is available
+        from the background preload task, this returns instantly.
+        Otherwise, the only external dependency is the Discogs/MusicBrainz
+        label-release query.
 
         The frontend calls this first for immediate display, then replaces
         results with the full `recommend()` output when it finishes.
-
-        Returns label-mate candidates with fallback reasons generated from
-        source metadata.  Designed to complete in 1-3 seconds for immediate
-        display while the full recommendation pipeline runs in background.
 
         Parameters
         ----------
@@ -281,6 +286,9 @@ class RecommendationService:
             Research profiles for every entity on the flier.
         entities:
             The raw extracted entities from the OCR / entity-extraction phase.
+        preloaded:
+            Optional pre-fetched Tier 1 results.  When provided, label-
+            mate discovery is skipped entirely.
 
         Returns
         -------
@@ -291,12 +299,17 @@ class RecommendationService:
         self._logger.info(
             "quick_recommendation_start",
             research_count=len(research_results),
+            using_preload=preloaded is not None,
         )
 
-        exclusion_set = self._build_exclusion_set(research_results, entities)
-        label_mates = await self._discover_label_mates(
-            research_results, exclusion_set,
-        )
+        if preloaded is not None:
+            self._logger.info("recommend_quick_using_preloaded")
+            label_mates = list(preloaded.label_mates)
+        else:
+            exclusion_set = self._build_exclusion_set(research_results, entities)
+            label_mates = await self._discover_label_mates(
+                research_results, exclusion_set,
+            )
         label_mates = label_mates[:_MAX_RECOMMENDATIONS]
 
         recommendations: list[RecommendedArtist] = []
@@ -336,6 +349,52 @@ class RecommendationService:
             total=len(result.recommendations),
         )
         return result
+
+    async def preload_tier1(
+        self,
+        research_results: list[ResearchResult],
+        entities: ExtractedEntities,
+    ) -> PreloadedTier1:
+        """Preload all Tier 1 discovery results for background caching.
+
+        Runs label-mate, shared-flier, and shared-lineup discovery in
+        parallel via asyncio.gather.  Called by the background pipeline
+        task in routes.py after the main analysis completes, so that
+        Tier 1 data is ready before the user opens the discovery panel.
+
+        Parameters
+        ----------
+        research_results:
+            Research profiles from the completed pipeline.
+        entities:
+            Confirmed or extracted entities from the flier.
+
+        Returns
+        -------
+        PreloadedTier1
+            Cached discovery results for all three Tier 1 sources.
+        """
+        exclusion_set = self._build_exclusion_set(research_results, entities)
+        artist_names = [e.text for e in entities.artists]
+
+        label_mates, shared_flier, shared_lineup = await asyncio.gather(
+            self._discover_label_mates(research_results, exclusion_set),
+            self._discover_shared_flier_artists(artist_names, exclusion_set),
+            self._discover_shared_lineup_artists(artist_names, exclusion_set),
+        )
+
+        self._logger.info(
+            "tier1_preload_complete",
+            label_mates=len(label_mates),
+            shared_flier=len(shared_flier),
+            shared_lineup=len(shared_lineup),
+        )
+
+        return PreloadedTier1(
+            label_mates=label_mates,
+            shared_flier=shared_flier,
+            shared_lineup=shared_lineup,
+        )
 
     # ------------------------------------------------------------------
     # Step 1 — exclusion set
@@ -434,6 +493,18 @@ class RecommendationService:
                     label_tasks.append(
                         (str(label.discogs_id), label.name, result.artist.name)
                     )
+
+        # Cap the number of label queries to keep latency bounded.
+        # Each Discogs call is serialized by the 1-req/sec throttle, so
+        # N labels = N seconds.  Capping at _MAX_LABEL_QUERIES keeps the
+        # quick recommendation path under ~4 seconds.
+        if len(label_tasks) > _MAX_LABEL_QUERIES:
+            self._logger.debug(
+                "label_queries_capped",
+                total_labels=len(label_tasks),
+                cap=_MAX_LABEL_QUERIES,
+            )
+            label_tasks = label_tasks[:_MAX_LABEL_QUERIES]
 
         # Fetch all label releases concurrently
         async def _fetch_label(label_id: str, label_name: str) -> list[Any]:
@@ -966,7 +1037,246 @@ class RecommendationService:
         return results[:needed]
 
     # ------------------------------------------------------------------
-    # Step 7 — LLM explanation pass
+    # Steps 6+7 — Combined LLM fill + explanation (single call)
+    # ------------------------------------------------------------------
+
+    async def _generate_fill_and_explanations(
+        self,
+        tier1_candidates: list[dict[str, Any]],
+        research_results: list[ResearchResult],
+        entities: ExtractedEntities,
+        interconnection_map: InterconnectionMap | None,
+        exclusion_set: set[str],
+    ) -> list[RecommendedArtist]:
+        """Combined LLM fill + explanation in a single call.
+
+        If Tier 1 produced fewer than ``_MAX_RECOMMENDATIONS`` candidates,
+        this method asks the LLM to both suggest additional artists AND
+        explain all candidates in one prompt.  If Tier 1 is already full,
+        it only asks for explanations.
+
+        This halves the LLM calls compared to the previous two-step
+        approach (``_generate_llm_recommendations`` + ``_generate_explanations``),
+        saving 2-5 seconds of latency.
+
+        Falls back to template-based reasons if the LLM call fails.
+
+        Parameters
+        ----------
+        tier1_candidates:
+            Merged Tier 1 candidate dicts.
+        research_results:
+            Full research profiles for context.
+        entities:
+            Extracted/confirmed entities.
+        interconnection_map:
+            Optional interconnection analysis.
+        exclusion_set:
+            Names to exclude from LLM suggestions.
+
+        Returns
+        -------
+        list[RecommendedArtist]
+            Final recommendation models with explanations.
+        """
+        needed = max(0, _MAX_RECOMMENDATIONS - len(tier1_candidates))
+
+        # Build context from research profiles
+        context_parts: list[str] = []
+        for result in research_results:
+            if not result.artist:
+                continue
+            artist = result.artist
+            parts: list[str] = [f"Artist: {artist.name}"]
+            if artist.city:
+                parts.append(f"  City: {artist.city}")
+            if artist.labels:
+                parts.append(
+                    f"  Labels: {', '.join(lb.name for lb in artist.labels)}"
+                )
+            if artist.releases:
+                genres: set[str] = set()
+                styles: set[str] = set()
+                for r in artist.releases:
+                    genres.update(r.genres)
+                    styles.update(r.styles)
+                if genres:
+                    parts.append(f"  Genres: {', '.join(sorted(genres))}")
+                if styles:
+                    parts.append(f"  Styles: {', '.join(sorted(styles))}")
+            if artist.profile_summary:
+                parts.append(f"  Profile: {artist.profile_summary[:300]}")
+            context_parts.append("\n".join(parts))
+
+        if entities.genre_tags:
+            context_parts.append(
+                f"Flier genre tags: {', '.join(entities.genre_tags)}"
+            )
+        if interconnection_map and interconnection_map.narrative:
+            context_parts.append(
+                f"Scene narrative: {interconnection_map.narrative[:500]}"
+            )
+
+        context_text = "\n\n".join(context_parts)
+
+        # Build candidate info block for existing Tier 1 recommendations
+        candidate_info = "\n".join(
+            f"- {c['artist_name']} (source: {c.get('source_tier', 'unknown')}, "
+            f"connected to: {', '.join(c.get('connected_to', []))})"
+            for c in tier1_candidates
+        )
+
+        # Build the combined prompt
+        system_prompt = (
+            "You are a music recommendation engine and journalist specializing "
+            "in electronic and dance music. You recommend real, verifiable artists "
+            "and write concise, knowledgeable explanations."
+        )
+
+        fill_section = ""
+        if needed > 0:
+            exclusion_list = ", ".join(sorted(exclusion_set))
+            fill_section = (
+                f"\n\nTASK 1: Recommend exactly {needed} additional artists "
+                f"that fans of these flier artists would enjoy. For each, "
+                f"include genres and connected_to (which flier artist they "
+                f"relate to). Only recommend real artists. "
+                f"DO NOT recommend: {exclusion_list}\n"
+            )
+
+        task_label = "TASK 2" if needed > 0 else "TASK 1"
+        also_new = " AND any new ones you suggest" if needed > 0 else ""
+
+        user_prompt = (
+            f"Research context about artists on a rave flier:\n\n"
+            f"{context_text}\n\n"
+            f"Existing data-driven recommendations:\n{candidate_info}\n"
+            f"{fill_section}\n"
+            f"{task_label}: For ALL artists listed above{also_new}, "
+            f"write a 2-3 sentence explanation of WHY each artist would "
+            f"appeal to fans of the flier artists.\n\n"
+            f"Return a JSON object with two keys:\n"
+            f'{{"new_recommendations": '
+            f'[{{"artist_name": "...", "genres": [...], '
+            f'"connected_to": ["flier_artist"]}}], '
+            f'"explanations": '
+            f'[{{"artist_name": "...", "reason": "2-3 sentences"}}]}}\n\n'
+            f"If no new recommendations are needed, return an empty array "
+            f"for new_recommendations. Return ONLY the JSON object."
+        )
+
+        try:
+            response = await self._llm.complete(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.4,
+                max_tokens=5000,
+            )
+
+            # Parse the combined JSON response
+            parsed = self._parse_json_object(response)
+
+            # Extract new recommendations (LLM fill)
+            llm_candidates: list[dict[str, Any]] = []
+            if needed > 0:
+                for item in parsed.get("new_recommendations", []):
+                    name = str(item.get("artist_name", "")).strip()
+                    if not name or name.strip().lower() in exclusion_set:
+                        continue
+                    llm_candidates.append({
+                        "artist_name": name,
+                        "genres": item.get("genres", []),
+                        "connected_to": item.get("connected_to", []),
+                        "source_tier": "llm",
+                        "connection_strength": 0.3,
+                    })
+                llm_candidates = llm_candidates[:needed]
+
+            # Build explanation map
+            explanations_map: dict[str, str] = {}
+            for item in parsed.get("explanations", []):
+                exp_name = str(item.get("artist_name", "")).strip()
+                exp_reason = str(item.get("reason", "")).strip()
+                if exp_name and exp_reason:
+                    explanations_map[exp_name.lower()] = exp_reason
+
+            # Merge Tier 1 + LLM fill
+            all_candidates = list(tier1_candidates) + llm_candidates
+            all_candidates = all_candidates[:_MAX_RECOMMENDATIONS]
+
+            # Build final models with explanations
+            recommendations: list[RecommendedArtist] = []
+            for candidate in all_candidates:
+                name = candidate["artist_name"]
+                reason = explanations_map.get(name.lower(), "")
+                if not reason:
+                    reason = self._build_fallback_reason(candidate)
+
+                connected_to = candidate.get("connected_to", [])
+                if isinstance(connected_to, set):
+                    connected_to = sorted(connected_to)
+
+                recommendations.append(
+                    RecommendedArtist(
+                        artist_name=name,
+                        genres=candidate.get("genres", []),
+                        reason=reason,
+                        source_tier=candidate.get("source_tier", "llm"),
+                        connection_strength=float(
+                            candidate.get("connection_strength", 0.5),
+                        ),
+                        connected_to=connected_to,
+                        label_name=candidate.get("label_name"),
+                        event_name=candidate.get("event_name"),
+                    ),
+                )
+
+            self._logger.info(
+                "combined_fill_and_explain_complete",
+                llm_fill=len(llm_candidates),
+                explanations_matched=sum(
+                    1 for r in recommendations
+                    if r.artist_name.lower() in explanations_map
+                ),
+            )
+            return recommendations
+
+        except Exception as exc:
+            self._logger.warning(
+                "combined_fill_and_explain_failed",
+                error=str(exc),
+                fallback="using template reasons",
+            )
+            # Fallback: no LLM fill, template reasons for all Tier 1
+            all_candidates = tier1_candidates[:_MAX_RECOMMENDATIONS]
+            return [
+                RecommendedArtist(
+                    artist_name=c["artist_name"],
+                    genres=c.get("genres", []),
+                    reason=self._build_fallback_reason(c),
+                    source_tier=c.get("source_tier", "llm"),
+                    connection_strength=float(
+                        c.get("connection_strength", 0.5),
+                    ),
+                    connected_to=(
+                        sorted(c["connected_to"])
+                        if isinstance(c.get("connected_to"), set)
+                        else c.get("connected_to", [])
+                    ),
+                    label_name=c.get("label_name"),
+                    event_name=c.get("event_name"),
+                )
+                for c in all_candidates
+            ]
+
+    # ------------------------------------------------------------------
+    # DEPRECATED: Step 6 — LLM fill (now handled by _generate_fill_and_explanations)
+    # Kept as fallback safety net for one release cycle.
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # DEPRECATED: Step 7 — LLM explanation pass (now handled by _generate_fill_and_explanations)
+    # Kept as fallback safety net for one release cycle.
     # ------------------------------------------------------------------
 
     async def _generate_explanations(
@@ -1209,3 +1519,50 @@ class RecommendationService:
             return [parsed]
 
         return []
+
+    def _parse_json_object(self, response: str) -> dict[str, Any]:
+        """Extract and parse a JSON object from an LLM response.
+
+        Similar to ``_parse_json_array`` but expects a top-level dict.
+        Handles markdown code fences and bare JSON.
+
+        Parameters
+        ----------
+        response:
+            Raw LLM response text.
+
+        Returns
+        -------
+        dict
+            Parsed JSON object, or an empty dict if parsing fails.
+        """
+        text = response.strip()
+
+        # Try markdown fence extraction
+        fence_match = _JSON_FENCE_RE.search(text)
+        if fence_match:
+            text = fence_match.group(1).strip()
+
+        # Fallback: find the first { ... } block
+        if not text.startswith("{"):
+            brace_start = text.find("{")
+            brace_end = text.rfind("}")
+            if brace_start != -1 and brace_end > brace_start:
+                text = text[brace_start : brace_end + 1]
+
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+            self._logger.warning(
+                "json_object_parse_not_dict",
+                type=type(parsed).__name__,
+            )
+            return {}
+        except json.JSONDecodeError as exc:
+            self._logger.warning(
+                "json_object_parse_failed",
+                error=str(exc),
+                response_preview=text[:200],
+            )
+            return {}

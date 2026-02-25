@@ -34,6 +34,7 @@ using the ``Annotated`` pattern.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import re
 import uuid
@@ -91,6 +92,14 @@ _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 # images look visually similar.  Lower = stricter (0 = pixel-identical).
 # A threshold of 10 allows for minor cropping, compression, color shifts.
 _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
+
+# Recommendation endpoint timeouts — prevents the single Uvicorn worker
+# from blocking indefinitely if Discogs or the LLM is slow/unresponsive.
+_RECO_FULL_TIMEOUT = 20.0   # seconds — max wait for full recommendations
+_RECO_QUICK_TIMEOUT = 10.0  # seconds — max wait for quick recommendations
+
+# Maximum preload cache entries (simple FIFO eviction).
+_MAX_RECO_CACHE_ENTRIES = 50
 
 
 def _compute_perceptual_hash(image_data: bytes) -> str | None:
@@ -228,6 +237,8 @@ async def _run_phases_2_through_5(
     state: PipelineState,
     session_states: dict[str, PipelineState],
     flier_history: Any | None = None,
+    recommendation_service: Any | None = None,
+    reco_preload_cache: dict | None = None,
 ) -> None:
     """Execute research-through-output phases and persist the final state.
 
@@ -236,6 +247,11 @@ async def _run_phases_2_through_5(
     # AFTER the HTTP response has been sent to the client.  The user gets
     # an instant "research_started" response, then this runs in the
     # background while the frontend polls /status or listens on WebSocket.
+    #
+    # After the pipeline finishes, this function also preloads Tier 1
+    # recommendation data (label-mates, shared-flier, shared-lineup) in
+    # the background so the discovery panel renders instantly when the
+    # user opens it — no additional Discogs or RAG calls needed.
     """
     try:
         result = await pipeline.run_phases_2_through_5(state)
@@ -256,6 +272,41 @@ async def _run_phases_2_through_5(
                 )
             except Exception as exc:
                 _logger.warning("flier_history_log_failed", session_id=result.session_id, error=str(exc))
+
+        # Preload Tier 1 recommendation data in background so the discovery
+        # panel can render instantly when the user opens it.  This runs all
+        # three Tier 1 discovery methods (Discogs label-mates, shared-flier
+        # history, RAG shared-lineup) while the user is still reviewing the
+        # main analysis results — by the time they click the panel, data is
+        # cached and ready.
+        if recommendation_service is not None and reco_preload_cache is not None:
+            try:
+                confirmed = result.confirmed_entities or result.extracted_entities
+                preloaded = await recommendation_service.preload_tier1(
+                    research_results=result.research_results,
+                    entities=confirmed,
+                )
+                reco_preload_cache[result.session_id] = preloaded
+                _logger.info(
+                    "recommendation_preload_cached",
+                    session_id=result.session_id,
+                    label_mates=len(preloaded.label_mates),
+                    shared_flier=len(preloaded.shared_flier),
+                    shared_lineup=len(preloaded.shared_lineup),
+                )
+                # Evict oldest entries if cache exceeds limit (simple FIFO).
+                if len(reco_preload_cache) > _MAX_RECO_CACHE_ENTRIES:
+                    oldest_keys = list(reco_preload_cache.keys())[
+                        : len(reco_preload_cache) - _MAX_RECO_CACHE_ENTRIES
+                    ]
+                    for k in oldest_keys:
+                        reco_preload_cache.pop(k, None)
+            except Exception as exc:
+                _logger.warning(
+                    "recommendation_preload_failed",
+                    session_id=result.session_id,
+                    error=str(exc),
+                )
     except Exception as exc:
         _logger.error(
             "background_phases_failed",
@@ -434,13 +485,20 @@ async def confirm_entities(
     session_states[session_id] = confirmed_state
 
     # --- Run phases 2-5 in background ---
+    # Also passes the recommendation service and preload cache so the
+    # background task can preload Tier 1 discovery data after the
+    # pipeline completes — making the discovery panel load instantly.
     flier_history = getattr(request.app.state, "flier_history", None)
+    recommendation_service = getattr(request.app.state, "recommendation_service", None)
+    reco_preload_cache = getattr(request.app.state, "_reco_preload", None)
     background_tasks.add_task(
         _run_phases_2_through_5,
         pipeline,
         confirmed_state,
         session_states,
         flier_history,
+        recommendation_service,
+        reco_preload_cache,
     )
 
     return ConfirmResponse(
@@ -1193,11 +1251,30 @@ async def get_recommendations(
 
     entities = state.confirmed_entities or state.extracted_entities
 
+    # Check preload cache — Tier 1 results may already be computed
+    # in the background after the pipeline completed (Optimization 3).
+    reco_preload = getattr(request.app.state, "_reco_preload", {})
+    preloaded = reco_preload.get(session_id)
+
     try:
-        result = await recommendation_service.recommend(
-            research_results=state.research_results,
-            entities=entities,
-            interconnection_map=state.interconnection_map,
+        result = await asyncio.wait_for(
+            recommendation_service.recommend(
+                research_results=state.research_results,
+                entities=entities,
+                interconnection_map=state.interconnection_map,
+                preloaded=preloaded,
+            ),
+            timeout=_RECO_FULL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        _logger.warning(
+            "recommendation_timeout",
+            session_id=session_id,
+            timeout=_RECO_FULL_TIMEOUT,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"Recommendations timed out after {_RECO_FULL_TIMEOUT:.0f} seconds",
         )
     except Exception as exc:
         _logger.error("recommendation_failed", session_id=session_id, error=str(exc))
@@ -1261,10 +1338,29 @@ async def get_recommendations_quick(
 
     entities = state.confirmed_entities or state.extracted_entities
 
+    # Check preload cache — label-mate results may already exist
+    # from the background preload after pipeline completion.
+    reco_preload = getattr(request.app.state, "_reco_preload", {})
+    preloaded = reco_preload.get(session_id)
+
     try:
-        result = await recommendation_service.recommend_quick(
-            research_results=state.research_results,
-            entities=entities,
+        result = await asyncio.wait_for(
+            recommendation_service.recommend_quick(
+                research_results=state.research_results,
+                entities=entities,
+                preloaded=preloaded,
+            ),
+            timeout=_RECO_QUICK_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        _logger.warning(
+            "quick_recommendation_timeout",
+            session_id=session_id,
+            timeout=_RECO_QUICK_TIMEOUT,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"Quick recommendations timed out after {_RECO_QUICK_TIMEOUT:.0f} seconds",
         )
     except Exception as exc:
         _logger.error("quick_recommendation_failed", session_id=session_id, error=str(exc))
