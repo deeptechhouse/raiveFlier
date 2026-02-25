@@ -759,8 +759,6 @@ class TestBuildAll:
             "feedback_provider",
             "flier_history",
             "recommendation_service",
-            "_reco_preload",
-            "_reco_preload_events",
         }
         assert set(result.keys()) == expected_keys
 

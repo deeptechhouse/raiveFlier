@@ -33,12 +33,9 @@ artist recommendations using a three-tier strategy:
     sentence "reason" for each recommendation.  If the LLM call fails,
     a template-based fallback reason is used instead.
 
-Two public methods expose different speed/depth tradeoffs:
-  - recommend()       -- Full pipeline (all tiers + LLM explanation).
-                         Slower but comprehensive.
-  - recommend_quick() -- Label-mates only, no LLM calls.  Returns in
-                         1-3 seconds for immediate display while the
-                         full pipeline runs in the background.
+Public API:
+  - recommend()  -- Full pipeline (all tiers + LLM explanation).
+                    Called on-demand by the /recommendations endpoint.
 """
 
 from __future__ import annotations
@@ -59,7 +56,6 @@ if TYPE_CHECKING:
 from src.models.analysis import InterconnectionMap
 from src.models.flier import ExtractedEntities
 from src.models.recommendation import (
-    PreloadedTier1,
     RecommendationResult,
     RecommendedArtist,
 )
@@ -133,7 +129,6 @@ class RecommendationService:
         research_results: list[ResearchResult],
         entities: ExtractedEntities,
         interconnection_map: InterconnectionMap | None = None,
-        preloaded: PreloadedTier1 | None = None,
     ) -> RecommendationResult:
         """Run the full recommendation pipeline.
 
@@ -145,11 +140,6 @@ class RecommendationService:
             The raw extracted entities from the OCR / entity-extraction phase.
         interconnection_map:
             Optional interconnection analysis for additional context.
-        preloaded:
-            Optional pre-fetched Tier 1 discovery results from the
-            background preload task.  When provided, the service skips
-            the Discogs, flier-history, and RAG queries entirely,
-            cutting latency from 5-15+ seconds to near-zero.
 
         Returns
         -------
@@ -165,7 +155,6 @@ class RecommendationService:
             "recommendation_pipeline_start",
             research_count=len(research_results),
             artist_count=len(entities.artists),
-            using_preload=preloaded is not None,
         )
 
         # Step 1 -- build exclusion set.  We never want to recommend an
@@ -178,33 +167,13 @@ class RecommendationService:
             excluded_names=len(exclusion_set),
         )
 
-        # Steps 2-4 -- Tier 1 data-driven discovery.
-        # If preloaded results are available from the background preload
-        # task, use them directly — this avoids re-fetching from Discogs,
-        # flier history DB, and the RAG vector store.
-        if preloaded is not None:
-            self._logger.info("recommend_using_preloaded_tier1")
-            label_mates = list(preloaded.label_mates)
-            shared_flier = list(preloaded.shared_flier)
-            shared_lineup = list(preloaded.shared_lineup)
-        else:
-            # No preload cache — discover from scratch in parallel.
-            artist_names = [e.text for e in entities.artists]
-            label_mates_task = self._discover_label_mates(
-                research_results, exclusion_set,
-            )
-            shared_flier_task = self._discover_shared_flier_artists(
-                artist_names, exclusion_set,
-            )
-            shared_lineup_task = self._discover_shared_lineup_artists(
-                artist_names, exclusion_set,
-            )
-
-            label_mates, shared_flier, shared_lineup = await asyncio.gather(
-                label_mates_task,
-                shared_flier_task,
-                shared_lineup_task,
-            )
+        # Steps 2-4 -- Tier 1 data-driven discovery (all three in parallel).
+        artist_names = [e.text for e in entities.artists]
+        label_mates, shared_flier, shared_lineup = await asyncio.gather(
+            self._discover_label_mates(research_results, exclusion_set),
+            self._discover_shared_flier_artists(artist_names, exclusion_set),
+            self._discover_shared_lineup_artists(artist_names, exclusion_set),
+        )
 
         self._logger.info(
             "tier1_discovery_complete",
@@ -273,152 +242,6 @@ class RecommendationService:
             ),
         )
         return result
-
-    async def recommend_quick(
-        self,
-        research_results: list[ResearchResult],
-        entities: ExtractedEntities,
-        preloaded: PreloadedTier1 | None = None,
-    ) -> RecommendationResult:
-        """Run the fast label-mate-only recommendation pass (no LLM calls).
-
-        This is the "quick path" -- it skips shared-flier lookup, RAG
-        retrieval, and ALL LLM calls.  When preloaded data is available
-        from the background preload task, this returns instantly.
-        Otherwise, the only external dependency is the Discogs/MusicBrainz
-        label-release query.
-
-        The frontend calls this first for immediate display, then replaces
-        results with the full `recommend()` output when it finishes.
-
-        Parameters
-        ----------
-        research_results:
-            Research profiles for every entity on the flier.
-        entities:
-            The raw extracted entities from the OCR / entity-extraction phase.
-        preloaded:
-            Optional pre-fetched Tier 1 results.  When provided, label-
-            mate discovery is skipped entirely.
-
-        Returns
-        -------
-        RecommendationResult
-            Label-mate recommendations only (may be empty if no Discogs
-            data is available).
-        """
-        self._logger.info(
-            "quick_recommendation_start",
-            research_count=len(research_results),
-            using_preload=preloaded is not None,
-        )
-
-        if preloaded is not None:
-            # When preloaded data is available, use ALL Tier 1 sources —
-            # label-mates, shared-flier, and shared-lineup — for richer
-            # quick results at zero additional cost (all three sources
-            # were already fetched by the background preload task).
-            # This prevents the quick endpoint from returning empty when
-            # Discogs has no data but shared-flier or shared-lineup do.
-            self._logger.info("recommend_quick_using_preloaded")
-            candidates = self._merge_tier1_candidates(
-                list(preloaded.label_mates),
-                list(preloaded.shared_flier),
-                list(preloaded.shared_lineup),
-            )
-        else:
-            # No preload cache — run label-mate discovery only (fastest
-            # source, no LLM calls needed).  Shared-flier and shared-
-            # lineup are skipped to keep the quick path under ~4 seconds.
-            exclusion_set = self._build_exclusion_set(research_results, entities)
-            candidates = await self._discover_label_mates(
-                research_results, exclusion_set,
-            )
-        candidates = candidates[:_MAX_RECOMMENDATIONS]
-
-        recommendations: list[RecommendedArtist] = []
-        for candidate in candidates:
-            reason = self._build_fallback_reason(candidate)
-            connected_to = candidate.get("connected_to", [])
-            if isinstance(connected_to, set):
-                connected_to = sorted(connected_to)
-
-            recommendations.append(
-                RecommendedArtist(
-                    artist_name=candidate["artist_name"],
-                    genres=candidate.get("genres", []),
-                    reason=reason,
-                    source_tier=candidate.get("source_tier", "label_mate"),
-                    connection_strength=float(
-                        candidate.get("connection_strength", 0.5),
-                    ),
-                    connected_to=connected_to,
-                    label_name=candidate.get("label_name"),
-                    event_name=candidate.get("event_name"),
-                ),
-            )
-
-        flier_artist_names = [e.text for e in entities.artists]
-        genres_analyzed = list(entities.genre_tags) if entities.genre_tags else []
-
-        result = RecommendationResult(
-            recommendations=recommendations,
-            flier_artists=flier_artist_names,
-            genres_analyzed=genres_analyzed,
-            generated_at=datetime.now(tz=timezone.utc),
-        )
-
-        self._logger.info(
-            "quick_recommendation_complete",
-            total=len(result.recommendations),
-        )
-        return result
-
-    async def preload_tier1(
-        self,
-        research_results: list[ResearchResult],
-        entities: ExtractedEntities,
-    ) -> PreloadedTier1:
-        """Preload all Tier 1 discovery results for background caching.
-
-        Runs label-mate, shared-flier, and shared-lineup discovery in
-        parallel via asyncio.gather.  Called by the background pipeline
-        task in routes.py after the main analysis completes, so that
-        Tier 1 data is ready before the user opens the discovery panel.
-
-        Parameters
-        ----------
-        research_results:
-            Research profiles from the completed pipeline.
-        entities:
-            Confirmed or extracted entities from the flier.
-
-        Returns
-        -------
-        PreloadedTier1
-            Cached discovery results for all three Tier 1 sources.
-        """
-        exclusion_set = self._build_exclusion_set(research_results, entities)
-        artist_names = [e.text for e in entities.artists]
-
-        label_mates, shared_flier, shared_lineup = await asyncio.gather(
-            self._discover_label_mates(research_results, exclusion_set),
-            self._discover_shared_flier_artists(artist_names, exclusion_set),
-            self._discover_shared_lineup_artists(artist_names, exclusion_set),
-        )
-
-        self._logger.info(
-            "tier1_preload_complete",
-            label_mates=len(label_mates),
-            shared_flier=len(shared_flier),
-            shared_lineup=len(shared_lineup),
-        )
-
-        return PreloadedTier1(
-            label_mates=label_mates,
-            shared_flier=shared_flier,
-            shared_lineup=shared_lineup,
-        )
 
     # ------------------------------------------------------------------
     # Step 1 — exclusion set
@@ -1517,8 +1340,7 @@ class RecommendationService:
         Uses template strings that incorporate the candidate's metadata
         (label name, times seen, connected artist names) to produce a
         meaningful reason without any LLM call.  This is the safety net
-        for both recommend_quick() (which never calls the LLM) and the
-        full pipeline when the explanation LLM call fails.
+        for the full pipeline when the explanation LLM call fails.
 
         Produces a source-specific reason string based on the candidate's
         tier and connection metadata.

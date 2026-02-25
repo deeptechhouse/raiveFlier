@@ -17,8 +17,7 @@ using the ``Annotated`` pattern.
 # /api/v1/fliers/{sid}/dismiss-connection POST   Dismiss bad interconnection edge
 # /api/v1/fliers/{sid}/rate             POST    Submit thumbs up/down rating
 # /api/v1/fliers/{sid}/ratings          GET     Get all ratings for session
-# /api/v1/fliers/{sid}/recommendations  GET     Full artist recommendations
-# /api/v1/fliers/{sid}/recommendations/quick GET  Fast label-mate recs (no LLM)
+# /api/v1/fliers/{sid}/recommendations  GET     Artist recommendations (on-demand)
 # /api/v1/ratings/summary               GET     Aggregate rating stats
 # /api/v1/health                        GET     Health check + provider status
 # /api/v1/providers                     GET     List all configured providers
@@ -93,15 +92,9 @@ _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 # A threshold of 10 allows for minor cropping, compression, color shifts.
 _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
 
-# Recommendation endpoint timeouts — prevents the single Uvicorn worker
-# from blocking indefinitely if Discogs or the LLM is slow/unresponsive.
-_RECO_FULL_TIMEOUT = 30.0   # seconds — max wait for full recommendations
-                            # (recommend() may make 2 LLM calls: combined + simple fallback)
-_RECO_QUICK_TIMEOUT = 10.0  # seconds — max wait for quick recommendations
-_RECO_QUICK_PRELOAD_WAIT = 5.0  # seconds — max wait for preload before quick falls back
-
-# Maximum preload cache entries (simple FIFO eviction).
-_MAX_RECO_CACHE_ENTRIES = 50
+# Recommendation endpoint timeout — generous to accommodate Discogs rate
+# limiting (~4s per label query x 4 labels) plus LLM explanation calls.
+_RECO_TIMEOUT = 60.0  # seconds — max wait for on-demand recommendations
 
 
 def _compute_perceptual_hash(image_data: bytes) -> str | None:
@@ -239,9 +232,6 @@ async def _run_phases_2_through_5(
     state: PipelineState,
     session_states: dict[str, PipelineState],
     flier_history: Any | None = None,
-    recommendation_service: Any | None = None,
-    reco_preload_cache: dict | None = None,
-    reco_preload_events: dict | None = None,
 ) -> None:
     """Execute research-through-output phases and persist the final state.
 
@@ -250,11 +240,6 @@ async def _run_phases_2_through_5(
     # AFTER the HTTP response has been sent to the client.  The user gets
     # an instant "research_started" response, then this runs in the
     # background while the frontend polls /status or listens on WebSocket.
-    #
-    # After the pipeline finishes, this function also preloads Tier 1
-    # recommendation data (label-mates, shared-flier, shared-lineup) in
-    # the background so the discovery panel renders instantly when the
-    # user opens it — no additional Discogs or RAG calls needed.
     """
     try:
         result = await pipeline.run_phases_2_through_5(state)
@@ -275,56 +260,6 @@ async def _run_phases_2_through_5(
                 )
             except Exception as exc:
                 _logger.warning("flier_history_log_failed", session_id=result.session_id, error=str(exc))
-
-        # Preload Tier 1 recommendation data in background so the discovery
-        # panel can render instantly when the user opens it.  This runs all
-        # three Tier 1 discovery methods (Discogs label-mates, shared-flier
-        # history, RAG shared-lineup) while the user is still reviewing the
-        # main analysis results — by the time they click the panel, data is
-        # cached and ready.
-        if recommendation_service is not None and reco_preload_cache is not None:
-            # Create an asyncio.Event so recommendation endpoints can await
-            # the preload instead of making duplicate Discogs calls.
-            preload_event: asyncio.Event | None = None
-            if reco_preload_events is not None:
-                preload_event = asyncio.Event()
-                reco_preload_events[result.session_id] = preload_event
-            try:
-                confirmed = result.confirmed_entities or result.extracted_entities
-                preloaded = await recommendation_service.preload_tier1(
-                    research_results=result.research_results,
-                    entities=confirmed,
-                )
-                reco_preload_cache[result.session_id] = preloaded
-                _logger.info(
-                    "recommendation_preload_cached",
-                    session_id=result.session_id,
-                    label_mates=len(preloaded.label_mates),
-                    shared_flier=len(preloaded.shared_flier),
-                    shared_lineup=len(preloaded.shared_lineup),
-                )
-                # Evict oldest entries if cache exceeds limit (simple FIFO).
-                # Also evict the corresponding Event objects from the events
-                # dict to prevent unbounded memory growth — each Event holds
-                # references that prevent garbage collection.
-                if len(reco_preload_cache) > _MAX_RECO_CACHE_ENTRIES:
-                    oldest_keys = list(reco_preload_cache.keys())[
-                        : len(reco_preload_cache) - _MAX_RECO_CACHE_ENTRIES
-                    ]
-                    for k in oldest_keys:
-                        reco_preload_cache.pop(k, None)
-                        if reco_preload_events is not None:
-                            reco_preload_events.pop(k, None)
-            except Exception as exc:
-                _logger.warning(
-                    "recommendation_preload_failed",
-                    session_id=result.session_id,
-                    error=str(exc),
-                )
-            finally:
-                # Signal any waiting endpoint that preload is done (or failed).
-                if preload_event is not None:
-                    preload_event.set()
     except Exception as exc:
         _logger.error(
             "background_phases_failed",
@@ -503,22 +438,13 @@ async def confirm_entities(
     session_states[session_id] = confirmed_state
 
     # --- Run phases 2-5 in background ---
-    # Also passes the recommendation service and preload cache so the
-    # background task can preload Tier 1 discovery data after the
-    # pipeline completes — making the discovery panel load instantly.
     flier_history = getattr(request.app.state, "flier_history", None)
-    recommendation_service = getattr(request.app.state, "recommendation_service", None)
-    reco_preload_cache = getattr(request.app.state, "_reco_preload", None)
-    reco_preload_events = getattr(request.app.state, "_reco_preload_events", None)
     background_tasks.add_task(
         _run_phases_2_through_5,
         pipeline,
         confirmed_state,
         session_states,
         flier_history,
-        recommendation_service,
-        reco_preload_cache,
-        reco_preload_events,
     )
 
     return ConfirmResponse(
@@ -1268,8 +1194,9 @@ async def get_recommendations(
 ) -> RecommendationsResponse:
     """Generate artist recommendations based on the completed flier analysis.
 
-    Uses a three-tier approach: label-mates, shared-flier history, shared
-    lineups (from RAG corpus), then LLM reasoning for remaining slots.
+    Runs the full recommendation pipeline on demand: 3-tier data-driven
+    discovery (label-mates, shared-flier, shared-lineup) then LLM fill
+    for remaining slots, plus LLM-generated explanation for each pick.
     """
     recommendation_service = getattr(request.app.state, "recommendation_service", None)
     if recommendation_service is None:
@@ -1287,42 +1214,24 @@ async def get_recommendations(
 
     entities = state.confirmed_entities or state.extracted_entities
 
-    # Check preload cache — Tier 1 results may already be computed
-    # in the background after the pipeline completed (Optimization 3).
-    reco_preload = getattr(request.app.state, "_reco_preload", {})
-    preloaded = reco_preload.get(session_id)
-
-    # Wait for in-progress preload before falling back to live discovery.
-    if preloaded is None:
-        reco_events = getattr(request.app.state, "_reco_preload_events", {})
-        event: asyncio.Event | None = reco_events.get(session_id)
-        if event is not None and not event.is_set():
-            _logger.debug("full_reco_awaiting_preload", session_id=session_id)
-            try:
-                await asyncio.wait_for(event.wait(), timeout=_RECO_FULL_TIMEOUT / 2)
-            except asyncio.TimeoutError:
-                _logger.warning("full_reco_preload_wait_timeout", session_id=session_id)
-            preloaded = reco_preload.get(session_id)
-
     try:
         result = await asyncio.wait_for(
             recommendation_service.recommend(
                 research_results=state.research_results,
                 entities=entities,
                 interconnection_map=state.interconnection_map,
-                preloaded=preloaded,
             ),
-            timeout=_RECO_FULL_TIMEOUT,
+            timeout=_RECO_TIMEOUT,
         )
     except asyncio.TimeoutError:
         _logger.warning(
             "recommendation_timeout",
             session_id=session_id,
-            timeout=_RECO_FULL_TIMEOUT,
+            timeout=_RECO_TIMEOUT,
         )
         raise HTTPException(
             status_code=503,
-            detail=f"Recommendations timed out after {_RECO_FULL_TIMEOUT:.0f} seconds",
+            detail=f"Recommendations timed out after {_RECO_TIMEOUT:.0f} seconds",
         )
     except Exception as exc:
         _logger.error("recommendation_failed", session_id=session_id, error=str(exc))
@@ -1347,107 +1256,4 @@ async def get_recommendations(
         genres_analyzed=result.genres_analyzed,
         total=len(result.recommendations),
         is_partial=False,
-    )
-
-
-@router.get(
-    "/fliers/{session_id}/recommendations/quick",
-    response_model=RecommendationsResponse,
-    responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
-    summary="Get fast label-mate recommendations (no LLM)",
-)
-async def get_recommendations_quick(
-    session_id: str,
-    request: Request,
-    session_states: SessionStatesDep,
-) -> RecommendationsResponse:
-    """Return label-mate recommendations only, without any LLM calls.
-
-    Designed for instant display while the full recommendation pipeline
-    runs in background.  Returns ``is_partial=True`` so the frontend
-    knows to backfill with the full endpoint.
-    """
-    recommendation_service = getattr(request.app.state, "recommendation_service", None)
-    if recommendation_service is None:
-        raise HTTPException(status_code=503, detail="Recommendation service not available")
-
-    state = session_states.get(session_id)
-    if state is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Session not found: {session_id}. Sessions are cleared on server restart.",
-        )
-
-    if not state.research_results:
-        raise HTTPException(
-            status_code=404,
-            detail="No research data available yet. Wait for analysis to complete.",
-        )
-
-    entities = state.confirmed_entities or state.extracted_entities
-
-    # Check preload cache — label-mate results may already exist
-    # from the background preload after pipeline completion.
-    reco_preload = getattr(request.app.state, "_reco_preload", {})
-    preloaded = reco_preload.get(session_id)
-
-    # If no cache hit, check whether a preload is in progress and wait
-    # for it instead of making duplicate Discogs calls that contend on
-    # the shared rate limiter.  This eliminates the race condition where
-    # the frontend requests /quick before the background preload finishes.
-    if preloaded is None:
-        reco_events = getattr(request.app.state, "_reco_preload_events", {})
-        event: asyncio.Event | None = reco_events.get(session_id)
-        if event is not None and not event.is_set():
-            _logger.debug("quick_reco_awaiting_preload", session_id=session_id)
-            try:
-                await asyncio.wait_for(event.wait(), timeout=_RECO_QUICK_PRELOAD_WAIT)
-            except asyncio.TimeoutError:
-                _logger.warning("quick_reco_preload_wait_timeout", session_id=session_id)
-                # Fall through — will attempt live discovery below
-            # Re-check cache after event fires (preload may have succeeded).
-            preloaded = reco_preload.get(session_id)
-
-    try:
-        result = await asyncio.wait_for(
-            recommendation_service.recommend_quick(
-                research_results=state.research_results,
-                entities=entities,
-                preloaded=preloaded,
-            ),
-            timeout=_RECO_QUICK_TIMEOUT,
-        )
-    except asyncio.TimeoutError:
-        _logger.warning(
-            "quick_recommendation_timeout",
-            session_id=session_id,
-            timeout=_RECO_QUICK_TIMEOUT,
-        )
-        raise HTTPException(
-            status_code=503,
-            detail=f"Quick recommendations timed out after {_RECO_QUICK_TIMEOUT:.0f} seconds",
-        )
-    except Exception as exc:
-        _logger.error("quick_recommendation_failed", session_id=session_id, error=str(exc))
-        raise HTTPException(status_code=503, detail="Failed to generate quick recommendations") from exc
-
-    return RecommendationsResponse(
-        session_id=session_id,
-        recommendations=[
-            RecommendedArtistResponse(
-                artist_name=r.artist_name,
-                genres=r.genres,
-                reason=r.reason,
-                source_tier=r.source_tier,
-                connection_strength=r.connection_strength,
-                connected_to=r.connected_to,
-                label_name=r.label_name,
-                event_name=r.event_name,
-            )
-            for r in result.recommendations
-        ],
-        flier_artists=result.flier_artists,
-        genres_analyzed=result.genres_analyzed,
-        total=len(result.recommendations),
-        is_partial=True,
     )
