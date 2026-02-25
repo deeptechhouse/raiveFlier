@@ -85,6 +85,7 @@ class DiscogsAPIProvider(IMusicDatabaseProvider):
         year_raw = data.get("year", 0) or 0
         return Release(
             title=data.get("title", "Unknown"),
+            artist=data.get("artist") or None,
             label=data.get("label", "Unknown"),
             year=year_raw if year_raw else None,
             format=data.get("format") or None,
