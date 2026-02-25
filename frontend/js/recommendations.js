@@ -249,10 +249,14 @@ const Recommendations = (() => {
     const content = document.getElementById("reco-content");
     if (!content) return;
 
-    // Edge case: no results yet — show appropriate fallback
+    // Edge case: no results yet — show appropriate fallback.
+    // Three states are possible:
+    //   1. Full fetch is in progress (_isLoadingFull) — show spinner
+    //   2. Full fetch hasn't started yet (!_hasFetchedFull) — show spinner
+    //      (quick returned empty but full will be kicked off momentarily)
+    //   3. Both quick and full completed with 0 results — show empty message
     if (!_recommendations.length) {
-      // No quick results yet — if full fetch is in progress, show spinner
-      if (_isLoadingFull) {
+      if (_isLoadingFull || !_hasFetchedFull) {
         _renderLoading();
         return;
       }

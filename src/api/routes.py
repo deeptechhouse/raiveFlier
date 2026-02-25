@@ -95,8 +95,10 @@ _PHASH_DUPLICATE_THRESHOLD = 10  # Hamming distance — lower = stricter
 
 # Recommendation endpoint timeouts — prevents the single Uvicorn worker
 # from blocking indefinitely if Discogs or the LLM is slow/unresponsive.
-_RECO_FULL_TIMEOUT = 20.0   # seconds — max wait for full recommendations
+_RECO_FULL_TIMEOUT = 30.0   # seconds — max wait for full recommendations
+                            # (recommend() may make 2 LLM calls: combined + simple fallback)
 _RECO_QUICK_TIMEOUT = 10.0  # seconds — max wait for quick recommendations
+_RECO_QUICK_PRELOAD_WAIT = 5.0  # seconds — max wait for preload before quick falls back
 
 # Maximum preload cache entries (simple FIFO eviction).
 _MAX_RECO_CACHE_ENTRIES = 50
@@ -302,12 +304,17 @@ async def _run_phases_2_through_5(
                     shared_lineup=len(preloaded.shared_lineup),
                 )
                 # Evict oldest entries if cache exceeds limit (simple FIFO).
+                # Also evict the corresponding Event objects from the events
+                # dict to prevent unbounded memory growth — each Event holds
+                # references that prevent garbage collection.
                 if len(reco_preload_cache) > _MAX_RECO_CACHE_ENTRIES:
                     oldest_keys = list(reco_preload_cache.keys())[
                         : len(reco_preload_cache) - _MAX_RECO_CACHE_ENTRIES
                     ]
                     for k in oldest_keys:
                         reco_preload_cache.pop(k, None)
+                        if reco_preload_events is not None:
+                            reco_preload_events.pop(k, None)
             except Exception as exc:
                 _logger.warning(
                     "recommendation_preload_failed",
@@ -1394,7 +1401,7 @@ async def get_recommendations_quick(
         if event is not None and not event.is_set():
             _logger.debug("quick_reco_awaiting_preload", session_id=session_id)
             try:
-                await asyncio.wait_for(event.wait(), timeout=_RECO_QUICK_TIMEOUT)
+                await asyncio.wait_for(event.wait(), timeout=_RECO_QUICK_PRELOAD_WAIT)
             except asyncio.TimeoutError:
                 _logger.warning("quick_reco_preload_wait_timeout", session_id=session_id)
                 # Fall through — will attempt live discovery below

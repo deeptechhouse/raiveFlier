@@ -314,17 +314,30 @@ class RecommendationService:
         )
 
         if preloaded is not None:
+            # When preloaded data is available, use ALL Tier 1 sources —
+            # label-mates, shared-flier, and shared-lineup — for richer
+            # quick results at zero additional cost (all three sources
+            # were already fetched by the background preload task).
+            # This prevents the quick endpoint from returning empty when
+            # Discogs has no data but shared-flier or shared-lineup do.
             self._logger.info("recommend_quick_using_preloaded")
-            label_mates = list(preloaded.label_mates)
+            candidates = self._merge_tier1_candidates(
+                list(preloaded.label_mates),
+                list(preloaded.shared_flier),
+                list(preloaded.shared_lineup),
+            )
         else:
+            # No preload cache — run label-mate discovery only (fastest
+            # source, no LLM calls needed).  Shared-flier and shared-
+            # lineup are skipped to keep the quick path under ~4 seconds.
             exclusion_set = self._build_exclusion_set(research_results, entities)
-            label_mates = await self._discover_label_mates(
+            candidates = await self._discover_label_mates(
                 research_results, exclusion_set,
             )
-        label_mates = label_mates[:_MAX_RECOMMENDATIONS]
+        candidates = candidates[:_MAX_RECOMMENDATIONS]
 
         recommendations: list[RecommendedArtist] = []
-        for candidate in label_mates:
+        for candidate in candidates:
             reason = self._build_fallback_reason(candidate)
             connected_to = candidate.get("connected_to", [])
             if isinstance(connected_to, set):
