@@ -401,6 +401,14 @@ class IngestionService:
                     chunks = self._chunker.chunk(text, metadata)
                     all_chunks.extend(chunks)
 
+                # Release the original full-file DocumentChunk(s) and
+                # the raw text references before the memory-heavy
+                # embed+store phase.  For ra_events_berlin.txt (17 MB),
+                # this frees ~17 MB immediately.  The frozen Pydantic
+                # objects can't be modified, so we must drop the entire
+                # list to release the underlying text strings.
+                del raw_chunks, rc, text
+
                 return await self._tag_embed_store(
                     all_chunks,
                     source_id=source_id,

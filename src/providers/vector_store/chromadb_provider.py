@@ -28,6 +28,27 @@ from src.utils.errors import RAGError
 logger = structlog.get_logger(logger_name=__name__)
 
 
+class _NoopEmbeddingFunction(chromadb.EmbeddingFunction[list[str]]):
+    """No-op embedding function that prevents ChromaDB from loading a model.
+
+    raiveFlier always passes pre-computed embeddings to ``add_chunks()``,
+    so ChromaDB's built-in embedding is never invoked.  Without this,
+    ChromaDB downloads and loads the default all-MiniLM-L6-v2 ONNX model
+    (~80 MB RAM) on collection creation — wasted memory on the 512 MB
+    Render instance.
+    """
+
+    def __call__(self, input: list[str]) -> list[list[float]]:
+        raise NotImplementedError(
+            "raiveFlier uses pre-computed embeddings; "
+            "ChromaDB's built-in embedding should never be called."
+        )
+
+    def name(self) -> str:
+        """Return function name (required by ChromaDB's EmbeddingFunction protocol)."""
+        return "noop_precomputed"
+
+
 class ChromaDBProvider(IVectorStoreProvider):
     """Vector store provider backed by ChromaDB with local persistence.
 
@@ -53,9 +74,14 @@ class ChromaDBProvider(IVectorStoreProvider):
             path=persist_directory,
             settings=chromadb.config.Settings(anonymized_telemetry=False),
         )
+        # Pass _NoopEmbeddingFunction to prevent ChromaDB from downloading
+        # and loading its default ONNX embedding model (~80 MB).  All
+        # embeddings are pre-computed by our IEmbeddingProvider adapter
+        # and passed explicitly to add_chunks().
         self._collection = self._client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
+            embedding_function=_NoopEmbeddingFunction(),
         )
         self._cached_stats: CorpusStats | None = None
         self._cached_stats_count: int = -1
