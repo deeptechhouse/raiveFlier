@@ -122,6 +122,15 @@ class EventAppearance(BaseModel):
     Used by the recommendation service to find co-appearing artists —
     if two artists have EventAppearances at the same venue/event, they
     may be musically related and worth recommending together.
+
+    Note: This model is currently not populated by any researcher.  The
+    interconnection service discovers shared events via direct ChromaDB
+    RA event queries instead of through this model.
+
+    TODO: Wire EventAppearance population into ArtistResearcher so artist
+    research results include event history from RA corpus data.  This
+    would also enable _extract_artist_geography() to infer an artist's
+    geographic base from their appearance patterns.
     """
 
     model_config = ConfigDict(frozen=True)

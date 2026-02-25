@@ -15,17 +15,20 @@ This module is the "relationship discovery" brain of the pipeline. It takes
 all the raw research gathered about every entity on a rave flier (artists,
 venues, promoters) and asks an LLM to find connections between them.
 
-The four-step pipeline is:
+The five-step pipeline is:
   1. COMPILE  -- Assemble all research into a numbered-source text block.
+  1b. RA EVENTS -- Query ChromaDB for RA event listings where 2+ flier
+                   artists co-appeared.  Compile as citable [RA-n] context.
   2. PROMPT   -- Send a 13-point synthesis prompt to the LLM asking it to
                  identify specific relationship types (shared labels,
                  lineups, geographic patterns, genre alignment, etc.).
   3. VALIDATE -- Every claim the LLM returns must cite a real source from
-                 the research data.  Claims without valid citations are
-                 discarded.  This is the key trust mechanism.
+                 the research data (including RA event sources).  Claims
+                 without valid citations are discarded.
   4. ENRICH   -- Confidence scores are penalised for uncertain language
                  (the LLM flags these with [UNCERTAIN]) and for geographic
                  mismatches (e.g., linking artists from different cities).
+                 RA-backed shared_lineup edges get a confidence floor of 0.6.
 
 The output is an InterconnectionMap: a graph of EntityNodes (vertices) and
 RelationshipEdges (edges) plus higher-level PatternInsights and a narrative.
@@ -151,13 +154,24 @@ class InterconnectionService:
         # can produce inline citations.
         compiled_context = self._compile_research_context(research_results)
 
-        # Step 1.5 — RAG cross-entity context augmentation: query the vector
+        # Step 1.5a — RAG cross-entity context augmentation: query the vector
         # store for passages that mention MULTIPLE entities from the flier.
         # This surfaces connections the per-entity research may have missed.
         rag_context = await self._retrieve_cross_entity_context(entities)
         if rag_context:
             compiled_context += "\n\n=== CORPUS CONTEXT (from indexed books/articles) ===\n"
             compiled_context += rag_context
+
+        # Step 1.5b — RA event shared lineup discovery: query the RA event
+        # corpus for events where 2+ flier artists appeared on the same bill.
+        # This provides concrete, citable evidence for the "SHARED LINEUPS"
+        # dimension (#2) of the synthesis prompt.  Without this data, the LLM
+        # has no event evidence and shared lineup claims get discarded by
+        # citation validation.
+        shared_ra_events = await self._discover_shared_ra_events(entities)
+        if shared_ra_events:
+            ra_context = self._compile_shared_event_context(shared_ra_events)
+            compiled_context += "\n\n" + ra_context
 
         # Step 2 — LLM analysis.  The system prompt establishes a strict
         # factual persona.  The user prompt (built below) contains the
@@ -197,7 +211,12 @@ class InterconnectionService:
         raw_relationships = parsed.get("relationships", [])
         # Citation validation: cross-reference each claim's source_citation
         # field against known source strings from the research results.
-        validated_relationships = self._validate_citations(raw_relationships, research_results)
+        # shared_ra_events is passed so RA event sources (e.g., "Resident
+        # Advisor", "RA Events: London (...)") are registered in the known
+        # sources set and RA-backed citations pass validation.
+        validated_relationships = self._validate_citations(
+            raw_relationships, research_results, shared_ra_events=shared_ra_events
+        )
 
         edges = self._build_edges(validated_relationships)
         patterns = self._build_patterns(parsed.get("patterns", []))
@@ -211,6 +230,13 @@ class InterconnectionService:
         #      cities, -0.2 if one entity's city differs from the venue city.
         # Penalties stack if both apply.
         edges = self._penalise_uncertain(edges)
+
+        # Step 4.5 — RA-backed confidence boost: shared_lineup edges backed
+        # by RA event data are structural evidence (concrete co-appearances,
+        # not inferred), so they get a confidence floor of 0.6 to survive
+        # downstream penalties.  This runs after uncertain penalty but before
+        # geographic mismatch penalty.
+        edges = self._boost_ra_backed_edges(edges, shared_ra_events)
 
         edges = self._penalise_geographic_mismatch(edges, research_results)
 
@@ -501,6 +527,307 @@ class InterconnectionService:
         return "\n".join(parts)
 
     # ------------------------------------------------------------------
+    # Step 1.5b — RA event shared lineup discovery
+    # ------------------------------------------------------------------
+    #
+    # The methods below query the ChromaDB vector store specifically for
+    # RA event listing chunks where flier artists appear, then intersect
+    # the results to find events where 2+ flier artists shared a lineup.
+    # This produces concrete, citable evidence for the LLM's "SHARED
+    # LINEUPS" synthesis dimension (point #2 in the 13-point prompt).
+    #
+    # Data flow:
+    #   _discover_shared_ra_events(entities)
+    #       → per-artist filtered ChromaDB queries (concurrent)
+    #       → _parse_ra_event_chunk_text() for each chunk
+    #       → pairwise intersection of artist event sets
+    #       → list of shared event dicts
+    #   _compile_shared_event_context(shared_events)
+    #       → formatted text with [RA-n] citations for LLM context
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_ra_event_chunk_text(
+        chunk_text: str,
+    ) -> list[dict[str, str | list[str]]]:
+        """Parse structured RA event text from a DocumentChunk into individual events.
+
+        RA event chunks are generated by ``RAEventProcessor._build_chunk`` and
+        contain ~8 events separated by ``---``.  Each event uses labeled fields
+        on separate lines (``Event:``, ``Date:``, ``Venue:``, ``Artists:``,
+        ``City:``, ``URL:``).  This parser extracts those fields without any
+        LLM call -- the text is machine-generated and structurally reliable.
+
+        Parameters
+        ----------
+        chunk_text:
+            Raw text from a DocumentChunk with ``source_type="event_listing"``.
+
+        Returns
+        -------
+        list[dict]
+            Parsed events with keys: ``title``, ``date``, ``venue``,
+            ``artists`` (list[str]), ``city``, ``url``.  Missing optional
+            fields default to empty string or empty list.
+        """
+        if not chunk_text or not chunk_text.strip():
+            return []
+
+        # Split on the separator used by RAEventProcessor._build_chunk (line 143).
+        blocks = re.split(r"\n\n---\n\n", chunk_text.strip())
+
+        parsed_events: list[dict[str, str | list[str]]] = []
+        for block in blocks:
+            block = block.strip()
+            if not block:
+                continue
+
+            event: dict[str, str | list[str]] = {
+                "title": "",
+                "date": "",
+                "venue": "",
+                "artists": [],
+                "city": "",
+                "url": "",
+            }
+
+            for line in block.split("\n"):
+                line = line.strip()
+                if line.startswith("Event:"):
+                    event["title"] = line[len("Event:"):].strip()
+                elif line.startswith("Date:"):
+                    event["date"] = line[len("Date:"):].strip()
+                elif line.startswith("Venue:"):
+                    event["venue"] = line[len("Venue:"):].strip()
+                elif line.startswith("Artists:"):
+                    raw_artists = line[len("Artists:"):].strip()
+                    event["artists"] = [
+                        a.strip() for a in raw_artists.split(",") if a.strip()
+                    ]
+                elif line.startswith("City:"):
+                    event["city"] = line[len("City:"):].strip()
+                elif line.startswith("URL:"):
+                    event["url"] = line[len("URL:"):].strip()
+
+            # Only include events that have at least a title or artists
+            if event["title"] or event["artists"]:
+                parsed_events.append(event)
+
+        return parsed_events
+
+    async def _discover_shared_ra_events(
+        self,
+        entities: ExtractedEntities,
+    ) -> list[dict[str, Any]]:
+        """Query the RA event corpus for events where 2+ flier artists co-appeared.
+
+        For each artist on the flier, issues a filtered ChromaDB query
+        restricted to ``source_type="event_listing"`` chunks whose
+        ``entity_tags`` metadata contains the artist's name.  All queries
+        run concurrently via ``asyncio.gather``.  Results are parsed and
+        intersected pairwise to find events shared by multiple flier artists.
+
+        This method is the key enabler for the "SHARED LINEUPS" dimension
+        (#2) of the 13-point synthesis prompt.  Without it, the LLM has
+        no concrete event evidence and shared lineup claims are discarded
+        by citation validation.
+
+        Parameters
+        ----------
+        entities:
+            Extracted entities from the flier (artists, venue, promoter).
+
+        Returns
+        -------
+        list[dict]
+            Shared event dicts, each containing: ``artist_pair`` (tuple of
+            two artist names), ``event_title``, ``event_date``, ``venue``,
+            ``city``, ``source_title`` (ChromaDB source_title for citation),
+            ``ra_url``, ``full_lineup`` (all artists on that event).
+            Capped at 50 results to stay within token budget.
+        """
+        import asyncio
+
+        # Guard: need a working vector store and at least 2 artists to
+        # find pairwise co-appearances.
+        if not self._vector_store or not self._vector_store.is_available():
+            return []
+
+        artist_names = [a.text for a in entities.artists]
+        if len(artist_names) < 2:
+            return []
+
+        # Concurrent per-artist queries.  Each query uses the entity_tags
+        # metadata filter to restrict results to RA event chunks that
+        # explicitly mention the artist (pre-extracted by RAEventProcessor
+        # during ingestion — no LLM needed for matching).
+        async def _query_for_artist(name: str) -> list[Any]:
+            try:
+                return await self._vector_store.query(
+                    query_text=f'"{name}" event lineup',
+                    top_k=15,
+                    filters={
+                        "entity_tags": {"$contains": name},
+                        "source_type": {"$in": ["event_listing"]},
+                    },
+                    max_per_source=5,
+                )
+            except Exception as exc:
+                self._logger.debug(
+                    "ra_event_query_failed", artist=name, error=str(exc)
+                )
+                return []
+
+        all_results = await asyncio.gather(
+            *[_query_for_artist(name) for name in artist_names]
+        )
+
+        # Build per-artist event index.  Key = artist name (lower), value =
+        # list of parsed events with their chunk source_title for citation.
+        artist_events: dict[str, list[dict[str, Any]]] = {}
+        for artist_name, chunks in zip(artist_names, all_results):
+            events_for_artist: list[dict[str, Any]] = []
+            for chunk in chunks:
+                parsed = self._parse_ra_event_chunk_text(chunk.chunk.text)
+                for event in parsed:
+                    # Only include events where this artist actually appears
+                    event_artist_names_lower = [
+                        a.lower() for a in event.get("artists", [])
+                    ]
+                    if artist_name.lower() in event_artist_names_lower:
+                        event["_source_title"] = chunk.chunk.source_title
+                        events_for_artist.append(event)
+            artist_events[artist_name] = events_for_artist
+
+        # Pairwise intersection: find events shared by any two flier artists.
+        # Deduplicate by (title, date) to avoid counting the same event twice
+        # when it appears in overlapping chunks.
+        shared: list[dict[str, Any]] = []
+        seen_keys: set[tuple[str, str, str, str]] = set()  # (a1, a2, title, date)
+
+        for i, artist_a in enumerate(artist_names):
+            for artist_b in artist_names[i + 1:]:
+                events_a = artist_events.get(artist_a, [])
+                events_b = artist_events.get(artist_b, [])
+
+                # Build lookup from events_b keyed on (title_lower, date)
+                b_lookup: dict[tuple[str, str], dict[str, Any]] = {}
+                for ev in events_b:
+                    key = (str(ev.get("title", "")).lower(), str(ev.get("date", "")))
+                    if key not in b_lookup:
+                        b_lookup[key] = ev
+
+                for ev_a in events_a:
+                    key = (str(ev_a.get("title", "")).lower(), str(ev_a.get("date", "")))
+                    if key in b_lookup:
+                        dedup_key = (artist_a, artist_b, key[0], key[1])
+                        if dedup_key in seen_keys:
+                            continue
+                        seen_keys.add(dedup_key)
+
+                        shared.append({
+                            "artist_pair": (artist_a, artist_b),
+                            "event_title": str(ev_a.get("title", "")),
+                            "event_date": str(ev_a.get("date", "")),
+                            "venue": str(ev_a.get("venue", "")),
+                            "city": str(ev_a.get("city", "")),
+                            "source_title": str(ev_a.get("_source_title", "")),
+                            "ra_url": str(ev_a.get("url", "")),
+                            "full_lineup": list(ev_a.get("artists", [])),
+                        })
+
+        # Cap at 50 to stay within the ~5K token budget for RA context.
+        shared = shared[:50]
+
+        if shared:
+            self._logger.info(
+                "shared_ra_events_discovered",
+                count=len(shared),
+                pairs=len(seen_keys),
+            )
+
+        return shared
+
+    @staticmethod
+    def _compile_shared_event_context(
+        shared_events: list[dict[str, Any]],
+    ) -> str:
+        """Format discovered shared RA events as citable context text.
+
+        Uses ``[RA-n]`` reference prefixes to avoid collision with the
+        ``[n]`` numbering from ``_compile_research_context``.  Produces
+        a self-contained section with an ``RA EVENT SOURCE INDEX`` footer
+        that maps each ``[RA-n]`` to a Resident Advisor URL/source.
+
+        This context is appended to the compiled research text before the
+        LLM synthesis prompt, giving the LLM concrete evidence to produce
+        ``shared_lineup`` relationships with verifiable citations.
+
+        Parameters
+        ----------
+        shared_events:
+            Output from ``_discover_shared_ra_events``.
+
+        Returns
+        -------
+        str
+            Formatted text block with ``[RA-n]`` citations, or empty string
+            if no shared events.
+        """
+        if not shared_events:
+            return ""
+
+        # Group shared events by artist pair for readable output.
+        from collections import defaultdict
+        pair_events: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        for event in shared_events:
+            pair_key = tuple(event["artist_pair"])
+            pair_events[pair_key].append(event)
+
+        lines: list[str] = [
+            "=== SHARED EVENT APPEARANCES (from Resident Advisor event listings) ===",
+            "",
+            "The following shared event appearances were found in the RA event corpus.",
+            "Each [RA-n] reference links to a verified Resident Advisor event listing.",
+            "",
+        ]
+
+        source_index: list[str] = []
+        ref_counter = 0
+
+        for pair, events in pair_events.items():
+            lines.append(f"{pair[0]} and {pair[1]} appeared together at:")
+            for event in events:
+                ref_counter += 1
+                ref_tag = f"[RA-{ref_counter}]"
+
+                lineup_str = ", ".join(event.get("full_lineup", []))
+                venue_str = event.get("venue", "Unknown venue")
+                city_str = event.get("city", "")
+                date_str = event.get("event_date", "")
+                title_str = event.get("event_title", "Untitled event")
+
+                location = f"{venue_str} ({city_str})" if city_str else venue_str
+
+                lines.append(
+                    f'  - "{title_str}" at {location}, {date_str}. '
+                    f"Lineup: {lineup_str}. {ref_tag}"
+                )
+
+                # Build source index entry
+                ra_url = event.get("ra_url", "")
+                source_title = event.get("source_title", "Resident Advisor")
+                url_part = f" — {ra_url}" if ra_url else ""
+                source_index.append(f"{ref_tag} {source_title}{url_part}")
+
+            lines.append("")
+
+        lines.append("=== RA EVENT SOURCE INDEX ===")
+        lines.extend(source_index)
+
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
     # Step 2 — prompt construction
     # ------------------------------------------------------------------
 
@@ -726,13 +1053,16 @@ class InterconnectionService:
         self,
         relationships: list[dict[str, Any]],
         research_data: list[ResearchResult],
+        shared_ra_events: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         """Validate that each relationship cites an actual research source.
 
         A citation is considered valid if the ``source_citation`` text
         appears as a substring in any of the following research data fields:
         source names, article titles, article URLs, event names, or
-        sources-consulted entries.
+        sources-consulted entries.  RA event sources are also registered
+        when ``shared_ra_events`` is provided, so the LLM's RA-backed
+        citations (using ``[RA-n]`` references) pass validation.
 
         Parameters
         ----------
@@ -740,6 +1070,11 @@ class InterconnectionService:
             Raw relationship dicts from the LLM response.
         research_data:
             The original research results to validate against.
+        shared_ra_events:
+            Optional list of shared RA event dicts from
+            ``_discover_shared_ra_events``.  When provided, RA event
+            source titles, event titles, and URLs are added to the
+            known sources set so RA-backed citations pass validation.
 
         Returns
         -------
@@ -784,6 +1119,22 @@ class InterconnectionService:
                     known_sources.add(source.source.lower())
                     if source.url:
                         known_sources.add(source.url.lower())
+
+        # Register RA event sources so the LLM's [RA-n] citations pass
+        # the bidirectional substring match.  Generic "resident advisor"
+        # and "ra events" strings are added once; per-event source titles,
+        # event titles, and URLs provide fine-grained matching.
+        if shared_ra_events:
+            known_sources.add("resident advisor")
+            known_sources.add("ra.co")
+            known_sources.add("ra events")
+            for event in shared_ra_events:
+                if event.get("source_title"):
+                    known_sources.add(str(event["source_title"]).lower())
+                if event.get("event_title"):
+                    known_sources.add(str(event["event_title"]).lower())
+                if event.get("ra_url"):
+                    known_sources.add(str(event["ra_url"]).lower())
 
         validated: list[dict[str, Any]] = []
         discarded_count = 0
@@ -848,10 +1199,22 @@ class InterconnectionService:
                 continue
 
             citation_text = str(rel.get("source_citation", ""))
+
+            # Detect RA event citations by checking for "ra" indicators
+            # in the citation text.  RA-backed citations get source_type
+            # "event_listing" (tier 3) instead of generic "research".
+            citation_lower = citation_text.lower()
+            is_ra_citation = (
+                "ra-" in citation_lower
+                or "ra events" in citation_lower
+                or "resident advisor" in citation_lower
+                or "ra.co" in citation_lower
+            )
+
             citation = self._citation_service.build_citation(
                 text=citation_text,
-                source_name=citation_text,
-                source_type="research",
+                source_name="Resident Advisor Events" if is_ra_citation else citation_text,
+                source_type="event_listing" if is_ra_citation else "research",
             )
 
             confidence = float(rel.get("confidence", 0.5))
@@ -1096,6 +1459,56 @@ class InterconnectionService:
             enriched.append(edge)
 
         return enriched
+
+    @staticmethod
+    def _boost_ra_backed_edges(
+        edges: list[RelationshipEdge],
+        shared_ra_events: list[dict[str, Any]] | None,
+    ) -> list[RelationshipEdge]:
+        """Ensure RA-backed shared_lineup edges have a minimum confidence of 0.6.
+
+        RA event co-appearances are structural evidence — two artists literally
+        appeared on the same lineup — not LLM inference.  This is stronger than
+        discography-based connections, so edges backed by RA event citations
+        should not fall below the database evidence threshold even if the LLM
+        assigned conservative confidence or the uncertain penalty was applied.
+
+        Only applies to edges with ``relationship_type == "shared_lineup"``
+        whose citation text references an RA source.
+
+        Parameters
+        ----------
+        edges:
+            Relationship edges (post-uncertain penalty, pre-geographic penalty).
+        shared_ra_events:
+            Shared RA event dicts from ``_discover_shared_ra_events``.
+            If None or empty, no boost is applied.
+
+        Returns
+        -------
+        list[RelationshipEdge]
+            Edges with RA-backed shared_lineup confidence boosted to minimum 0.6.
+        """
+        if not shared_ra_events:
+            return edges
+
+        _RA_MIN_CONFIDENCE = 0.6
+
+        boosted: list[RelationshipEdge] = []
+        for edge in edges:
+            if edge.relationship_type == "shared_lineup" and edge.confidence < _RA_MIN_CONFIDENCE:
+                # Check if any citation references RA
+                is_ra_backed = any(
+                    "ra" in (c.source_name or "").lower()
+                    or "resident advisor" in (c.source_name or "").lower()
+                    or "event_listing" in (c.source_type or "")
+                    for c in edge.citations
+                )
+                if is_ra_backed:
+                    edge = edge.model_copy(update={"confidence": _RA_MIN_CONFIDENCE})
+            boosted.append(edge)
+
+        return boosted
 
     @staticmethod
     def _collect_all_citations(
