@@ -842,6 +842,33 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
         existing_reference_sources=len(existing_ids),
     )
 
+    # Guard: skip ingestion if the corpus already has enough reference
+    # sources.  On Render's 512 MB instance, the ChromaDB HNSW index
+    # for 28K+ vectors (~100 MB) plus the app leaves insufficient
+    # headroom for the embed+store pipeline.  Once the corpus reaches
+    # this threshold, further ingestion must be done locally via
+    # scripts/rebuild_corpus.py and uploaded via scripts/package_corpus.sh.
+    _MIN_EXISTING_SOURCES = 10
+    if len(existing_ids) >= _MIN_EXISTING_SOURCES:
+        _logger.info(
+            "reference_corpus_sufficient",
+            existing_sources=len(existing_ids),
+            threshold=_MIN_EXISTING_SOURCES,
+            message="Corpus has enough reference sources; skipping ingestion to stay within memory budget",
+        )
+        # Still log final corpus state, then return early
+        try:
+            final_stats = await vector_store.get_stats()
+            _logger.info(
+                "corpus_readiness",
+                total_chunks=final_stats.total_chunks,
+                total_sources=final_stats.total_sources,
+                ready=final_stats.total_chunks > 0,
+            )
+        except Exception as exc:
+            _logger.error("corpus_readiness_check_failed", error=str(exc))
+        return
+
     # Ingest — skip_source_ids skips already-stored files; skip_tagging
     # bypasses LLM metadata extraction for the reference corpus (RA event
     # listings don't need entity/genre tagging — semantic search via
