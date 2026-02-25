@@ -60,6 +60,12 @@ const Recommendations = (() => {
   let _recommendations = [];      // Array of recommendation objects from the API
   let _error = null;              // Last error message, if any
 
+  // Auto-retry constants — the backend preload may still be running when
+  // the frontend first requests recommendations.  Retrying silently avoids
+  // showing the error/retry button during the normal preload window.
+  const _MAX_QUICK_RETRIES = 2;       // Total retry attempts before showing error
+  const _QUICK_RETRY_DELAY_MS = 2500; // Wait between retries (preload needs ~3-5s)
+
   // Two-phase fetch state — these flags coordinate the progressive loading
   // strategy so the UI knows which phase is active and what to display.
   let _isLoadingQuick = false;    // Phase 1 (label-mates) fetch in flight
@@ -353,11 +359,13 @@ const Recommendations = (() => {
    * Response: { recommendations: [...], is_partial: true }
    *
    * On success, immediately kicks off Phase 2 (_fetchFullRecommendations)
-   * in the background. On failure, still attempts Phase 2 — the quick
-   * endpoint failing doesn't necessarily mean the full endpoint will fail
-   * (they may use different backend services).
+   * in the background. On failure, retries up to _MAX_QUICK_RETRIES times
+   * with a delay (the backend preload may still be running). Only shows
+   * the error state after all retries are exhausted.
+   *
+   * @param {number} attempt — Current retry attempt (0-based, internal use).
    */
-  async function _fetchQuickRecommendations() {
+  async function _fetchQuickRecommendations(attempt = 0) {
     // Guard against duplicate fetches — idempotent by design
     if (_hasFetchedQuick || _isLoadingQuick || !_sessionId) return;
 
@@ -381,6 +389,7 @@ const Recommendations = (() => {
       _recommendations = data.recommendations || [];
       _isPartial = data.is_partial !== false;  // Default to partial unless explicitly false
       _hasFetchedQuick = true;
+      _isLoadingQuick = false;
 
       // Update count badge on the collapsed bar (visible even when panel is closed)
       _updateCountBadge();
@@ -393,14 +402,22 @@ const Recommendations = (() => {
       // Kick off Phase 2 in background — this will silently upgrade the results
       _fetchFullRecommendations();
     } catch (err) {
+      _isLoadingQuick = false;
+
+      // Auto-retry with delay — the backend preload may still be running.
+      // This eliminates the need for the user to manually click "Retry".
+      if (attempt < _MAX_QUICK_RETRIES) {
+        await new Promise((r) => setTimeout(r, _QUICK_RETRY_DELAY_MS));
+        return _fetchQuickRecommendations(attempt + 1);
+      }
+
+      // All retries exhausted — show error with manual retry button
       _error = err.message || "Failed to load recommendations";
       if (_isOpen) {
         _renderError(_error);
       }
       // Still attempt full fetch — quick failure shouldn't block full
       _fetchFullRecommendations();
-    } finally {
-      _isLoadingQuick = false;
     }
   }
 

@@ -239,6 +239,7 @@ async def _run_phases_2_through_5(
     flier_history: Any | None = None,
     recommendation_service: Any | None = None,
     reco_preload_cache: dict | None = None,
+    reco_preload_events: dict | None = None,
 ) -> None:
     """Execute research-through-output phases and persist the final state.
 
@@ -280,6 +281,12 @@ async def _run_phases_2_through_5(
         # main analysis results — by the time they click the panel, data is
         # cached and ready.
         if recommendation_service is not None and reco_preload_cache is not None:
+            # Create an asyncio.Event so recommendation endpoints can await
+            # the preload instead of making duplicate Discogs calls.
+            preload_event: asyncio.Event | None = None
+            if reco_preload_events is not None:
+                preload_event = asyncio.Event()
+                reco_preload_events[result.session_id] = preload_event
             try:
                 confirmed = result.confirmed_entities or result.extracted_entities
                 preloaded = await recommendation_service.preload_tier1(
@@ -307,6 +314,10 @@ async def _run_phases_2_through_5(
                     session_id=result.session_id,
                     error=str(exc),
                 )
+            finally:
+                # Signal any waiting endpoint that preload is done (or failed).
+                if preload_event is not None:
+                    preload_event.set()
     except Exception as exc:
         _logger.error(
             "background_phases_failed",
@@ -491,6 +502,7 @@ async def confirm_entities(
     flier_history = getattr(request.app.state, "flier_history", None)
     recommendation_service = getattr(request.app.state, "recommendation_service", None)
     reco_preload_cache = getattr(request.app.state, "_reco_preload", None)
+    reco_preload_events = getattr(request.app.state, "_reco_preload_events", None)
     background_tasks.add_task(
         _run_phases_2_through_5,
         pipeline,
@@ -499,6 +511,7 @@ async def confirm_entities(
         flier_history,
         recommendation_service,
         reco_preload_cache,
+        reco_preload_events,
     )
 
     return ConfirmResponse(
@@ -1256,6 +1269,18 @@ async def get_recommendations(
     reco_preload = getattr(request.app.state, "_reco_preload", {})
     preloaded = reco_preload.get(session_id)
 
+    # Wait for in-progress preload before falling back to live discovery.
+    if preloaded is None:
+        reco_events = getattr(request.app.state, "_reco_preload_events", {})
+        event: asyncio.Event | None = reco_events.get(session_id)
+        if event is not None and not event.is_set():
+            _logger.debug("full_reco_awaiting_preload", session_id=session_id)
+            try:
+                await asyncio.wait_for(event.wait(), timeout=_RECO_FULL_TIMEOUT / 2)
+            except asyncio.TimeoutError:
+                _logger.warning("full_reco_preload_wait_timeout", session_id=session_id)
+            preloaded = reco_preload.get(session_id)
+
     try:
         result = await asyncio.wait_for(
             recommendation_service.recommend(
@@ -1342,6 +1367,23 @@ async def get_recommendations_quick(
     # from the background preload after pipeline completion.
     reco_preload = getattr(request.app.state, "_reco_preload", {})
     preloaded = reco_preload.get(session_id)
+
+    # If no cache hit, check whether a preload is in progress and wait
+    # for it instead of making duplicate Discogs calls that contend on
+    # the shared rate limiter.  This eliminates the race condition where
+    # the frontend requests /quick before the background preload finishes.
+    if preloaded is None:
+        reco_events = getattr(request.app.state, "_reco_preload_events", {})
+        event: asyncio.Event | None = reco_events.get(session_id)
+        if event is not None and not event.is_set():
+            _logger.debug("quick_reco_awaiting_preload", session_id=session_id)
+            try:
+                await asyncio.wait_for(event.wait(), timeout=_RECO_QUICK_TIMEOUT)
+            except asyncio.TimeoutError:
+                _logger.warning("quick_reco_preload_wait_timeout", session_id=session_id)
+                # Fall through — will attempt live discovery below
+            # Re-check cache after event fires (preload may have succeeded).
+            preloaded = reco_preload.get(session_id)
 
     try:
         result = await asyncio.wait_for(

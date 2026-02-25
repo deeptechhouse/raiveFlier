@@ -564,6 +564,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         # background pipeline task after analysis completes, consumed
         # by the /recommendations endpoints for instant results.
         "_reco_preload": {},
+        # asyncio.Event signals per session — set when preload finishes.
+        # Recommendation endpoints await these to avoid duplicate Discogs
+        # calls while a preload is already in progress.
+        "_reco_preload_events": {},
     }
 
 
