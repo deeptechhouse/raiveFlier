@@ -240,6 +240,17 @@ class RecommendationService:
             exclusion_set=exclusion_set,
         )
 
+        # Safety net: if the combined method returned zero recommendations
+        # (e.g., LLM failed and tier1 was empty, or JSON parse returned {}),
+        # try a simpler, more reliable LLM-only fallback.
+        if not recommendations:
+            self._logger.warning("combined_method_returned_empty_trying_simple_fallback")
+            recommendations = await self._generate_simple_llm_recommendations(
+                research_results=research_results,
+                entities=entities,
+                exclusion_set=exclusion_set,
+            )
+
         # Step 8 — build result
         genres_analyzed = list(entities.genre_tags) if entities.genre_tags else []
         flier_artist_names = [e.text for e in entities.artists]
@@ -1268,6 +1279,99 @@ class RecommendationService:
                 )
                 for c in all_candidates
             ]
+
+    # ------------------------------------------------------------------
+    # Simple LLM fallback — last resort when combined method returns empty
+    # ------------------------------------------------------------------
+
+    async def _generate_simple_llm_recommendations(
+        self,
+        research_results: list[ResearchResult],
+        entities: ExtractedEntities,
+        exclusion_set: set[str],
+    ) -> list[RecommendedArtist]:
+        """Simple, reliable LLM-only recommendation fallback.
+
+        Called when the combined fill+explanation method returns zero
+        results (e.g., tier1 empty AND LLM JSON parse failed).  Uses a
+        minimal prompt that asks only for artist names and a short reason,
+        maximizing the chance of a parseable response.
+
+        Parameters
+        ----------
+        research_results:
+            Research profiles for context.
+        entities:
+            Confirmed or extracted entities.
+        exclusion_set:
+            Names to exclude.
+
+        Returns
+        -------
+        list[RecommendedArtist]
+            Up to 5 recommendations, or empty if this also fails.
+        """
+        artist_names = [e.text for e in entities.artists]
+        genres = list(entities.genre_tags) if entities.genre_tags else []
+
+        # Build a concise context block
+        context_lines: list[str] = []
+        for r in research_results:
+            if r.artist:
+                line = r.artist.name
+                if r.artist.labels:
+                    line += f" (labels: {', '.join(lb.name for lb in r.artist.labels[:3])})"
+                context_lines.append(line)
+
+        prompt = (
+            f"Artists on a rave flier: {', '.join(artist_names)}\n"
+        )
+        if genres:
+            prompt += f"Genres: {', '.join(genres)}\n"
+        if context_lines:
+            prompt += f"Context: {'; '.join(context_lines[:5])}\n"
+        prompt += (
+            "\nRecommend 5 similar real artists that fans would enjoy. "
+            "Return ONLY a JSON array:\n"
+            '[{"artist_name": "...", "reason": "one sentence why"}]'
+        )
+
+        try:
+            response = await self._llm.complete(
+                system_prompt="You are a music recommendation engine for electronic and dance music.",
+                user_prompt=prompt,
+                temperature=0.0,
+                max_tokens=1000,
+            )
+            items = self._parse_json_array(response)
+            recommendations: list[RecommendedArtist] = []
+            for item in items[:5]:
+                name = str(item.get("artist_name", "")).strip()
+                if not name or name.lower() in exclusion_set:
+                    continue
+                recommendations.append(
+                    RecommendedArtist(
+                        artist_name=name,
+                        genres=genres[:3],
+                        reason=str(item.get("reason", f"Recommended for fans of {artist_names[0]}")),
+                        source_tier="llm_suggestion",
+                        connection_strength=0.3,
+                        connected_to=artist_names[:2],
+                    ),
+                )
+
+            self._logger.info(
+                "simple_llm_fallback_complete",
+                recommendations=len(recommendations),
+            )
+            return recommendations
+
+        except Exception as exc:
+            self._logger.error(
+                "simple_llm_fallback_failed",
+                error=str(exc),
+            )
+            return []
 
     # ------------------------------------------------------------------
     # DEPRECATED: Step 6 — LLM fill (now handled by _generate_fill_and_explanations)
