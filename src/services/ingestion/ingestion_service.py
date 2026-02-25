@@ -320,6 +320,7 @@ class IngestionService:
         dir_path: str,
         source_type: str,
         skip_source_ids: set[str] | None = None,
+        skip_tagging: bool = False,
     ) -> list[IngestionResult]:
         """Ingest all ``.txt`` and ``.html`` files in *dir_path*.
 
@@ -334,6 +335,12 @@ class IngestionService:
             Files whose content-based ``source_id`` is in this set are
             skipped, avoiding expensive re-tagging and re-embedding of
             already-ingested documents.
+        skip_tagging:
+            If ``True``, skip the LLM metadata extraction step (entity,
+            genre, and geographic tagging).  Chunks are still embedded
+            and stored — semantic search works, but tag-based filters
+            won't apply.  Cuts ingestion from hours to minutes for
+            large corpora by eliminating thousands of LLM API calls.
 
         Returns
         -------
@@ -389,6 +396,7 @@ class IngestionService:
                     source_id=source_id,
                     title=fp.name,
                     start=start,
+                    skip_tagging=skip_tagging,
                 )
 
         raw_results = await asyncio.gather(*[_process_file(f) for f in files])
@@ -415,6 +423,7 @@ class IngestionService:
         source_id: str,
         title: str,
         start: float,
+        skip_tagging: bool = False,
     ) -> IngestionResult:
         """Run the tag -> embed -> store stages and return an :class:`IngestionResult`.
 
@@ -426,7 +435,14 @@ class IngestionService:
 
         # Step 3: metadata extraction -- LLM tags each chunk with entities,
         # geographic locations, and music genres for filtered retrieval.
-        tagged_chunks = await self._metadata_extractor.extract_batch(chunks)
+        # Skipped when skip_tagging=True (e.g. large reference corpus files
+        # where the LLM cost/time isn't justified — semantic search via
+        # embeddings still works without tags).
+        if skip_tagging:
+            logger.info("skip_metadata_tagging", title=title, chunks=len(chunks))
+            tagged_chunks = chunks
+        else:
+            tagged_chunks = await self._metadata_extractor.extract_batch(chunks)
 
         # Step 4: generate dense vector embeddings for semantic search.
         texts = [c.text for c in tagged_chunks]

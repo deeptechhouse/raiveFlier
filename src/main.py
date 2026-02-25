@@ -842,12 +842,17 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
         existing_reference_sources=len(existing_ids),
     )
 
-    # Ingest — skip_source_ids lets ingest_directory skip already-stored files
+    # Ingest — skip_source_ids skips already-stored files; skip_tagging
+    # bypasses LLM metadata extraction for the reference corpus (RA event
+    # listings don't need entity/genre tagging — semantic search via
+    # embeddings is sufficient).  This cuts ingestion from ~2.5 hours to
+    # ~15 minutes for 72MB of text.
     try:
         results = await ingestion_service.ingest_directory(
             str(corpus_dir),
             source_type="reference",
             skip_source_ids=existing_ids if existing_ids else None,
+            skip_tagging=True,
         )
         total_chunks = sum(r.chunks_created for r in results)
         if results:
