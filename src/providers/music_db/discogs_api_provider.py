@@ -140,16 +140,26 @@ class DiscogsAPIProvider(IMusicDatabaseProvider):
                 break
             artist_name = getattr(release, "artist", "") or ""
             if not artist_name and hasattr(release, "artists") and release.artists:
-                artist_name = release.artists[0].name
+                first = release.artists[0]
+                # Artists can be objects with .name or dicts with "name" key
+                artist_name = (
+                    first.get("name", "") if isinstance(first, dict)
+                    else getattr(first, "name", str(first))
+                )
+            # Extract format names from format dicts — Discogs returns
+            # formats as a list of dicts like [{"name": "Vinyl", "qty": "1"}],
+            # not a list of strings.
+            raw_formats = getattr(release, "formats", []) or []
+            format_str = ", ".join(
+                f.get("name", "") if isinstance(f, dict) else str(f)
+                for f in raw_formats
+                if (f.get("name") if isinstance(f, dict) else f)
+            )
             results.append({
                 "id": release.id,
                 "title": getattr(release, "title", ""),
                 "year": getattr(release, "year", 0),
-                "format": (
-                    ", ".join(getattr(release, "formats", []) or [])
-                    if hasattr(release, "formats")
-                    else ""
-                ),
+                "format": format_str,
                 "label": label.name if hasattr(label, "name") else "",
                 "artist": artist_name,
             })

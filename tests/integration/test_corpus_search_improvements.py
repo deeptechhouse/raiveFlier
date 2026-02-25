@@ -208,8 +208,8 @@ class TestExpandedArtistDetection:
 class TestPerTypeDiversification:
     """Verify entity-type-aware diversification caps."""
 
-    def test_single_artist_entity_filtered_in_non_artist_query(self) -> None:
-        """Chunks with single ARTIST entity_type are filtered for non-artist queries."""
+    def test_single_artist_entity_capped_in_non_artist_query(self) -> None:
+        """Chunks with single ARTIST entity_type are capped (not dropped) for non-artist queries."""
         artist_chunk = _make_chunk(
             text="Carl Cox biography.",
             source_title="DJ Mag Profile",
@@ -242,8 +242,8 @@ class TestPerTypeDiversification:
         assert resp.status_code == 200
         data = resp.json()
         titles = [r["source_title"] for r in data["results"]]
-        # Single ARTIST entity should be filtered; VENUE should be kept
-        assert "DJ Mag Profile" not in titles
+        # Single ARTIST entity kept (under per-tag cap of 3); VENUE also kept
+        assert "DJ Mag Profile" in titles
         assert "Tresor History" in titles
 
     def test_single_venue_entity_kept_in_non_artist_query(self) -> None:
@@ -270,8 +270,8 @@ class TestPerTypeDiversification:
         assert resp.status_code == 200
         assert resp.json()["total_results"] == 1
 
-    def test_legacy_single_entity_filtered(self) -> None:
-        """Legacy chunks (no entity_types) with single entity are filtered."""
+    def test_legacy_single_entity_capped(self) -> None:
+        """Legacy chunks (no entity_types) with single entity are capped, not dropped."""
         legacy_chunk = _make_chunk(
             text="About a single artist.",
             entity_tags=["Some Artist"],
@@ -291,7 +291,8 @@ class TestPerTypeDiversification:
         )
 
         assert resp.status_code == 200
-        assert resp.json()["total_results"] == 0
+        # Single-entity legacy chunk now kept (under per-tag cap of 3)
+        assert resp.json()["total_results"] == 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════

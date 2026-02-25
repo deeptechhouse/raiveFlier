@@ -1095,12 +1095,11 @@ async def corpus_search(
 
     # --- Diversification: entity-type-aware caps ---
     # When the query is NOT explicitly asking for artists, diversify results
-    # so no single entity dominates.  Entity type metadata (if available)
-    # controls per-type caps; legacy chunks without types use the old
-    # single-entity-tag heuristic.
+    # so no single entity dominates.  All entity tags are subject to per-tag
+    # caps — single-entity chunks are treated the same as multi-entity ones.
     if not _is_artist_query(body.query):
-        _CAP_BY_TYPE = {"ARTIST": 2, "VENUE": 4, "LABEL": 4, "EVENT": 4, "COLLECTIVE": 3}
-        _DEFAULT_CAP = 2
+        _CAP_BY_TYPE = {"ARTIST": 3, "VENUE": 4, "LABEL": 4, "EVENT": 4, "COLLECTIVE": 3}
+        _DEFAULT_CAP = 3
         entity_counts: dict[str, int] = {}
         diversified: list[CorpusSearchChunk] = []
         deduped.sort(key=_score, reverse=True)
@@ -1113,10 +1112,9 @@ async def corpus_search(
             has_types = r.entity_types and len(r.entity_types) == len(r.entity_tags)
 
             if has_types:
-                # Single-entity check: only skip if the sole entity is an ARTIST
-                if len(r.entity_tags) == 1 and r.entity_types[0] == "ARTIST":
-                    continue
-                # Per-type capping
+                # Per-type capping — each entity tag is checked against its
+                # type-specific cap.  Single-entity ARTIST chunks are capped
+                # just like multi-entity chunks (not unconditionally skipped).
                 capped = False
                 for tag, etype in zip(r.entity_tags, r.entity_types):
                     cap = _CAP_BY_TYPE.get(etype, _DEFAULT_CAP)
@@ -1128,9 +1126,8 @@ async def corpus_search(
                     for tag in r.entity_tags:
                         entity_counts[tag] = entity_counts.get(tag, 0) + 1
             else:
-                # Fallback for legacy chunks without entity_types
-                if len(r.entity_tags) == 1:
-                    continue
+                # Fallback for legacy chunks without entity_types — apply
+                # the default cap uniformly to all tags regardless of count.
                 capped = False
                 for tag in r.entity_tags:
                     if entity_counts.get(tag, 0) >= _DEFAULT_CAP:

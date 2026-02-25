@@ -287,8 +287,9 @@ class TestCorpusSearchEndpoint:
     # Single-artist filtering (non-artist queries)
     # -----------------------------------------------------------------------
 
-    def test_non_artist_query_filters_single_entity_chunks(self) -> None:
-        """Chunks with exactly 1 entity tag are dropped for non-artist queries."""
+    def test_non_artist_query_caps_single_entity_chunks(self) -> None:
+        """Single-entity chunks are subject to per-tag cap, not unconditionally dropped."""
+        # Single-entity chunk — allowed through (under cap of 3)
         single_entity = DocumentChunk(
             chunk_id="chunk-single",
             text="Carl Cox biography and career overview.",
@@ -298,7 +299,7 @@ class TestCorpusSearchEndpoint:
             source_type="article",
             author="Staff",
             citation_tier=4,
-            entity_tags=["Carl Cox"],         # single entity → filtered
+            entity_tags=["Carl Cox"],         # single entity → capped at 3
             geographic_tags=["London"],
             genre_tags=["techno"],
         )
@@ -350,12 +351,12 @@ class TestCorpusSearchEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         titles = [r["source_title"] for r in data["results"]]
-        # Single-entity "DJ Mag Profile" should be filtered out
-        assert "DJ Mag Profile" not in titles
-        # Multi-entity and no-entity results should remain
+        # Single-entity chunk now included (under per-tag cap of 3)
+        assert "DJ Mag Profile" in titles
+        # Multi-entity and no-entity results also remain
         assert "Energy Flash" in titles
         assert "Rave Culture" in titles
-        assert data["total_results"] == 2
+        assert data["total_results"] == 3
 
     def test_artist_query_keeps_single_entity_chunks(self) -> None:
         """Chunks with exactly 1 entity tag are kept for artist queries."""
