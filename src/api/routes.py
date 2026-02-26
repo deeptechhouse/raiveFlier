@@ -1329,20 +1329,16 @@ async def corpus_search(
                 filters["entity_tags"] = {"$contains": tag_canonical}
 
         # --- Smart filter auto-detection from query text ---
-        # When the user hasn't manually set a filter, detect the signal
-        # from the query and apply it as a ChromaDB filter for tighter
-        # retrieval.  These detected values are also returned in the
-        # parsed_filters response field so the frontend can show badges.
+        # Detected signals are returned in the parsed_filters response
+        # field so the frontend can show "auto" badges, and the domain-
+        # aware boost section (below) already promotes matching results.
+        # We intentionally do NOT inject auto-detected values into the
+        # hard `filters` dict — only user-explicit filters should hard-
+        # filter results.  Auto-detected signals are soft (boost only).
 
         _parsed_genres = sorted(extract_query_genres(body.query))
-        if not body.genre_tags and _parsed_genres:
-            filters["genre_tags"] = {"$contains": _parsed_genres[0]}
-
         _parsed_time_period = detect_temporal_signal(body.query)
-
         _parsed_geo_tags = sorted(get_scene_geographies(body.query))
-        if not body.geographic_tag and _parsed_geo_tags:
-            filters["geographic_tags"] = {"$contains": next(iter(_parsed_geo_tags))}
 
     except ImportError:
         pass  # domain_knowledge not yet available
@@ -1423,6 +1419,55 @@ async def corpus_search(
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
     # --- Post-filters for fields that need Python-side logic ---
+    # ChromaDB's where clause does not support $contains on metadata, so
+    # all tag-based filters (entity, geographic, genre) are applied here
+    # in Python after retrieval.  The 4x over-fetch factor in the vector
+    # query compensates for candidates lost to post-filtering.
+
+    # Entity tag post-filter: match chunks whose entity_tags list contains
+    # the requested entity name (case-insensitive substring check because
+    # tags may be stored with different casing).
+    _entity_filter = filters.get("entity_tags", {}).get("$contains") if filters else None
+    if _entity_filter:
+        _entity_lower = _entity_filter.lower()
+        deduped = [
+            r for r in deduped
+            if any(_entity_lower in t.lower() for t in r.entity_tags)
+        ]
+
+    # Geographic tag post-filter: same substring match approach.
+    _geo_filter = filters.get("geographic_tags", {}).get("$contains") if filters else None
+    if _geo_filter:
+        _geo_lower = _geo_filter.lower()
+        deduped = [
+            r for r in deduped
+            if any(_geo_lower in t.lower() for t in r.geographic_tags)
+        ]
+
+    # Genre post-filter: handles both single-genre and multi-genre cases.
+    # For single genre, requires at least one genre tag to contain the
+    # query genre as a substring (e.g. "techno" matches "detroit techno").
+    # For multi-genre, requires at least one exact match from the set.
+    _genre_filter = filters.get("genre_tags", {}).get("$contains") if filters else None
+    if body.genre_tags and len(body.genre_tags) > 1:
+        genre_set = {g.lower() for g in body.genre_tags}
+        deduped = [
+            r for r in deduped
+            if any(gt.lower() in genre_set for gt in r.genre_tags)
+        ]
+    elif _genre_filter:
+        _genre_lower = _genre_filter.lower()
+        # Bidirectional substring match: "detroit techno" matches "techno"
+        # and "techno" matches "detroit techno".  This handles both cases
+        # where the filter genre is more specific or more general than the
+        # stored genre tag.
+        deduped = [
+            r for r in deduped
+            if any(
+                _genre_lower in gt.lower() or gt.lower() in _genre_lower
+                for gt in r.genre_tags
+            )
+        ]
 
     # Time-period post-filter: ChromaDB can't do range-overlap matching,
     # so we filter after retrieval using temporal_overlap() from domain_knowledge.
@@ -1436,15 +1481,6 @@ async def corpus_search(
             ]
         except ImportError:
             pass  # domain_knowledge not yet available
-
-    # Multi-genre post-filter: ChromaDB $contains only matches one genre.
-    # When the user selected multiple genres, require at least one exact match.
-    if body.genre_tags and len(body.genre_tags) > 1:
-        genre_set = {g.lower() for g in body.genre_tags}
-        deduped = [
-            r for r in deduped
-            if any(gt.lower() in genre_set for gt in r.genre_tags)
-        ]
 
     # --- Score boosting: domain-aware re-ranking ---
     # Each boost is small and additive so cosine similarity remains the

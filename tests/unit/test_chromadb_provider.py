@@ -183,10 +183,12 @@ class TestChromaDBQueryFilters:
         return mock
 
     @pytest.mark.asyncio
-    async def test_query_entity_tags_filter(
+    async def test_query_entity_tags_filter_not_applied_at_db_level(
         self, mock_embedding_provider, tmp_path
     ) -> None:
-        """Query with entity_tags $contains narrows to matching chunks."""
+        """entity_tags $contains is NOT supported by ChromaDB — the provider
+        skips this filter and returns all results.  Post-filtering happens
+        in the route handler (routes.py), not at the database level."""
         provider = ChromaDBProvider(
             embedding_provider=mock_embedding_provider,
             persist_directory=str(tmp_path / "chroma_ef"),
@@ -200,12 +202,13 @@ class TestChromaDBQueryFilters:
         embeddings = await mock_embedding_provider.embed([c.text for c in chunks])
         await provider.add_chunks(chunks, embeddings)
 
+        # ChromaDB returns all results — entity_tags filter is ignored at
+        # the provider level (post-filtered in Python at the route level).
         results = await provider.query(
             "techno DJ",
             filters={"entity_tags": {"$contains": "Carl Cox"}},
         )
-        for r in results:
-            assert "Carl Cox" in r.chunk.entity_tags
+        assert len(results) == 2
 
     @pytest.mark.asyncio
     async def test_query_source_type_filter(
@@ -233,10 +236,12 @@ class TestChromaDBQueryFilters:
             assert r.chunk.source_type == "book"
 
     @pytest.mark.asyncio
-    async def test_query_geographic_tags_filter(
+    async def test_query_geographic_tags_filter_not_applied_at_db_level(
         self, mock_embedding_provider, tmp_path
     ) -> None:
-        """Query with geographic_tags $contains narrows results."""
+        """geographic_tags $contains is NOT supported by ChromaDB — the
+        provider skips this filter and returns all results.  Post-filtering
+        happens in the route handler (routes.py)."""
         provider = ChromaDBProvider(
             embedding_provider=mock_embedding_provider,
             persist_directory=str(tmp_path / "chroma_gf"),
@@ -250,12 +255,13 @@ class TestChromaDBQueryFilters:
         embeddings = await mock_embedding_provider.embed([c.text for c in chunks])
         await provider.add_chunks(chunks, embeddings)
 
+        # ChromaDB returns all results — geographic_tags filter is ignored
+        # at the provider level (post-filtered in Python at the route level).
         results = await provider.query(
             "techno",
             filters={"geographic_tags": {"$contains": "Berlin"}},
         )
-        for r in results:
-            assert "Berlin" in r.chunk.geographic_tags
+        assert len(results) == 2
 
     @pytest.mark.asyncio
     async def test_query_result_has_citation_string(
@@ -767,24 +773,30 @@ class TestStaticHelpers:
         result = ChromaDBProvider._translate_filters({"date": {"$lte": "1997-03-15"}})
         assert result == {"publication_date": {"$lte": "1997-03-15"}}
 
-    def test_translate_filters_single_entity(self) -> None:
+    def test_translate_filters_skips_entity_tags(self) -> None:
+        """entity_tags $contains is NOT a valid ChromaDB operator — it is
+        post-filtered in Python (routes.py), so _translate_filters skips it."""
         result = ChromaDBProvider._translate_filters({"entity_tags": {"$contains": "Carl Cox"}})
-        assert result == {"entity_tags": {"$contains": "Carl Cox"}}
+        assert result is None
 
-    def test_translate_filters_single_geographic(self) -> None:
+    def test_translate_filters_skips_geographic_tags(self) -> None:
+        """geographic_tags $contains is NOT a valid ChromaDB operator — it is
+        post-filtered in Python (routes.py), so _translate_filters skips it."""
         result = ChromaDBProvider._translate_filters({"geographic_tags": {"$contains": "Berlin"}})
-        assert result == {"geographic_tags": {"$contains": "Berlin"}}
+        assert result is None
 
     def test_translate_filters_single_source_type(self) -> None:
         result = ChromaDBProvider._translate_filters({"source_type": {"$in": ["book", "article"]}})
         assert result == {"source_type": {"$in": ["book", "article"]}}
 
     def test_translate_filters_multiple_produces_and(self) -> None:
-        """Multiple filter keys produce a $and clause."""
+        """Multiple ChromaDB-supported filter keys produce a $and clause.
+        entity_tags is skipped (post-filtered in Python), so only the
+        date + source_type combo produces $and here."""
         result = ChromaDBProvider._translate_filters(
             {
                 "date": {"$lte": "1997-03-15"},
-                "entity_tags": {"$contains": "Carl Cox"},
+                "source_type": {"$in": ["book"]},
             }
         )
         assert "$and" in result

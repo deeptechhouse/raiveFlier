@@ -151,11 +151,9 @@ class TestCorpusSearchEndpoint:
         assert resp.status_code == 200
         call_kwargs = mock_store.query.call_args
         filters = call_kwargs.kwargs.get("filters")
-        # The explicit source_type filter is always present.
-        # NL auto-detection may also add genre and geographic filters
-        # (e.g. "acid house" → genre, "Chicago" → geography) when the
-        # user hasn't manually set those filters.
-        assert filters["source_type"] == {"$in": ["book"]}
+        # Only the explicit source_type filter is pushed to ChromaDB.
+        # Auto-detected signals (genre, geo) are soft boosts, not hard filters.
+        assert filters == {"source_type": {"$in": ["book"]}}
 
     def test_search_passes_entity_tag_filter(self) -> None:
         mock_store = AsyncMock()
@@ -255,30 +253,35 @@ class TestCorpusSearchEndpoint:
 
         assert resp.status_code == 422
 
-    def test_search_no_explicit_filters_may_auto_detect(self) -> None:
-        """When no explicit filters are set, NL auto-detection from the query
-        text may still inject genre/geographic/temporal filters.  The query
-        'techno' contains a known genre, so auto-detection adds a genre filter.
-        A query with no detectable signals should pass filters=None.
-        """
+    def test_search_auto_detection_returns_parsed_filters(self) -> None:
+        """Auto-detected signals are returned in parsed_filters but NOT
+        injected as hard filters into the ChromaDB query.  This ensures
+        auto-detection is soft (boost only) while still informing the
+        frontend which badges to display."""
         mock_store = AsyncMock()
         mock_store.query = AsyncMock(return_value=[])
 
         app = _create_test_app(rag_enabled=True, vector_store=mock_store)
         client = TestClient(app)
 
-        # "techno" is a known genre — auto-detection adds a genre filter
+        # "techno" is a known genre — auto-detection populates parsed_filters
         resp = client.post(
             "/api/v1/corpus/search",
             json={"query": "techno"},
         )
         assert resp.status_code == 200
+        data = resp.json()
+        # parsed_filters should contain the detected genre
+        pf = data.get("parsed_filters")
+        assert pf is not None
+        assert "techno" in pf["genres"]
+
+        # But no hard genre filter should be pushed to ChromaDB
         call_kwargs = mock_store.query.call_args
         filters = call_kwargs.kwargs.get("filters")
-        assert filters is not None
-        assert "genre_tags" in filters
+        assert filters is None
 
-        # A query with no genre/geo/temporal signals passes no filters
+        # A query with no detectable signals should also pass filters=None
         mock_store.query.reset_mock()
         resp2 = client.post(
             "/api/v1/corpus/search",
