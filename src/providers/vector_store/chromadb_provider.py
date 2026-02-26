@@ -586,11 +586,21 @@ class ChromaDBProvider(IVectorStoreProvider):
     def _translate_filters(filters: dict[str, Any]) -> dict[str, Any] | None:
         """Translate the common filter syntax to ChromaDB ``where`` clauses.
 
-        Supported input keys:
+        Only operators that ChromaDB natively supports ($eq, $ne, $gt, $gte,
+        $lt, $lte, $in, $nin) are pushed to the database.  Tag-based filters
+        (entity_tags, geographic_tags, genre_tags) use $contains which
+        ChromaDB does NOT support on metadata — those are handled as Python
+        post-filters in the route handler instead.
+
+        Supported input keys pushed to ChromaDB:
         - ``date``: ``{"$lte": "YYYY-MM-DD"}`` → ``publication_date`` filter
-        - ``entity_tags``: ``{"$contains": "name"}`` → string ``$contains``
-        - ``geographic_tags``: ``{"$contains": "city"}`` → string ``$contains``
         - ``source_type``: ``{"$in": [...]}`` → ``$in`` filter
+        - ``citation_tier``: ``{"$lte": N}`` → ``$lte`` filter
+
+        Skipped (handled as post-filters in routes.py):
+        - ``entity_tags``: ``{"$contains": "name"}`` → Python post-filter
+        - ``geographic_tags``: ``{"$contains": "city"}`` → Python post-filter
+        - ``genre_tags``: ``{"$contains": "genre"}`` → Python post-filter
         """
         clauses: list[dict[str, Any]] = []
 
@@ -600,33 +610,15 @@ class ChromaDBProvider(IVectorStoreProvider):
             if lte_val:
                 clauses.append({"publication_date": {"$lte": str(lte_val)}})
 
-        entity_filter = filters.get("entity_tags")
-        if entity_filter and isinstance(entity_filter, dict):
-            contains_val = entity_filter.get("$contains")
-            if contains_val:
-                clauses.append({"entity_tags": {"$contains": str(contains_val)}})
-
-        geo_filter = filters.get("geographic_tags")
-        if geo_filter and isinstance(geo_filter, dict):
-            contains_val = geo_filter.get("$contains")
-            if contains_val:
-                clauses.append({"geographic_tags": {"$contains": str(contains_val)}})
+        # entity_tags, geographic_tags, genre_tags intentionally NOT pushed
+        # to ChromaDB — $contains is not a valid ChromaDB where operator.
+        # These are post-filtered in Python after retrieval (routes.py).
 
         source_filter = filters.get("source_type")
         if source_filter and isinstance(source_filter, dict):
             in_val = source_filter.get("$in")
             if in_val and isinstance(in_val, list):
                 clauses.append({"source_type": {"$in": in_val}})
-
-        # Genre filter: match chunks whose genre_tags metadata contains the
-        # genre string.  Genre tags are stored as comma-separated strings,
-        # so ChromaDB's $contains does a substring match (e.g. "techno"
-        # matches "techno,acid techno,detroit techno").
-        genre_filter = filters.get("genre_tags")
-        if genre_filter and isinstance(genre_filter, dict):
-            contains_val = genre_filter.get("$contains")
-            if contains_val:
-                clauses.append({"genre_tags": {"$contains": str(contains_val)}})
 
         # Citation tier filter: only include chunks with citation_tier at
         # or better than the threshold.  Lower number = higher quality,
