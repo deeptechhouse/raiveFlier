@@ -364,18 +364,32 @@ class ChromaDBProvider(IVectorStoreProvider):
         """Return unique source_ids, optionally filtered by source_type.
 
         Uses a ChromaDB ``where`` clause when *source_type* is given to avoid
-        fetching metadata for every chunk in the collection.
+        fetching metadata for every chunk in the collection.  Paginates in
+        5K-row pages to avoid SQLite's bind-parameter limit on large corpora.
         """
+        _PAGE_SIZE = 5000
         try:
             kwargs: dict[str, Any] = {"include": ["metadatas"]}
             if source_type:
                 kwargs["where"] = {"source_type": source_type}
-            results = self._collection.get(**kwargs)
-            return {
-                m.get("source_id", "")
-                for m in (results["metadatas"] or [])
-                if m.get("source_id")
-            }
+
+            source_ids: set[str] = set()
+            offset = 0
+            while True:
+                page = self._collection.get(
+                    **kwargs, limit=_PAGE_SIZE, offset=offset
+                )
+                metadatas = page["metadatas"] or []
+                if not metadatas:
+                    break
+                for m in metadatas:
+                    sid = m.get("source_id")
+                    if sid:
+                        source_ids.add(sid)
+                if len(metadatas) < _PAGE_SIZE:
+                    break
+                offset += _PAGE_SIZE
+            return source_ids
         except Exception as exc:
             raise RAGError(
                 message=f"ChromaDB get_source_ids failed: {exc}",
@@ -404,22 +418,33 @@ class ChromaDBProvider(IVectorStoreProvider):
             genre_tags: set[str] = set()
             time_periods: set[str] = set()
 
+            # Paginate the metadata fetch to avoid SQLite's "too many SQL
+            # variables" limit (~999 bind params).  ChromaDB's .get() with
+            # no IDs fetches ALL rows in a single query, which breaks when
+            # the collection exceeds ~40K chunks.  Fetching in 5K-row pages
+            # keeps each query well under the SQLite variable ceiling.
+            _PAGE_SIZE = 5000
             if current_count > 0:
-                all_meta = self._collection.get(include=["metadatas"])
-                for meta in all_meta["metadatas"] or []:
-                    source_ids.add(meta.get("source_id", ""))
-                    src_type = meta.get("source_type", "unknown")
-                    sources_by_type[src_type] = sources_by_type.get(src_type, 0) + 1
+                for page_offset in range(0, current_count, _PAGE_SIZE):
+                    page = self._collection.get(
+                        include=["metadatas"],
+                        limit=_PAGE_SIZE,
+                        offset=page_offset,
+                    )
+                    for meta in page["metadatas"] or []:
+                        source_ids.add(meta.get("source_id", ""))
+                        src_type = meta.get("source_type", "unknown")
+                        sources_by_type[src_type] = sources_by_type.get(src_type, 0) + 1
 
-                    for tag in self._split_tags(meta.get("entity_tags", "")):
-                        entity_tags.add(tag)
-                    for tag in self._split_tags(meta.get("geographic_tags", "")):
-                        geographic_tags.add(tag)
-                    for tag in self._split_tags(meta.get("genre_tags", "")):
-                        genre_tags.add(tag)
-                    tp = meta.get("time_period")
-                    if tp:
-                        time_periods.add(tp)
+                        for tag in self._split_tags(meta.get("entity_tags", "")):
+                            entity_tags.add(tag)
+                        for tag in self._split_tags(meta.get("geographic_tags", "")):
+                            geographic_tags.add(tag)
+                        for tag in self._split_tags(meta.get("genre_tags", "")):
+                            genre_tags.add(tag)
+                        tp = meta.get("time_period")
+                        if tp:
+                            time_periods.add(tp)
 
             result = CorpusStats(
                 total_chunks=current_count,
