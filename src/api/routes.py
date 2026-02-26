@@ -55,9 +55,12 @@ from src.api.schemas import (
     DismissConnectionResponse,
     DuplicateMatch,
     ErrorResponse,
+    FacetCounts,
     FlierAnalysisResponse,
     FlierUploadResponse,
     HealthResponse,
+    ParseQueryRequest,
+    ParsedQueryFilters,
     PipelineStatusResponse,
     ProvidersResponse,
     RatingResponse,
@@ -67,6 +70,7 @@ from src.api.schemas import (
     RelatedFact,
     SessionRatingsResponse,
     SubmitRatingRequest,
+    SuggestResponse,
 )
 from src.models.entities import EntityType
 from src.models.flier import ExtractedEntities, ExtractedEntity, FlierImage, OCRResult
@@ -903,6 +907,174 @@ async def corpus_stats(request: Request) -> CorpusStatsResponse:
         # Genre tags and time periods for frontend filter dropdowns
         genre_tags=stats.genre_tags,
         time_periods=stats.time_periods,
+        # Full tag lists for autocomplete suggestions
+        entity_tags=stats.entity_tags_list,
+        geographic_tags=stats.geographic_tags_list,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Parse-query endpoint — extracts structured filters from free-text queries.
+# Uses domain_knowledge functions only (no LLM, no I/O), so response is <5ms.
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/corpus/parse-query",
+    response_model=ParsedQueryFilters,
+    summary="Parse natural language query into structured filters",
+)
+async def parse_query(body: ParseQueryRequest) -> ParsedQueryFilters:
+    """Extract genre, temporal, geographic, and artist signals from free text.
+
+    Uses domain_knowledge functions (pure, no I/O, no LLM calls) for fast
+    (<5ms) parsing.  Called by the frontend on debounce to auto-fill filter
+    controls with detected signals before the search request fires.
+    """
+    try:
+        from src.config.domain_knowledge import (
+            detect_temporal_signal,
+            expand_aliases,
+            extract_query_genres,
+            get_canonical_name,
+            get_scene_geographies,
+        )
+    except ImportError:
+        # domain_knowledge module not available — return empty result
+        return ParsedQueryFilters()
+
+    query = body.query
+
+    # Genre extraction — longest-match-first prevents partial matches
+    genres = sorted(extract_query_genres(query))
+
+    # Temporal signal — named eras, decade strings, year ranges
+    time_period = detect_temporal_signal(query)
+
+    # Geographic signals — scene keywords mapped to cities/regions
+    geo_tags = sorted(get_scene_geographies(query))
+
+    # Artist alias resolution — canonical name + all known aliases
+    canonical = get_canonical_name(query.strip())
+    aliases = sorted(expand_aliases(canonical)) if canonical else []
+
+    return ParsedQueryFilters(
+        genres=genres,
+        time_period=time_period,
+        geographic_tags=geo_tags,
+        artist_canonical=canonical,
+        artist_aliases=aliases,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Suggest endpoint — autocomplete with prefix + fuzzy matching for filter
+# text inputs.  Uses cached tag lists from get_stats() plus difflib for
+# typo tolerance.  No new dependencies required.
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/corpus/suggest",
+    response_model=SuggestResponse,
+    summary="Autocomplete suggestions for filter fields",
+)
+async def corpus_suggest(
+    field: str,
+    prefix: str = "",
+    request: Request = ...,
+) -> SuggestResponse:
+    """Return autocomplete suggestions for a corpus filter field.
+
+    Combines prefix matching, substring matching, and fuzzy matching
+    (via stdlib difflib.get_close_matches) to tolerate typos.
+    For the entity_tag field, also searches artist alias names from
+    domain_knowledge.
+
+    Depends on the cached stats from get_stats() — no additional DB
+    queries are issued, keeping response time under ~5ms.
+    """
+    import difflib
+
+    rag_enabled = getattr(request.app.state, "rag_enabled", False)
+    if not rag_enabled:
+        return SuggestResponse(field=field, prefix=prefix, suggestions=[])
+
+    # Resolve the vector store from app.state (same pattern as corpus_search)
+    vector_store = getattr(request.app.state, "vector_store", None)
+    if vector_store is None:
+        return SuggestResponse(field=field, prefix=prefix, suggestions=[])
+
+    try:
+        stats = await vector_store.get_stats()
+    except Exception:
+        return SuggestResponse(field=field, prefix=prefix, suggestions=[])
+
+    # Select the tag list based on the requested field
+    tag_lists: dict[str, list[str]] = {
+        "entity_tag": stats.entity_tags_list,
+        "geographic_tag": stats.geographic_tags_list,
+        "genre_tag": stats.genre_tags,
+    }
+    candidates = tag_lists.get(field, [])
+
+    if not prefix:
+        # Empty prefix — return most common tags (already sorted alphabetically)
+        return SuggestResponse(
+            field=field, prefix=prefix, suggestions=candidates[:30]
+        )
+
+    prefix_lower = prefix.lower()
+
+    # Phase 1: Prefix match (case-insensitive startswith)
+    prefix_matches = [t for t in candidates if t.lower().startswith(prefix_lower)]
+
+    # Phase 2: Contains match (substring, excluding already-matched)
+    prefix_set = set(prefix_matches)
+    contains_matches = [
+        t
+        for t in candidates
+        if prefix_lower in t.lower() and t not in prefix_set
+    ]
+
+    combined = prefix_matches + contains_matches
+
+    # Phase 3: Fuzzy match via difflib for typo tolerance — only if we
+    # haven't found enough results from exact/substring matching.
+    if len(combined) < 10:
+        fuzzy_hits = difflib.get_close_matches(
+            prefix_lower,
+            [t.lower() for t in candidates],
+            n=10,
+            cutoff=0.6,
+        )
+        # Map lowercase fuzzy hits back to original-case tag strings
+        lower_to_original = {t.lower(): t for t in candidates}
+        combined_set = set(combined)
+        for hit in fuzzy_hits:
+            original = lower_to_original.get(hit)
+            if original and original not in combined_set:
+                combined.append(original)
+                combined_set.add(original)
+
+    # For entity_tag field: also search artist aliases from domain_knowledge
+    if field == "entity_tag" and prefix_lower:
+        try:
+            from src.config.domain_knowledge import get_all_artist_names
+
+            all_names = get_all_artist_names()
+            combined_set = set(combined)
+            alias_matches = sorted(
+                n
+                for n in all_names
+                if n.lower().startswith(prefix_lower) and n not in combined_set
+            )
+            combined.extend(alias_matches[:5])
+        except ImportError:
+            pass
+
+    return SuggestResponse(
+        field=field, prefix=prefix, suggestions=combined[:20]
     )
 
 
@@ -1033,6 +1205,56 @@ def _semantic_dedup(
     return kept
 
 
+def _compute_facets(chunks: list[CorpusSearchChunk]) -> FacetCounts:
+    """Count metadata values across the candidate pool for faceted navigation.
+
+    Called after vector retrieval + per-source dedup but BEFORE user-applied
+    filters, so facets show what is available in the query's semantic
+    neighborhood regardless of active filter settings.  Entity and geographic
+    facets are truncated to the top-30 / top-20 by count to bound response
+    size; source_type, genre, time_period, and citation_tier facets are
+    exhaustive (small cardinality).
+    """
+    source_types: dict[str, int] = {}
+    genre_tags: dict[str, int] = {}
+    time_periods: dict[str, int] = {}
+    entity_tags: dict[str, int] = {}
+    geographic_tags: dict[str, int] = {}
+    citation_tiers: dict[str, int] = {}
+
+    for c in chunks:
+        if c.source_type:
+            source_types[c.source_type] = source_types.get(c.source_type, 0) + 1
+
+        for g in c.genre_tags:
+            genre_tags[g] = genre_tags.get(g, 0) + 1
+
+        if c.time_period:
+            time_periods[c.time_period] = time_periods.get(c.time_period, 0) + 1
+
+        for e in c.entity_tags:
+            entity_tags[e] = entity_tags.get(e, 0) + 1
+
+        for geo in c.geographic_tags:
+            geographic_tags[geo] = geographic_tags.get(geo, 0) + 1
+
+        key = f"T{c.citation_tier}"
+        citation_tiers[key] = citation_tiers.get(key, 0) + 1
+
+    # Truncate high-cardinality facets to top-N by count
+    top_entities = dict(sorted(entity_tags.items(), key=lambda x: -x[1])[:30])
+    top_geos = dict(sorted(geographic_tags.items(), key=lambda x: -x[1])[:20])
+
+    return FacetCounts(
+        source_types=source_types,
+        genre_tags=genre_tags,
+        time_periods=time_periods,
+        entity_tags=top_entities,
+        geographic_tags=top_geos,
+        citation_tiers=citation_tiers,
+    )
+
+
 @router.post(
     "/corpus/search",
     response_model=CorpusSearchResponse,
@@ -1076,18 +1298,52 @@ async def corpus_search(
     query_text = body.query
 
     # Alias expansion: if query matches a known alias, append canonical + all names
+    # Also capture parsed signals for the ParsedQueryFilters response field.
+    _parsed_canonical: str | None = None
+    _parsed_aliases: list[str] = []
+    _parsed_genres: list[str] = []
+    _parsed_time_period: str | None = None
+    _parsed_geo_tags: list[str] = []
+
     try:
-        from src.config.domain_knowledge import get_canonical_name, expand_aliases
+        from src.config.domain_knowledge import (
+            detect_temporal_signal,
+            expand_aliases,
+            extract_query_genres,
+            get_canonical_name,
+            get_scene_geographies,
+        )
+
         canonical = get_canonical_name(query_text.strip())
         if canonical:
             all_names = expand_aliases(canonical)
             query_text = f"{query_text} ({' '.join(all_names)})"
+            _parsed_canonical = canonical
+            _parsed_aliases = sorted(all_names)
+
         # Also expand entity_tag filter if it matches an alias
         if body.entity_tag:
             tag_canonical = get_canonical_name(body.entity_tag)
             if tag_canonical:
                 # Rewrite entity filter to use canonical name
                 filters["entity_tags"] = {"$contains": tag_canonical}
+
+        # --- Smart filter auto-detection from query text ---
+        # When the user hasn't manually set a filter, detect the signal
+        # from the query and apply it as a ChromaDB filter for tighter
+        # retrieval.  These detected values are also returned in the
+        # parsed_filters response field so the frontend can show badges.
+
+        _parsed_genres = sorted(extract_query_genres(body.query))
+        if not body.genre_tags and _parsed_genres:
+            filters["genre_tags"] = {"$contains": _parsed_genres[0]}
+
+        _parsed_time_period = detect_temporal_signal(body.query)
+
+        _parsed_geo_tags = sorted(get_scene_geographies(body.query))
+        if not body.geographic_tag and _parsed_geo_tags:
+            filters["geographic_tags"] = {"$contains": next(iter(_parsed_geo_tags))}
+
     except ImportError:
         pass  # domain_knowledge not yet available
 
@@ -1148,6 +1404,11 @@ async def corpus_search(
     # Exclude "analysis" source-type chunks — these are internal pipeline
     # outputs that should not surface in user-facing corpus search results.
     deduped = [r for r in deduped if r.source_type != "analysis"]
+
+    # --- Facet computation: count metadata values in the candidate pool ---
+    # Computed BEFORE user-applied filters (feedback, time period, multi-genre)
+    # so facets reflect what is available in the query's semantic neighborhood.
+    facet_counts = _compute_facets(deduped)
 
     # Filter out results the user previously thumbs-downed.
     if feedback is not None:
@@ -1330,6 +1591,17 @@ async def corpus_search(
         offset=body.offset,
         page_size=body.page_size,
         has_more=page_end < total_available,
+        # Smart-search response fields — auto-detected filters so the
+        # frontend can show "auto" badges on filter controls it didn't
+        # manually set, plus facet counts for annotating dropdowns.
+        facets=facet_counts,
+        parsed_filters=ParsedQueryFilters(
+            genres=_parsed_genres,
+            time_period=_parsed_time_period,
+            geographic_tags=_parsed_geo_tags,
+            artist_canonical=_parsed_canonical,
+            artist_aliases=_parsed_aliases,
+        ),
     )
 
 

@@ -216,3 +216,14 @@ class CorpusStats(BaseModel):
         default_factory=list,
         description="Sorted list of distinct time period strings for filter dropdowns.",
     )
+    # Full tag lists for autocomplete — sorted for consistent UI display.
+    # Kept separate from the *_count fields so callers that only need
+    # counts don't pay for the list overhead.
+    entity_tags_list: list[str] = Field(
+        default_factory=list,
+        description="Sorted list of distinct entity tag strings for autocomplete.",
+    )
+    geographic_tags_list: list[str] = Field(
+        default_factory=list,
+        description="Sorted list of distinct geographic tag strings for autocomplete.",
+    )

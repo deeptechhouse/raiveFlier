@@ -150,7 +150,12 @@ class TestCorpusSearchEndpoint:
 
         assert resp.status_code == 200
         call_kwargs = mock_store.query.call_args
-        assert call_kwargs.kwargs.get("filters") == {"source_type": {"$in": ["book"]}}
+        filters = call_kwargs.kwargs.get("filters")
+        # The explicit source_type filter is always present.
+        # NL auto-detection may also add genre and geographic filters
+        # (e.g. "acid house" → genre, "Chicago" → geography) when the
+        # user hasn't manually set those filters.
+        assert filters["source_type"] == {"$in": ["book"]}
 
     def test_search_passes_entity_tag_filter(self) -> None:
         mock_store = AsyncMock()
@@ -250,21 +255,38 @@ class TestCorpusSearchEndpoint:
 
         assert resp.status_code == 422
 
-    def test_search_no_filters_passes_none(self) -> None:
+    def test_search_no_explicit_filters_may_auto_detect(self) -> None:
+        """When no explicit filters are set, NL auto-detection from the query
+        text may still inject genre/geographic/temporal filters.  The query
+        'techno' contains a known genre, so auto-detection adds a genre filter.
+        A query with no detectable signals should pass filters=None.
+        """
         mock_store = AsyncMock()
         mock_store.query = AsyncMock(return_value=[])
 
         app = _create_test_app(rag_enabled=True, vector_store=mock_store)
         client = TestClient(app)
 
+        # "techno" is a known genre — auto-detection adds a genre filter
         resp = client.post(
             "/api/v1/corpus/search",
             json={"query": "techno"},
         )
-
         assert resp.status_code == 200
         call_kwargs = mock_store.query.call_args
-        assert call_kwargs.kwargs.get("filters") is None
+        filters = call_kwargs.kwargs.get("filters")
+        assert filters is not None
+        assert "genre_tags" in filters
+
+        # A query with no genre/geo/temporal signals passes no filters
+        mock_store.query.reset_mock()
+        resp2 = client.post(
+            "/api/v1/corpus/search",
+            json={"query": "what happened at the party"},
+        )
+        assert resp2.status_code == 200
+        call_kwargs2 = mock_store.query.call_args
+        assert call_kwargs2.kwargs.get("filters") is None
 
     def test_search_empty_results(self) -> None:
         mock_store = AsyncMock()

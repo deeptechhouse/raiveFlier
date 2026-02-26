@@ -126,7 +126,8 @@ class CorpusStatsResponse(BaseModel):
     """RAG corpus statistics.
 
     Includes genre and time period lists for populating frontend filter
-    dropdowns dynamically from the actual corpus contents.
+    dropdowns dynamically from the actual corpus contents.  Also exposes
+    full entity and geographic tag lists for autocomplete suggestions.
     """
 
     total_chunks: int = 0
@@ -134,9 +135,18 @@ class CorpusStatsResponse(BaseModel):
     sources_by_type: dict[str, int] = Field(default_factory=dict)
     entity_tag_count: int = 0
     geographic_tag_count: int = 0
-    # New fields for dynamic filter population
+    # Dynamic filter population — sorted lists for frontend dropdowns
     genre_tags: list[str] = Field(default_factory=list)
     time_periods: list[str] = Field(default_factory=list)
+    # Full tag lists for autocomplete / fuzzy-match suggestions
+    entity_tags: list[str] = Field(
+        default_factory=list,
+        description="Sorted list of distinct entity tag strings for autocomplete.",
+    )
+    geographic_tags: list[str] = Field(
+        default_factory=list,
+        description="Sorted list of distinct geographic tag strings for autocomplete.",
+    )
 
 
 class ErrorResponse(BaseModel):
@@ -168,6 +178,74 @@ class AskQuestionResponse(BaseModel):
     answer: str
     citations: list[dict[str, Any]] = Field(default_factory=list)
     related_facts: list[RelatedFact] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Smart Search schemas — query parsing, autocomplete, and faceted counts.
+# These power the "smarter sidebar" features: natural-language filter
+# detection, fuzzy autocomplete, and per-dimension result counts.
+# ---------------------------------------------------------------------------
+
+
+class ParseQueryRequest(BaseModel):
+    """Request body for the parse-query endpoint.
+
+    Accepts free-text input and returns structured filter signals detected
+    via domain_knowledge functions (genre extraction, temporal detection,
+    geographic scene mapping, artist alias resolution).
+    """
+
+    query: str = Field(..., min_length=1, max_length=500)
+
+
+class ParsedQueryFilters(BaseModel):
+    """Structured filters auto-detected from a natural-language query.
+
+    Returned by POST /api/v1/corpus/parse-query and also embedded in
+    CorpusSearchResponse so the frontend can show "auto-detected" badges
+    on filter controls that were filled by the parser.
+
+    Each field is optional — only populated when the parser detects that
+    signal in the query text.
+    """
+
+    genres: list[str] = Field(default_factory=list)
+    time_period: str | None = None
+    geographic_tags: list[str] = Field(default_factory=list)
+    artist_canonical: str | None = None
+    artist_aliases: list[str] = Field(default_factory=list)
+
+
+class SuggestResponse(BaseModel):
+    """Autocomplete suggestions for a filter field.
+
+    Returned by GET /api/v1/corpus/suggest.  Combines prefix matching,
+    substring matching, and fuzzy matching (via difflib) to tolerate
+    typos and partial input.
+    """
+
+    field: str
+    prefix: str
+    suggestions: list[str] = Field(default_factory=list)
+
+
+class FacetCounts(BaseModel):
+    """Per-dimension counts from the search candidate pool.
+
+    Computed after vector retrieval and per-source dedup but BEFORE
+    user-applied filters, so they reflect what is available in the
+    query's semantic neighborhood regardless of active filter settings.
+    The frontend uses these to annotate filter dropdowns with counts
+    like "Techno (42)" or "Detroit (17)".
+    """
+
+    source_types: dict[str, int] = Field(default_factory=dict)
+    genre_tags: dict[str, int] = Field(default_factory=dict)
+    time_periods: dict[str, int] = Field(default_factory=dict)
+    # Truncated to top-30 / top-20 by count to bound response size
+    entity_tags: dict[str, int] = Field(default_factory=dict)
+    geographic_tags: dict[str, int] = Field(default_factory=dict)
+    citation_tiers: dict[str, int] = Field(default_factory=dict)
 
 
 class CorpusSearchRequest(BaseModel):
@@ -252,6 +330,10 @@ class CorpusSearchResponse(BaseModel):
     The backend computes the full ranked result set then returns a page
     controlled by offset/page_size.  The has_more flag tells the frontend
     whether a "Load More" button should be rendered.
+
+    Optional smart-search fields (facets, parsed_filters) are populated
+    when the backend detects structured signals in the query or computes
+    facet counts from the candidate pool.  Old clients ignore them safely.
     """
 
     query: str
@@ -261,6 +343,15 @@ class CorpusSearchResponse(BaseModel):
     offset: int = 0
     page_size: int = 20
     has_more: bool = False
+    # Smart-search additions — both default to None for backward compat.
+    facets: FacetCounts | None = Field(
+        default=None,
+        description="Per-dimension counts from the candidate pool (pre-filter).",
+    )
+    parsed_filters: ParsedQueryFilters | None = Field(
+        default=None,
+        description="Filters auto-detected from the query text via domain knowledge.",
+    )
 
 
 class SubmitRatingRequest(BaseModel):
