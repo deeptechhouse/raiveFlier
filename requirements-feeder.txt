@@ -1,0 +1,20 @@
+# ─── raiveFeeder Additional Dependencies ───────────────────────────────
+#
+# These packages are needed ONLY by raiveFeeder (tools/raive_feeder/).
+# The base raiveFlier requirements.txt must be installed first — it
+# provides FastAPI, Pydantic, ChromaDB, httpx, trafilatura, etc.
+#
+# Install: pip install -r requirements.txt -r requirements-feeder.txt
+# ───────────────────────────────────────────────────────────────────────
+
+# Audio transcription — faster-whisper uses CTranslate2 for efficient
+# local inference without requiring a GPU.  pydub handles audio format
+# conversion (MP3/FLAC/OGG → WAV) via ffmpeg.
+faster-whisper>=1.0.0,<2.0
+pydub>=0.25.1,<1.0
+
+# Format conversion — python-docx reads DOCX files natively in Python.
+# striprtf converts RTF to plain text without external dependencies.
+# System deps (not pip-installable): ffmpeg, calibre (ebook-convert), djvulibre (djvutxt)
+python-docx>=1.1.0,<2.0
+striprtf>=0.0.26,<1.0

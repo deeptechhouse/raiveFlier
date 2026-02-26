@@ -469,6 +469,40 @@ class ChromaDBProvider(IVectorStoreProvider):
                 provider_name=self.get_provider_name(),
             ) from exc
 
+    async def update_chunk_metadata(
+        self, chunk_id: str, metadata: dict[str, Any]
+    ) -> bool:
+        """Update metadata fields on an existing chunk without re-embedding.
+
+        Uses ChromaDB's collection.update() to modify only the specified
+        metadata fields.  The chunk text and embedding remain unchanged.
+        """
+        self._cached_stats = None  # Invalidate stats cache.
+        try:
+            # Verify the chunk exists before attempting update.
+            existing = self._collection.get(ids=[chunk_id])
+            if not existing["ids"]:
+                logger.warning("update_chunk_not_found", chunk_id=chunk_id)
+                return False
+
+            self._collection.update(
+                ids=[chunk_id],
+                metadatas=[metadata],
+            )
+
+            logger.info(
+                "chromadb_update_chunk_metadata",
+                chunk_id=chunk_id,
+                fields=list(metadata.keys()),
+            )
+            return True
+
+        except Exception as exc:
+            raise RAGError(
+                message=f"ChromaDB update_chunk_metadata failed: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
     def get_provider_name(self) -> str:
         return "chromadb"
 

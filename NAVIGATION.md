@@ -39,6 +39,16 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 | `tests/integration/` | Testing | Integration tests for API endpoints and service interactions |
 | `tests/e2e/` | Testing | End-to-end tests for full pipeline flows |
 | `tests/fixtures/` | Testing | Test fixtures — mock responses and sample flier images |
+| **`tools/raive_feeder/`** | **Companion App** | **raiveFeeder — corpus ingestion & database management GUI** |
+| `tools/raive_feeder/api/` | Interface (HTTP) | FastAPI routes, schemas, WebSocket for raiveFeeder |
+| `tools/raive_feeder/config/` | Configuration | FeederSettings extending raiveFlier Settings |
+| `tools/raive_feeder/services/` | Business Logic | AudioTranscriber, WebCrawler, ImageIngester, FormatConverter, CorpusManager, BatchProcessor |
+| `tools/raive_feeder/interfaces/` | Abstraction Layer | ITranscriptionProvider ABC for audio transcription |
+| `tools/raive_feeder/providers/transcription/` | Integration | WhisperLocalProvider (faster-whisper), WhisperAPIProvider (OpenAI) |
+| `tools/raive_feeder/frontend/` | Presentation | 5-tab SPA (Documents, Audio, Images, URLs, Corpus) with emerald green accent |
+| `tools/raive_feeder/frontend/css/` | Presentation | Bunker + Emerald design system stylesheet |
+| `tools/raive_feeder/frontend/js/` | Presentation | Client-side modules — upload, audio, images, scraper, corpus, progress, batch |
+| `tools/raive_feeder/tests/` | Testing | Unit + integration tests for all raiveFeeder services and API |
 
 ## Key Entry Points
 
@@ -49,6 +59,9 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 - **CLI ingestion:** `src/cli/ingest.py` — `python -m src.cli.ingest` for RAG corpus loading
 - **App config:** `config/config.yaml` — provider priorities, rate limits, cache TTL
 - **Env config:** `.env` — API keys, RAG settings, app host/port
+- **raiveFeeder start:** `tools/raive_feeder/main.py` — `python3 -m tools.raive_feeder` launches on port 8001
+- **raiveFeeder routes:** `tools/raive_feeder/api/routes.py` — all feeder REST endpoints (`/api/v1/...`)
+- **raiveFeeder WebSocket:** `tools/raive_feeder/api/websocket.py` — batch job progress via `/ws/progress/{job_id}`
 
 ## Module Relationships
 
@@ -60,6 +73,9 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 - **Config** (`src/config/`) is injected at startup; providers receive settings via constructor
 - **Utils** (`src/utils/`) are shared helpers available to all layers
 - **Frontend** communicates with the API via REST + WebSocket; no direct service access
+- **raiveFeeder** (`tools/raive_feeder/`) imports shared code from `src/` (models, interfaces, providers, ingestion service)
+- **raiveFeeder** runs independently on port 8001 alongside raiveFlier on port 8000
+- **Both apps** share the same ChromaDB vector store at `data/chromadb/`
 
 ## External Dependencies
 
@@ -77,3 +93,10 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 | ChromaDB | Vector store for RAG | Yes (`IVectorStoreProvider` interface) |
 | Wayback Machine | Article archival retrieval | Yes (`IArticleProvider` interface) |
 | structlog | Structured JSON logging | Yes (standard logging adapter) |
+| faster-whisper | Local audio transcription (CTranslate2) | Yes (`ITranscriptionProvider` interface) |
+| OpenAI Whisper API | Cloud audio transcription | Yes (`ITranscriptionProvider` interface) |
+| pydub + ffmpeg | Audio format conversion | Yes (standard CLI tool) |
+| python-docx | DOCX reading | Yes (format converter adapter) |
+| striprtf | RTF to plain text | Yes (format converter adapter) |
+| Calibre (ebook-convert) | MOBI → EPUB conversion | Yes (CLI tool, format converter adapter) |
+| djvulibre (djvutxt) | DJVU → text extraction | Yes (CLI tool, format converter adapter) |

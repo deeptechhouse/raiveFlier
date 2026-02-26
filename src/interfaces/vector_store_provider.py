@@ -169,6 +169,31 @@ class IVectorStoreProvider(ABC):
         """
 
     @abstractmethod
+    async def update_chunk_metadata(
+        self, chunk_id: str, metadata: dict[str, Any]
+    ) -> bool:
+        """Update metadata fields on an existing chunk without re-embedding.
+
+        Allows editing tags, citation tier, time period, etc. on stored
+        chunks without the cost of regenerating embeddings.  Used by the
+        raiveFeeder Corpus Management tab for metadata corrections.
+
+        Parameters
+        ----------
+        chunk_id:
+            The unique identifier of the chunk to update.
+        metadata:
+            Dictionary of metadata field names to new values.  Only the
+            provided fields are updated; others remain unchanged.
+
+        Returns
+        -------
+        bool
+            ``True`` if the chunk was found and updated, ``False`` if no
+            chunk with the given ID exists.
+        """
+
+    @abstractmethod
     def get_provider_name(self) -> str:
         """Return a human-readable identifier for this vector-store provider.
 

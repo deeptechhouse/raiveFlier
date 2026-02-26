@@ -1,0 +1,370 @@
+<!--
+  ============================================================================
+  raiveFeeder — Corpus Ingestion & Database Management GUI
+  ============================================================================
+
+  ARCHITECTURE OVERVIEW
+  =====================
+  Vanilla JS + HTML + CSS frontend for the raiveFeeder companion app.
+  Communicates with the FastAPI backend at /api/v1/*.  Same SPA pattern
+  as raiveFlier but with a 5-tab navigation instead of 4-view switching.
+
+  TAB STRUCTURE
+  =============
+  1. Documents  (#tab-documents)  — Drag-and-drop document upload
+  2. Audio      (#tab-audio)      — Audio transcription + review
+  3. Images     (#tab-images)     — Image OCR + ingestion
+  4. URLs       (#tab-urls)       — Web scraping with LLM guidance
+  5. Corpus     (#tab-corpus)     — Database management dashboard
+
+  DESIGN
+  ======
+  Extends raiveFlier's Bunker + Amethyst theme with an emerald green
+  accent (--color-feeder-accent: #2a8a5a) to visually distinguish
+  raiveFeeder from raiveFlier.
+
+  MODULE LOADING ORDER
+  ====================
+  Scripts loaded at bottom of <body> in dependency order:
+    app.js -> upload.js -> audio.js -> images.js -> scraper.js
+    -> corpus.js -> progress.js -> batch.js
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="raiveFeeder — Corpus ingestion and database management for raiveFlier.">
+  <meta name="theme-color" content="#0a0a0c">
+  <title>raiveFeeder</title>
+
+  <!-- Google Fonts — Same three families as raiveFlier for visual consistency -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/feeder.css">
+</head>
+<body>
+
+  <!-- Film grain overlay — Same decorative treatment as raiveFlier -->
+  <div class="grain-overlay" aria-hidden="true"></div>
+
+  <!-- Site header -->
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">raiveFeeder</h1>
+      <p class="site-subtitle">Corpus ingestion &amp; database management</p>
+    </div>
+  </header>
+
+  <!-- Tab navigation — 5 tabs for the different ingestion modes + corpus management -->
+  <nav class="tab-nav" role="tablist" aria-label="Ingestion tabs">
+    <div class="container tab-nav__inner">
+      <button class="tab-btn tab-btn--active" role="tab" aria-selected="true" aria-controls="tab-documents" data-tab="documents">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="2"/></svg>
+        Documents
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-audio" data-tab="audio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke="currentColor" stroke-width="2"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Audio
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-images" data-tab="images">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Images
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-urls" data-tab="urls">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        URLs
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-corpus" data-tab="corpus">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Corpus
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main content — Tab panels -->
+  <main id="app" class="container">
+
+    <!-- ===== TAB 1: DOCUMENTS ===== -->
+    <section id="tab-documents" class="tab-panel" role="tabpanel" aria-label="Document upload">
+      <div class="drop-zone" id="doc-drop-zone" role="button" tabindex="0" aria-label="Drop document files here or click to browse">
+        <div class="drop-zone__content">
+          <svg class="drop-zone__icon" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M24 4L24 32M24 4L16 12M24 4L32 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 28V40C8 41.1 8.9 42 10 42H38C39.1 42 40 41.1 40 40V28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p class="drop-zone__label">Drop documents here</p>
+          <p class="drop-zone__hint">PDF, EPUB, TXT, DOCX, RTF, MOBI, DJVU</p>
+        </div>
+      </div>
+      <input type="file" id="doc-file-input" class="sr-only" accept=".pdf,.epub,.txt,.docx,.doc,.rtf,.mobi,.djvu,.html,.htm" multiple aria-label="Choose documents">
+      <label for="doc-file-input" class="btn-secondary btn-browse">Or browse files</label>
+
+      <!-- Metadata form -->
+      <div class="meta-form" id="doc-meta-form" hidden>
+        <h3 class="meta-form__title">Document Metadata</h3>
+        <div class="meta-form__grid">
+          <div class="form-group">
+            <label for="doc-title">Title</label>
+            <input type="text" id="doc-title" placeholder="Document title">
+          </div>
+          <div class="form-group">
+            <label for="doc-author">Author</label>
+            <input type="text" id="doc-author" placeholder="Author name">
+          </div>
+          <div class="form-group">
+            <label for="doc-year">Year</label>
+            <input type="number" id="doc-year" placeholder="Publication year" min="0">
+          </div>
+          <div class="form-group">
+            <label for="doc-type">Source Type</label>
+            <select id="doc-type">
+              <option value="book">Book</option>
+              <option value="article">Article</option>
+              <option value="interview">Interview</option>
+              <option value="reference">Reference</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="doc-tier">Citation Tier</label>
+            <select id="doc-tier">
+              <option value="1">Tier 1 — Published Book</option>
+              <option value="2" selected>Tier 2 — Academic/Journal</option>
+              <option value="3">Tier 3 — Magazine/Interview</option>
+              <option value="4">Tier 4 — Blog/Online</option>
+              <option value="5">Tier 5 — Forum/Social</option>
+              <option value="6">Tier 6 — Unverified</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="btn-primary" id="doc-submit-btn">Ingest Document</button>
+      </div>
+
+      <!-- File list for batch uploads -->
+      <div class="file-list" id="doc-file-list" hidden></div>
+
+      <!-- Progress area -->
+      <div class="progress-area" id="doc-progress" hidden>
+        <div class="progress-bar"><div class="progress-bar__fill" id="doc-progress-fill"></div></div>
+        <p class="progress-text" id="doc-progress-text"></p>
+      </div>
+
+      <!-- Results area -->
+      <div class="result-area" id="doc-result" hidden></div>
+    </section>
+
+    <!-- ===== TAB 2: AUDIO ===== -->
+    <section id="tab-audio" class="tab-panel" role="tabpanel" aria-label="Audio transcription" hidden>
+      <div class="drop-zone" id="audio-drop-zone" role="button" tabindex="0" aria-label="Drop audio files here">
+        <div class="drop-zone__content">
+          <svg class="drop-zone__icon" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M24 6a6 6 0 00-6 6v16a6 6 0 0012 0V12a6 6 0 00-6-6z" stroke="currentColor" stroke-width="2"/>
+            <path d="M38 20v4a14 14 0 01-28 0v-4M24 38v6M16 44h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p class="drop-zone__label">Drop audio files here</p>
+          <p class="drop-zone__hint">MP3, WAV, FLAC, M4A, OGG</p>
+        </div>
+      </div>
+      <input type="file" id="audio-file-input" class="sr-only" accept=".mp3,.wav,.flac,.m4a,.ogg,.webm" aria-label="Choose audio file">
+      <label for="audio-file-input" class="btn-secondary btn-browse">Or browse files</label>
+
+      <!-- Provider toggle -->
+      <div class="provider-toggle" id="audio-provider-toggle" hidden>
+        <h3 class="meta-form__title">Transcription Provider</h3>
+        <div class="toggle-group">
+          <button class="toggle-btn toggle-btn--active" data-provider="whisper_local">Local Whisper (Free)</button>
+          <button class="toggle-btn" data-provider="whisper_api">OpenAI API ($0.006/min)</button>
+        </div>
+        <div class="form-group">
+          <label for="audio-language">Language (optional)</label>
+          <input type="text" id="audio-language" placeholder="Auto-detect (or 'en', 'de', etc.)">
+        </div>
+        <button type="button" class="btn-primary" id="audio-transcribe-btn">Transcribe</button>
+      </div>
+
+      <!-- Transcript preview + edit -->
+      <div class="transcript-area" id="audio-transcript" hidden>
+        <h3 class="meta-form__title">Transcript Preview</h3>
+        <textarea id="audio-transcript-text" class="transcript-editor" rows="15" placeholder="Transcript will appear here..."></textarea>
+        <div class="meta-form__grid">
+          <div class="form-group">
+            <label for="audio-title">Title</label>
+            <input type="text" id="audio-title" placeholder="Interview / podcast title">
+          </div>
+          <div class="form-group">
+            <label for="audio-type">Source Type</label>
+            <select id="audio-type">
+              <option value="interview" selected>Interview</option>
+              <option value="transcript">Transcript</option>
+              <option value="reference">Reference</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="btn-primary" id="audio-ingest-btn">Ingest Transcript</button>
+      </div>
+
+      <div class="progress-area" id="audio-progress" hidden>
+        <div class="progress-bar"><div class="progress-bar__fill" id="audio-progress-fill"></div></div>
+        <p class="progress-text" id="audio-progress-text"></p>
+      </div>
+    </section>
+
+    <!-- ===== TAB 3: IMAGES ===== -->
+    <section id="tab-images" class="tab-panel" role="tabpanel" aria-label="Image OCR ingestion" hidden>
+      <div class="mode-selector">
+        <button class="toggle-btn toggle-btn--active" data-mode="single_flier">Single Flier</button>
+        <button class="toggle-btn" data-mode="multi_page_scan">Multi-Page Scan</button>
+      </div>
+
+      <div class="drop-zone" id="image-drop-zone" role="button" tabindex="0" aria-label="Drop images here">
+        <div class="drop-zone__content">
+          <svg class="drop-zone__icon" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <rect x="6" y="6" width="36" height="36" rx="4" stroke="currentColor" stroke-width="2"/>
+            <circle cx="17" cy="17" r="3" fill="currentColor"/>
+            <path d="M42 30l-10-10L10 42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p class="drop-zone__label">Drop images here</p>
+          <p class="drop-zone__hint">JPEG, PNG, TIFF, WEBP</p>
+        </div>
+      </div>
+      <input type="file" id="image-file-input" class="sr-only" accept="image/*" multiple aria-label="Choose images">
+      <label for="image-file-input" class="btn-secondary btn-browse">Or browse files</label>
+
+      <!-- Image preview grid -->
+      <div class="image-grid" id="image-preview-grid" hidden></div>
+
+      <!-- OCR result preview -->
+      <div class="ocr-preview" id="image-ocr-preview" hidden>
+        <h3 class="meta-form__title">OCR Result</h3>
+        <textarea id="image-ocr-text" class="transcript-editor" rows="10" placeholder="OCR text will appear here..."></textarea>
+        <div class="meta-form__grid">
+          <div class="form-group">
+            <label for="image-title">Title</label>
+            <input type="text" id="image-title" placeholder="Document title">
+          </div>
+          <div class="form-group">
+            <label for="image-author">Author</label>
+            <input type="text" id="image-author" placeholder="Author">
+          </div>
+        </div>
+        <button type="button" class="btn-primary" id="image-ingest-btn">Ingest</button>
+      </div>
+
+      <div class="progress-area" id="image-progress" hidden>
+        <div class="progress-bar"><div class="progress-bar__fill" id="image-progress-fill"></div></div>
+        <p class="progress-text" id="image-progress-text"></p>
+      </div>
+    </section>
+
+    <!-- ===== TAB 4: URLs ===== -->
+    <section id="tab-urls" class="tab-panel" role="tabpanel" aria-label="URL scraping" hidden>
+      <div class="url-form">
+        <div class="form-group">
+          <label for="url-input">Seed URL</label>
+          <input type="url" id="url-input" placeholder="https://example.com/article" class="url-input">
+        </div>
+        <div class="meta-form__grid">
+          <div class="form-group">
+            <label for="url-depth">Max Depth: <span id="url-depth-value">0</span></label>
+            <input type="range" id="url-depth" min="0" max="5" value="0" class="slider">
+          </div>
+          <div class="form-group">
+            <label for="url-pages">Max Pages: <span id="url-pages-value">1</span></label>
+            <input type="range" id="url-pages" min="1" max="100" value="1" class="slider">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="url-query">NL Query (optional — enables LLM-guided crawling)</label>
+          <input type="text" id="url-query" placeholder='e.g. "Berlin techno clubs 1990s"'>
+        </div>
+        <button type="button" class="btn-primary" id="url-scrape-btn">Scrape</button>
+      </div>
+
+      <!-- Crawl results -->
+      <div class="crawl-results" id="url-results" hidden>
+        <h3 class="meta-form__title">Discovered Pages</h3>
+        <div class="crawl-list" id="url-page-list"></div>
+        <button type="button" class="btn-primary" id="url-ingest-btn">Ingest Selected</button>
+      </div>
+
+      <div class="progress-area" id="url-progress" hidden>
+        <div class="progress-bar"><div class="progress-bar__fill" id="url-progress-fill"></div></div>
+        <p class="progress-text" id="url-progress-text"></p>
+      </div>
+    </section>
+
+    <!-- ===== TAB 5: CORPUS ===== -->
+    <section id="tab-corpus" class="tab-panel" role="tabpanel" aria-label="Corpus management" hidden>
+      <!-- Stats dashboard -->
+      <div class="corpus-stats" id="corpus-stats">
+        <div class="stat-card">
+          <span class="stat-card__value" id="stat-chunks">—</span>
+          <span class="stat-card__label">Chunks</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__value" id="stat-sources">—</span>
+          <span class="stat-card__label">Sources</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__value" id="stat-entities">—</span>
+          <span class="stat-card__label">Entity Tags</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__value" id="stat-genres">—</span>
+          <span class="stat-card__label">Genre Tags</span>
+        </div>
+      </div>
+
+      <!-- Source type breakdown -->
+      <div class="type-breakdown" id="type-breakdown"></div>
+
+      <!-- Search -->
+      <div class="corpus-search">
+        <div class="form-group">
+          <label for="corpus-search-input">Semantic Search</label>
+          <div class="search-row">
+            <input type="text" id="corpus-search-input" placeholder="Search the corpus...">
+            <button type="button" class="btn-primary" id="corpus-search-btn">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search results -->
+      <div class="search-results" id="corpus-search-results" hidden></div>
+
+      <!-- Source table -->
+      <div class="source-table-wrap">
+        <h3 class="meta-form__title">Ingested Sources</h3>
+        <div class="source-table" id="corpus-source-table"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="corpus-actions">
+        <button type="button" class="btn-secondary" id="corpus-export-btn">Export Corpus</button>
+        <label for="corpus-import-input" class="btn-secondary">Import Corpus</label>
+        <input type="file" id="corpus-import-input" class="sr-only" accept=".tar.gz,.tgz">
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="text-caption" style="font-size: 0.7rem;">2026 Resistor Technology &mdash; <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a> &middot; <a href="https://github.com/deeptechhouse/raiveFlier" target="_blank" rel="noopener">GitHub</a></p>
+    </div>
+  </footer>
+
+  <!-- Application scripts — loaded in dependency order -->
+  <script src="js/app.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/images.js"></script>
+  <script src="js/scraper.js"></script>
+  <script src="js/corpus.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/batch.js"></script>
+</body>
+</html>
