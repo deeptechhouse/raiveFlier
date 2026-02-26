@@ -3252,6 +3252,72 @@ body {
   color: var(--color-amber-text);
 }
 
+/* ---- Smart Search: Result Highlighting ---- */
+/* Wraps matched query terms in result text snippets with an amethyst
+   tinted background so they stand out visually.  Uses <mark> tags
+   inserted by _highlightText() in corpus.js. */
+.corpus-result__text mark {
+  background: rgba(106, 74, 138, 0.25);
+  color: var(--color-accent-text);
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: inherit;
+}
+
+/* ---- Smart Search: Auto-Detected Filter Badge ---- */
+/* Small "auto" badge appended to filter labels when the parse-query
+   endpoint detects a structured signal in the free-text query and
+   auto-fills the corresponding filter control. */
+.corpus-filter__auto-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent-text);
+  background: rgba(106, 74, 138, 0.15);
+  border: 1px solid rgba(106, 74, 138, 0.35);
+  border-radius: 3px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* ---- Smart Search: Autocomplete Dropdown ---- */
+/* Absolutely-positioned dropdown rendered below entity and geographic
+   filter text inputs.  Combines prefix, substring, and fuzzy matches
+   from the /api/v1/corpus/suggest endpoint. */
+.corpus-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.corpus-autocomplete__item {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.corpus-autocomplete__item:hover,
+.corpus-autocomplete__item--active {
+  background: rgba(106, 74, 138, 0.2);
+  color: var(--color-accent-text);
+}
+
 /* ---- Corpus Sidebar Responsive ---- */
 @media (max-width: 768px) {
   .corpus-sidebar {

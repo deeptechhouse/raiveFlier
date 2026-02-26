@@ -53,7 +53,7 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 ## Key Entry Points
 
 - **Application start:** `src/main.py` — FastAPI app factory, dependency injection, lifespan management
-- **API routes:** `src/api/routes.py` — all REST endpoint definitions (`/api/v1/...`)
+- **API routes:** `src/api/routes.py` — all REST endpoint definitions (`/api/v1/...`) including smart corpus search (parse-query, suggest, search, stats)
 - **WebSocket:** `src/api/websocket.py` — real-time progress updates via `/ws/progress/{session_id}`
 - **Pipeline orchestrator:** `src/pipeline/orchestrator.py` — coordinates the 5-phase analysis
 - **CLI ingestion:** `src/cli/ingest.py` — `python -m src.cli.ingest` for RAG corpus loading

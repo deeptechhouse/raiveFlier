@@ -24,7 +24,9 @@
  * - GET /api/v1/corpus/stats — Check if RAG is available and get corpus size
  * - POST /api/v1/corpus/search — Semantic search with query + optional filters
  *   Request: { query, top_k, source_type?, entity_tag?, geographic_tag? }
- *   Response: { results: [{ text, source_title, citation_tier, similarity_score, ... }] }
+ *   Response: { results, facets, parsed_filters, has_more, total_results }
+ * - POST /api/v1/corpus/parse-query — Extract structured filters from free text
+ * - GET /api/v1/corpus/suggest — Autocomplete suggestions for filter fields
  *
  * MODULE COMMUNICATION
  * ====================
@@ -62,6 +64,14 @@ const Corpus = (() => {
   let _availableGenres = [];  // Genre tags for populating genre filter dropdown
   let _availableEras = [];    // Time periods for populating era filter dropdown
 
+  // Smart search state — supports NL query parsing, autocomplete, and facets.
+  // _manualFilters tracks which filters the user explicitly set (vs. auto-detected).
+  // _parseTimer debounces the parse-query request separately from search.
+  let _manualFilters = {};    // { genre: true, era: true, ... } — set on user interaction
+  let _parseTimer = null;     // Timer ID for parse-query debouncing
+  let _suggestTimers = {};    // Timer IDs per filter field for autocomplete debouncing
+  let _activeDropdown = null; // Currently visible autocomplete dropdown element
+
   // Resize state — managed by mouse event listeners on the drag handle
   let _isResizing = false;
   const _MIN_WIDTH = 280;     // Minimum sidebar width (pixels)
@@ -80,6 +90,25 @@ const Corpus = (() => {
     const div = document.createElement("div");
     div.appendChild(document.createTextNode(String(str)));
     return div.innerHTML;
+  }
+
+  /**
+   * Highlight query terms in result text by wrapping matches in <mark> tags.
+   * HTML-escapes the text first for safety, then applies case-insensitive
+   * word-boundary matching to avoid false positives inside unrelated words.
+   * Short tokens (< 2 chars) are skipped to prevent noisy highlighting.
+   */
+  function _highlightText(text, query) {
+    if (!query || query.length < 2) return _esc(text);
+    var tokens = query.split(/\s+/).filter(function (t) { return t.length >= 2; });
+    if (!tokens.length) return _esc(text);
+    // Escape regex special characters in each token
+    var escaped = tokens.map(function (t) {
+      return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    });
+    var pattern = new RegExp("\\b(" + escaped.join("|") + ")", "gi");
+    var safe = _esc(text);
+    return safe.replace(pattern, "<mark>$1</mark>");
   }
 
   // ------------------------------------------------------------------
@@ -232,6 +261,11 @@ const Corpus = (() => {
       filterEntity.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); _handleSearch(); }
       });
+      // Track manual changes to suppress auto-fill for this field
+      filterEntity.addEventListener("input", () => {
+        if (filterEntity.value.trim()) _manualFilters.entity = true;
+        else delete _manualFilters.entity;
+      });
     }
 
     const filterGeo = document.getElementById("corpus-filter-geo");
@@ -239,15 +273,31 @@ const Corpus = (() => {
       filterGeo.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); _handleSearch(); }
       });
+      filterGeo.addEventListener("input", () => {
+        if (filterGeo.value.trim()) _manualFilters.geo = true;
+        else delete _manualFilters.geo;
+      });
     }
 
     // Genre multi-select — triggers search on selection change
     const filterGenre = document.getElementById("corpus-filter-genre");
-    if (filterGenre) filterGenre.addEventListener("change", _handleSearch);
+    if (filterGenre) {
+      filterGenre.addEventListener("change", () => {
+        _manualFilters.genre = true;
+        _markAutoDetected("genre", false);
+        _handleSearch();
+      });
+    }
 
     // Era dropdown — triggers search on selection
     const filterEra = document.getElementById("corpus-filter-era");
-    if (filterEra) filterEra.addEventListener("change", _handleSearch);
+    if (filterEra) {
+      filterEra.addEventListener("change", () => {
+        _manualFilters.era = true;
+        _markAutoDetected("era", false);
+        _handleSearch();
+      });
+    }
 
     // Citation tier range slider — updates label on input, searches on change
     const filterTier = document.getElementById("corpus-filter-tier");
@@ -273,6 +323,11 @@ const Corpus = (() => {
 
     // Drag handle for resizing
     _initDragHandle();
+
+    // Autocomplete for entity and geographic filter text inputs —
+    // fetches fuzzy suggestions from /api/v1/corpus/suggest on keystroke.
+    _initAutocomplete("corpus-filter-entity", "entity_tag");
+    _initAutocomplete("corpus-filter-geo", "geographic_tag");
 
     // Apply saved width
     sidebar.style.width = _width + "px";
@@ -363,7 +418,7 @@ const Corpus = (() => {
             </div>
           </div>
           ${authorLine}
-          <div class="corpus-result__text" data-index="${idx}">${_esc(r.text)}</div>
+          <div class="corpus-result__text" data-index="${idx}">${_highlightText(r.text, _lastQuery)}</div>
           <div class="corpus-result__score">
             <div class="corpus-result__score-fill" style="width: ${scorePercent}%"></div>
           </div>
@@ -502,6 +557,309 @@ const Corpus = (() => {
   }
 
   // ------------------------------------------------------------------
+  // Smart Search — NL query parsing, autocomplete, and facet counts.
+  // These features augment the existing search flow without replacing it.
+  // ------------------------------------------------------------------
+
+  /**
+   * Parse the query for structured filter signals (genre, era, location,
+   * artist) and auto-fill the corresponding filter controls when the user
+   * hasn't manually set them.  Runs on a separate debounce timer so it
+   * doesn't block the search itself.
+   */
+  async function _parseQuery(query) {
+    if (query.length < 3) return;
+    try {
+      var response = await fetch("/api/v1/corpus/parse-query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: query }),
+      });
+      if (!response.ok) return;
+      var parsed = await response.json();
+      _applyParsedFilters(parsed);
+    } catch (e) {
+      /* NL parsing is an enhancement — silent failure is fine */
+    }
+  }
+
+  /**
+   * Auto-fill filter controls with values detected by the parse-query
+   * endpoint.  Only fills filters that the user hasn't manually changed.
+   * Adds small "auto" badges to auto-filled filter labels.
+   */
+  function _applyParsedFilters(parsed) {
+    // Genre auto-fill
+    if (parsed.genres && parsed.genres.length > 0) {
+      var genreSelect = document.getElementById("corpus-filter-genre");
+      if (genreSelect && !_manualFilters.genre) {
+        Array.from(genreSelect.options).forEach(function (opt) {
+          opt.selected = parsed.genres.indexOf(opt.value) !== -1;
+        });
+        _markAutoDetected("genre", true);
+      }
+    }
+
+    // Era / time period auto-fill
+    if (parsed.time_period) {
+      var eraSelect = document.getElementById("corpus-filter-era");
+      if (eraSelect && !_manualFilters.era) {
+        // Try exact match first, then find the containing era range
+        var matched = false;
+        Array.from(eraSelect.options).forEach(function (opt) {
+          if (opt.value === parsed.time_period) {
+            eraSelect.value = opt.value;
+            matched = true;
+          }
+        });
+        if (matched) _markAutoDetected("era", true);
+      }
+    }
+
+    // Location auto-fill
+    if (parsed.geographic_tags && parsed.geographic_tags.length > 0) {
+      var geoInput = document.getElementById("corpus-filter-geo");
+      if (geoInput && !_manualFilters.geo) {
+        geoInput.value = parsed.geographic_tags[0];
+        _markAutoDetected("geo", true);
+      }
+    }
+
+    // Artist / entity auto-fill
+    if (parsed.artist_canonical) {
+      var entityInput = document.getElementById("corpus-filter-entity");
+      if (entityInput && !_manualFilters.entity) {
+        entityInput.value = parsed.artist_canonical;
+        _markAutoDetected("entity", true);
+      }
+    }
+  }
+
+  /**
+   * Toggle a small "auto" badge on a filter label to indicate the value
+   * was detected from the query text rather than set by the user.
+   */
+  function _markAutoDetected(field, detected) {
+    var labelMap = {
+      genre: "corpus-filter-genre",
+      era: "corpus-filter-era",
+      geo: "corpus-filter-geo",
+      entity: "corpus-filter-entity",
+    };
+    var inputId = labelMap[field];
+    if (!inputId) return;
+    var label = document.querySelector('label[for="' + inputId + '"]');
+    if (!label) return;
+    var badge = label.querySelector(".corpus-filter__auto-badge");
+    if (detected && !badge) {
+      badge = document.createElement("span");
+      badge.className = "corpus-filter__auto-badge";
+      badge.textContent = "auto";
+      label.appendChild(badge);
+    } else if (!detected && badge) {
+      badge.remove();
+    }
+  }
+
+  /**
+   * Clear all auto-detected badges and reset manual filter tracking.
+   * Called when the search input is cleared.
+   */
+  function _clearAutoDetected() {
+    _manualFilters = {};
+    ["genre", "era", "geo", "entity"].forEach(function (f) {
+      _markAutoDetected(f, false);
+    });
+  }
+
+  /**
+   * Update filter dropdown option labels with facet counts from the
+   * search response.  Shows counts like "Techno (42)" so the user knows
+   * which filter values are productive before clicking them.
+   * Only runs on fresh searches (not Load More).
+   */
+  function _updateFacetCounts(facets) {
+    if (!facets) return;
+
+    // Source type dropdown — append counts to option labels
+    var sourceSelect = document.getElementById("corpus-filter-source");
+    if (sourceSelect && facets.source_types) {
+      Array.from(sourceSelect.options).forEach(function (opt) {
+        if (opt.value === "") return; // "All types" option
+        var count = facets.source_types[opt.value] || 0;
+        var baseText = opt.value.charAt(0).toUpperCase() + opt.value.slice(1);
+        opt.textContent = count > 0 ? baseText + " (" + count + ")" : baseText;
+      });
+    }
+
+    // Genre multi-select — append counts
+    var genreSelect = document.getElementById("corpus-filter-genre");
+    if (genreSelect && facets.genre_tags) {
+      Array.from(genreSelect.options).forEach(function (opt) {
+        if (opt.value === "") return;
+        var count = facets.genre_tags[opt.value] || 0;
+        // Strip any existing count suffix before re-appending
+        var base = opt.value;
+        opt.textContent = count > 0 ? base + " (" + count + ")" : base;
+      });
+    }
+
+    // Era dropdown — append counts (match by option value against time_periods)
+    var eraSelect = document.getElementById("corpus-filter-era");
+    if (eraSelect && facets.time_periods) {
+      Array.from(eraSelect.options).forEach(function (opt) {
+        if (opt.value === "") return;
+        var count = facets.time_periods[opt.value] || 0;
+        // Strip old count suffix using the stored data-base attribute or regex
+        var base = opt.textContent.replace(/\s*\(\d+\)$/, "");
+        opt.textContent = count > 0 ? base + " (" + count + ")" : base;
+      });
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Autocomplete — fuzzy suggestions for entity and location filter
+  // inputs.  Fetches from GET /api/v1/corpus/suggest with 150ms debounce.
+  // ------------------------------------------------------------------
+
+  /**
+   * Attach autocomplete behavior to a text input filter field.
+   * On each keystroke (debounced 150ms), fetches suggestions from the
+   * backend and renders a dropdown below the input.
+   */
+  function _initAutocomplete(inputId, field) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+
+    // Make the parent position:relative for absolute dropdown positioning
+    input.parentElement.style.position = "relative";
+
+    input.addEventListener("input", function () {
+      if (_suggestTimers[field]) clearTimeout(_suggestTimers[field]);
+      _suggestTimers[field] = setTimeout(function () {
+        _fetchSuggestions(input, field);
+      }, 150);
+    });
+
+    // Close dropdown on blur (slight delay to allow click events to fire)
+    input.addEventListener("blur", function () {
+      setTimeout(function () { _closeDropdown(inputId); }, 200);
+    });
+
+    // Keyboard navigation in the dropdown
+    input.addEventListener("keydown", function (e) {
+      _handleDropdownKeyboard(e, inputId, field);
+    });
+  }
+
+  /**
+   * Fetch autocomplete suggestions from the backend suggest endpoint.
+   * Renders a dropdown if results are returned; closes it if empty.
+   */
+  async function _fetchSuggestions(input, field) {
+    var prefix = input.value.trim();
+    if (prefix.length < 1) { _closeDropdown(input.id); return; }
+    try {
+      var url = "/api/v1/corpus/suggest?field=" + encodeURIComponent(field) +
+                "&prefix=" + encodeURIComponent(prefix);
+      var resp = await fetch(url);
+      if (!resp.ok) return;
+      var data = await resp.json();
+      if (data.suggestions && data.suggestions.length > 0) {
+        _renderDropdown(input.id, data.suggestions);
+      } else {
+        _closeDropdown(input.id);
+      }
+    } catch (e) {
+      /* Autocomplete is enhancement — silent failure */
+    }
+  }
+
+  /**
+   * Render an absolutely-positioned dropdown below the input with
+   * suggestion items.  Clicking a suggestion fills the input and
+   * triggers a search.
+   */
+  function _renderDropdown(inputId, suggestions) {
+    _closeDropdown(inputId);
+    var input = document.getElementById(inputId);
+    if (!input) return;
+
+    var dropdown = document.createElement("div");
+    dropdown.className = "corpus-autocomplete";
+    dropdown.id = inputId + "-dropdown";
+    dropdown.setAttribute("role", "listbox");
+
+    suggestions.forEach(function (s) {
+      var item = document.createElement("div");
+      item.className = "corpus-autocomplete__item";
+      item.setAttribute("role", "option");
+      item.textContent = s;
+      item.addEventListener("mousedown", function (e) {
+        e.preventDefault(); // Prevent blur from firing before click
+        input.value = s;
+        _closeDropdown(inputId);
+        // Mark this filter as manually set since user chose a suggestion
+        if (inputId === "corpus-filter-entity") _manualFilters.entity = true;
+        if (inputId === "corpus-filter-geo") _manualFilters.geo = true;
+        _handleSearch();
+      });
+      dropdown.appendChild(item);
+    });
+
+    input.parentElement.appendChild(dropdown);
+    _activeDropdown = dropdown;
+  }
+
+  /**
+   * Close/remove the autocomplete dropdown for a given input.
+   */
+  function _closeDropdown(inputId) {
+    var dropdown = document.getElementById(inputId + "-dropdown");
+    if (dropdown) dropdown.remove();
+    _activeDropdown = null;
+  }
+
+  /**
+   * Handle keyboard navigation within the autocomplete dropdown.
+   * Arrow keys move the active highlight; Enter selects; Escape closes.
+   */
+  function _handleDropdownKeyboard(e, inputId, field) {
+    var dropdown = document.getElementById(inputId + "-dropdown");
+    if (!dropdown) return;
+    var items = dropdown.querySelectorAll(".corpus-autocomplete__item");
+    if (!items.length) return;
+
+    var activeItem = dropdown.querySelector(".corpus-autocomplete__item--active");
+    var activeIdx = -1;
+    items.forEach(function (item, i) {
+      if (item === activeItem) activeIdx = i;
+    });
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      var nextIdx = activeIdx < items.length - 1 ? activeIdx + 1 : 0;
+      if (activeItem) activeItem.classList.remove("corpus-autocomplete__item--active");
+      items[nextIdx].classList.add("corpus-autocomplete__item--active");
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      var prevIdx = activeIdx > 0 ? activeIdx - 1 : items.length - 1;
+      if (activeItem) activeItem.classList.remove("corpus-autocomplete__item--active");
+      items[prevIdx].classList.add("corpus-autocomplete__item--active");
+    } else if (e.key === "Enter" && activeItem) {
+      e.preventDefault();
+      var input = document.getElementById(inputId);
+      if (input) input.value = activeItem.textContent;
+      _closeDropdown(inputId);
+      if (inputId === "corpus-filter-entity") _manualFilters.entity = true;
+      if (inputId === "corpus-filter-geo") _manualFilters.geo = true;
+      _handleSearch();
+    } else if (e.key === "Escape") {
+      _closeDropdown(inputId);
+    }
+  }
+
+  // ------------------------------------------------------------------
   // Search — Debounced input triggers automatic search after 300ms pause.
   // The debounce prevents firing a request on every keystroke, reducing
   // unnecessary API calls. Minimum 3 characters required before auto-search.
@@ -509,12 +867,31 @@ const Corpus = (() => {
 
   function _handleInputDebounce() {
     if (_debounceTimer) clearTimeout(_debounceTimer);
-    _debounceTimer = setTimeout(() => {
-      const input = _getSearchInput();
-      if (input && input.value.trim().length >= 3) {
+    // Also fire parse-query on a separate timer so NL filter detection
+    // runs in parallel with the search debounce.
+    if (_parseTimer) clearTimeout(_parseTimer);
+
+    var input = _getSearchInput();
+    var trimmed = input ? input.value.trim() : "";
+
+    // Clear auto-detected state when the search input is emptied
+    if (trimmed.length === 0) {
+      _clearAutoDetected();
+    }
+
+    _debounceTimer = setTimeout(function () {
+      if (trimmed.length >= 3) {
         _handleSearch();
       }
     }, 300);
+
+    // Parse-query fires slightly earlier than search to give the backend
+    // a head start on detecting structured signals.
+    _parseTimer = setTimeout(function () {
+      if (trimmed.length >= 3) {
+        _parseQuery(trimmed);
+      }
+    }, 200);
   }
 
   function _handleSearch() {
@@ -576,6 +953,12 @@ const Corpus = (() => {
       }
       _hasMore = data.has_more || false;
       _totalResults = data.total_results || 0;
+
+      // Update facet counts on fresh searches (not Load More) so filter
+      // dropdowns show per-value result counts like "Techno (42)".
+      if (!isLoadMore && data.facets) {
+        _updateFacetCounts(data.facets);
+      }
     } catch (err) {
       if (!isLoadMore) _results = [];
       _searchError = err.message || "Search failed";

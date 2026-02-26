@@ -455,6 +455,10 @@ class ChromaDBProvider(IVectorStoreProvider):
                 genre_tag_count=len(genre_tags),
                 genre_tags=sorted(genre_tags),
                 time_periods=sorted(time_periods),
+                # Full tag lists for autocomplete — reuse the sets already
+                # collected above to avoid a second pass over metadata.
+                entity_tags_list=sorted(entity_tags),
+                geographic_tags_list=sorted(geographic_tags),
             )
 
             # Cache the result
