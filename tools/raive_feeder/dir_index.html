@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>tools/raive_feeder/ — Directory Index</title>
+<style>body{font-family:'Inter',system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;background:#1a1a2e;color:#e0e0e0}h1{color:#2a8a5a}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.5rem;border-bottom:1px solid #333}th{color:#2a8a5a}.deleted{color:#888;text-decoration:line-through}</style>
+</head>
+<body>
+<h1>tools/raive_feeder/</h1>
+<p>raiveFeeder — companion GUI app for corpus ingestion and database management. Runs on port 8001 alongside raiveFlier on port 8000. Shares code from <code>src/</code> (models, interfaces, providers, ingestion service).</p>
+
+<h2>Contents</h2>
+<table>
+<tr><th>Name</th><th>Type</th><th>Description</th></tr>
+<tr><td>__init__.py</td><td>File</td><td>Package marker with module docstring</td></tr>
+<tr><td>__main__.py</td><td>File</td><td>Entry point for <code>python -m tools.raive_feeder</code></td></tr>
+<tr><td>main.py</td><td>File</td><td>FastAPI app factory, DI wiring, lifespan management</td></tr>
+<tr><td>api/</td><td>Directory</td><td>REST API routes, Pydantic schemas, WebSocket handler</td></tr>
+<tr><td>config/</td><td>Directory</td><td>FeederSettings configuration extending raiveFlier Settings</td></tr>
+<tr><td>services/</td><td>Directory</td><td>Business logic: AudioTranscriber, WebCrawler, ImageIngester, FormatConverter, CorpusManager, BatchProcessor</td></tr>
+<tr><td>interfaces/</td><td>Directory</td><td>Abstract base classes (ITranscriptionProvider)</td></tr>
+<tr><td>providers/</td><td>Directory</td><td>Concrete provider implementations (Whisper local + API)</td></tr>
+<tr><td>frontend/</td><td>Directory</td><td>5-tab SPA with emerald green Bunker theme</td></tr>
+<tr><td>tests/</td><td>Directory</td><td>Unit and integration tests (pytest)</td></tr>
+</table>
+
+<h2>Deleted Files</h2>
+<p><em>None</em></p>
+</body>
+</html>

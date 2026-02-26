@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>tools/raive_feeder/services/ — Directory Index</title>
+<style>body{font-family:'Inter',system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;background:#1a1a2e;color:#e0e0e0}h1{color:#2a8a5a}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.5rem;border-bottom:1px solid #333}th{color:#2a8a5a}</style>
+</head>
+<body>
+<h1>tools/raive_feeder/services/</h1>
+<p>Business logic layer for raiveFeeder. Each service encapsulates a domain capability and depends on interfaces (never concrete providers).</p>
+
+<h2>Contents</h2>
+<table>
+<tr><th>Name</th><th>Type</th><th>Description</th></tr>
+<tr><td>__init__.py</td><td>File</td><td>Package marker</td></tr>
+<tr><td>audio_transcriber.py</td><td>File</td><td>Facade for audio transcription — provider selection, format validation, WAV conversion</td></tr>
+<tr><td>batch_processor.py</td><td>File</td><td>Job queue with asyncio concurrency, pause/resume/cancel, observer-pattern progress</td></tr>
+<tr><td>corpus_manager.py</td><td>File</td><td>CRUD on vector store — list sources, source detail, export/import tarballs</td></tr>
+<tr><td>format_converter.py</td><td>File</td><td>Strategy pattern: MOBI→EPUB, DJVU→TXT, DOCX→TXT, DOC→TXT, RTF→TXT</td></tr>
+<tr><td>image_ingester.py</td><td>File</td><td>Image OCR ingestion — single flier mode + multi-page scan concatenation</td></tr>
+<tr><td>web_crawler.py</td><td>File</td><td>LLM-guided recursive web crawler with blind and relevance-scored modes</td></tr>
+</table>
+
+<h2>Deleted Files</h2>
+<p><em>None</em></p>
+</body>
+</html>

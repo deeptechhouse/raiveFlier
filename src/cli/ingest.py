@@ -73,18 +73,17 @@ from src.config.settings import Settings
 def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """Select the first available embedding provider.
 
-    This function implements a fallback chain for embedding providers:
+    Fallback chain mirrors ``main.py`` to ensure the CLI uses the same
+    embedding model as the deployed app (critical for dimension compatibility
+    with an existing ChromaDB collection):
 
-    Priority: OpenAI (if real OpenAI key, not a custom base_url) ->
-              Nomic/Ollama (if reachable).
-
-    When ``openai_base_url`` is set (e.g. TogetherAI), the OpenAI
-    embedding endpoint is unreachable with that key, so we fall through
-    to Nomic/Ollama instead. This is because TogetherAI uses a different
-    embedding API that is not compatible with the OpenAI embedding SDK.
+    Priority: OpenAI (if real key, not a custom base_url) ->
+              FastEmbed (ONNX, 1024-dim, matches production corpus) ->
+              SentenceTransformer (PyTorch, 1024-dim) ->
+              Nomic/Ollama (768-dim — only works with a fresh collection).
 
     Imports are deferred inside the function to avoid loading heavy
-    dependencies (httpx, openai SDK, etc.) unless actually needed.
+    dependencies (httpx, openai SDK, fastembed, etc.) unless actually needed.
 
     Returns
     -------
@@ -92,6 +91,7 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
         The first available embedding provider, or ``None`` if none are
         configured.
     """
+    # --- Tier 1: OpenAI API (if real OpenAI key, not TogetherAI) ---
     if app_settings.openai_api_key:
         from src.providers.embedding.openai_embedding_provider import (
             OpenAIEmbeddingProvider,
@@ -101,6 +101,26 @@ def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
         if provider.is_available():
             return provider
 
+    # --- Tier 2: FastEmbed (ONNX, no PyTorch, 1024-dim default) ---
+    # Matches the production corpus built with intfloat/multilingual-e5-large.
+    from src.providers.embedding.fastembed_embedding_provider import (
+        FastEmbedEmbeddingProvider,
+    )
+
+    fe_provider = FastEmbedEmbeddingProvider()
+    if fe_provider.is_available():
+        return fe_provider
+
+    # --- Tier 3: SentenceTransformer (PyTorch, 1024-dim default) ---
+    from src.providers.embedding.sentence_transformer_embedding_provider import (
+        SentenceTransformerEmbeddingProvider,
+    )
+
+    st_provider = SentenceTransformerEmbeddingProvider()
+    if st_provider.is_available():
+        return st_provider
+
+    # --- Tier 4: Nomic via Ollama (768-dim — dimension mismatch warning) ---
     from src.providers.embedding.nomic_embedding_provider import (
         NomicEmbeddingProvider,
     )
@@ -271,11 +291,15 @@ async def _handle_article(args: argparse.Namespace, service) -> int:  # noqa: AN
 async def _handle_directory(args: argparse.Namespace, service) -> int:  # noqa: ANN001
     """Ingest all files in a directory."""
     source_type = args.type
+    skip_tagging = getattr(args, "skip_tagging", False)
     print(f"Ingesting directory: {args.path} (type: {source_type})")
+    if skip_tagging:
+        print("  Skipping LLM metadata tagging (embeddings-only mode)")
 
     results = await service.ingest_directory(
         dir_path=args.path,
         source_type=source_type,
+        skip_tagging=skip_tagging,
     )
 
     total_chunks = sum(r.chunks_created for r in results)
@@ -415,6 +439,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--type",
         default="article",
         help="Source type label (default: article)",
+    )
+    dir_parser.add_argument(
+        "--skip-tagging",
+        action="store_true",
+        dest="skip_tagging",
+        help="Skip LLM metadata extraction (faster, embeddings-only)",
     )
 
     # -- purge --
