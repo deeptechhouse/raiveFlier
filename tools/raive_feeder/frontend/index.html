@@ -341,8 +341,16 @@
         <div class="source-table" id="corpus-source-table"></div>
       </div>
 
+      <!-- Publish status -->
+      <div class="publish-status" id="publish-status" hidden>
+        <span class="publish-status__label">Latest release:</span>
+        <span class="publish-status__tag" id="publish-latest-tag">—</span>
+        <span class="publish-status__deploy" id="publish-deploy-indicator"></span>
+      </div>
+
       <!-- Actions -->
       <div class="corpus-actions">
+        <button type="button" class="btn-primary" id="corpus-publish-btn">Publish to GitHub</button>
         <button type="button" class="btn-secondary" id="corpus-export-btn">Export Corpus</button>
         <label for="corpus-import-input" class="btn-secondary">Import Corpus</label>
         <input type="file" id="corpus-import-input" class="sr-only" accept=".tar.gz,.tgz">

@@ -601,6 +601,26 @@ body {
   padding: 0 var(--space-2); border-radius: 4px;
 }
 
+/* ---- Publish status ---- */
+.publish-status {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px; margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+.publish-status__label { color: var(--color-text-muted); }
+.publish-status__tag {
+  font-family: var(--font-mono);
+  color: var(--color-accent); font-weight: 600;
+}
+.publish-status__deploy {
+  margin-left: auto; font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.publish-status__deploy--active { color: var(--color-accent); }
+
 /* ---- Footer ---- */
 .site-footer {
   margin-top: auto;
