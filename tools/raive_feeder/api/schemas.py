@@ -219,6 +219,7 @@ class JobStatusResponse(BaseModel):
     failed_items: int = Field(default=0)
     current_item: str | None = Field(default=None, description="Currently processing item.")
     errors: list[str] = Field(default_factory=list)
+    message: str = Field(default="", description="Human-readable status message (e.g. approval queue confirmation).")
 
 
 # ─── Corpus Management ────────────────────────────────────────────────

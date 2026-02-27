@@ -8,6 +8,7 @@ const FeederCorpus = (() => {
   'use strict';
 
   let _sources = [];
+  let _pendingItems = [];
 
   function _init() {
     const searchBtn = document.getElementById('corpus-search-btn');
@@ -20,6 +21,12 @@ const FeederCorpus = (() => {
     if (importInput) importInput.addEventListener('change', _importCorpus);
     if (publishBtn) publishBtn.addEventListener('click', _publishCorpus);
 
+    // Approval queue bulk action buttons.
+    const bulkApproveBtn = document.getElementById('approval-bulk-approve-btn');
+    const bulkRejectBtn = document.getElementById('approval-bulk-reject-btn');
+    if (bulkApproveBtn) bulkApproveBtn.addEventListener('click', _bulkApprove);
+    if (bulkRejectBtn) bulkRejectBtn.addEventListener('click', _bulkReject);
+
     // Enter key in search input.
     const searchInput = document.getElementById('corpus-search-input');
     if (searchInput) {
@@ -30,7 +37,7 @@ const FeederCorpus = (() => {
   }
 
   async function refresh() {
-    await Promise.all([_loadStats(), _loadSources(), _loadPublishStatus()]);
+    await Promise.all([_loadStats(), _loadSources(), _loadPublishStatus(), _loadPending()]);
   }
 
   async function _loadStats() {
@@ -208,6 +215,153 @@ const FeederCorpus = (() => {
     } catch (err) {
       alert(`Import failed: ${err.message}`);
     }
+  }
+
+  // ─── Approval Queue Methods ────────────────────────────────────────
+
+  async function _loadPending() {
+    try {
+      _pendingItems = await FeederApp.apiFetch('/approval/pending');
+      const section = document.getElementById('approval-section');
+      const badge = document.getElementById('approval-count-badge');
+
+      if (!section) return;
+
+      if (_pendingItems.length > 0) {
+        section.hidden = false;
+        if (badge) badge.textContent = _pendingItems.length;
+        _renderPendingTable();
+      } else {
+        section.hidden = true;
+      }
+    } catch {
+      // Approval queue not available (no passcode set, local dev mode).
+    }
+  }
+
+  function _renderPendingTable() {
+    const table = document.getElementById('approval-table');
+    if (!table) return;
+
+    table.innerHTML = `
+      <div class="approval-row approval-row--header">
+        <span class="approval-row__check"><input type="checkbox" id="approval-select-all" title="Select all"></span>
+        <span class="approval-row__title">Title</span>
+        <span class="approval-row__type">Type</span>
+        <span class="approval-row__content">Content</span>
+        <span class="approval-row__date">Submitted</span>
+        <span class="approval-row__actions">Actions</span>
+      </div>
+    ` + _pendingItems.map(item => `
+      <div class="approval-row" data-id="${item.id}">
+        <span class="approval-row__check"><input type="checkbox" class="approval-checkbox" value="${item.id}"></span>
+        <span class="approval-row__title">${_escapeHtml(item.title)}</span>
+        <span class="approval-row__type">${item.source_type}</span>
+        <span class="approval-row__content">${item.content_type === 'url' ? _escapeHtml(item.content_data) : item.content_type}</span>
+        <span class="approval-row__date">${new Date(item.submitted_at).toLocaleDateString()}</span>
+        <span class="approval-row__actions">
+          <button class="btn-sm btn-approve" data-action="approve" data-id="${item.id}">Approve</button>
+          <button class="btn-sm btn-reject" data-action="reject" data-id="${item.id}">Reject</button>
+        </span>
+      </div>
+    `).join('');
+
+    // Select-all checkbox handler.
+    const selectAll = document.getElementById('approval-select-all');
+    if (selectAll) selectAll.addEventListener('change', _toggleSelectAll);
+
+    // Individual checkbox handlers — update bulk button state.
+    table.querySelectorAll('.approval-checkbox').forEach(cb => {
+      cb.addEventListener('change', _updateBulkButtonState);
+    });
+
+    // Individual approve/reject handlers.
+    table.querySelectorAll('[data-action="approve"]').forEach(btn => {
+      btn.addEventListener('click', () => _approveItem(btn.dataset.id));
+    });
+    table.querySelectorAll('[data-action="reject"]').forEach(btn => {
+      btn.addEventListener('click', () => _rejectItem(btn.dataset.id));
+    });
+  }
+
+  function _toggleSelectAll() {
+    const selectAll = document.getElementById('approval-select-all');
+    const checked = selectAll ? selectAll.checked : false;
+    document.querySelectorAll('.approval-checkbox').forEach(cb => { cb.checked = checked; });
+    _updateBulkButtonState();
+  }
+
+  function _getSelectedIds() {
+    return Array.from(document.querySelectorAll('.approval-checkbox:checked')).map(cb => cb.value);
+  }
+
+  function _updateBulkButtonState() {
+    const selected = _getSelectedIds();
+    const approveBtn = document.getElementById('approval-bulk-approve-btn');
+    const rejectBtn = document.getElementById('approval-bulk-reject-btn');
+    if (approveBtn) approveBtn.disabled = selected.length === 0;
+    if (rejectBtn) rejectBtn.disabled = selected.length === 0;
+  }
+
+  async function _approveItem(id) {
+    try {
+      await FeederApp.apiFetch(`/approval/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+      await refresh();
+    } catch (err) {
+      alert(`Approve failed: ${err.message}`);
+    }
+  }
+
+  async function _rejectItem(id) {
+    const reason = prompt('Rejection reason (optional):') || '';
+    try {
+      await FeederApp.apiFetch(`/approval/${encodeURIComponent(id)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      await refresh();
+    } catch (err) {
+      alert(`Reject failed: ${err.message}`);
+    }
+  }
+
+  async function _bulkApprove() {
+    const ids = _getSelectedIds();
+    if (ids.length === 0) return;
+    if (!confirm(`Approve ${ids.length} item(s)?`)) return;
+    try {
+      await FeederApp.apiFetch('/approval/bulk-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      await refresh();
+    } catch (err) {
+      alert(`Bulk approve failed: ${err.message}`);
+    }
+  }
+
+  async function _bulkReject() {
+    const ids = _getSelectedIds();
+    if (ids.length === 0) return;
+    const reason = prompt('Rejection reason (optional):') || '';
+    try {
+      await FeederApp.apiFetch('/approval/bulk-reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, reason }),
+      });
+      await refresh();
+    } catch (err) {
+      alert(`Bulk reject failed: ${err.message}`);
+    }
+  }
+
+  function _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   document.addEventListener('DOMContentLoaded', _init);

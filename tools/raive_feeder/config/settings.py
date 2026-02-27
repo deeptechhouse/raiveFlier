@@ -52,6 +52,15 @@ class FeederSettings(Settings):
     # Maximum number of items in a single batch.
     batch_max_items: int = 100
 
+    # === Authentication ===
+    # Shared passcode for the site-wide auth gate.
+    # Empty string disables auth (local dev mode).
+    feeder_passcode: str = ""
+    # Session cookie TTL — 7 days by default.
+    session_cookie_ttl_hours: int = 168
+    # SQLite database for the content approval queue.
+    approval_db_path: str = "data/feeder_approvals.db"
+
     # === Corpus Publishing ===
     # GitHub personal access token for uploading corpus tarballs to releases.
     # Also used by entrypoint.sh on Render for downloading.

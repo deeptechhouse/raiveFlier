@@ -9,7 +9,10 @@
 const FeederApp = (() => {
   'use strict';
 
-  const API_BASE = '/api/v1';
+  // Derive path prefix dynamically so the app works both standalone (:8001)
+  // and mounted as a sub-app at /feeder/ inside raiveFlier (:8000).
+  const pathPrefix = window.location.pathname.startsWith('/feeder') ? '/feeder' : '';
+  const API_BASE = pathPrefix + '/api/v1';
   let _activeTab = 'documents';
 
   // ─── Tab switching ──────────────────────────────────────────────────
@@ -50,6 +53,11 @@ const FeederApp = (() => {
   async function apiFetch(path, options = {}) {
     const url = `${API_BASE}${path}`;
     const resp = await fetch(url, options);
+    // Redirect to login page if session has expired or is missing.
+    if (resp.status === 401) {
+      window.location.href = `${pathPrefix}/login`;
+      throw new Error('Session expired — redirecting to login');
+    }
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`API ${resp.status}: ${text}`);
@@ -60,6 +68,11 @@ const FeederApp = (() => {
   async function apiUpload(path, formData) {
     const url = `${API_BASE}${path}`;
     const resp = await fetch(url, { method: 'POST', body: formData });
+    // Redirect to login page if session has expired or is missing.
+    if (resp.status === 401) {
+      window.location.href = `${pathPrefix}/login`;
+      throw new Error('Session expired — redirecting to login');
+    }
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`API ${resp.status}: ${text}`);
@@ -88,5 +101,6 @@ const FeederApp = (() => {
     formatBytes,
     get activeTab() { return _activeTab; },
     API_BASE,
+    pathPrefix,
   };
 })();

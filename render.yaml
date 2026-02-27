@@ -112,3 +112,9 @@ services:
         value: /data/flier_history.db          # Cross-flier recommendation history database
       - key: SESSION_DB_PATH
         value: /data/session_state.db          # Pipeline session state database
+
+      # === raiveFeeder Security ===
+      - key: FEEDER_PASSCODE
+        sync: false
+      - key: APPROVAL_DB_PATH
+        value: /data/feeder_approvals.db

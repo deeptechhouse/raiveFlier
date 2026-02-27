@@ -1023,6 +1023,17 @@ def create_app() -> FastAPI:
     async def ws_progress(websocket: WebSocket, session_id: str) -> None:
         await websocket_progress(websocket, session_id)
 
+    # -- raiveFeeder sub-app --
+    # Mount the raiveFeeder companion app at /feeder/ so both apps share
+    # the same Uvicorn process, port, and ChromaDB data.  This must come
+    # BEFORE the catch-all static file mounts below.
+    try:
+        from tools.raive_feeder.main import create_app as create_feeder_app
+        application.mount("/feeder", create_feeder_app())
+        _logger.info("raive_feeder_mounted", path="/feeder")
+    except Exception as exc:
+        _logger.warning("raive_feeder_mount_failed", error=str(exc))
+
     # -- Frontend static files --
     # Mount the vanilla JS/CSS/HTML frontend as static files.
     # Each subdirectory (css/, js/, assets/) is mounted separately so

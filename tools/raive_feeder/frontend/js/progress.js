@@ -13,7 +13,9 @@ const FeederProgress = (() => {
 
   function connect(jobId, onProgress) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/ws/progress/${jobId}`;
+    // Use FeederApp.pathPrefix so WebSocket URL works when mounted at /feeder/.
+    const prefix = (typeof FeederApp !== 'undefined' && FeederApp.pathPrefix) ? FeederApp.pathPrefix : '';
+    const url = `${protocol}//${window.location.host}${prefix}/ws/progress/${jobId}`;
 
     _ws = new WebSocket(url);
     _callbacks[jobId] = onProgress;
