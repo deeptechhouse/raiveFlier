@@ -443,6 +443,22 @@ class MockVectorStore(IVectorStoreProvider):
             geographic_tag_count=len(geo_tags),
         )
 
+    async def update_chunk_metadata(
+        self, chunk_id: str, metadata: dict[str, Any]
+    ) -> bool:
+        """Update metadata fields on an existing chunk in the mock store."""
+        entry = self._store.get(chunk_id)
+        if entry is None:
+            return False
+        chunk, emb = entry
+        update_fields: dict[str, Any] = {}
+        for key, value in metadata.items():
+            if hasattr(chunk, key):
+                update_fields[key] = value
+        if update_fields:
+            self._store[chunk_id] = (chunk.model_copy(update=update_fields), emb)
+        return True
+
     def get_provider_name(self) -> str:
         return "mock-vector-store"
 

@@ -946,11 +946,12 @@ class TestBuildAll:
         assert result["primary_llm_name"] == "mock-llm"
 
     @pytest.mark.asyncio()
-    async def test_session_states_initialized_empty(self) -> None:
-        """session_states dict starts empty."""
+    async def test_session_states_initialized_empty(self, tmp_path) -> None:
+        """session_states store starts empty when using a fresh DB path."""
         from src.main import _build_all
 
         patches, _ = self._patch_all()
+        fresh_db = str(tmp_path / "test_sessions.db")
         with (
             patches["llm"],
             patches["easyocr_flag"],
@@ -963,7 +964,7 @@ class TestBuildAll:
             patches["httpx_client"],
             patches["image_preprocessor"],
         ):
-            result = await _build_all(_settings())
+            result = await _build_all(_settings(session_db_path=fresh_db))
 
         assert len(result["session_states"]) == 0
 

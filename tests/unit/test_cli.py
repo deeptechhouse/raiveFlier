@@ -699,13 +699,24 @@ class TestIngestBuildEmbeddingProvider:
         mock_instance.is_available.assert_called_once()
 
     def test_nomic_fallback(self) -> None:
-        """When OpenAI is not available, falls back to Nomic."""
+        """When OpenAI is not available, falls back through FastEmbed and
+        SentenceTransformer (both unavailable) to Nomic."""
         settings = _settings(openai_api_key="")
 
         mock_nomic = MagicMock()
         mock_nomic.is_available.return_value = True
+        mock_fe = MagicMock()
+        mock_fe.is_available.return_value = False
+        mock_st = MagicMock()
+        mock_st.is_available.return_value = False
 
         with patch(
+            "src.providers.embedding.fastembed_embedding_provider.FastEmbedEmbeddingProvider",
+            return_value=mock_fe,
+        ), patch(
+            "src.providers.embedding.sentence_transformer_embedding_provider.SentenceTransformerEmbeddingProvider",
+            return_value=mock_st,
+        ), patch(
             "src.providers.embedding.nomic_embedding_provider.NomicEmbeddingProvider",
             return_value=mock_nomic,
         ):
@@ -717,18 +728,28 @@ class TestIngestBuildEmbeddingProvider:
         mock_nomic.is_available.assert_called_once()
 
     def test_openai_unavailable_falls_to_nomic(self) -> None:
-        """When OpenAI key exists but provider is not available, falls to Nomic."""
+        """When OpenAI key exists but provider is not available, falls through
+        FastEmbed and SentenceTransformer (both unavailable) to Nomic."""
         settings = _settings(openai_api_key="sk-test")
 
         mock_openai = MagicMock()
         mock_openai.is_available.return_value = False
-
+        mock_fe = MagicMock()
+        mock_fe.is_available.return_value = False
+        mock_st = MagicMock()
+        mock_st.is_available.return_value = False
         mock_nomic = MagicMock()
         mock_nomic.is_available.return_value = True
 
         with patch(
             "src.providers.embedding.openai_embedding_provider.OpenAIEmbeddingProvider",
             return_value=mock_openai,
+        ), patch(
+            "src.providers.embedding.fastembed_embedding_provider.FastEmbedEmbeddingProvider",
+            return_value=mock_fe,
+        ), patch(
+            "src.providers.embedding.sentence_transformer_embedding_provider.SentenceTransformerEmbeddingProvider",
+            return_value=mock_st,
         ), patch(
             "src.providers.embedding.nomic_embedding_provider.NomicEmbeddingProvider",
             return_value=mock_nomic,
@@ -743,10 +764,20 @@ class TestIngestBuildEmbeddingProvider:
         """When no embedding providers are reachable, returns None."""
         settings = _settings(openai_api_key="")
 
+        mock_fe = MagicMock()
+        mock_fe.is_available.return_value = False
+        mock_st = MagicMock()
+        mock_st.is_available.return_value = False
         mock_nomic = MagicMock()
         mock_nomic.is_available.return_value = False
 
         with patch(
+            "src.providers.embedding.fastembed_embedding_provider.FastEmbedEmbeddingProvider",
+            return_value=mock_fe,
+        ), patch(
+            "src.providers.embedding.sentence_transformer_embedding_provider.SentenceTransformerEmbeddingProvider",
+            return_value=mock_st,
+        ), patch(
             "src.providers.embedding.nomic_embedding_provider.NomicEmbeddingProvider",
             return_value=mock_nomic,
         ):
@@ -867,10 +898,20 @@ class TestIngestBuildIngestionService:
         """When no embedding provider is available, returns (None, error_msg)."""
         settings = _settings(openai_api_key="")
 
+        mock_fe = MagicMock()
+        mock_fe.is_available.return_value = False
+        mock_st = MagicMock()
+        mock_st.is_available.return_value = False
         mock_nomic = MagicMock()
         mock_nomic.is_available.return_value = False
 
         with patch(
+            "src.providers.embedding.fastembed_embedding_provider.FastEmbedEmbeddingProvider",
+            return_value=mock_fe,
+        ), patch(
+            "src.providers.embedding.sentence_transformer_embedding_provider.SentenceTransformerEmbeddingProvider",
+            return_value=mock_st,
+        ), patch(
             "src.providers.embedding.nomic_embedding_provider.NomicEmbeddingProvider",
             return_value=mock_nomic,
         ):
@@ -1037,6 +1078,7 @@ class TestIngestHandlers:
         mock_service.ingest_directory.assert_awaited_once_with(
             dir_path="/path/to/articles",
             source_type="article",
+            skip_tagging=False,
         )
 
     @pytest.mark.asyncio
