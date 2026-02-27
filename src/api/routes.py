@@ -48,6 +48,7 @@ from src.api.schemas import (
     ConfirmEntitiesRequest,
     ConfirmResponse,
     CorpusSearchChunk,
+    CorpusSearchCitation,
     CorpusSearchRequest,
     CorpusSearchResponse,
     CorpusStatsResponse,
@@ -1255,6 +1256,131 @@ def _compute_facets(chunks: list[CorpusSearchChunk]) -> FacetCounts:
     )
 
 
+# ---------------------------------------------------------------------------
+# Corpus search — LLM synthesis prompts and helper
+# ---------------------------------------------------------------------------
+# After vector retrieval ranks chunks, the top results are passed to the LLM
+# to produce a cohesive natural-language answer with inline citation markers
+# like [1], [2].  This transforms raw chunk excerpts into a readable response
+# similar to other RAG-powered assistants (Perplexity, ChatGPT search).
+
+_SYNTHESIS_SYSTEM_PROMPT = (
+    "You are a knowledgeable assistant specializing in electronic music, "
+    "rave culture, and the history of DJs, venues, labels, and promoters.\n\n"
+    "You will be given a user's search query and a set of numbered source passages "
+    "retrieved from a curated knowledge base of books, articles, and interviews.\n\n"
+    "Your job is to synthesize these passages into a clear, cohesive, and "
+    "informative answer. Follow these rules:\n"
+    "- Write a natural, flowing response (2-4 paragraphs) that directly answers "
+    "the query.\n"
+    "- Cite sources inline using numbered markers like [1], [2], etc. that "
+    "correspond to the passage numbers provided.\n"
+    "- Only cite passages that actually support a claim — do not cite every passage.\n"
+    "- If passages contradict each other, note the discrepancy.\n"
+    "- If the passages do not contain enough information to answer the query, "
+    "say so honestly and provide what you can.\n"
+    "- Stay strictly on topic: electronic music, rave culture, DJs, labels, "
+    "venues, promoters, and related culture.\n"
+    "- Do NOT invent facts not supported by the provided passages.\n"
+    "- Write in a knowledgeable but accessible tone."
+)
+
+# Maximum number of top-ranked chunks to feed into the synthesis prompt.
+# More chunks = richer context but higher token cost and latency.
+_SYNTHESIS_MAX_CHUNKS = 8
+
+# LRU cache for synthesis results — avoids repeated LLM calls for identical
+# query + chunk combinations.  Keyed by SHA-256 of (query + chunk texts).
+_synthesis_cache: dict[str, tuple[str, list[dict[str, Any]]]] = {}
+_SYNTHESIS_CACHE_MAX = 64
+
+
+async def _synthesize_answer(
+    llm: Any,
+    query: str,
+    chunks: list[CorpusSearchChunk],
+) -> tuple[str | None, list[CorpusSearchCitation]]:
+    """Synthesize a natural-language answer from the top retrieved chunks.
+
+    Passes the user's query and numbered source passages to the LLM, which
+    returns a cohesive response with inline [N] citation markers.
+
+    Returns (answer_text, citations_list).  Returns (None, []) if synthesis
+    fails or LLM is unavailable — the frontend gracefully falls back to
+    showing raw chunk cards.
+    """
+    if llm is None or not chunks:
+        return None, []
+
+    # Select top chunks for synthesis context
+    top_chunks = chunks[:_SYNTHESIS_MAX_CHUNKS]
+
+    # Build cache key from query + chunk texts
+    cache_raw = query.lower().strip() + "||" + "||".join(c.text[:200] for c in top_chunks)
+    cache_key = hashlib.sha256(cache_raw.encode()).hexdigest()[:32]
+    if cache_key in _synthesis_cache:
+        cached_answer, cached_cits = _synthesis_cache[cache_key]
+        return cached_answer, [CorpusSearchCitation(**c) for c in cached_cits]
+
+    # Build numbered passage list for the LLM
+    passage_lines: list[str] = []
+    for i, chunk in enumerate(top_chunks, 1):
+        source_label = chunk.source_title or "Unknown source"
+        if chunk.author:
+            source_label += f" by {chunk.author}"
+        if chunk.page_number:
+            source_label += f", p. {chunk.page_number}"
+        passage_lines.append(f"[{i}] ({source_label}, Tier {chunk.citation_tier})\n{chunk.text}")
+
+    user_prompt = (
+        f"## Search Query\n{query}\n\n"
+        f"## Retrieved Passages\n\n"
+        + "\n\n---\n\n".join(passage_lines)
+        + "\n\n## Task\n"
+        "Synthesize a clear, informative answer to the search query using "
+        "the passages above. Cite sources with [N] markers."
+    )
+
+    try:
+        raw_answer = await llm.complete(
+            system_prompt=_SYNTHESIS_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            temperature=0.3,
+            max_tokens=1500,
+        )
+        answer_text = raw_answer.strip() if raw_answer else None
+    except Exception:
+        _logger.debug("corpus_synthesis_failed", query_preview=query[:50])
+        return None, []
+
+    if not answer_text:
+        return None, []
+
+    # Build citation objects for the chunks that were actually cited in the answer
+    citations: list[CorpusSearchCitation] = []
+    for i, chunk in enumerate(top_chunks, 1):
+        # Check if [N] appears in the answer text
+        if f"[{i}]" in answer_text:
+            citations.append(CorpusSearchCitation(
+                index=i,
+                source_title=chunk.source_title,
+                author=chunk.author,
+                citation_tier=chunk.citation_tier,
+                page_number=chunk.page_number,
+                excerpt=chunk.text[:200] + ("..." if len(chunk.text) > 200 else ""),
+            ))
+
+    # Cache the result
+    if len(_synthesis_cache) >= _SYNTHESIS_CACHE_MAX:
+        _synthesis_cache.pop(next(iter(_synthesis_cache)))
+    _synthesis_cache[cache_key] = (
+        answer_text,
+        [c.model_dump() for c in citations],
+    )
+
+    return answer_text, citations
+
+
 @router.post(
     "/corpus/search",
     response_model=CorpusSearchResponse,
@@ -1620,6 +1746,17 @@ async def corpus_search(
     page_end = min(page_start + body.page_size, total_available)
     page_results = results[page_start:page_end]
 
+    # --- LLM synthesis: generate a cohesive NL answer from top chunks ---
+    # Only synthesize on the first page (offset=0) to avoid re-synthesizing
+    # on "Load More" requests.  Uses the full ranked result set (not just the
+    # page slice) so the LLM sees the best chunks regardless of page_size.
+    synthesized_answer: str | None = None
+    answer_citations: list[CorpusSearchCitation] = []
+    if body.offset == 0 and results:
+        synthesized_answer, answer_citations = await _synthesize_answer(
+            llm, body.query, results
+        )
+
     return CorpusSearchResponse(
         query=body.query,
         total_results=total_available,
@@ -1638,6 +1775,8 @@ async def corpus_search(
             artist_canonical=_parsed_canonical,
             artist_aliases=_parsed_aliases,
         ),
+        synthesized_answer=synthesized_answer,
+        answer_citations=answer_citations,
     )
 
 
