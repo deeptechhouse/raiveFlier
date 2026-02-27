@@ -595,19 +595,39 @@ async def delete_source_type(request: Request, source_type: str) -> dict[str, An
 
 @router.post("/corpus/search")
 async def corpus_search(request: Request, body: CorpusSearchRequest) -> list[dict[str, Any]]:
-    """Perform a semantic search against the corpus."""
+    """Perform a semantic search against the corpus.
+
+    Genre filtering uses Python post-filters instead of ChromaDB's metadata
+    operators because ``$contains`` is not a valid ChromaDB where-clause
+    operator.  Genre tags are stored as comma-separated strings in metadata,
+    so substring matching in Python is the correct approach (matching the
+    main app's pattern in ``src/api/routes.py``).
+    """
     vs = _get_vector_store(request)
+
+    # Only source_type uses a ChromaDB-level filter ($in is supported).
+    # Genre filtering is done as a Python post-filter below.
     filters: dict[str, Any] = {}
     if body.source_type:
         filters["source_type"] = {"$in": [body.source_type]}
-    if body.genre:
-        filters["genre_tags"] = {"$contains": body.genre}
 
     results = await vs.query(
         query_text=body.query,
         top_k=body.top_k,
         filters=filters if filters else None,
     )
+
+    # Genre post-filter: bidirectional substring match so "techno" matches
+    # "detroit techno" and vice versa.  Mirrors the main app's approach.
+    if body.genre:
+        genre_lower = body.genre.lower()
+        results = [
+            r for r in results
+            if any(
+                genre_lower in gt.lower() or gt.lower() in genre_lower
+                for gt in r.chunk.genre_tags
+            )
+        ]
 
     return [
         {

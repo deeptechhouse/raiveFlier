@@ -1,6 +1,8 @@
 """Unit tests for CorpusManager service.
 
 Tests source listing, export, and import with mocked vector store.
+CorpusManager now uses the public ``list_all_metadata()`` method on
+IVectorStoreProvider instead of reaching into ``_collection`` internals.
 """
 
 from __future__ import annotations
@@ -16,9 +18,12 @@ from tools.raive_feeder.services.corpus_manager import CorpusManager
 
 
 def _make_mock_vector_store(chunks_data=None):
-    """Create a mock vector store with fake collection data."""
+    """Create a mock vector store that implements list_all_metadata().
+
+    The mock returns (id, metadata, document) tuples — the public API that
+    CorpusManager now depends on instead of provider-internal _collection.
+    """
     vs = MagicMock()
-    collection = MagicMock()
 
     if chunks_data is None:
         chunks_data = {
@@ -31,9 +36,27 @@ def _make_mock_vector_store(chunks_data=None):
             ],
         }
 
-    collection.count.return_value = len(chunks_data["ids"])
-    collection.get.return_value = chunks_data
-    vs._collection = collection
+    # Build the tuples that list_all_metadata() returns.
+    all_tuples = [
+        (cid, meta, doc)
+        for cid, meta, doc in zip(
+            chunks_data["ids"],
+            chunks_data["metadatas"],
+            chunks_data["documents"],
+        )
+    ]
+
+    async def _list_all_metadata(include_documents=False, where=None, page_size=5000):
+        """Mock list_all_metadata with optional where-filter support."""
+        results = all_tuples
+        if where and "source_id" in where:
+            target_sid = where["source_id"]
+            results = [(cid, m, d) for cid, m, d in results if m.get("source_id") == target_sid]
+        if not include_documents:
+            results = [(cid, m, None) for cid, m, _d in results]
+        return results
+
+    vs.list_all_metadata = _list_all_metadata
     return vs
 
 
@@ -78,10 +101,10 @@ class TestGetSourceDetail:
 
     @pytest.mark.asyncio
     async def test_returns_chunks(self, manager):
-        """Should return all chunks for the requested source."""
+        """Should return only chunks belonging to the requested source."""
         detail = await manager.get_source_detail("src1")
         assert detail["source_id"] == "src1"
-        assert detail["chunk_count"] == 3  # Mock returns all 3 since we don't filter by source_id in mock.
+        assert detail["chunk_count"] == 2  # Only src1's chunks, filtered by list_all_metadata where clause.
 
 
 class TestExportCorpus:

@@ -40,19 +40,24 @@ def mock_vector_store():
     vs.query = AsyncMock(return_value=[])
     vs.update_chunk_metadata = AsyncMock(return_value=True)
 
-    # Mock collection for CorpusManager.
-    collection = MagicMock()
-    collection.count.return_value = 3
-    collection.get.return_value = {
-        "ids": ["c1", "c2", "c3"],
-        "documents": ["Text 1", "Text 2", "Text 3"],
-        "metadatas": [
-            {"source_id": "s1", "source_title": "Energy Flash", "source_type": "book", "citation_tier": 1},
-            {"source_id": "s1", "source_title": "Energy Flash", "source_type": "book", "citation_tier": 1},
-            {"source_id": "s2", "source_title": "RA Article", "source_type": "article", "citation_tier": 3},
-        ],
-    }
-    vs._collection = collection
+    # list_all_metadata() — public API used by CorpusManager instead of
+    # reaching into _collection internals.
+    _all_chunks = [
+        ("c1", {"source_id": "s1", "source_title": "Energy Flash", "source_type": "book", "citation_tier": 1}, "Text 1"),
+        ("c2", {"source_id": "s1", "source_title": "Energy Flash", "source_type": "book", "citation_tier": 1}, "Text 2"),
+        ("c3", {"source_id": "s2", "source_title": "RA Article", "source_type": "article", "citation_tier": 3}, "Text 3"),
+    ]
+
+    async def _list_all_metadata(include_documents=False, where=None, page_size=5000):
+        results = _all_chunks
+        if where and "source_id" in where:
+            target_sid = where["source_id"]
+            results = [(cid, m, d) for cid, m, d in results if m.get("source_id") == target_sid]
+        if not include_documents:
+            results = [(cid, m, None) for cid, m, _d in results]
+        return results
+
+    vs.list_all_metadata = _list_all_metadata
 
     return vs
 

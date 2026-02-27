@@ -194,6 +194,37 @@ class IVectorStoreProvider(ABC):
         """
 
     @abstractmethod
+    async def list_all_metadata(
+        self,
+        page_size: int = 5000,
+        include_documents: bool = False,
+        where: dict[str, Any] | None = None,
+    ) -> list[tuple[str, dict[str, Any], str | None]]:
+        """Iterate over all stored chunks, returning (id, metadata, document) tuples.
+
+        Provides a public, backend-agnostic way to enumerate corpus contents
+        without reaching into provider internals.  Used by CorpusManager for
+        source listing and detail views.
+
+        Parameters
+        ----------
+        page_size:
+            Number of chunks to fetch per internal page (implementation hint
+            for providers that paginate their storage layer).
+        include_documents:
+            If ``True``, include the chunk text in the third tuple element.
+            If ``False``, the third element is ``None`` (saves memory).
+        where:
+            Optional filter clause (same syntax as :meth:`query` filters)
+            to restrict which chunks are returned.
+
+        Returns
+        -------
+        list[tuple[str, dict[str, Any], str | None]]
+            Each tuple is ``(chunk_id, metadata_dict, document_text_or_None)``.
+        """
+
+    @abstractmethod
     def get_provider_name(self) -> str:
         """Return a human-readable identifier for this vector-store provider.
 

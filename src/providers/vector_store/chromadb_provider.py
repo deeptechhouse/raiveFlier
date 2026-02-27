@@ -507,6 +507,55 @@ class ChromaDBProvider(IVectorStoreProvider):
                 provider_name=self.get_provider_name(),
             ) from exc
 
+    async def list_all_metadata(
+        self,
+        page_size: int = 5000,
+        include_documents: bool = False,
+        where: dict[str, Any] | None = None,
+    ) -> list[tuple[str, dict[str, Any], str | None]]:
+        """Paginate through all chunks, returning (id, metadata, document) tuples.
+
+        Uses ChromaDB's ``collection.get()`` with limit/offset pagination to
+        stay within SQLite's bind-parameter ceiling on large corpora.
+        """
+        try:
+            total = self._collection.count()
+            results: list[tuple[str, dict[str, Any], str | None]] = []
+
+            includes = ["metadatas"]
+            if include_documents:
+                includes.append("documents")
+
+            for offset in range(0, total, page_size):
+                kwargs: dict[str, Any] = {
+                    "include": includes,
+                    "limit": page_size,
+                    "offset": offset,
+                }
+                if where:
+                    kwargs["where"] = where
+
+                page = self._collection.get(**kwargs)
+                ids = page.get("ids") or []
+                metadatas = page.get("metadatas") or []
+                documents = page.get("documents") or ([None] * len(ids))
+
+                for i, chunk_id in enumerate(ids):
+                    meta = metadatas[i] if i < len(metadatas) else {}
+                    doc = documents[i] if include_documents and i < len(documents) else None
+                    results.append((chunk_id, meta, doc))
+
+                if len(ids) < page_size:
+                    break
+
+            return results
+
+        except Exception as exc:
+            raise RAGError(
+                message=f"ChromaDB list_all_metadata failed: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
     def get_provider_name(self) -> str:
         return "chromadb"
 

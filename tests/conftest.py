@@ -459,6 +459,29 @@ class MockVectorStore(IVectorStoreProvider):
             self._store[chunk_id] = (chunk.model_copy(update=update_fields), emb)
         return True
 
+    async def list_all_metadata(
+        self,
+        page_size: int = 5000,
+        include_documents: bool = False,
+        where: dict[str, Any] | None = None,
+    ) -> list[tuple[str, dict[str, Any], str | None]]:
+        """Return (id, metadata, document) tuples for all stored chunks."""
+        results: list[tuple[str, dict[str, Any], str | None]] = []
+        for chunk_id, (chunk, _emb) in self._store.items():
+            meta = {
+                "source_id": chunk.source_id,
+                "source_title": chunk.source_title,
+                "source_type": chunk.source_type,
+                "citation_tier": chunk.citation_tier,
+                "author": chunk.author,
+            }
+            if where and "source_id" in where:
+                if chunk.source_id != where["source_id"]:
+                    continue
+            doc_text = chunk.text if include_documents else None
+            results.append((chunk_id, meta, doc_text))
+        return results
+
     def get_provider_name(self) -> str:
         return "mock-vector-store"
 

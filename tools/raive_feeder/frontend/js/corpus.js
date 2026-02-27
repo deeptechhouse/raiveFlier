@@ -34,6 +34,15 @@ const FeederCorpus = (() => {
         if (e.key === 'Enter') _search();
       });
     }
+
+    // Similarity slider label update.
+    const simSlider = document.getElementById('corpus-filter-similarity');
+    const simLabel = document.getElementById('corpus-similarity-value');
+    if (simSlider && simLabel) {
+      simSlider.addEventListener('input', () => {
+        simLabel.textContent = simSlider.value + '%';
+      });
+    }
   }
 
   async function refresh() {
@@ -53,11 +62,41 @@ const FeederCorpus = (() => {
       if (breakdown && stats.sources_by_type) {
         breakdown.innerHTML = Object.entries(stats.sources_by_type)
           .sort((a, b) => b[1] - a[1])
-          .map(([type, count]) => `<span class="type-chip">${type}: ${count}</span>`)
+          .map(([type, count]) => `<span class="type-chip">${_escapeHtml(type)}: ${count}</span>`)
           .join('');
       }
+
+      // Populate source type filter dropdown from stats.
+      _populateFilterDropdown(
+        'corpus-filter-type',
+        stats.sources_by_type ? Object.keys(stats.sources_by_type).sort() : [],
+        'All types',
+      );
+
+      // Populate genre filter dropdown from stats.
+      _populateFilterDropdown(
+        'corpus-filter-genre',
+        stats.genre_tags || [],
+        'All genres',
+      );
     } catch {
       // Stats unavailable.
+    }
+  }
+
+  function _populateFilterDropdown(selectId, options, defaultLabel) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    // Preserve current selection if it's still valid after refresh.
+    const current = select.value;
+
+    select.innerHTML = `<option value="">${_escapeHtml(defaultLabel)}</option>`
+      + options.map(opt => `<option value="${_escapeHtml(opt)}">${_escapeHtml(opt)}</option>`).join('');
+
+    // Restore selection if the option still exists.
+    if (current && [...select.options].some(o => o.value === current)) {
+      select.value = current;
     }
   }
 
@@ -76,7 +115,7 @@ const FeederCorpus = (() => {
 
     table.innerHTML = _sources.map(s => `
       <div class="source-row">
-        <span class="source-row__title">${s.source_title || s.source_id.substring(0, 12)}</span>
+        <span class="source-row__title">${_escapeHtml(s.source_title || s.source_id.substring(0, 12))}</span>
         <span class="source-row__type">${s.source_type}</span>
         <span class="source-row__chunks">${s.chunk_count}</span>
         <span class="source-row__actions">
@@ -105,11 +144,22 @@ const FeederCorpus = (() => {
     const query = input?.value?.trim();
     if (!query) return;
 
+    // Read filter values from the dropdowns and slider.
+    const sourceType = document.getElementById('corpus-filter-type')?.value || '';
+    const genre = document.getElementById('corpus-filter-genre')?.value || '';
+    const simSlider = document.getElementById('corpus-filter-similarity');
+    const minSimilarity = simSlider ? parseInt(simSlider.value, 10) / 100 : 0;
+
+    const payload = { query, top_k: 20 };
+    if (sourceType) payload.source_type = sourceType;
+    if (genre) payload.genre = genre;
+    if (minSimilarity > 0) payload.min_similarity = minSimilarity;
+
     try {
       const results = await FeederApp.apiFetch('/corpus/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, top_k: 20 }),
+        body: JSON.stringify(payload),
       });
 
       const container = document.getElementById('corpus-search-results');
@@ -117,8 +167,8 @@ const FeederCorpus = (() => {
       container.hidden = false;
       container.innerHTML = results.map(r => `
         <div class="search-result">
-          <div class="search-result__citation">${r.formatted_citation}</div>
-          <div class="search-result__text">${r.text.substring(0, 400)}${r.text.length > 400 ? '...' : ''}</div>
+          <div class="search-result__citation">${_escapeHtml(r.formatted_citation)}</div>
+          <div class="search-result__text">${_escapeHtml(r.text.substring(0, 400))}${r.text.length > 400 ? '...' : ''}</div>
           <div class="search-result__score">Similarity: ${(r.similarity_score * 100).toFixed(1)}%</div>
         </div>
       `).join('') || '<p style="color:var(--color-text-muted)">No results found</p>';

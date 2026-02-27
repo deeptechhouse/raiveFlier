@@ -49,33 +49,28 @@ class CorpusManager:
     async def list_sources(self) -> list[CorpusSourceSummary]:
         """List all ingested sources with summary metadata.
 
-        Iterates through all chunks to collect unique source_id entries
-        and their metadata.  Groups by source_id to count chunks.
+        Uses the vector store's public ``list_all_metadata()`` method to
+        enumerate chunks without accessing provider internals.  Groups
+        results by source_id to count chunks per source.
         """
-        _PAGE_SIZE = 5000
         sources: dict[str, dict[str, Any]] = {}
 
-        collection = self._vs._collection
-        total = collection.count()
+        all_entries = await self._vs.list_all_metadata(
+            include_documents=False,
+        )
 
-        for offset in range(0, total, _PAGE_SIZE):
-            page = collection.get(
-                include=["metadatas"],
-                limit=_PAGE_SIZE,
-                offset=offset,
-            )
-            for meta in page["metadatas"] or []:
-                sid = meta.get("source_id", "")
-                if sid not in sources:
-                    sources[sid] = {
-                        "source_id": sid,
-                        "source_title": meta.get("source_title", ""),
-                        "source_type": meta.get("source_type", "unknown"),
-                        "author": meta.get("author"),
-                        "citation_tier": int(meta.get("citation_tier", 6)),
-                        "chunk_count": 0,
-                    }
-                sources[sid]["chunk_count"] += 1
+        for _chunk_id, meta, _doc in all_entries:
+            sid = meta.get("source_id", "")
+            if sid not in sources:
+                sources[sid] = {
+                    "source_id": sid,
+                    "source_title": meta.get("source_title", ""),
+                    "source_type": meta.get("source_type", "unknown"),
+                    "author": meta.get("author"),
+                    "citation_tier": int(meta.get("citation_tier", 6)),
+                    "chunk_count": 0,
+                }
+            sources[sid]["chunk_count"] += 1
 
         return [
             CorpusSourceSummary(**data)
@@ -83,24 +78,25 @@ class CorpusManager:
         ]
 
     async def get_source_detail(self, source_id: str) -> dict[str, Any]:
-        """Get all chunks and metadata for a specific source."""
-        collection = self._vs._collection
-        result = collection.get(
+        """Get all chunks and metadata for a specific source.
+
+        Uses the vector store's public ``list_all_metadata()`` with a where
+        filter to retrieve chunks for a single source without accessing
+        provider internals.
+        """
+        entries = await self._vs.list_all_metadata(
+            include_documents=True,
             where={"source_id": source_id},
-            include=["documents", "metadatas"],
         )
 
-        chunks = []
-        documents = result.get("documents", []) or []
-        metadatas = result.get("metadatas", []) or []
-        ids = result.get("ids", []) or []
-
-        for chunk_id, doc, meta in zip(ids, documents, metadatas):
-            chunks.append({
+        chunks = [
+            {
                 "chunk_id": chunk_id,
                 "text": doc,
                 "metadata": meta,
-            })
+            }
+            for chunk_id, meta, doc in entries
+        ]
 
         return {
             "source_id": source_id,

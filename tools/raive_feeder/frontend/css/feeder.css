@@ -608,6 +608,30 @@ body {
 .corpus-search { margin-bottom: var(--space-5); }
 .search-row { display: flex; gap: var(--space-2); }
 .search-row input { flex: 1; }
+/* Filter controls below the search bar */
+.search-filters {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  align-items: end;
+}
+.search-filters .form-group--inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 140px;
+  flex: 1;
+  max-width: 220px;
+}
+.search-filters label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.search-filters select,
+.search-filters .slider {
+  width: 100%;
+}
 .search-results {
   margin-top: var(--space-4);
   display: flex;
