@@ -71,7 +71,10 @@ class FeederAuthMiddleware(BaseHTTPMiddleware):
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
             # Browser request — redirect to login page.
-            return RedirectResponse(url="/login", status_code=303)
+            # Use root_path so the redirect includes the sub-app mount prefix
+            # (e.g. /feeder/login when mounted at /feeder/).
+            root_path = request.scope.get("root_path", "")
+            return RedirectResponse(url=f"{root_path}/login", status_code=303)
         # API/fetch request — return 401 JSON.
         return JSONResponse(
             status_code=401,
