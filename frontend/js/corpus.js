@@ -54,6 +54,13 @@ const Corpus = (() => {
   let _debounceTimer = null;  // Timer ID for search input debouncing
   let _searchError = null;    // Last search error message, if any
 
+  // Synthesized NL answer state — populated from the LLM synthesis step
+  // on fresh searches (offset=0).  The answer_citations array maps [N]
+  // markers in the answer text to their source metadata.
+  let _synthesizedAnswer = null;   // String: LLM-generated NL answer, or null
+  let _answerCitations = [];       // Array of { index, source_title, author, citation_tier, page_number, excerpt }
+  let _sourcesExpanded = false;    // Whether the raw-chunks "Sources" accordion is expanded
+
   // Pagination state — supports "Load More" button pattern.
   // offset tracks cursor position; hasMore signals whether more pages exist.
   let _currentOffset = 0;     // Current pagination offset
@@ -375,8 +382,85 @@ const Corpus = (() => {
       return;
     }
 
-    // Result count header — shows total matches to set expectations
-    let html = `<div class="corpus-sidebar__result-count">${_totalResults} result${_totalResults !== 1 ? "s" : ""}</div>`;
+    let html = "";
+
+    // --- Synthesized NL answer section ---
+    // When the backend returns a cohesive LLM-generated answer, render it
+    // prominently at the top.  Citation markers [N] in the text are linked
+    // to source metadata in _answerCitations.
+    if (_synthesizedAnswer) {
+      // Convert citation markers [N] into clickable badges that show
+      // source info on hover.  HTML-escape the answer first, then replace
+      // [N] patterns with styled spans.
+      let answerHtml = _esc(_synthesizedAnswer);
+      // Replace [N] markers with styled citation badges
+      answerHtml = answerHtml.replace(/\[(\d+)\]/g, function (match, num) {
+        var cit = _answerCitations.find(function (c) { return c.index === parseInt(num, 10); });
+        if (cit) {
+          var tooltip = _esc(cit.source_title);
+          if (cit.author) tooltip += " — " + _esc(cit.author);
+          if (cit.page_number) tooltip += ", p. " + _esc(cit.page_number);
+          return '<span class="corpus-answer__cite" title="' + tooltip + '" data-cite="' + num + '">[' + num + ']</span>';
+        }
+        return match;
+      });
+      // Convert newlines to paragraphs for readability
+      answerHtml = answerHtml.split(/\n\n+/).map(function (p) {
+        return p.trim() ? "<p>" + p.trim() + "</p>" : "";
+      }).join("");
+      // Single newlines within paragraphs become <br>
+      answerHtml = answerHtml.replace(/\n/g, "<br>");
+
+      html += '<div class="corpus-answer">';
+      html += '  <div class="corpus-answer__body">' + answerHtml + '</div>';
+
+      // Citation bibliography — lists all cited sources with tier badges
+      if (_answerCitations.length > 0) {
+        html += '<div class="corpus-answer__sources">';
+        html += '<div class="corpus-answer__sources-label">Sources</div>';
+        _answerCitations.forEach(function (cit) {
+          var tierClass = "corpus-result__tier--" + cit.citation_tier;
+          html += '<div class="corpus-answer__source-item" data-cite="' + cit.index + '">';
+          html += '  <span class="corpus-answer__source-num">[' + cit.index + ']</span>';
+          html += '  <span class="corpus-result__tier ' + tierClass + '">T' + cit.citation_tier + '</span>';
+          html += '  <span class="corpus-answer__source-title">' + _esc(cit.source_title) + '</span>';
+          if (cit.author) {
+            html += ' <span class="corpus-answer__source-author">— ' + _esc(cit.author) + '</span>';
+          }
+          if (cit.page_number) {
+            html += ' <span class="corpus-answer__source-page">p. ' + _esc(cit.page_number) + '</span>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // --- Raw chunks section: collapsible "View passages" accordion ---
+    // Shows the individual source chunks that were used to generate the
+    // answer.  Users can expand this to read original passages directly.
+    var chunksLabel = _totalResults + " passage" + (_totalResults !== 1 ? "s" : "");
+    var sourcesToggleText = _sourcesExpanded ? "Hide passages" : "View " + chunksLabel;
+    // If there's no synthesized answer, show chunks directly (no accordion)
+    var showChunksDirectly = !_synthesizedAnswer;
+
+    if (!showChunksDirectly) {
+      html += '<div class="corpus-sources-toggle">';
+      html += '  <button type="button" class="corpus-sources-toggle__btn" id="corpus-sources-toggle-btn">';
+      html += '    <svg class="corpus-sources-toggle__icon' + (_sourcesExpanded ? ' corpus-sources-toggle__icon--open' : '') + '" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">';
+      html += '      <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+      html += '    </svg>';
+      html += '    ' + sourcesToggleText;
+      html += '  </button>';
+      html += '</div>';
+    }
+
+    // Chunk cards — either always visible (no answer) or in collapsible section
+    var chunksContainerClass = showChunksDirectly
+      ? "corpus-sources__list"
+      : "corpus-sources__list" + (_sourcesExpanded ? "" : " corpus-sources__list--collapsed");
+    html += '<div class="' + chunksContainerClass + '" id="corpus-sources-list">';
 
     _results.forEach((r, idx) => {
       const tierClass = "corpus-result__tier--" + r.citation_tier;
@@ -428,6 +512,8 @@ const Corpus = (() => {
       `;
     });
 
+    html += '</div>'; // close corpus-sources__list
+
     // "Load More" button — rendered when the backend signals more pages exist
     if (_hasMore) {
       html += `
@@ -438,6 +524,48 @@ const Corpus = (() => {
     }
 
     container.innerHTML = html;
+
+    // --- Event listeners ---
+
+    // Sources accordion toggle
+    var sourcesToggleBtn = document.getElementById("corpus-sources-toggle-btn");
+    if (sourcesToggleBtn) {
+      sourcesToggleBtn.addEventListener("click", function () {
+        _sourcesExpanded = !_sourcesExpanded;
+        var list = document.getElementById("corpus-sources-list");
+        var icon = sourcesToggleBtn.querySelector(".corpus-sources-toggle__icon");
+        if (list) {
+          list.classList.toggle("corpus-sources__list--collapsed", !_sourcesExpanded);
+        }
+        if (icon) {
+          icon.classList.toggle("corpus-sources-toggle__icon--open", _sourcesExpanded);
+        }
+        // Update button text
+        var newLabel = _sourcesExpanded ? "Hide passages" : "View " + chunksLabel;
+        sourcesToggleBtn.innerHTML = '<svg class="corpus-sources-toggle__icon' + (_sourcesExpanded ? ' corpus-sources-toggle__icon--open' : '') + '" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> ' + newLabel;
+      });
+    }
+
+    // Citation badge click — scroll to and highlight the cited source in the
+    // passages list.  Auto-expands the accordion if collapsed.
+    container.querySelectorAll(".corpus-answer__cite").forEach(function (badge) {
+      badge.addEventListener("click", function () {
+        var citeNum = badge.getAttribute("data-cite");
+        // Expand the sources list if collapsed
+        if (!_sourcesExpanded && sourcesToggleBtn) {
+          sourcesToggleBtn.click();
+        }
+        // Find the matching citation in the sources list and scroll to it
+        var sourceItem = container.querySelector('.corpus-answer__source-item[data-cite="' + citeNum + '"]');
+        if (sourceItem) {
+          sourceItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          sourceItem.classList.add("corpus-answer__source-item--highlight");
+          setTimeout(function () {
+            sourceItem.classList.remove("corpus-answer__source-item--highlight");
+          }, 2000);
+        }
+      });
+    });
 
     // Click-to-expand on result text
     container.querySelectorAll(".corpus-result").forEach((card) => {
@@ -899,10 +1027,13 @@ const Corpus = (() => {
     if (!input) return;
     const query = input.value.trim();
     if (!query || _isLoading) return;
-    // Reset pagination on every new search or filter change —
+    // Reset pagination and answer state on every new search or filter change —
     // only "Load More" should increment the offset.
     _currentOffset = 0;
     _results = [];
+    _synthesizedAnswer = null;
+    _answerCitations = [];
+    _sourcesExpanded = false;
     _submitSearch(query, false);
   }
 
@@ -950,6 +1081,10 @@ const Corpus = (() => {
         _results = _results.concat(data.results || []);
       } else {
         _results = data.results || [];
+        // Capture synthesized NL answer on fresh searches only —
+        // "Load More" pages do not re-synthesize.
+        _synthesizedAnswer = data.synthesized_answer || null;
+        _answerCitations = data.answer_citations || [];
       }
       _hasMore = data.has_more || false;
       _totalResults = data.total_results || 0;
@@ -961,6 +1096,8 @@ const Corpus = (() => {
       }
     } catch (err) {
       if (!isLoadMore) _results = [];
+      _synthesizedAnswer = null;
+      _answerCitations = [];
       _searchError = err.message || "Search failed";
       console.error("[Corpus] Search error:", err.message);
     }

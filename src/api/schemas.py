@@ -324,6 +324,21 @@ class CorpusSearchChunk(BaseModel):
     time_period: str | None = None
 
 
+class CorpusSearchCitation(BaseModel):
+    """A single citation referenced in the synthesized answer.
+
+    Maps a citation marker (e.g. "[1]") to its source metadata so the
+    frontend can render inline citation links or a bibliography section.
+    """
+
+    index: int = Field(description="1-based citation number matching [N] markers in the answer text.")
+    source_title: str
+    author: str | None = None
+    citation_tier: int = 6
+    page_number: str | None = None
+    excerpt: str = Field(default="", description="Short excerpt from the source passage used.")
+
+
 class CorpusSearchResponse(BaseModel):
     """Response containing corpus search results with pagination metadata.
 
@@ -334,6 +349,10 @@ class CorpusSearchResponse(BaseModel):
     Optional smart-search fields (facets, parsed_filters) are populated
     when the backend detects structured signals in the query or computes
     facet counts from the candidate pool.  Old clients ignore them safely.
+
+    The synthesized_answer field contains an LLM-generated natural language
+    response synthesized from the top retrieved chunks.  It includes inline
+    citation markers like [1], [2] that map to the answer_citations list.
     """
 
     query: str
@@ -351,6 +370,16 @@ class CorpusSearchResponse(BaseModel):
     parsed_filters: ParsedQueryFilters | None = Field(
         default=None,
         description="Filters auto-detected from the query text via domain knowledge.",
+    )
+    # LLM-synthesized natural language answer from retrieved chunks.
+    # Only populated on fresh searches (offset=0), not on "Load More" pages.
+    synthesized_answer: str | None = Field(
+        default=None,
+        description="Cohesive NL answer synthesized by LLM from the top retrieved chunks.",
+    )
+    answer_citations: list[CorpusSearchCitation] = Field(
+        default_factory=list,
+        description="Numbered citations referenced by [N] markers in synthesized_answer.",
     )
 
 
