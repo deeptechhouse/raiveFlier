@@ -3347,6 +3347,139 @@ body {
   font-style: italic;
 }
 
+/* Linked citation source titles (for web sources) */
+.corpus-answer__source-title--link {
+  color: var(--color-accent-text, #c4a6e0);
+  text-decoration: none;
+  transition: color var(--duration-fast, 150ms);
+}
+
+.corpus-answer__source-title--link:hover {
+  color: var(--color-accent, #6a4a8a);
+  text-decoration: underline;
+}
+
+/* ---- Tier provenance badges in citation list ---- */
+/* Small label showing which search tier produced the citation:
+   RA_EXCHANGE (purple), BOOK (teal), CORPUS (default), WEB (amber) */
+.corpus-answer__tier-badge {
+  display: inline-block;
+  font-family: var(--font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  vertical-align: middle;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.corpus-answer__tier-badge--ra_exchange {
+  background: rgba(106, 74, 138, 0.25);
+  color: var(--color-accent-text, #c4a6e0);
+}
+
+.corpus-answer__tier-badge--book {
+  background: rgba(74, 138, 122, 0.25);
+  color: var(--color-secondary-text, #7dc4b4);
+}
+
+.corpus-answer__tier-badge--corpus {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted, #8a8592);
+}
+
+.corpus-answer__tier-badge--web {
+  background: rgba(184, 154, 80, 0.25);
+  color: var(--color-tertiary-text, #d4b96a);
+}
+
+/* ---- Inline web citation badge ---- */
+/* Web citation markers in the answer text get an amber accent */
+.corpus-answer__cite--web {
+  color: var(--color-tertiary-text, #d4b96a);
+  text-decoration: none;
+}
+
+.corpus-answer__cite--web:hover {
+  color: var(--color-tertiary, #b89a50);
+  text-decoration: underline;
+}
+
+/* ---- Web Results Section ---- */
+/* Compact cards for web search results (tier 4), displayed between the
+   synthesized answer and the raw source passages accordion. */
+.corpus-web-results {
+  padding: 0.5rem 1rem 0.35rem;
+  margin-bottom: 0.25rem;
+  border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+}
+
+.corpus-web-results__label {
+  font-family: var(--font-mono, "IBM Plex Mono", monospace);
+  font-size: var(--text-xs, 0.6875rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider, 0.04em);
+  color: var(--color-tertiary-text, #d4b96a);
+  margin-bottom: 0.35rem;
+}
+
+.corpus-web-result {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.corpus-web-result:last-child {
+  border-bottom: none;
+}
+
+.corpus-web-result__header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
+}
+
+.corpus-web-result__domain {
+  font-family: var(--font-mono, "IBM Plex Mono", monospace);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--color-tertiary-text, #d4b96a);
+  background: rgba(184, 154, 80, 0.15);
+  padding: 0.05rem 0.3rem;
+  border-radius: 2px;
+}
+
+.corpus-web-result__title {
+  display: block;
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 500;
+  color: var(--color-accent-text, #c4a6e0);
+  text-decoration: none;
+  line-height: 1.3;
+  transition: color var(--duration-fast, 150ms);
+}
+
+.corpus-web-result__title:hover {
+  color: var(--color-accent, #6a4a8a);
+  text-decoration: underline;
+}
+
+.corpus-web-result__snippet {
+  font-size: var(--text-xs, 0.6875rem);
+  color: var(--color-text-muted, #8a8592);
+  line-height: 1.4;
+  margin-top: 0.15rem;
+  /* Clamp to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* ---- Sources Accordion Toggle ---- */
 /* Expandable/collapsible toggle between the synthesized answer and
    the raw source chunk cards.  Defaults to collapsed. */

@@ -560,6 +560,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "feedback_provider": feedback_provider,
         "flier_history": flier_history,
         "recommendation_service": recommendation_service,
+        # Web search provider — exposed for the corpus sidebar's web-search
+        # tier, which augments RAG results with live DDG web results filtered
+        # for electronic music relevance.
+        "web_search": primary_search,
     }
 
 

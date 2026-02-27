@@ -324,11 +324,27 @@ class CorpusSearchChunk(BaseModel):
     time_period: str | None = None
 
 
+class WebSearchResult(BaseModel):
+    """A single web search result from the corpus sidebar's web-search tier.
+
+    Returned alongside RAG corpus chunks when the tiered search strategy
+    augments local knowledge with live web results.  Only results that pass
+    the music-relevance filter (known domains or keyword signals) are included.
+    """
+
+    title: str
+    url: str
+    snippet: str = ""
+    source_domain: str = ""
+
+
 class CorpusSearchCitation(BaseModel):
     """A single citation referenced in the synthesized answer.
 
     Maps a citation marker (e.g. "[1]") to its source metadata so the
     frontend can render inline citation links or a bibliography section.
+    The ``source_tier`` field indicates which search tier produced this
+    citation (ra_exchange, book, corpus, or web).
     """
 
     index: int = Field(description="1-based citation number matching [N] markers in the answer text.")
@@ -337,6 +353,11 @@ class CorpusSearchCitation(BaseModel):
     citation_tier: int = 6
     page_number: str | None = None
     excerpt: str = Field(default="", description="Short excerpt from the source passage used.")
+    url: str | None = Field(default=None, description="URL for web-sourced citations.")
+    source_tier: str | None = Field(
+        default=None,
+        description='Which search tier produced this citation: "ra_exchange", "book", "corpus", or "web".',
+    )
 
 
 class CorpusSearchResponse(BaseModel):
@@ -380,6 +401,15 @@ class CorpusSearchResponse(BaseModel):
     answer_citations: list[CorpusSearchCitation] = Field(
         default_factory=list,
         description="Numbered citations referenced by [N] markers in synthesized_answer.",
+    )
+    # Tiered search additions — web results and tier tracking.
+    web_results: list[WebSearchResult] = Field(
+        default_factory=list,
+        description="Music-relevant web search results from the web-search tier (tier 4).",
+    )
+    search_tiers_used: list[int] = Field(
+        default_factory=list,
+        description="Which search tiers returned results: 1=RA Exchange, 2=Books, 3=Other corpus, 4=Web.",
     )
 
 

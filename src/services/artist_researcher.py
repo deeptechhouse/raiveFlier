@@ -77,29 +77,13 @@ if TYPE_CHECKING:
 _CACHE_TTL_SECONDS = 3600  # 1 hour — balances freshness vs. API quota
 
 # ---------------------------------------------------------------------------
-# Relevance filters — separate signal from noise in web search results
+# Relevance filters — imported from shared utility so both the research
+# pipeline and the corpus sidebar web-search tier use the same logic.
 # ---------------------------------------------------------------------------
-# Domains known to be music-related — results from these always pass the
-# relevance check without needing keyword signals in the title/snippet.
-_MUSIC_DOMAINS = re.compile(
-    r"ra\.co|residentadvisor|djmag\.com|mixmag\.net|xlr8r\.com|pitchfork\.com|"
-    r"thequietus\.com|factmag\.com|factmagazine|discogs\.com|musicbrainz\.org|"
-    r"bandcamp\.com|beatport\.com|soundcloud\.com|youtube\.com|youtu\.be|"
-    r"boilerroom\.tv|traxsource\.com|juno\.co\.uk|boomkat\.com|"
-    r"electronicbeats\.net|djtechtools\.com|attackmagazine\.com",
-    re.IGNORECASE,
-)
-
-# Terms that signal music/electronic-music relevance in titles and snippets
-_MUSIC_RELEVANCE_TERMS = re.compile(
-    r"\b(?:dj|producer|remix|techno|house|drum\s*(?:and|&|n)\s*bass|"
-    r"electronic\s*music|rave|club|vinyl|label|release|mix|track|"
-    r"bpm|ep\b|lp\b|album|record|boiler\s*room|soundsystem|"
-    r"beatport|discogs|bandcamp|resident\s*advisor|soundcloud|"
-    r"dance\s*music|edm|jungle|garage|dubstep|acid|trance|"
-    r"breakbeat|ambient|industrial|synth|turntable|decks|"
-    r"festival|warehouse|nightclub|set\b|lineup|b2b)\b",
-    re.IGNORECASE,
+from src.utils.music_relevance import (
+    MUSIC_DOMAINS as _MUSIC_DOMAINS,
+    MUSIC_RELEVANCE_TERMS as _MUSIC_RELEVANCE_TERMS,
+    is_music_relevant as _is_music_relevant_fn,
 )
 
 # ---------------------------------------------------------------------------
@@ -827,16 +811,14 @@ class ArtistResearcher:
     def _is_music_relevant(result: SearchResult) -> bool:
         """Check whether a search result is plausibly about music/electronic music.
 
-        Results from known music domains always pass. For other domains,
-        the title and snippet must contain at least one music-related term.
+        Delegates to the shared utility in src.utils.music_relevance so the
+        same domain list and keyword set are used across the entire app.
         """
-        # Known music domains always pass
-        if _MUSIC_DOMAINS.search(result.url):
-            return True
-
-        # Check title and snippet for music relevance signals
-        text_to_check = f"{result.title or ''} {result.snippet or ''}"
-        return bool(_MUSIC_RELEVANCE_TERMS.search(text_to_check))
+        return _is_music_relevant_fn(
+            url=result.url,
+            title=result.title or "",
+            snippet=result.snippet or "",
+        )
 
     @staticmethod
     def _extract_relevant_snippet(text: str, artist_name: str, max_length: int = 500) -> str:

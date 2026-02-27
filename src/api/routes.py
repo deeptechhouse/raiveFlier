@@ -72,6 +72,7 @@ from src.api.schemas import (
     SessionRatingsResponse,
     SubmitRatingRequest,
     SuggestResponse,
+    WebSearchResult,
 )
 from src.models.entities import EntityType
 from src.models.flier import ExtractedEntities, ExtractedEntity, FlierImage, OCRResult
@@ -258,6 +259,18 @@ def _get_llm_provider(request: Request) -> Any:
 
 
 LLMProviderDep = Annotated[Any, Depends(_get_llm_provider)]
+
+
+def _get_web_search(request: Request) -> Any:
+    """Return the web search provider from application state, or ``None``.
+
+    Used by the corpus sidebar's web-search tier to augment RAG results
+    with live DuckDuckGo results filtered for music relevance.
+    """
+    return getattr(request.app.state, "web_search", None)
+
+
+WebSearchDep = Annotated[Any, Depends(_get_web_search)]
 
 
 def _get_flier_history(request: Request) -> Any:
@@ -1257,6 +1270,208 @@ def _compute_facets(chunks: list[CorpusSearchChunk]) -> FacetCounts:
 
 
 # ---------------------------------------------------------------------------
+# Tiered corpus query — priority-ordered ChromaDB retrieval
+# ---------------------------------------------------------------------------
+# The tiered strategy queries ChromaDB three times in sequence, each time
+# targeting a different source priority:
+#   Tier 1: RA Exchange podcast transcripts (source_type="interview",
+#           source_title starts with "EX.")
+#   Tier 2: Books (source_type="book")
+#   Tier 3: Everything else except event listings and tiers 1-2
+# Chunks are deduped across tiers via a seen_chunk_ids set so the same
+# passage never appears in two tiers.
+#
+# Returns (all_chunks, chunk_tier_map) where chunk_tier_map maps
+# id(chunk) → tier number for downstream provenance labeling.
+
+
+async def _tiered_corpus_query(
+    vector_store: Any,
+    query_text: str,
+    user_filters: dict[str, Any] | None,
+) -> tuple[list[Any], dict[int, int], list[int]]:
+    """Execute priority-ordered ChromaDB queries across three source tiers.
+
+    Parameters
+    ----------
+    vector_store:
+        The ChromaDB vector store instance.
+    query_text:
+        The (possibly expanded) search query text.
+    user_filters:
+        User-applied ChromaDB where-clause filters (entity, geo, genre, etc.)
+        to be merged into each tier's query.
+
+    Returns
+    -------
+    tuple of (all_chunks, chunk_tier_map, tiers_used)
+        - all_chunks: flat list of retrieval results across all tiers
+        - chunk_tier_map: ``{id(chunk): tier_number}`` for provenance
+        - tiers_used: list of tier numbers that produced results
+    """
+    all_chunks: list[Any] = []
+    chunk_tier_map: dict[int, int] = {}
+    seen_ids: set[str] = set()
+    tiers_used: list[int] = []
+
+    # Helper to merge user filters with tier-specific filters
+    def _merge_filters(tier_filter: dict[str, Any]) -> dict[str, Any] | None:
+        merged = dict(tier_filter)
+        if user_filters:
+            merged.update(user_filters)
+        return merged if merged else None
+
+    # --- Tier 1: RA Exchange interviews ---
+    # ChromaDB query filtered to source_type="interview"; post-filter to
+    # source_title starting with "EX." (the RA Exchange episode prefix).
+    t1_filters = _merge_filters({"source_type": "interview"})
+    try:
+        t1_raw = await vector_store.query(
+            query_text=query_text, top_k=20, filters=t1_filters,
+        )
+        # Post-filter: only keep RA Exchange episodes (source_title starts with "EX.")
+        t1_chunks = [
+            c for c in t1_raw
+            if getattr(c.chunk, "source_title", "").startswith("EX.")
+            and c.chunk.source_id not in seen_ids
+        ][:10]
+        for c in t1_chunks:
+            seen_ids.add(c.chunk.source_id)
+            chunk_tier_map[id(c)] = 1
+        all_chunks.extend(t1_chunks)
+        if t1_chunks:
+            tiers_used.append(1)
+    except Exception:
+        _logger.debug("tiered_query_tier1_failed")
+
+    # --- Tier 2: Books ---
+    t2_filters = _merge_filters({"source_type": "book"})
+    try:
+        t2_raw = await vector_store.query(
+            query_text=query_text, top_k=15, filters=t2_filters,
+        )
+        t2_chunks = [
+            c for c in t2_raw
+            if c.chunk.source_id not in seen_ids
+        ][:10]
+        for c in t2_chunks:
+            seen_ids.add(c.chunk.source_id)
+            chunk_tier_map[id(c)] = 2
+        all_chunks.extend(t2_chunks)
+        if t2_chunks:
+            tiers_used.append(2)
+    except Exception:
+        _logger.debug("tiered_query_tier2_failed")
+
+    # --- Tier 3: Other corpus sources (not event listings, not T1/T2 types) ---
+    # No hard source_type filter here — we just exclude event_listing, interview,
+    # and book types since those are handled by T1/T2.  Post-filter by seen_ids.
+    t3_filters = _merge_filters({}) if user_filters else None
+    try:
+        t3_raw = await vector_store.query(
+            query_text=query_text, top_k=30, filters=t3_filters,
+        )
+        t3_chunks = [
+            c for c in t3_raw
+            if c.chunk.source_id not in seen_ids
+            and c.chunk.source_type not in ("event_listing",)
+        ][:15]
+        for c in t3_chunks:
+            seen_ids.add(c.chunk.source_id)
+            chunk_tier_map[id(c)] = 3
+        all_chunks.extend(t3_chunks)
+        if t3_chunks:
+            tiers_used.append(3)
+    except Exception:
+        _logger.debug("tiered_query_tier3_failed")
+
+    return all_chunks, chunk_tier_map, tiers_used
+
+
+# ---------------------------------------------------------------------------
+# Web search tier — live DuckDuckGo results filtered for music relevance
+# ---------------------------------------------------------------------------
+# Tier 4: augments the corpus with live web results when the web search
+# provider is available.  Runs in parallel with ChromaDB queries (via
+# asyncio.create_task) to minimize latency.  Has a 3-second hard timeout
+# for graceful degradation when DDG is slow or rate-limited.
+
+_WEB_SEARCH_TIMEOUT = 3.0  # seconds — hard ceiling for DDG call
+
+
+async def _web_search_tier(
+    web_search: Any,
+    query: str,
+    corpus_chunks: list[Any],
+) -> list[WebSearchResult]:
+    """Execute a music-filtered web search to augment corpus results.
+
+    Builds an enriched query from the user's original query plus entity/genre
+    tags extracted from the corpus hits, then filters results through the
+    shared music-relevance check.
+
+    Parameters
+    ----------
+    web_search:
+        An IWebSearchProvider instance (typically DuckDuckGoSearchProvider).
+    query:
+        The user's original search query.
+    corpus_chunks:
+        Chunks from tiers 1-3, used to extract entity/genre context.
+
+    Returns
+    -------
+    list[WebSearchResult]
+        Music-relevant web results, or empty list on failure/timeout.
+    """
+    if web_search is None:
+        return []
+
+    from src.utils.music_relevance import is_music_relevant
+    from urllib.parse import urlparse
+
+    # Build enriched query: original + top entity/genre tags from corpus
+    context_tags: list[str] = []
+    for c in corpus_chunks[:5]:
+        chunk = c.chunk if hasattr(c, "chunk") else c
+        if hasattr(chunk, "entity_tags"):
+            context_tags.extend(chunk.entity_tags[:2])
+        if hasattr(chunk, "genre_tags"):
+            context_tags.extend(chunk.genre_tags[:1])
+    # Deduplicate and limit context expansion
+    unique_tags = list(dict.fromkeys(context_tags))[:4]
+    enriched_query = query
+    if unique_tags:
+        enriched_query = f"{query} {' '.join(unique_tags)} electronic music"
+    else:
+        enriched_query = f"{query} electronic music"
+
+    try:
+        raw_results = await asyncio.wait_for(
+            web_search.search(enriched_query, num_results=5),
+            timeout=_WEB_SEARCH_TIMEOUT,
+        )
+    except (asyncio.TimeoutError, Exception):
+        _logger.debug("web_search_tier_failed_or_timeout", query_preview=query[:50])
+        return []
+
+    # Filter for music relevance and convert to schema objects
+    web_results: list[WebSearchResult] = []
+    for r in raw_results:
+        if not is_music_relevant(r.url, r.title or "", r.snippet or ""):
+            continue
+        domain = urlparse(r.url).netloc.removeprefix("www.")
+        web_results.append(WebSearchResult(
+            title=r.title or "",
+            url=r.url,
+            snippet=r.snippet or "",
+            source_domain=domain,
+        ))
+
+    return web_results
+
+
+# ---------------------------------------------------------------------------
 # Corpus search — LLM synthesis prompts and helper
 # ---------------------------------------------------------------------------
 # After vector retrieval ranks chunks, the top results are passed to the LLM
@@ -1268,7 +1483,13 @@ _SYNTHESIS_SYSTEM_PROMPT = (
     "You are a knowledgeable assistant specializing in electronic music, "
     "rave culture, and the history of DJs, venues, labels, and promoters.\n\n"
     "You will be given a user's search query and a set of numbered source passages "
-    "retrieved from a curated knowledge base of books, articles, and interviews.\n\n"
+    "retrieved from a curated knowledge base of books, articles, interviews, "
+    "and web search results.\n\n"
+    "Sources are organized by authority tier:\n"
+    "- **RA Exchange** (podcast transcripts): Highest authority — first-person accounts\n"
+    "- **Books**: Published, researched material\n"
+    "- **Corpus** (articles, interviews, other): Curated knowledge base\n"
+    "- **Web**: Live web results — useful for recent info but less authoritative\n\n"
     "Your job is to synthesize these passages into a clear, cohesive, and "
     "informative answer. Follow these rules:\n"
     "- Write a natural, flowing response (2-4 paragraphs) that directly answers "
@@ -1276,7 +1497,10 @@ _SYNTHESIS_SYSTEM_PROMPT = (
     "- Cite sources inline using numbered markers like [1], [2], etc. that "
     "correspond to the passage numbers provided.\n"
     "- Only cite passages that actually support a claim — do not cite every passage.\n"
-    "- If passages contradict each other, note the discrepancy.\n"
+    "- Prefer higher-authority sources (RA Exchange > Books > Corpus > Web) when "
+    "multiple sources cover the same point.\n"
+    "- If passages contradict each other, note the discrepancy and favor the "
+    "higher-tier source.\n"
     "- If the passages do not contain enough information to answer the query, "
     "say so honestly and provide what you can.\n"
     "- Stay strictly on topic: electronic music, rave culture, DJs, labels, "
@@ -1299,38 +1523,74 @@ async def _synthesize_answer(
     llm: Any,
     query: str,
     chunks: list[CorpusSearchChunk],
+    web_results: list[WebSearchResult] | None = None,
+    chunk_tiers: dict[int, str] | None = None,
 ) -> tuple[str | None, list[CorpusSearchCitation]]:
-    """Synthesize a natural-language answer from the top retrieved chunks.
+    """Synthesize a natural-language answer from tiered corpus chunks and web results.
 
     Passes the user's query and numbered source passages to the LLM, which
-    returns a cohesive response with inline [N] citation markers.
+    returns a cohesive response with inline [N] citation markers.  Passage
+    labels include tier provenance so the LLM can prioritize authoritative
+    sources (RA Exchange > Books > Corpus > Web).
+
+    Parameters
+    ----------
+    llm:
+        The LLM provider instance.
+    query:
+        The user's search query.
+    chunks:
+        Ranked corpus search chunks from tiers 1-3.
+    web_results:
+        Optional music-relevant web search results from tier 4.
+    chunk_tiers:
+        Maps ``id(chunk)`` → tier label string (e.g. "RA Exchange", "Book").
 
     Returns (answer_text, citations_list).  Returns (None, []) if synthesis
     fails or LLM is unavailable — the frontend gracefully falls back to
     showing raw chunk cards.
     """
-    if llm is None or not chunks:
+    if llm is None or (not chunks and not web_results):
         return None, []
 
     # Select top chunks for synthesis context
     top_chunks = chunks[:_SYNTHESIS_MAX_CHUNKS]
 
-    # Build cache key from query + chunk texts
-    cache_raw = query.lower().strip() + "||" + "||".join(c.text[:200] for c in top_chunks)
+    # Build cache key from query + chunk texts + web presence
+    web_sig = "".join(w.url[:40] for w in (web_results or [])[:3])
+    cache_raw = query.lower().strip() + "||" + "||".join(c.text[:200] for c in top_chunks) + "||" + web_sig
     cache_key = hashlib.sha256(cache_raw.encode()).hexdigest()[:32]
     if cache_key in _synthesis_cache:
         cached_answer, cached_cits = _synthesis_cache[cache_key]
         return cached_answer, [CorpusSearchCitation(**c) for c in cached_cits]
 
-    # Build numbered passage list for the LLM
+    # Track which passage index maps to which source (chunk or web) for citations
+    # passage_sources: list of (type, chunk_or_web, tier_label)
+    passage_sources: list[tuple[str, Any, str]] = []
+
+    # Build numbered passage list for the LLM — corpus chunks first
     passage_lines: list[str] = []
-    for i, chunk in enumerate(top_chunks, 1):
+    for chunk in top_chunks:
+        idx = len(passage_lines) + 1
         source_label = chunk.source_title or "Unknown source"
         if chunk.author:
             source_label += f" by {chunk.author}"
         if chunk.page_number:
             source_label += f", p. {chunk.page_number}"
-        passage_lines.append(f"[{i}] ({source_label}, Tier {chunk.citation_tier})\n{chunk.text}")
+        # Resolve tier label from chunk_tiers map
+        tier_label = (chunk_tiers or {}).get(id(chunk), "Corpus")
+        passage_lines.append(
+            f"[{idx}] ({tier_label}: {source_label}, Tier {chunk.citation_tier})\n{chunk.text}"
+        )
+        passage_sources.append(("chunk", chunk, tier_label))
+
+    # Append web results as additional passages after corpus chunks
+    for wr in (web_results or [])[:3]:
+        idx = len(passage_lines) + 1
+        passage_lines.append(
+            f"[{idx}] (Web: {wr.source_domain})\n{wr.title}\n{wr.snippet}"
+        )
+        passage_sources.append(("web", wr, "Web"))
 
     user_prompt = (
         f"## Search Query\n{query}\n\n"
@@ -1356,18 +1616,31 @@ async def _synthesize_answer(
     if not answer_text:
         return None, []
 
-    # Build citation objects for the chunks that were actually cited in the answer
+    # Build citation objects for passages actually cited in the answer
     citations: list[CorpusSearchCitation] = []
-    for i, chunk in enumerate(top_chunks, 1):
-        # Check if [N] appears in the answer text
-        if f"[{i}]" in answer_text:
+    for i, (src_type, src_obj, tier_label) in enumerate(passage_sources, 1):
+        if f"[{i}]" not in answer_text:
+            continue
+
+        if src_type == "chunk":
             citations.append(CorpusSearchCitation(
                 index=i,
-                source_title=chunk.source_title,
-                author=chunk.author,
-                citation_tier=chunk.citation_tier,
-                page_number=chunk.page_number,
-                excerpt=chunk.text[:200] + ("..." if len(chunk.text) > 200 else ""),
+                source_title=src_obj.source_title,
+                author=src_obj.author,
+                citation_tier=src_obj.citation_tier,
+                page_number=src_obj.page_number,
+                excerpt=src_obj.text[:200] + ("..." if len(src_obj.text) > 200 else ""),
+                source_tier=tier_label.lower().replace(" ", "_"),
+            ))
+        else:
+            # Web result citation
+            citations.append(CorpusSearchCitation(
+                index=i,
+                source_title=src_obj.title,
+                citation_tier=5,
+                excerpt=src_obj.snippet[:200] + ("..." if len(src_obj.snippet) > 200 else ""),
+                url=src_obj.url,
+                source_tier="web",
             ))
 
     # Cache the result
@@ -1393,6 +1666,7 @@ async def corpus_search(
     vector_store: VectorStoreDep,
     feedback: FeedbackDep,
     llm: LLMProviderDep,
+    web_search: WebSearchDep,
 ) -> CorpusSearchResponse:
     """Perform semantic search against the RAG vector-store corpus.
 
@@ -1473,32 +1747,53 @@ async def corpus_search(
     raw_query = query_text
     query_text = await _expand_query(llm, query_text)
 
-    chunks = await vector_store.query(
-        query_text=query_text,
-        top_k=body.top_k,
-        filters=filters if filters else None,
+    # --- Tiered corpus retrieval + parallel web search ---
+    # Launch web search as a background task while ChromaDB tiers run
+    # sequentially.  The 3-second timeout on web search means it won't
+    # block synthesis if DDG is slow.
+    web_task: asyncio.Task[list[WebSearchResult]] | None = None
+    if body.offset == 0 and web_search is not None:
+        # Web search runs in parallel — will be awaited after tiered queries
+        web_task = asyncio.create_task(
+            _web_search_tier(web_search, body.query, [])
+        )
+
+    # Tiered ChromaDB queries: T1 (RA Exchange) → T2 (Books) → T3 (Other)
+    tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
+        vector_store, query_text, filters if filters else None,
     )
 
-    # Fallback: if the expanded query returned nothing but the raw query
-    # differs, retry with the original query.  LLM expansion can sometimes
-    # drift away from the user's intent, producing zero relevant hits.
-    if not chunks and query_text != raw_query:
+    # Fallback: if tiered query returned nothing and expanded query differs,
+    # retry with the raw query.
+    if not tiered_chunks and query_text != raw_query:
         _logger.debug(
-            "expanded_query_empty_fallback_to_raw",
+            "tiered_query_empty_fallback_to_raw",
             expanded=query_text[:80],
             raw=raw_query[:80],
         )
-        chunks = await vector_store.query(
-            query_text=raw_query,
-            top_k=body.top_k,
-            filters=filters if filters else None,
+        tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
+            vector_store, raw_query, filters if filters else None,
         )
 
+    # Now that tiered corpus chunks are available, update the web task
+    # with corpus context (if the task hasn't started fetching yet, this
+    # is a no-op — the initial empty-list context is sufficient).
+    # For the web search, re-launch with corpus context if we have chunks.
+    if web_task is not None and tiered_chunks:
+        web_task.cancel()
+        web_task = asyncio.create_task(
+            _web_search_tier(web_search, body.query, tiered_chunks)
+        )
+
+    chunks = tiered_chunks
+
     # Safety-net dedup by source_id — keep top N chunks per source.
-    # Raised from 3→5 to let more distinct passages surface in the
-    # larger candidate pool (top_k up to 50).
     _MAX_PER_SOURCE = 5
     source_chunks: dict[str, list[CorpusSearchChunk]] = {}
+    # Map from CorpusSearchChunk id → tier label for synthesis provenance
+    chunk_tier_labels: dict[int, str] = {}
+    _TIER_LABELS = {1: "RA Exchange", 2: "Book", 3: "Corpus"}
+
     for c in chunks:
         sid = c.chunk.source_id
         candidate = CorpusSearchChunk(
@@ -1517,19 +1812,19 @@ async def corpus_search(
             time_period=c.chunk.time_period,
         )
         source_chunks.setdefault(sid, []).append(candidate)
+        # Propagate tier label from raw chunk to CorpusSearchChunk
+        raw_tier = chunk_tier_map.get(id(c), 3)
+        chunk_tier_labels[id(candidate)] = _TIER_LABELS.get(raw_tier, "Corpus")
 
     deduped: list[CorpusSearchChunk] = []
     for entries in source_chunks.values():
         entries.sort(key=lambda r: r.similarity_score, reverse=True)
         deduped.extend(entries[:_MAX_PER_SOURCE])
 
-    # Exclude "analysis" source-type chunks — these are internal pipeline
-    # outputs that should not surface in user-facing corpus search results.
+    # Exclude "analysis" source-type chunks — internal pipeline outputs.
     deduped = [r for r in deduped if r.source_type != "analysis"]
 
     # --- Facet computation: count metadata values in the candidate pool ---
-    # Computed BEFORE user-applied filters (feedback, time period, multi-genre)
-    # so facets reflect what is available in the query's semantic neighborhood.
     facet_counts = _compute_facets(deduped)
 
     # Filter out results the user previously thumbs-downed.
@@ -1545,14 +1840,6 @@ async def corpus_search(
             _logger.debug("Feedback lookup failed for corpus search, skipping filter")
 
     # --- Post-filters for fields that need Python-side logic ---
-    # ChromaDB's where clause does not support $contains on metadata, so
-    # all tag-based filters (entity, geographic, genre) are applied here
-    # in Python after retrieval.  The 4x over-fetch factor in the vector
-    # query compensates for candidates lost to post-filtering.
-
-    # Entity tag post-filter: match chunks whose entity_tags list contains
-    # the requested entity name (case-insensitive substring check because
-    # tags may be stored with different casing).
     _entity_filter = filters.get("entity_tags", {}).get("$contains") if filters else None
     if _entity_filter:
         _entity_lower = _entity_filter.lower()
@@ -1561,7 +1848,6 @@ async def corpus_search(
             if any(_entity_lower in t.lower() for t in r.entity_tags)
         ]
 
-    # Geographic tag post-filter: same substring match approach.
     _geo_filter = filters.get("geographic_tags", {}).get("$contains") if filters else None
     if _geo_filter:
         _geo_lower = _geo_filter.lower()
@@ -1570,10 +1856,6 @@ async def corpus_search(
             if any(_geo_lower in t.lower() for t in r.geographic_tags)
         ]
 
-    # Genre post-filter: handles both single-genre and multi-genre cases.
-    # For single genre, requires at least one genre tag to contain the
-    # query genre as a substring (e.g. "techno" matches "detroit techno").
-    # For multi-genre, requires at least one exact match from the set.
     _genre_filter = filters.get("genre_tags", {}).get("$contains") if filters else None
     if body.genre_tags and len(body.genre_tags) > 1:
         genre_set = {g.lower() for g in body.genre_tags}
@@ -1583,10 +1865,6 @@ async def corpus_search(
         ]
     elif _genre_filter:
         _genre_lower = _genre_filter.lower()
-        # Bidirectional substring match: "detroit techno" matches "techno"
-        # and "techno" matches "detroit techno".  This handles both cases
-        # where the filter genre is more specific or more general than the
-        # stored genre tag.
         deduped = [
             r for r in deduped
             if any(
@@ -1595,8 +1873,6 @@ async def corpus_search(
             )
         ]
 
-    # Time-period post-filter: ChromaDB can't do range-overlap matching,
-    # so we filter after retrieval using temporal_overlap() from domain_knowledge.
     if body.time_period:
         try:
             from src.config.domain_knowledge import detect_temporal_signal, temporal_overlap
@@ -1606,13 +1882,9 @@ async def corpus_search(
                 if r.time_period and temporal_overlap(normalized, r.time_period)
             ]
         except ImportError:
-            pass  # domain_knowledge not yet available
+            pass
 
     # --- Score boosting: domain-aware re-ranking ---
-    # Each boost is small and additive so cosine similarity remains the
-    # dominant signal.  Boosted scores are stored in a parallel dict keyed
-    # by ``id(result)`` because CorpusSearchChunk is a Pydantic model and
-    # we avoid mutating it.
     try:
         from src.config.domain_knowledge import (
             detect_temporal_signal,
@@ -1632,20 +1904,19 @@ async def corpus_search(
 
     for r in deduped:
         boost = 0.0
-
-        # Citation tier boost: T1 → +0.12, T2 → +0.096, … T6 → 0.00
-        # Gradient raised from 0.02→0.024 per tier level to give higher-quality
-        # sources more lift in the larger result pool.
         boost += max(0.0, (6 - r.citation_tier) * 0.024)
-
-        # Exact query-match boost: if the raw query string appears verbatim
-        # in the chunk text, that is a strong relevance signal beyond what
-        # embedding similarity alone captures.
         if body.query.lower() in r.text.lower():
             boost += 0.03
 
+        # Tier priority boost: T1 (RA Exchange) → +0.06, T2 (Book) → +0.04, T3 → +0.00
+        # Gives higher-authority sources a ranking lift within the merged pool.
+        tier_label = chunk_tier_labels.get(id(r), "Corpus")
+        if tier_label == "RA Exchange":
+            boost += 0.06
+        elif tier_label == "Book":
+            boost += 0.04
+
         if _dk_available:
-            # #4 Genre adjacency boost
             if query_genres and r.genre_tags:
                 for qg in query_genres:
                     adjacent = get_adjacent_genres(qg)
@@ -1657,12 +1928,10 @@ async def corpus_search(
                             boost += 0.03
                             break
 
-            # #5 Temporal boost
             if query_temporal:
                 if r.time_period and temporal_overlap(query_temporal, r.time_period):
                     boost += 0.04
 
-            # #6 Geographic scene boost (soft)
             if query_geos and r.geographic_tags:
                 for geo in r.geographic_tags:
                     if geo in query_geos:
@@ -1675,12 +1944,7 @@ async def corpus_search(
         return boosted.get(id(r), r.similarity_score)
 
     # --- Diversification: entity-type-aware caps ---
-    # When the query is NOT explicitly asking for artists, diversify results
-    # so no single entity dominates.  All entity tags are subject to per-tag
-    # caps — single-entity chunks are treated the same as multi-entity ones.
     if not _is_artist_query(body.query):
-        # Caps raised from 3/4 to 4/5 to let more results survive in the
-        # larger candidate pool (up to 50 results vs. the old 15).
         _CAP_BY_TYPE = {"ARTIST": 4, "VENUE": 5, "LABEL": 5, "EVENT": 5, "COLLECTIVE": 4}
         _DEFAULT_CAP = 4
         entity_counts: dict[str, int] = {}
@@ -1695,9 +1959,6 @@ async def corpus_search(
             has_types = r.entity_types and len(r.entity_types) == len(r.entity_tags)
 
             if has_types:
-                # Per-type capping — each entity tag is checked against its
-                # type-specific cap.  Single-entity ARTIST chunks are capped
-                # just like multi-entity chunks (not unconditionally skipped).
                 capped = False
                 for tag, etype in zip(r.entity_tags, r.entity_types):
                     cap = _CAP_BY_TYPE.get(etype, _DEFAULT_CAP)
@@ -1709,8 +1970,6 @@ async def corpus_search(
                     for tag in r.entity_tags:
                         entity_counts[tag] = entity_counts.get(tag, 0) + 1
             else:
-                # Fallback for legacy chunks without entity_types — apply
-                # the default cap uniformly to all tags regardless of count.
                 capped = False
                 for tag in r.entity_tags:
                     if entity_counts.get(tag, 0) >= _DEFAULT_CAP:
@@ -1729,32 +1988,35 @@ async def corpus_search(
         reverse=True,
     )
 
-    # Remove near-duplicate chunks across different sources.
-    # Threshold lowered from 0.85→0.80 to catch more near-dupes,
-    # letting more genuinely unique content through in the larger pool.
     results = _semantic_dedup(results, threshold=0.80)
 
-    # Apply minimum similarity threshold if requested — excludes
-    # low-relevance results that survived ranking but sit below the
-    # user's quality bar.
     if body.min_similarity is not None and body.min_similarity > 0:
         results = [r for r in results if _score(r) >= body.min_similarity]
 
-    # --- Pagination: slice the full result set into a page ---
+    # --- Pagination ---
     total_available = len(results)
     page_start = min(body.offset, total_available)
     page_end = min(page_start + body.page_size, total_available)
     page_results = results[page_start:page_end]
 
-    # --- LLM synthesis: generate a cohesive NL answer from top chunks ---
-    # Only synthesize on the first page (offset=0) to avoid re-synthesizing
-    # on "Load More" requests.  Uses the full ranked result set (not just the
-    # page slice) so the LLM sees the best chunks regardless of page_size.
+    # --- Await web search results (launched in parallel earlier) ---
+    web_results: list[WebSearchResult] = []
+    if web_task is not None:
+        try:
+            web_results = await web_task
+            if web_results:
+                tiers_used.append(4)
+        except (asyncio.CancelledError, Exception):
+            _logger.debug("web_search_task_failed")
+
+    # --- LLM synthesis: generate NL answer from tiered chunks + web results ---
     synthesized_answer: str | None = None
     answer_citations: list[CorpusSearchCitation] = []
-    if body.offset == 0 and results:
+    if body.offset == 0 and (results or web_results):
         synthesized_answer, answer_citations = await _synthesize_answer(
-            llm, body.query, results
+            llm, body.query, results,
+            web_results=web_results if web_results else None,
+            chunk_tiers=chunk_tier_labels,
         )
 
     return CorpusSearchResponse(
@@ -1764,9 +2026,6 @@ async def corpus_search(
         offset=body.offset,
         page_size=body.page_size,
         has_more=page_end < total_available,
-        # Smart-search response fields — auto-detected filters so the
-        # frontend can show "auto" badges on filter controls it didn't
-        # manually set, plus facet counts for annotating dropdowns.
         facets=facet_counts,
         parsed_filters=ParsedQueryFilters(
             genres=_parsed_genres,
@@ -1777,6 +2036,8 @@ async def corpus_search(
         ),
         synthesized_answer=synthesized_answer,
         answer_citations=answer_citations,
+        web_results=web_results,
+        search_tiers_used=sorted(tiers_used),
     )
 
 

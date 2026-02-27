@@ -759,6 +759,7 @@ class TestBuildAll:
             "feedback_provider",
             "flier_history",
             "recommendation_service",
+            "web_search",
         }
         assert set(result.keys()) == expected_keys
 
