@@ -82,6 +82,8 @@ RUN grep -ivE 'easyocr|sentence.transformers' requirements.txt > requirements-de
 # source code changes most often, so it goes last.
 # Python application code
 COPY src/ src/
+# raiveFeeder companion app (mounted at /feeder/ in production)
+COPY tools/ tools/
 # Static HTML/CSS/JS frontend
 COPY frontend/ frontend/
 # YAML configuration files
@@ -95,7 +97,8 @@ COPY scripts/entrypoint.sh scripts/entrypoint.sh
 # On Render, /data is a persistent disk mount (survives redeploys).
 # The local data/chromadb and uploads/ dirs are fallbacks for local Docker
 # runs where no external volume is mounted.
-RUN mkdir -p data/chromadb /data/chromadb uploads \
+# /data/pending_uploads stages files awaiting content approval.
+RUN mkdir -p data/chromadb /data/chromadb /data/pending_uploads uploads \
     && chmod +x scripts/entrypoint.sh
 
 # ── Runtime ──────────────────────────────────────────────────

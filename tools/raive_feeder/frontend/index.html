@@ -298,6 +298,24 @@
 
     <!-- ===== TAB 5: CORPUS ===== -->
     <section id="tab-corpus" class="tab-panel" role="tabpanel" aria-label="Corpus management" hidden>
+
+      <!-- Pending Approvals Dashboard — shown when approval queue is active -->
+      <div class="approval-section" id="approval-section" hidden>
+        <div class="approval-header">
+          <h3 class="meta-form__title">
+            Pending Approvals
+            <span class="approval-badge" id="approval-count-badge">0</span>
+          </h3>
+          <div class="approval-actions-bar">
+            <button type="button" class="btn-sm btn-approve" id="approval-bulk-approve-btn" disabled>Approve Selected</button>
+            <button type="button" class="btn-sm btn-reject" id="approval-bulk-reject-btn" disabled>Reject Selected</button>
+          </div>
+        </div>
+        <div class="approval-table" id="approval-table">
+          <!-- Populated by corpus.js _renderPendingTable() -->
+        </div>
+      </div>
+
       <!-- Stats dashboard -->
       <div class="corpus-stats" id="corpus-stats">
         <div class="stat-card">

@@ -200,12 +200,40 @@ def _build_all(settings: FeederSettings) -> dict[str, Any]:
         max_concurrency=settings.batch_max_concurrency,
     )
 
+    # Approval queue (content moderation before ingestion).
+    # Only activated when a passcode is set (i.e., online mode).
+    if settings.feeder_passcode:
+        from tools.raive_feeder.providers.approval.sqlite_approval_provider import (
+            SQLiteApprovalProvider,
+        )
+        from tools.raive_feeder.services.approval_service import ApprovalService
+
+        approval_provider = SQLiteApprovalProvider(db_path=settings.approval_db_path)
+        github_issue_svc = None
+        if settings.github_token:
+            from tools.raive_feeder.services.github_issue_service import GitHubIssueService
+            github_issue_svc = GitHubIssueService(
+                github_token=settings.github_token,
+                repo=settings.corpus_repo,
+            )
+
+        components["approval_provider"] = approval_provider
+        components["approval_service"] = ApprovalService(
+            approval_provider=approval_provider,
+            ingestion_service=ingestion_service,
+            github_issue_service=github_issue_svc,
+        )
+    else:
+        components["approval_provider"] = None
+        components["approval_service"] = None
+
     logger.info(
         "feeder_components_built",
         ingestion=status,
         has_llm=components["llm_provider"] is not None,
         ocr_count=len(components["ocr_providers"]),
         has_vector_store=components["vector_store"] is not None,
+        has_approval_queue=components["approval_service"] is not None,
     )
     return components
 
@@ -221,6 +249,11 @@ async def _lifespan(app: FastAPI):
     # Attach all singletons to app.state for route handler access.
     for key, value in components.items():
         setattr(app.state, key, value)
+
+    # Initialize the approval queue database (idempotent CREATE TABLE).
+    approval_provider = components.get("approval_provider")
+    if approval_provider is not None:
+        await approval_provider.initialize()
 
     logger.info(
         "raive_feeder_started",
@@ -270,9 +303,26 @@ def create_app(settings: FeederSettings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Auth middleware — passcode gate for online access.
+    if settings.feeder_passcode:
+        from tools.raive_feeder.api.auth_middleware import FeederAuthMiddleware
+        app.add_middleware(
+            FeederAuthMiddleware,
+            secret=settings.feeder_passcode,
+            ttl_hours=settings.session_cookie_ttl_hours,
+        )
+
+    # Auth routes (login page, login/logout/status API).
+    from tools.raive_feeder.api.auth_routes import auth_router
+    app.include_router(auth_router)
+
     # Mount API routes.
     from tools.raive_feeder.api.routes import router as api_router
     app.include_router(api_router, prefix="/api/v1")
+
+    # Approval queue routes (content moderation dashboard).
+    from tools.raive_feeder.api.approval_routes import approval_router
+    app.include_router(approval_router, prefix="/api/v1")
 
     # Mount WebSocket endpoint.
     from tools.raive_feeder.api.websocket import websocket_progress

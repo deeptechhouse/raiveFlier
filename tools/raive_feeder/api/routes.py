@@ -29,6 +29,7 @@ from uuid import uuid4
 import structlog
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
+from tools.raive_feeder.api.approval_schemas import SubmissionResponse
 from tools.raive_feeder.api.schemas import (
     BatchIngestRequest,
     ChunkMetadataUpdate,
@@ -75,12 +76,30 @@ def _get_vector_store(request: Request) -> Any:
     return vs
 
 
+def _get_approval_service(request: Request) -> Any | None:
+    """Retrieve the ApprovalService from app.state (None if not configured)."""
+    return getattr(request.app.state, "approval_service", None)
+
+
+# Directory for staging uploaded files awaiting approval.
+_PENDING_UPLOADS_DIR = Path("/data/pending_uploads") if Path("/data").is_dir() else Path("data/pending_uploads")
+
+
+def _stage_file(content: bytes, submission_id: str, filename: str) -> str:
+    """Save an uploaded file to the pending uploads staging directory."""
+    _PENDING_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    safe_name = Path(filename).name
+    staged_path = _PENDING_UPLOADS_DIR / f"{submission_id}_{safe_name}"
+    staged_path.write_bytes(content)
+    return str(staged_path)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # INGESTION ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════
 
 
-@router.post("/ingest/document", response_model=IngestDocumentResponse)
+@router.post("/ingest/document")
 async def ingest_document(
     request: Request,
     file: UploadFile = File(...),
@@ -89,28 +108,48 @@ async def ingest_document(
     year: int = Form(0),
     source_type: str = Form("book"),
     citation_tier: int = Form(2),
-) -> IngestDocumentResponse:
-    """Upload and ingest a document (PDF, EPUB, TXT, DOCX, RTF, MOBI, DJVU).
+) -> SubmissionResponse | IngestDocumentResponse:
+    """Upload a document for ingestion.
 
-    The file is saved to a temp directory, optionally format-converted,
-    then passed through the shared ingestion pipeline (chunk → tag → embed → store).
+    If the approval queue is active, the document is staged on disk and
+    queued for admin review.  Otherwise (local dev), it goes straight
+    through the ingestion pipeline.
     """
-    svc = _get_ingestion(request)
-    job_id = str(uuid4())
-
-    # Auto-detect title from filename if not provided.
     if not title:
         title = Path(file.filename or "untitled").stem
 
+    approval_svc = _get_approval_service(request)
+    content = await file.read()
+
+    # ── Approval queue path ──
+    if approval_svc is not None:
+        submission_id = str(uuid4())
+        staged_path = _stage_file(content, submission_id, file.filename or "document")
+        result = await approval_svc.submit({
+            "id": submission_id,
+            "title": title,
+            "source_type": source_type,
+            "citation_tier": citation_tier,
+            "author": author,
+            "year": year,
+            "content_type": "file_path",
+            "content_data": staged_path,
+        })
+        return SubmissionResponse(
+            submission_id=result["submission_id"],
+            status=result["status"],
+        )
+
+    # ── Direct ingestion path (local dev, no approval queue) ──
+    svc = _get_ingestion(request)
+    job_id = str(uuid4())
+
     try:
-        # Save uploaded file to temp location.
         suffix = Path(file.filename or "").suffix.lower()
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
 
-        # Route to appropriate ingestion method based on file extension.
         result = await _ingest_by_extension(
             svc, request, tmp_path, suffix, title, author, year, source_type
         )
@@ -320,15 +359,33 @@ async def ingest_url(
             for p in pages
         ]
 
-        # Auto-ingest if requested.
+        # Auto-ingest if requested — routes through approval queue when active.
         if body.auto_ingest:
-            svc = _get_ingestion(request)
-            for p in pages:
-                if p.get("text"):
-                    try:
-                        await svc.ingest_article(url=p["url"])
-                    except Exception:
-                        pass
+            approval_svc = _get_approval_service(request)
+            if approval_svc is not None:
+                for p in pages:
+                    if p.get("text"):
+                        try:
+                            await approval_svc.submit({
+                                "id": str(uuid4()),
+                                "title": p.get("title", p["url"]),
+                                "source_type": "article",
+                                "citation_tier": 4,
+                                "author": "",
+                                "year": 0,
+                                "content_type": "url",
+                                "content_data": p["url"],
+                            })
+                        except Exception:
+                            pass
+            else:
+                svc = _get_ingestion(request)
+                for p in pages:
+                    if p.get("text"):
+                        try:
+                            await svc.ingest_article(url=p["url"])
+                        except Exception:
+                            pass
 
         return ScrapeURLResponse(
             job_id=job_id,
@@ -353,7 +410,43 @@ async def ingest_batch(
     citation_tier: int = Form(3),
     skip_tagging: bool = Form(False),
 ) -> JobStatusResponse:
-    """Queue a batch ingestion job for multiple files."""
+    """Queue a batch ingestion job for multiple files.
+
+    When the approval queue is active, each file is staged individually
+    and submitted for admin review instead of going through the batch
+    processor directly.
+    """
+    approval_svc = _get_approval_service(request)
+
+    # ── Approval queue path: stage each file individually ──
+    if approval_svc is not None:
+        submission_ids: list[str] = []
+        for f in files:
+            content = await f.read()
+            submission_id = str(uuid4())
+            staged_path = _stage_file(content, submission_id, f.filename or "document")
+            title = Path(f.filename or "untitled").stem
+            await approval_svc.submit({
+                "id": submission_id,
+                "title": title,
+                "source_type": source_type,
+                "citation_tier": citation_tier,
+                "author": "",
+                "year": 0,
+                "content_type": "file_path",
+                "content_data": staged_path,
+            })
+            submission_ids.append(submission_id)
+
+        return JobStatusResponse(
+            job_id=submission_ids[0] if submission_ids else str(uuid4()),
+            status=JobStatus.COMPLETED,
+            total_items=len(submission_ids),
+            completed_items=len(submission_ids),
+            message=f"{len(submission_ids)} file(s) queued for approval",
+        )
+
+    # ── Direct batch ingestion path (local dev, no approval queue) ──
     batch_processor = getattr(request.app.state, "batch_processor", None)
     if batch_processor is None:
         raise HTTPException(status_code=503, detail="Batch processor unavailable")
