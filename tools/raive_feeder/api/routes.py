@@ -593,6 +593,62 @@ async def reembed_source(request: Request, source_id: str) -> dict[str, Any]:
     return {"source_id": source_id, "deleted_chunks": deleted, "note": "Re-ingest via document upload"}
 
 
+# ─── Corpus Publishing (GitHub Release + Render Deploy) ─────────────
+
+
+@router.post("/corpus/publish")
+async def publish_corpus(request: Request) -> dict[str, Any]:
+    """Export corpus, upload to GitHub release, optionally trigger Render deploy.
+
+    Accepts JSON body: {"tag": "v1.0.2"}
+    """
+    from tools.raive_feeder.services.corpus_manager import CorpusManager
+    from tools.raive_feeder.services.corpus_publisher import CorpusPublisher
+
+    body = await request.json()
+    tag = body.get("tag", "").strip()
+    if not tag:
+        raise HTTPException(status_code=422, detail="tag is required")
+
+    vs = _get_vector_store(request)
+    settings = request.app.state.settings
+
+    publisher = CorpusPublisher(
+        corpus_manager=CorpusManager(vector_store=vs),
+        github_token=settings.github_token,
+        corpus_repo=settings.corpus_repo,
+        render_deploy_hook_url=settings.render_deploy_hook_url,
+    )
+
+    try:
+        result = await publisher.publish(tag, settings.chromadb_persist_dir)
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("corpus_publish_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=f"Publish failed: {exc}") from exc
+
+
+@router.get("/corpus/publish/status")
+async def publish_status(request: Request) -> dict[str, Any]:
+    """Return publish configuration and latest release tag."""
+    from tools.raive_feeder.services.corpus_manager import CorpusManager
+    from tools.raive_feeder.services.corpus_publisher import CorpusPublisher
+
+    vs = getattr(request.app.state, "vector_store", None)
+    settings = request.app.state.settings
+
+    publisher = CorpusPublisher(
+        corpus_manager=CorpusManager(vector_store=vs) if vs else CorpusManager(vector_store=None),
+        github_token=settings.github_token,
+        corpus_repo=settings.corpus_repo,
+        render_deploy_hook_url=settings.render_deploy_hook_url,
+    )
+
+    return await publisher.get_publish_status()
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # SYSTEM ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════

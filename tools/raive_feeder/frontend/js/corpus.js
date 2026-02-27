@@ -13,10 +13,12 @@ const FeederCorpus = (() => {
     const searchBtn = document.getElementById('corpus-search-btn');
     const exportBtn = document.getElementById('corpus-export-btn');
     const importInput = document.getElementById('corpus-import-input');
+    const publishBtn = document.getElementById('corpus-publish-btn');
 
     if (searchBtn) searchBtn.addEventListener('click', _search);
     if (exportBtn) exportBtn.addEventListener('click', _exportCorpus);
     if (importInput) importInput.addEventListener('change', _importCorpus);
+    if (publishBtn) publishBtn.addEventListener('click', _publishCorpus);
 
     // Enter key in search input.
     const searchInput = document.getElementById('corpus-search-input');
@@ -28,7 +30,7 @@ const FeederCorpus = (() => {
   }
 
   async function refresh() {
-    await Promise.all([_loadStats(), _loadSources()]);
+    await Promise.all([_loadStats(), _loadSources(), _loadPublishStatus()]);
   }
 
   async function _loadStats() {
@@ -116,6 +118,71 @@ const FeederCorpus = (() => {
     } catch (err) {
       alert(`Search failed: ${err.message}`);
     }
+  }
+
+  async function _loadPublishStatus() {
+    try {
+      const status = await FeederApp.apiFetch('/corpus/publish/status');
+      const container = document.getElementById('publish-status');
+      const tagEl = document.getElementById('publish-latest-tag');
+      const deployEl = document.getElementById('publish-deploy-indicator');
+      const publishBtn = document.getElementById('corpus-publish-btn');
+
+      if (!container) return;
+      container.hidden = false;
+
+      if (tagEl) tagEl.textContent = status.latest_tag || 'none';
+      if (deployEl) {
+        deployEl.textContent = status.deploy_hook_configured ? 'Auto-deploy enabled' : 'Manual deploy';
+        deployEl.className = 'publish-status__deploy' + (status.deploy_hook_configured ? ' publish-status__deploy--active' : '');
+      }
+      if (publishBtn) {
+        publishBtn.disabled = !status.github_token_set;
+        if (!status.github_token_set) publishBtn.title = 'Set GITHUB_TOKEN to enable publishing';
+      }
+    } catch {
+      // Publish status unavailable.
+    }
+  }
+
+  async function _publishCorpus() {
+    const latestTag = document.getElementById('publish-latest-tag')?.textContent || 'v1.0.0';
+    const suggestedTag = _incrementTag(latestTag);
+    const tag = prompt('Enter release tag:', suggestedTag);
+    if (!tag) return;
+
+    const publishBtn = document.getElementById('corpus-publish-btn');
+    if (publishBtn) {
+      publishBtn.disabled = true;
+      publishBtn.textContent = 'Publishing...';
+    }
+
+    try {
+      const result = await FeederApp.apiFetch('/corpus/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag }),
+      });
+
+      let msg = `Published ${result.tag} (${result.size_mb} MB)`;
+      if (result.deploy_triggered) msg += '\nRender deploy triggered.';
+      alert(msg);
+      await _loadPublishStatus();
+    } catch (err) {
+      alert(`Publish failed: ${err.message}`);
+    } finally {
+      if (publishBtn) {
+        publishBtn.disabled = false;
+        publishBtn.textContent = 'Publish to GitHub';
+      }
+    }
+  }
+
+  function _incrementTag(tag) {
+    // Auto-increment: v1.0.1 → v1.0.2
+    const match = tag.match(/^(v?\d+\.\d+\.)(\d+)$/);
+    if (match) return match[1] + (parseInt(match[2], 10) + 1);
+    return tag;
   }
 
   async function _exportCorpus() {

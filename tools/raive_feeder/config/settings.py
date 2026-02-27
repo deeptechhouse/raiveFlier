@@ -51,3 +51,14 @@ class FeederSettings(Settings):
     batch_max_concurrency: int = 2
     # Maximum number of items in a single batch.
     batch_max_items: int = 100
+
+    # === Corpus Publishing ===
+    # GitHub personal access token for uploading corpus tarballs to releases.
+    # Also used by entrypoint.sh on Render for downloading.
+    github_token: str = ""
+    # GitHub repo that hosts the corpus release assets.
+    corpus_repo: str = "deeptechhouse/raiveflier-corpus"
+    # Render Deploy Hook URL — POST to this to trigger a fresh deploy.
+    # Get it from Render Dashboard > Service > Settings > Deploy Hook.
+    # Leave empty to disable automatic deploy triggering.
+    render_deploy_hook_url: str = ""
