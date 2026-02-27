@@ -45,6 +45,7 @@ const Corpus = (() => {
 
   let _isOpen = false;        // Whether the sidebar is currently visible
   let _isLoading = false;     // Whether a search request is in flight
+  let _pendingQuery = null;   // Query queued while a search was in-flight (prevents truncation)
   let _width = 360;           // Current sidebar width in pixels
   let _results = [];          // Array of search result objects from the API
   let _lastQuery = "";        // The most recent search query (for empty-state messaging)
@@ -58,8 +59,10 @@ const Corpus = (() => {
   // on fresh searches (offset=0).  The answer_citations array maps [N]
   // markers in the answer text to their source metadata.
   let _synthesizedAnswer = null;   // String: LLM-generated NL answer, or null
-  let _answerCitations = [];       // Array of { index, source_title, author, citation_tier, page_number, excerpt }
+  let _answerCitations = [];       // Array of { index, source_title, author, citation_tier, page_number, excerpt, url, source_tier }
   let _sourcesExpanded = false;    // Whether the raw-chunks "Sources" accordion is expanded
+  let _webResults = [];            // Array of { title, url, snippet, source_domain } from web search tier
+  let _searchTiersUsed = [];       // Which search tiers returned results: [1,2,3,4]
 
   // Pagination state — supports "Load More" button pattern.
   // offset tracks cursor position; hasMore signals whether more pages exist.
@@ -400,7 +403,12 @@ const Corpus = (() => {
           var tooltip = _esc(cit.source_title);
           if (cit.author) tooltip += " — " + _esc(cit.author);
           if (cit.page_number) tooltip += ", p. " + _esc(cit.page_number);
-          return '<span class="corpus-answer__cite" title="' + tooltip + '" data-cite="' + num + '">[' + num + ']</span>';
+          var isWeb = cit.source_tier === "web";
+          var citeClass = "corpus-answer__cite" + (isWeb ? " corpus-answer__cite--web" : "");
+          if (isWeb && cit.url) {
+            return '<a class="' + citeClass + '" href="' + _esc(cit.url) + '" target="_blank" rel="noopener" title="' + tooltip + '" data-cite="' + num + '">[' + num + ']</a>';
+          }
+          return '<span class="' + citeClass + '" title="' + tooltip + '" data-cite="' + num + '">[' + num + ']</span>';
         }
         return match;
       });
@@ -414,16 +422,27 @@ const Corpus = (() => {
       html += '<div class="corpus-answer">';
       html += '  <div class="corpus-answer__body">' + answerHtml + '</div>';
 
-      // Citation bibliography — lists all cited sources with tier badges
+      // Citation bibliography — lists all cited sources with tier badges.
+      // Web citations show a "WEB" badge and link to the source URL.
       if (_answerCitations.length > 0) {
         html += '<div class="corpus-answer__sources">';
         html += '<div class="corpus-answer__sources-label">Sources</div>';
         _answerCitations.forEach(function (cit) {
+          var isWeb = cit.source_tier === "web";
+          var tierBadge = isWeb
+            ? '<span class="corpus-answer__tier-badge corpus-answer__tier-badge--web">WEB</span>'
+            : '<span class="corpus-answer__tier-badge corpus-answer__tier-badge--' + (cit.source_tier || "corpus") + '">'
+              + _esc((cit.source_tier || "corpus").replace(/_/g, " ").toUpperCase()) + '</span>';
           var tierClass = "corpus-result__tier--" + cit.citation_tier;
           html += '<div class="corpus-answer__source-item" data-cite="' + cit.index + '">';
           html += '  <span class="corpus-answer__source-num">[' + cit.index + ']</span>';
+          html += '  ' + tierBadge;
           html += '  <span class="corpus-result__tier ' + tierClass + '">T' + cit.citation_tier + '</span>';
-          html += '  <span class="corpus-answer__source-title">' + _esc(cit.source_title) + '</span>';
+          if (isWeb && cit.url) {
+            html += '  <a class="corpus-answer__source-title corpus-answer__source-title--link" href="' + _esc(cit.url) + '" target="_blank" rel="noopener">' + _esc(cit.source_title) + '</a>';
+          } else {
+            html += '  <span class="corpus-answer__source-title">' + _esc(cit.source_title) + '</span>';
+          }
           if (cit.author) {
             html += ' <span class="corpus-answer__source-author">— ' + _esc(cit.author) + '</span>';
           }
@@ -434,6 +453,26 @@ const Corpus = (() => {
         });
         html += '</div>';
       }
+      html += '</div>';
+    }
+
+    // --- Web results section ---
+    // When the backend returns web search results (tier 4), render compact
+    // cards with linked titles, domain badges, and snippet text.
+    if (_webResults && _webResults.length > 0) {
+      html += '<div class="corpus-web-results">';
+      html += '<div class="corpus-web-results__label">Web Sources</div>';
+      _webResults.forEach(function (wr) {
+        html += '<div class="corpus-web-result">';
+        html += '  <div class="corpus-web-result__header">';
+        html += '    <span class="corpus-web-result__domain">' + _esc(wr.source_domain) + '</span>';
+        html += '  </div>';
+        html += '  <a class="corpus-web-result__title" href="' + _esc(wr.url) + '" target="_blank" rel="noopener">' + _esc(wr.title) + '</a>';
+        if (wr.snippet) {
+          html += '  <div class="corpus-web-result__snippet">' + _esc(wr.snippet) + '</div>';
+        }
+        html += '</div>';
+      });
       html += '</div>';
     }
 
@@ -1026,13 +1065,23 @@ const Corpus = (() => {
     const input = _getSearchInput();
     if (!input) return;
     const query = input.value.trim();
-    if (!query || _isLoading) return;
+    if (!query) return;
+    // If a search is already in-flight, queue this query so it fires when
+    // the current request completes.  This prevents the debounce + _isLoading
+    // race that truncated queries when the user paused mid-word (e.g.
+    // "chicago r" sent instead of "chicago raves").
+    if (_isLoading) {
+      _pendingQuery = query;
+      return;
+    }
     // Reset pagination and answer state on every new search or filter change —
     // only "Load More" should increment the offset.
     _currentOffset = 0;
     _results = [];
     _synthesizedAnswer = null;
     _answerCitations = [];
+    _webResults = [];
+    _searchTiersUsed = [];
     _sourcesExpanded = false;
     _submitSearch(query, false);
   }
@@ -1085,6 +1134,8 @@ const Corpus = (() => {
         // "Load More" pages do not re-synthesize.
         _synthesizedAnswer = data.synthesized_answer || null;
         _answerCitations = data.answer_citations || [];
+        _webResults = data.web_results || [];
+        _searchTiersUsed = data.search_tiers_used || [];
       }
       _hasMore = data.has_more || false;
       _totalResults = data.total_results || 0;
@@ -1098,11 +1149,30 @@ const Corpus = (() => {
       if (!isLoadMore) _results = [];
       _synthesizedAnswer = null;
       _answerCitations = [];
+      _webResults = [];
+      _searchTiersUsed = [];
       _searchError = err.message || "Search failed";
       console.error("[Corpus] Search error:", err.message);
     }
 
     _isLoading = false;
+
+    // If the user kept typing while this request was in-flight, fire the
+    // queued query now so the final results reflect the full search string.
+    if (_pendingQuery) {
+      var queued = _pendingQuery;
+      _pendingQuery = null;
+      _currentOffset = 0;
+      _results = [];
+      _synthesizedAnswer = null;
+      _answerCitations = [];
+      _webResults = [];
+      _searchTiersUsed = [];
+      _sourcesExpanded = false;
+      _submitSearch(queued, false);
+      return; // skip render — the queued search will render when it completes
+    }
+
     _renderResults();
   }
 
