@@ -74,6 +74,15 @@ from src.models.research import (
     DateContext,
     ResearchResult,
 )
+# --- Story models: anonymous first-person rave experience accounts,
+# with moderation results, metadata, and event story collections. ---
+from src.models.story import (
+    EventStoryCollection,
+    ModerationResult,
+    RaveStory,
+    StoryMetadata,
+    StoryStatus,
+)
 
 # __all__ defines the public API of this package. Any model listed here can
 # be imported with ``from src.models import ModelName``. If you create a new
@@ -113,4 +122,10 @@ __all__ = [
     "DocumentChunk",
     "IngestionResult",
     "RetrievedChunk",
+    # story
+    "EventStoryCollection",
+    "ModerationResult",
+    "RaveStory",
+    "StoryMetadata",
+    "StoryStatus",
 ]

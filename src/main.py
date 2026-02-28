@@ -246,6 +246,55 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
 # ---------------------------------------------------------------------------
 
 
+def _build_story_components(
+    app_settings: Settings,
+    primary_llm: Any,
+    vector_store: Any,
+    embedding_provider: Any,
+) -> dict[str, Any]:
+    """Build DI components for the Rave Stories sub-app.
+
+    Returns a dict of named components that will be wired into the
+    stories sub-app's ``app.state`` during its lifespan startup.
+    The story_store.initialize() is called by the stories sub-app lifespan.
+    """
+    from src.providers.story.sqlite_story_provider import SQLiteStoryProvider
+    from src.services.story_service import StoryService
+
+    story_store = SQLiteStoryProvider(db_path=app_settings.story_db_path)
+
+    # Transcription providers (optional — only needed for audio submissions).
+    transcription = None
+    transcription_fallback = None
+    try:
+        from src.providers.transcription.whisper_api_provider import WhisperAPIProvider
+        if app_settings.openai_api_key:
+            transcription = WhisperAPIProvider(api_key=app_settings.openai_api_key)
+    except ImportError:
+        pass
+    try:
+        from src.providers.transcription.whisper_local_provider import WhisperLocalProvider
+        fallback = WhisperLocalProvider(model_size="tiny")
+        if fallback.is_available():
+            transcription_fallback = fallback
+    except ImportError:
+        pass
+
+    story_service = StoryService(
+        llm=primary_llm,
+        story_store=story_store,
+        transcription=transcription,
+        transcription_fallback=transcription_fallback,
+        vector_store=vector_store,
+        embedding_provider=embedding_provider,
+    )
+
+    return {
+        "story_store": story_store,
+        "story_service": story_service,
+    }
+
+
 async def _build_all(app_settings: Settings) -> dict[str, Any]:
     """Construct every provider and service instance for the application.
 
@@ -337,6 +386,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     # If either is unavailable, RAG is silently disabled.
     vector_store = None
     ingestion_service = None
+    embedding_provider = None
 
     if app_settings.rag_enabled:
         embedding_provider = await _build_embedding_provider(app_settings)
@@ -570,6 +620,13 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         # tier, which augments RAG results with live DDG web results filtered
         # for electronic music relevance.
         "web_search": primary_search,
+        # Rave Stories components — pre-built here so the stories sub-app
+        # can use the same LLM, vector store, and embedding providers as
+        # the main app (no duplicate provider instances).
+        "story_components": _build_story_components(
+            app_settings, primary_llm, vector_store,
+            embedding_provider if app_settings.rag_enabled else None,
+        ),
     }
 
 
@@ -1047,6 +1104,17 @@ def create_app() -> FastAPI:
         _logger.info("raive_feeder_mounted", path="/feeder")
     except Exception as exc:
         _logger.warning("raive_feeder_mount_failed", error=str(exc))
+
+    # -- Rave Stories sub-app --
+    # Mount the Rave Stories companion app at /stories/ so it shares
+    # the same Uvicorn process, LLM providers, and ChromaDB data.
+    try:
+        from src.stories.main import create_stories_app
+        story_components = getattr(application.state, "story_components", None)
+        application.mount("/stories", create_stories_app(components=story_components))
+        _logger.info("rave_stories_mounted", path="/stories")
+    except Exception as exc:
+        _logger.warning("rave_stories_mount_failed", error=str(exc))
 
     # -- Frontend static files --
     # Mount the vanilla JS/CSS/HTML frontend as static files.
