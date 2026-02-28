@@ -404,37 +404,81 @@ class IngestionService:
                     "transcript",
                     "interview",
                 )
-                all_chunks: list[DocumentChunk] = []
+
+                # Stream-process large files to stay within 512 MB RAM:
+                # chunk, embed, and store in small slices rather than
+                # accumulating all chunks in memory first.  For
+                # ra_events_london.txt (~20 MB / ~18K chunks), holding
+                # all chunks at once needs ~76 MB; streaming keeps peak
+                # usage under ~10 MB per slice.
+                batch_size = self._EMBED_STORE_BATCH
+                total_stored = 0
+                total_tokens = 0
+                pending: list[DocumentChunk] = []
+
                 for rc in raw_chunks:
-                    text = rc.text
+                    text_val = rc.text
                     if _needs_preprocess:
                         from src.utils.text_normalizer import preprocess_transcript
 
-                        text = preprocess_transcript(text)
+                        text_val = preprocess_transcript(text_val)
                     metadata = {
                         "source_id": rc.source_id,
                         "source_title": rc.source_title,
                         "source_type": rc.source_type,
                         "citation_tier": rc.citation_tier,
                     }
-                    chunks = self._chunker.chunk(text, metadata)
-                    all_chunks.extend(chunks)
+                    sub_chunks = self._chunker.chunk(text_val, metadata)
+                    pending.extend(sub_chunks)
+
+                    # Flush when the pending buffer exceeds the batch
+                    # size — embed and store, then release memory.
+                    while len(pending) >= batch_size:
+                        batch_slice = pending[:batch_size]
+                        pending = pending[batch_size:]
+                        texts = [c.text for c in batch_slice]
+                        embeddings = await self._embedding_provider.embed(texts)
+                        stored = await self._vector_store.add_chunks(
+                            batch_slice, embeddings,
+                        )
+                        total_stored += stored
+                        total_tokens += sum(
+                            c.token_count for c in batch_slice
+                        )
 
                 # Release the original full-file DocumentChunk(s) and
-                # the raw text references before the memory-heavy
-                # embed+store phase.  For ra_events_berlin.txt (17 MB),
-                # this frees ~17 MB immediately.  The frozen Pydantic
-                # objects can't be modified, so we must drop the entire
-                # list to release the underlying text strings.
-                del raw_chunks, rc, text
+                # the raw text references before processing the final
+                # pending batch.  For ra_events_berlin.txt (17 MB),
+                # this frees ~17 MB immediately.
+                del raw_chunks, rc, text_val
 
-                return await self._tag_embed_store(
-                    all_chunks,
+                # Flush remaining chunks
+                if pending:
+                    texts = [c.text for c in pending]
+                    embeddings = await self._embedding_provider.embed(texts)
+                    stored = await self._vector_store.add_chunks(
+                        pending, embeddings,
+                    )
+                    total_stored += stored
+                    total_tokens += sum(c.token_count for c in pending)
+                    del pending, texts, embeddings
+
+                elapsed = time.monotonic() - start
+                result = IngestionResult(
                     source_id=source_id,
-                    title=fp.name,
-                    start=start,
-                    skip_tagging=skip_tagging,
+                    source_title=fp.name,
+                    chunks_created=total_stored,
+                    total_tokens=total_tokens,
+                    ingestion_time=round(elapsed, 2),
                 )
+                logger.info(
+                    "ingestion_complete",
+                    source_title=fp.name,
+                    chunks=total_stored,
+                    tokens=total_tokens,
+                    time_s=result.ingestion_time,
+                )
+                return result
 
         raw_results = await asyncio.gather(*[_process_file(f) for f in files])
         results = [r for r in raw_results if r is not None]

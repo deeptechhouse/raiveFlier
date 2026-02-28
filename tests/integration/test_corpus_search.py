@@ -149,16 +149,19 @@ class TestCorpusSearchEndpoint:
         )
 
         assert resp.status_code == 200
-        # Tiered query runs up to 4 sub-queries (T1 interviews, T2 books,
-        # T3a event_listings, T3b catch-all).  When user filters to
-        # source_type=["book"], only tier 2 (books) is relevant — the
-        # other tiers are skipped because "book" is not in their type
-        # or is excluded by the catch-all's $nin list.
-        # Verify tier 2 was called with the exact source_type filter.
-        assert mock_store.query.call_count == 1
-        call_kwargs = mock_store.query.call_args
-        filters = call_kwargs.kwargs.get("filters")
-        assert filters == {"source_type": "book"}
+        # Two query calls are expected:
+        #   1. Synthesis query (unified, runs in parallel for NL answer gen)
+        #   2. Tier 2 (books) — the only tier matching source_type=["book"]
+        # Other tiers (T1 interview, T3a event, T3b catch-all) are skipped
+        # because "book" is not in their type or is excluded by $nin.
+        assert mock_store.query.call_count == 2
+        # Find the tier-specific call (uses plain string source_type, not $in)
+        tier_calls = [
+            c for c in mock_store.query.call_args_list
+            if c.kwargs.get("filters", {}).get("source_type") == "book"
+        ]
+        assert len(tier_calls) == 1, "expected exactly one tier 2 (book) query"
+        assert tier_calls[0].kwargs["filters"] == {"source_type": "book"}
 
     def test_search_passes_entity_tag_filter(self) -> None:
         mock_store = AsyncMock()
@@ -212,13 +215,14 @@ class TestCorpusSearchEndpoint:
         )
 
         assert resp.status_code == 200
-        # Tiered query: T1 (interview) runs because "interview" is in
-        # the user's list; T2 (book) and T3a (event_listing) are skipped;
-        # T3b (catch-all) runs with surviving type ["article"].
-        assert mock_store.query.call_count == 2
-        # Verify common filters (entity, geo) are present on every call,
-        # and that the combined source_type coverage across all tiers
-        # matches the user's requested types.
+        # Three query calls expected:
+        #   1. Synthesis query (unified, parallel NL answer gen)
+        #   2. Tier 1 (interview) — "interview" is in user's $in list
+        #   3. Tier 3b (catch-all) — "article" survives $nin exclusion
+        # T2 (book) and T3a (event) are skipped because those types
+        # are not in the user's source_type list.
+        assert mock_store.query.call_count == 3
+        # Every call should carry the entity + geo filters.
         all_source_types: set[str] = set()
         for call in mock_store.query.call_args_list:
             f = call.kwargs.get("filters", {})
