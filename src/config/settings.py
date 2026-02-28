@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # === Flier History (cross-flier recommendation data) ===
     flier_history_db_path: str = "data/flier_history.db"
 
+    # === Rave Stories (anonymous first-person rave experience accounts) ===
+    story_db_path: str = "data/stories.db"
+
     # === Session Persistence ===
     session_db_path: str = "data/session_state.db"
 

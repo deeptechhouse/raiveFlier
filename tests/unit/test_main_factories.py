@@ -761,6 +761,7 @@ class TestBuildAll:
             "recommendation_service",
             "web_search",
             "graph_aggregation",
+            "story_components",
         }
         assert set(result.keys()) == expected_keys
 

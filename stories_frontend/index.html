@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rave Stories — Anonymous Rave Experiences</title>
+
+    <!-- Fonts: Space Grotesk (display), Inter (body), IBM Plex Mono (code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ─── Header ────────────────────────────────────────────────── -->
+<header class="site-header">
+    <div class="container">
+        <h1>Rave Stories</h1>
+        <p>Anonymous first-person accounts of rave experiences</p>
+    </div>
+</header>
+
+<!-- ─── Tab Navigation ────────────────────────────────────────── -->
+<nav class="tab-nav" role="tablist" aria-label="Story navigation">
+    <div class="container tab-nav__inner">
+        <button class="tab-btn tab-btn--active" data-tab="submit" role="tab" aria-selected="true" aria-controls="tab-submit">Submit</button>
+        <button class="tab-btn" data-tab="browse" role="tab" aria-selected="false" aria-controls="tab-browse">Browse</button>
+        <button class="tab-btn" data-tab="events" role="tab" aria-selected="false" aria-controls="tab-events">Events</button>
+        <button class="tab-btn" data-tab="search" role="tab" aria-selected="false" aria-controls="tab-search">Search</button>
+    </div>
+</nav>
+
+<!-- ─── Main Content ──────────────────────────────────────────── -->
+<main id="app" class="container">
+
+    <!-- ── Submit View ────────────────────────────────────────── -->
+    <section id="tab-submit" class="tab-panel" role="tabpanel" aria-labelledby="Submit">
+        <h2 class="sr-only">Submit a Story</h2>
+
+        <!-- Input mode toggle: Text / Audio -->
+        <div class="mode-toggle">
+            <button class="btn btn--secondary btn--active" data-mode="text" id="mode-text-btn">Text</button>
+            <button class="btn btn--secondary" data-mode="audio" id="mode-audio-btn">Audio</button>
+        </div>
+
+        <!-- Status message area -->
+        <div id="submit-message"></div>
+
+        <!-- Text submission form -->
+        <div id="text-form">
+            <div class="card">
+                <div class="form-group">
+                    <label for="story-text">Your Story</label>
+                    <textarea id="story-text" placeholder="Share your rave experience... What was the atmosphere? The music? The moment that stayed with you?" maxlength="15000"></textarea>
+                    <div class="word-counter" id="word-counter">0 / 2,000 words</div>
+                </div>
+
+                <h3 style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-bottom: var(--space-3);">Event Details <span style="color: var(--color-text-muted);">(at least one required)</span></h3>
+                <div class="metadata-grid">
+                    <div class="form-group">
+                        <label for="meta-event">Event Name</label>
+                        <input type="text" id="meta-event" placeholder="e.g. Berghain NYE">
+                    </div>
+                    <div class="form-group">
+                        <label for="meta-year">Year</label>
+                        <input type="number" id="meta-year" min="1980" max="2030" placeholder="e.g. 1997">
+                    </div>
+                    <div class="form-group">
+                        <label for="meta-city">City</label>
+                        <input type="text" id="meta-city" placeholder="e.g. Berlin">
+                    </div>
+                    <div class="form-group">
+                        <label for="meta-genre">Genre</label>
+                        <input type="text" id="meta-genre" placeholder="e.g. techno">
+                    </div>
+                    <div class="form-group">
+                        <label for="meta-promoter">Promoter / Crew</label>
+                        <input type="text" id="meta-promoter" placeholder="e.g. Ostgut Ton">
+                    </div>
+                    <div class="form-group">
+                        <label for="meta-artist">Artist</label>
+                        <input type="text" id="meta-artist" placeholder="e.g. Jeff Mills">
+                    </div>
+                </div>
+
+                <button class="btn btn--primary" id="submit-text-btn" disabled>Submit Story</button>
+            </div>
+        </div>
+
+        <!-- Audio submission form (hidden by default) -->
+        <div id="audio-form" hidden>
+            <div class="card">
+                <div class="recorder" id="recorder">
+                    <p style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">Record your rave story (max 5 minutes)</p>
+                    <div class="recorder__waveform" id="waveform-container">
+                        <canvas id="waveform-canvas"></canvas>
+                    </div>
+                    <div class="recorder__controls">
+                        <button class="btn--record" id="record-btn" aria-label="Record">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6"/></svg>
+                        </button>
+                        <span class="recorder__time" id="record-time">0:00</span>
+                    </div>
+                </div>
+
+                <p style="color: var(--color-text-muted); font-size: var(--text-xs); margin: var(--space-3) 0;">Or upload an audio file (mp3, m4a, wav, webm, ogg — max 25MB)</p>
+                <input type="file" id="audio-upload" accept=".mp3,.m4a,.wav,.webm,.ogg" style="display: none;">
+                <button class="btn btn--secondary btn--small" id="upload-audio-btn">Upload File</button>
+
+                <h3 style="font-size: var(--text-sm); color: var(--color-text-secondary); margin: var(--space-4) 0 var(--space-3);">Event Details <span style="color: var(--color-text-muted);">(at least one required)</span></h3>
+                <div class="metadata-grid">
+                    <div class="form-group">
+                        <label for="audio-meta-event">Event Name</label>
+                        <input type="text" id="audio-meta-event" placeholder="e.g. Berghain NYE">
+                    </div>
+                    <div class="form-group">
+                        <label for="audio-meta-year">Year</label>
+                        <input type="number" id="audio-meta-year" min="1980" max="2030" placeholder="e.g. 1997">
+                    </div>
+                    <div class="form-group">
+                        <label for="audio-meta-city">City</label>
+                        <input type="text" id="audio-meta-city" placeholder="e.g. Berlin">
+                    </div>
+                    <div class="form-group">
+                        <label for="audio-meta-genre">Genre</label>
+                        <input type="text" id="audio-meta-genre" placeholder="e.g. techno">
+                    </div>
+                </div>
+
+                <button class="btn btn--primary" id="submit-audio-btn" disabled>Submit Audio Story</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Browse View ────────────────────────────────────────── -->
+    <section id="tab-browse" class="tab-panel" role="tabpanel" aria-labelledby="Browse" hidden>
+        <h2 class="sr-only">Browse Stories</h2>
+
+        <!-- Filter bar -->
+        <div class="filter-bar" id="browse-filters">
+            <select id="filter-tag-type" style="width: auto;">
+                <option value="">All Tags</option>
+                <option value="genre">Genre</option>
+                <option value="entity">Artist/Venue</option>
+                <option value="geographic">City</option>
+            </select>
+            <select id="filter-tag-value" style="width: auto;" disabled>
+                <option value="">Select tag...</option>
+            </select>
+            <button class="btn btn--small btn--secondary" id="clear-filters-btn">Clear</button>
+        </div>
+
+        <!-- Story list -->
+        <div id="browse-stories"></div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="browse-pagination"></div>
+    </section>
+
+    <!-- ── Events View ────────────────────────────────────────── -->
+    <section id="tab-events" class="tab-panel" role="tabpanel" aria-labelledby="Events" hidden>
+        <h2 class="sr-only">Event Collections</h2>
+
+        <!-- Event list (grid of event cards) -->
+        <div id="events-list" class="event-grid"></div>
+
+        <!-- Event detail (shown when an event is selected) -->
+        <div id="event-detail" hidden>
+            <button class="btn btn--secondary btn--small" id="back-to-events" style="margin-bottom: var(--space-4);">Back to Events</button>
+            <div id="event-header"></div>
+            <div id="event-narrative"></div>
+            <div id="event-stories"></div>
+        </div>
+    </section>
+
+    <!-- ── Search View ────────────────────────────────────────── -->
+    <section id="tab-search" class="tab-panel" role="tabpanel" aria-labelledby="Search" hidden>
+        <h2 class="sr-only">Semantic Search</h2>
+
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search stories... e.g. 'sunrise at Tresor in the 90s'">
+            <button class="btn btn--primary" id="search-btn">Search</button>
+        </div>
+
+        <div id="search-results"></div>
+    </section>
+
+</main>
+
+<!-- ─── Scripts (loaded in dependency order) ──────────────────── -->
+<script src="js/app.js"></script>
+<script src="js/submit.js"></script>
+<script src="js/recorder.js"></script>
+<script src="js/browse.js"></script>
+<script src="js/events.js"></script>
+<script src="js/search.js"></script>
+
+</body>
+</html>
