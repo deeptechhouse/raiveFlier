@@ -76,7 +76,12 @@ class OpenAILLMProvider(ILLMProvider):
 
         # Build client kwargs — add base_url only when a custom endpoint is
         # configured (e.g. for TogetherAI, Anyscale, or Fireworks).
-        client_kwargs: dict = {"api_key": self._api_key}
+        # Timeout is set to 25 seconds so the LLM call finishes before
+        # Render's 30-second request timeout kills the connection.
+        client_kwargs: dict = {
+            "api_key": self._api_key,
+            "timeout": openai.Timeout(25.0, connect=5.0),
+        }
         if settings.openai_base_url:
             client_kwargs["base_url"] = settings.openai_base_url
 
@@ -144,6 +149,13 @@ class OpenAILLMProvider(ILLMProvider):
                 tokens=response.usage.total_tokens if response.usage else None,
             )
             return content
+        except openai.APITimeoutError as exc:
+            # Timeout fires before Render's 30s connection limit so the
+            # caller gets a clean error instead of a dropped connection.
+            raise LLMError(
+                message=f"{self._provider_label} timed out after 25s",
+                provider_name=self.get_provider_name(),
+            ) from exc
         except openai.APIError as exc:
             # Wrap the SDK-specific exception in our custom LLMError so
             # callers don't need to import openai to catch errors.

@@ -278,6 +278,11 @@ const QA = (() => {
     _renderAllMessages();
 
     try {
+      // Abort the fetch after 30s so loading dots never spin forever.
+      // The backend has a 25s LLM timeout, so this is a safety net.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(
         `/api/v1/fliers/${encodeURIComponent(_sessionId)}/ask`,
         {
@@ -288,8 +293,11 @@ const QA = (() => {
             entity_type: _currentEntityType,
             entity_name: _currentEntityName,
           }),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -305,9 +313,12 @@ const QA = (() => {
         suggestions: data.related_facts || [],
       });
     } catch (err) {
+      const msg = err.name === "AbortError"
+        ? "The request timed out. Try a simpler question or try again."
+        : `Sorry, I couldn't process that question: ${err.message}`;
       _history.push({
         role: "assistant",
-        content: `Sorry, I couldn't process that question: ${err.message}`,
+        content: msg,
         citations: [],
         suggestions: [],
       });
