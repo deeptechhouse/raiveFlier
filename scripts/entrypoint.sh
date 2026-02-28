@@ -97,6 +97,14 @@ except Exception:
                 return 0
             fi
             echo "[entrypoint] New corpus available (local=$LOCAL_VERSION, latest=$LATEST_TAG) — downloading..."
+        elif [ "$LOCAL_VERSION" = "unknown" ]; then
+            # Small data with no version file means auto-ingest is building
+            # the corpus from reference files.  Do NOT overwrite with the
+            # GitHub release — it may use an incompatible ChromaDB version
+            # (e.g. 0.5.x schema vs pinned 0.4.x), causing a clear-and-
+            # rebuild loop on every container restart.
+            echo "[entrypoint] Auto-ingest in progress ($DB_SIZE bytes, no version file) — skipping download"
+            return 0
         else
             echo "[entrypoint] Corpus DB too small ($DB_SIZE bytes < ${MIN_CORPUS_SIZE}) — downloading..."
         fi
