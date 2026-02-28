@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  layered_architecture.html — raiveFlier UML Diagram 1 of 5
+  7-Layer Component Diagram
+
+  Architecture Role:
+    Visualizes the full vertical stack of the raiveFlier system from
+    Presentation (Layer 1) down to Data Layer (Layer 7). Each horizontal
+    bar represents a layer in the layered architecture. Dependency arrows
+    flow strictly downward — no layer may depend on a layer above it.
+
+  Design Palette: Bunker dark theme with amethyst/verdigris/amber accents.
+  Fonts loaded from Google Fonts CDN: Space Grotesk, Inter, IBM Plex Mono.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Layered Architecture Diagram</title>
+
+<!-- Google Fonts CDN — Space Grotesk (display), Inter (body), IBM Plex Mono (labels) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ─── RESET & BASE ─── */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0c;
+    color: #d8d5cd;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ─── FADE-IN ANIMATION ─── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .diagram-container {
+    animation: fadeIn 0.8s ease-out both;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  /* ─── TITLE BAR ─── */
+  .title-bar {
+    background: #14141a;
+    border: 1px solid #2a2a30;
+    border-radius: 8px 8px 0 0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .title-bar h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #d8d5cd;
+  }
+
+  .title-bar .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #a080c0;
+    background: #6a4a8a22;
+    border: 1px solid #6a4a8a44;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* ─── SVG WRAPPER ─── */
+  .svg-wrapper {
+    background: #0a0a0c;
+    border: 1px solid #2a2a30;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+
+  .svg-wrapper svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* ─── WATERMARK ─── */
+  .watermark {
+    text-align: center;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #6a6a70;
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <!-- Title bar with diagram name and type badge -->
+  <div class="title-bar">
+    <h1>Layered Architecture — Component Diagram</h1>
+    <span class="badge">UML Component</span>
+  </div>
+
+  <div class="svg-wrapper">
+    <!--
+      SVG Diagram Structure:
+      - 7 horizontal layer bars stacked vertically
+      - Each layer has a distinct shade progressing from lighter (top) to deeper (bottom)
+      - Dependency arrows connect adjacent layers flowing downward
+      - Key class names are listed inside each layer box
+      - viewBox sized for 1200x800 logical pixels
+    -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820">
+      <defs>
+        <!-- Arrowhead marker for dependency arrows -->
+        <marker id="arrowDown" markerWidth="10" markerHeight="8" refX="5" refY="8" orient="auto">
+          <path d="M0,0 L5,8 L10,0" fill="none" stroke="#6a6a70" stroke-width="1.5"/>
+        </marker>
+
+        <!-- Subtle glow filter for layer boxes -->
+        <filter id="layerGlow" x="-2%" y="-2%" width="104%" height="104%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+          <feFlood flood-color="#6a4a8a" flood-opacity="0.1"/>
+          <feComposite in2="blur" operator="in"/>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Background -->
+      <rect width="1200" height="820" fill="#0a0a0c"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 1: Presentation (Frontend)
+        Top of the stack — user-facing vanilla JS/CSS/HTML.
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 30)">
+        <!-- Layer box -->
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5" filter="url(#layerGlow)"/>
+        <!-- Layer number badge -->
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#6a4a8a" opacity="0.8"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#d8d5cd">1</text>
+        <!-- Layer title -->
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          Presentation Layer
+        </text>
+        <!-- Layer subtitle -->
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          Frontend — Vanilla JS / CSS / HTML
+        </text>
+        <!-- Key classes -->
+        <text x="700" y="30" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          FlierUpload, EntityReview, ResultsPanel
+        </text>
+        <text x="700" y="48" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          ProgressTracker, WebSocketClient
+        </text>
+        <!-- Protocol label -->
+        <rect x="420" y="60" width="160" height="18" rx="3" fill="#6a4a8a" opacity="0.15"/>
+        <text x="500" y="73" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="10" fill="#8a6aaa">REST + WebSocket</text>
+      </g>
+
+      <!-- Dependency arrow 1 → 2 -->
+      <line x1="600" y1="110" x2="600" y2="130" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 2: HTTP Interface (FastAPI)
+        Routes, schemas, middleware, and WebSocket handlers.
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 135)">
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#1a1a20" stroke="#6a4a8a" stroke-width="1.2" filter="url(#layerGlow)"/>
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#6a4a8a" opacity="0.7"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#d8d5cd">2</text>
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          HTTP Interface Layer
+        </text>
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          FastAPI Routes, Pydantic Schemas, Middleware, WebSocket Handlers
+        </text>
+        <text x="700" y="30" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          flier_routes, corpus_routes, qa_routes
+        </text>
+        <text x="700" y="48" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          auth_middleware, ws_manager
+        </text>
+      </g>
+
+      <!-- Dependency arrow 2 → 3 -->
+      <line x1="600" y1="215" x2="600" y2="235" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 3: Pipeline Orchestration
+        Orchestrator manages the 5-phase pipeline; confirmation
+        gate implements human-in-the-loop; progress tracker
+        pushes status updates via WebSocket.
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 240)">
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#181820" stroke="#4a8a7a" stroke-width="1.2" filter="url(#layerGlow)"/>
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#4a8a7a" opacity="0.7"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#d8d5cd">3</text>
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          Pipeline Orchestration Layer
+        </text>
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          Orchestrator, Confirmation Gate, Progress Tracker
+        </text>
+        <text x="700" y="30" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          PipelineOrchestrator
+        </text>
+        <text x="700" y="48" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          ConfirmationGate, ProgressTracker
+        </text>
+      </g>
+
+      <!-- Dependency arrow 3 → 4 -->
+      <line x1="600" y1="320" x2="600" y2="340" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 4: Business Logic (Services)
+        Domain services that implement core research, extraction,
+        interconnection, and ingestion logic. These services
+        depend only on interfaces (Layer 5), never on concrete
+        providers (Layer 6).
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 345)">
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#161618" stroke="#4a8a7a" stroke-width="1.2" filter="url(#layerGlow)"/>
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#4a8a7a" opacity="0.6"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#d8d5cd">4</text>
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          Business Logic Layer
+        </text>
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          Services — Research, Entity Extraction, Interconnection, Ingestion, Citation, Q&amp;A
+        </text>
+        <text x="700" y="22" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          ArtistResearcher, VenueResearcher
+        </text>
+        <text x="700" y="38" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          EntityExtractor, InterconnectionService
+        </text>
+        <text x="700" y="54" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          CitationService, QAService, OCRService
+        </text>
+        <text x="700" y="70" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          RecommendationService, IngestionService
+        </text>
+      </g>
+
+      <!-- Dependency arrow 4 → 5 -->
+      <line x1="600" y1="425" x2="600" y2="445" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 5: Interface Abstraction
+        9 abstract base classes that define the contracts between
+        the business logic and the concrete provider implementations.
+        This is the core of the adapter pattern — services depend
+        on these ABCs, never on concrete classes.
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 450)">
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#141416" stroke="#b89a50" stroke-width="1.2" filter="url(#layerGlow)"/>
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#b89a50" opacity="0.6"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#0a0a0c">5</text>
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          Interface Abstraction Layer
+        </text>
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          9 Abstract Base Classes (ABCs) — Adapter Pattern Contracts
+        </text>
+        <text x="620" y="22" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          ILLMProvider  IOCRProvider  IEmbeddingProvider
+        </text>
+        <text x="620" y="38" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          IVectorStoreProvider  IMusicDatabaseProvider
+        </text>
+        <text x="620" y="54" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          IWebSearchProvider  IArticleProvider
+        </text>
+        <text x="620" y="70" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          ICacheProvider  IFeedbackProvider
+        </text>
+      </g>
+
+      <!-- Dependency arrow 5 → 6 -->
+      <line x1="600" y1="530" x2="600" y2="550" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 6: Provider Integration
+        22 concrete adapter classes that implement the interfaces.
+        Each adapter wraps an external API or local library.
+        Swappable at runtime via dependency injection in main.py.
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 555)">
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#121214" stroke="#b89a50" stroke-width="1" filter="url(#layerGlow)"/>
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#b89a50" opacity="0.5"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#0a0a0c">6</text>
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          Provider Integration Layer
+        </text>
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          22 Concrete Adapters — External APIs &amp; Local Libraries
+        </text>
+        <text x="580" y="22" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          OpenAI, Anthropic, Ollama (LLM)  |  LLMVision, EasyOCR, Tesseract (OCR)
+        </text>
+        <text x="580" y="38" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          FastEmbed, SentenceTransformer, Nomic (Embed)  |  ChromaDB (Vector)
+        </text>
+        <text x="580" y="54" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          Discogs API/Scrape, MusicBrainz, Bandcamp, Beatport (Music)
+        </text>
+        <text x="580" y="70" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          DuckDuckGo (Search)  |  Wayback, WebScraper (Article)  |  SQLite (Feedback)
+        </text>
+      </g>
+
+      <!-- Dependency arrow 6 → 7 -->
+      <line x1="600" y1="635" x2="600" y2="655" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LAYER 7: Data Layer
+        39 Pydantic v2 frozen (immutable) models. All state transitions
+        use model_copy(update={...}) to maintain immutability.
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 660)">
+        <rect x="0" y="0" width="1000" height="80" rx="6" ry="6"
+              fill="#101012" stroke="#6a6a70" stroke-width="1" filter="url(#layerGlow)"/>
+        <rect x="12" y="12" width="24" height="24" rx="4" fill="#6a6a70" opacity="0.5"/>
+        <text x="24" y="29" text-anchor="middle"
+              font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#d8d5cd">7</text>
+        <text x="50" y="30" font-family="Space Grotesk" font-size="16" font-weight="600" fill="#d8d5cd">
+          Data Layer
+        </text>
+        <text x="50" y="50" font-family="Inter" font-size="12" fill="#9a9a9e">
+          39 Pydantic v2 Frozen Models — Immutable State Objects
+        </text>
+        <text x="620" y="22" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          FlierAnalysis, PipelineState, EntityExtractionResult
+        </text>
+        <text x="620" y="38" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          ArtistResearch, VenueResearch, RAGChunk
+        </text>
+        <text x="620" y="54" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          CitedSource, Recommendation, RAEvent
+        </text>
+        <text x="620" y="70" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          ResearchResult, Interconnection, DateContext
+        </text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════════
+        LEGEND — explains the color coding of layer borders
+        ═══════════════════════════════════════════════════════
+      -->
+      <g transform="translate(100, 760)">
+        <!-- Amethyst -->
+        <rect x="0" y="0" width="12" height="12" rx="2" fill="#6a4a8a"/>
+        <text x="18" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Presentation / Interface
+        </text>
+        <!-- Verdigris -->
+        <rect x="200" y="0" width="12" height="12" rx="2" fill="#4a8a7a"/>
+        <text x="218" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Orchestration / Business Logic
+        </text>
+        <!-- Amber -->
+        <rect x="440" y="0" width="12" height="12" rx="2" fill="#b89a50"/>
+        <text x="458" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Abstraction / Integration
+        </text>
+        <!-- Grey -->
+        <rect x="660" y="0" width="12" height="12" rx="2" fill="#6a6a70"/>
+        <text x="678" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Data
+        </text>
+        <!-- Arrow legend -->
+        <line x1="800" y1="6" x2="830" y2="6" stroke="#6a6a70" stroke-width="1" marker-end="url(#arrowDown)"/>
+        <text x="840" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Dependency (top → bottom)
+        </text>
+      </g>
+
+    </svg>
+  </div>
+
+  <!-- Watermark -->
+  <div class="watermark">raiveFlier — UML Diagrams</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  interface_component.html — raiveFlier UML Diagram 3 of 5
+  Component Diagram with Ball-and-Socket Notation
+
+  Architecture Role:
+    Visualizes all 9 abstract interface contracts (ABCs) and their
+    concrete adapter implementations using UML ball-and-socket notation.
+    The ball (filled circle) represents a provided interface; the socket
+    (half-arc) represents a required/consumed interface on each adapter.
+    This diagram is the visual proof of the adapter pattern that
+    eliminates vendor lock-in throughout the raiveFlier system.
+
+  Ball-and-Socket Spec:
+    - Ball: filled circle r=6px, amethyst #6a4a8a, 1px border
+    - Socket: half-arc opening toward ball, verdigris #4a8a7a, 2px stroke
+    - Stem: 1px line from component edge, #6a6a70
+    - Label: IBM Plex Mono 10px above connector
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Interface Component Diagram</title>
+
+<!-- Google Fonts CDN -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0c;
+    color: #d8d5cd;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .diagram-container {
+    animation: fadeIn 0.8s ease-out both;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .title-bar {
+    background: #14141a;
+    border: 1px solid #2a2a30;
+    border-radius: 8px 8px 0 0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .title-bar h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #d8d5cd;
+  }
+
+  .title-bar .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #a080c0;
+    background: #6a4a8a22;
+    border: 1px solid #6a4a8a44;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .svg-wrapper {
+    background: #0a0a0c;
+    border: 1px solid #2a2a30;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+
+  .svg-wrapper svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .watermark {
+    text-align: center;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #6a6a70;
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <div class="title-bar">
+    <h1>Interface Adapters — Component Diagram</h1>
+    <span class="badge">UML Component / Ball-and-Socket</span>
+  </div>
+
+  <div class="svg-wrapper">
+    <!--
+      SVG Structure:
+      - 9 interface groups arranged in a 3x3 grid
+      - Each group has: interface box (top) with ball connector,
+        adapter boxes (below) with socket connectors linked by stems
+      - Grid layout: 3 columns x 3 rows, ~380px column width, ~280px row height
+    -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+      <defs>
+        <!--
+          Reusable ball symbol: filled amethyst circle with border.
+          Used on interface boxes to indicate a provided interface.
+        -->
+        <!-- No reusable <use> needed; balls drawn inline for positioning -->
+      </defs>
+
+      <!-- Background -->
+      <rect width="1200" height="900" fill="#0a0a0c"/>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        ROW 1 — LLM, OCR, Embedding interfaces
+        ═══════════════════════════════════════════════════
+      -->
+
+      <!--
+        ─── ILLMProvider ───
+        3 adapters: OpenAI, Anthropic, Ollama
+      -->
+      <g transform="translate(30, 20)">
+        <!-- Interface box -->
+        <rect x="40" y="0" width="280" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="60" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="60" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">ILLMProvider</text>
+
+        <!-- Ball connector: provided interface indicator -->
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <!-- Ball label -->
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">complete, vision</text>
+
+        <!-- Adapter 1: OpenAILLMProvider -->
+        <g transform="translate(0, 95)">
+          <!-- Socket: half-arc opening upward toward the ball -->
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <!-- Adapter box -->
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">OpenAI</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">gpt-4o-mini</text>
+        </g>
+
+        <!-- Adapter 2: AnthropicLLMProvider -->
+        <g transform="translate(130, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Anthropic</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">claude-sonnet</text>
+        </g>
+
+        <!-- Adapter 3: OllamaLLMProvider -->
+        <g transform="translate(260, 95)">
+          <line x1="50" y1="0" x2="50" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M42,-14 A8,8 0 0,1 58,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="100" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Ollama</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">llama3.1</text>
+        </g>
+      </g>
+
+      <!--
+        ─── IOCRProvider ───
+        3 adapters: LLMVision, EasyOCR, Tesseract
+      -->
+      <g transform="translate(420, 20)">
+        <rect x="40" y="0" width="280" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="60" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="60" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IOCRProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">extract_text</text>
+
+        <!-- LLMVisionOCR -->
+        <g transform="translate(0, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">LLMVision</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">GPT-4o vision</text>
+        </g>
+
+        <!-- EasyOCR -->
+        <g transform="translate(130, 95)">
+          <line x1="55" y1="0" x2="55" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M47,-14 A8,8 0 0,1 63,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="110" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">EasyOCR</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">local model</text>
+        </g>
+
+        <!-- Tesseract -->
+        <g transform="translate(250, 95)">
+          <line x1="55" y1="0" x2="55" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M47,-14 A8,8 0 0,1 63,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="110" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Tesseract</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">tesseract-ocr</text>
+        </g>
+      </g>
+
+      <!--
+        ─── IEmbeddingProvider ───
+        4 adapters: OpenAI, FastEmbed, SentenceTransformer, Nomic
+      -->
+      <g transform="translate(820, 20)">
+        <rect x="10" y="0" width="340" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="30" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="30" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IEmbeddingProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">embed</text>
+
+        <!-- OpenAI Embeddings -->
+        <g transform="translate(0, 95)">
+          <line x1="42" y1="0" x2="42" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M34,-14 A8,8 0 0,1 50,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="84" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="8" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">OpenAI</text>
+          <text x="8" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">ada-002</text>
+        </g>
+
+        <!-- FastEmbed -->
+        <g transform="translate(90, 95)">
+          <line x1="44" y1="0" x2="44" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M36,-14 A8,8 0 0,1 52,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="88" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="8" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">FastEmbed</text>
+          <text x="8" y="28" font-family="IBM Plex Mono" font-size="8" fill="#d0b468">ONNX default</text>
+        </g>
+
+        <!-- SentenceTransformer -->
+        <g transform="translate(184, 95)">
+          <line x1="44" y1="0" x2="44" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M36,-14 A8,8 0 0,1 52,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="88" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="5" y="15" font-family="IBM Plex Mono" font-size="8" fill="#6ab0a0">SentenceTfm</text>
+          <text x="8" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">all-MiniLM</text>
+        </g>
+
+        <!-- Nomic -->
+        <g transform="translate(278, 95)">
+          <line x1="40" y1="0" x2="40" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M32,-14 A8,8 0 0,1 48,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="80" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="8" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Nomic</text>
+          <text x="8" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">nomic-embed</text>
+        </g>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        ROW 2 — VectorStore, MusicDatabase, WebSearch
+        ═══════════════════════════════════════════════════
+      -->
+
+      <!--
+        ─── IVectorStoreProvider ───
+        1 adapter: ChromaDB
+      -->
+      <g transform="translate(30, 310)">
+        <rect x="40" y="0" width="280" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="60" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="60" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IVectorStoreProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">store, query</text>
+
+        <!-- ChromaDB -->
+        <g transform="translate(110, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">ChromaDB</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">persistent /data</text>
+        </g>
+      </g>
+
+      <!--
+        ─── IMusicDatabaseProvider ───
+        5 adapters: Discogs API, Discogs Scrape, MusicBrainz, Bandcamp, Beatport
+      -->
+      <g transform="translate(420, 310)">
+        <rect x="10" y="0" width="340" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="30" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="30" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IMusicDatabaseProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">search_artist, search_label</text>
+
+        <!-- Discogs API -->
+        <g transform="translate(0, 95)">
+          <line x1="35" y1="0" x2="35" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M27,-14 A8,8 0 0,1 43,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="70" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="6" y="15" font-family="IBM Plex Mono" font-size="8" fill="#6ab0a0">Discogs</text>
+          <text x="6" y="28" font-family="IBM Plex Mono" font-size="7" fill="#6a6a70">API</text>
+        </g>
+
+        <!-- Discogs Scrape -->
+        <g transform="translate(76, 95)">
+          <line x1="35" y1="0" x2="35" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M27,-14 A8,8 0 0,1 43,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="70" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="6" y="15" font-family="IBM Plex Mono" font-size="8" fill="#6ab0a0">Discogs</text>
+          <text x="6" y="28" font-family="IBM Plex Mono" font-size="7" fill="#6a6a70">Scrape</text>
+        </g>
+
+        <!-- MusicBrainz -->
+        <g transform="translate(152, 95)">
+          <line x1="38" y1="0" x2="38" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M30,-14 A8,8 0 0,1 46,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="76" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="6" y="15" font-family="IBM Plex Mono" font-size="8" fill="#6ab0a0">MusicBrainz</text>
+          <text x="6" y="28" font-family="IBM Plex Mono" font-size="7" fill="#6a6a70">open API</text>
+        </g>
+
+        <!-- Bandcamp -->
+        <g transform="translate(234, 95)">
+          <line x1="35" y1="0" x2="35" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M27,-14 A8,8 0 0,1 43,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="70" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="6" y="15" font-family="IBM Plex Mono" font-size="8" fill="#6ab0a0">Bandcamp</text>
+          <text x="6" y="28" font-family="IBM Plex Mono" font-size="7" fill="#6a6a70">scraper</text>
+        </g>
+
+        <!-- Beatport -->
+        <g transform="translate(310, 95)">
+          <line x1="30" y1="0" x2="30" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M22,-14 A8,8 0 0,1 38,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="60" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="6" y="15" font-family="IBM Plex Mono" font-size="8" fill="#6ab0a0">Beatport</text>
+          <text x="6" y="28" font-family="IBM Plex Mono" font-size="7" fill="#6a6a70">scraper</text>
+        </g>
+      </g>
+
+      <!--
+        ─── IWebSearchProvider ───
+        1 adapter: DuckDuckGo
+      -->
+      <g transform="translate(830, 310)">
+        <rect x="30" y="0" width="300" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="50" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="50" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IWebSearchProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">search</text>
+
+        <!-- DuckDuckGo -->
+        <g transform="translate(110, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">DuckDuckGo</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">free, no API key</text>
+        </g>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        ROW 3 — Article, Cache, Feedback interfaces
+        ═══════════════════════════════════════════════════
+      -->
+
+      <!--
+        ─── IArticleProvider ───
+        2 adapters: Wayback, WebScraper
+      -->
+      <g transform="translate(30, 600)">
+        <rect x="40" y="0" width="280" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="60" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="60" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IArticleProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">fetch_article</text>
+
+        <!-- Wayback -->
+        <g transform="translate(50, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Wayback</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">archive.org</text>
+        </g>
+
+        <!-- WebScraper -->
+        <g transform="translate(190, 95)">
+          <line x1="55" y1="0" x2="55" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M47,-14 A8,8 0 0,1 63,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="110" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">WebScraper</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">httpx + bs4</text>
+        </g>
+      </g>
+
+      <!--
+        ─── ICacheProvider ───
+        1 adapter: MemoryCache
+      -->
+      <g transform="translate(420, 600)">
+        <rect x="40" y="0" width="280" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="60" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="60" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">ICacheProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">get, set, invalidate</text>
+
+        <!-- MemoryCache -->
+        <g transform="translate(110, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">MemoryCache</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">TTL dict</text>
+        </g>
+      </g>
+
+      <!--
+        ─── IFeedbackProvider ───
+        1 adapter: SQLiteFeedback
+      -->
+      <g transform="translate(830, 600)">
+        <rect x="30" y="0" width="300" height="42" rx="5" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="50" y="18" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">&#171;interface&#187;</text>
+        <text x="50" y="33" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">IFeedbackProvider</text>
+
+        <line x1="180" y1="42" x2="180" y2="58" stroke="#6a6a70" stroke-width="1"/>
+        <circle cx="180" cy="64" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="180" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">submit, retrieve</text>
+
+        <!-- SQLiteFeedback -->
+        <g transform="translate(110, 95)">
+          <line x1="60" y1="0" x2="60" y2="-14" stroke="#6a6a70" stroke-width="1"/>
+          <path d="M52,-14 A8,8 0 0,1 68,-14" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+          <rect x="0" y="0" width="120" height="36" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+          <text x="10" y="15" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">SQLiteFeedback</text>
+          <text x="10" y="28" font-family="IBM Plex Mono" font-size="8" fill="#6a6a70">persistent /data</text>
+        </g>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        LEGEND
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(30, 855)">
+        <!-- Ball legend -->
+        <circle cx="6" cy="6" r="6" fill="#6a4a8a" stroke="#8a6aaa" stroke-width="1"/>
+        <text x="18" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Ball = Provided interface (ABC)
+        </text>
+
+        <!-- Socket legend -->
+        <line x1="260" y1="6" x2="260" y2="-4" stroke="#6a6a70" stroke-width="1"/>
+        <path d="M252,-4 A8,8 0 0,1 268,-4" fill="none" stroke="#4a8a7a" stroke-width="2"/>
+        <text x="278" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Socket = Required interface (adapter)
+        </text>
+
+        <!-- Stem legend -->
+        <line x1="560" y1="6" x2="580" y2="6" stroke="#6a6a70" stroke-width="1"/>
+        <text x="588" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Stem = Dependency link
+        </text>
+
+        <!-- Count -->
+        <text x="780" y="10" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          9 interfaces, 22 adapters
+        </text>
+      </g>
+
+    </svg>
+  </div>
+
+  <div class="watermark">raiveFlier — UML Diagrams</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "language": "en",
+  "slides": {
+    "1": "raiveFlier is an open-source rave flier analysis engine preserving electronic music culture. Approximately 92% complete, MIT licensed.",
+    "2": "Six core features: OCR pipeline with vision LLM fallback, parallel multi-database research, vector search corpus with citation tiers, entity interconnection mapping, natural language Q&A, and a discovery recommendation engine.",
+    "3": "The user workflow in four steps: upload a flier image, confirm OCR-extracted entities, the pipeline researches across five music databases, then explore citations, connections, and ask questions.",
+    "4": "Quantitative codebase metrics: over 30,000 lines of Python, 1,174 tests, 17 API endpoints, 22 provider adapters, 9 abstract interfaces, and 39 Pydantic data models.",
+    "5": "Completeness estimate at approximately 92 percent. Core pipeline, frontend, deployment, and RAG corpus are done. Remaining work includes production scaling, audio fingerprinting, and geospatial timeline.",
+    "6": "Seven-layer architecture from frontend through API, pipeline, services, interfaces, providers, down to immutable Pydantic models. All external services abstracted behind interfaces for zero vendor lock-in.",
+    "7": "RAG explained simply: like a music librarian that indexes passages from rave history books, finds the most relevant ones for your question, and always cites its sources.",
+    "8": "Technical RAG pipeline: eight steps from document ingestion through chunking, embedding with FastEmbed, ChromaDB storage, query, retrieval, LLM augmentation, to citation-backed answer generation. Six-tier citation hierarchy.",
+    "9": "Dual call traces showing how a corpus search and an entity discovery flow through the system, from user input through API, vector store, and LLM provider to grounded response.",
+    "10": "Code highlights showing two architectural pillars: the ILLMProvider abstract interface contract enabling provider swapping, and the immutable PipelineState frozen Pydantic model preventing mutation bugs.",
+    "11": "Simplified UML diagrams: the seven-layer architecture stack and ball-and-socket interface connectors showing how ILLMProvider, IOCRProvider, and IEmbeddingProvider connect to their concrete adapters.",
+    "12": "raiveFeeder is the corpus management companion app running on port 8001. It handles document, audio, image, and URL ingestion into the shared ChromaDB vector store.",
+    "13": "Corpus expansion roadmap: planned sources include RA Exchange interviews, event listing databases, interview transcripts, academic papers, and community-contributed fliers and metadata.",
+    "14": "Challenges solved: OCR on stylized rave typography, 512MB Docker RAM constraint using FastEmbed ONNX, multi-database entity deduplication, citation authority ranking, and immutable pipeline state.",
+    "15": "Road ahead: production scaling with multi-worker and Redis cache, audio fingerprinting for flier-to-event matching, geospatial timeline visualization, community contributions, and expanded test coverage.",
+    "16": "GitHub history: 145 commits across 9 days, 23 merged pull requests, MIT license, annotated codebase. Built with GitHub Flow branching strategy.",
+    "17": "Midwest Rave Culture Archive research partnership: corpus enrichment from curated materials, cross-referencing entities with archival records, and collaborative metadata verification. This slide is cuttable for shorter presentations.",
+    "18": "The fliers were the internet before the internet. Built with Python, FastAPI, ChromaDB, and respect for the culture. Links to GitHub, live demo, and documentation available."
+  }
+}

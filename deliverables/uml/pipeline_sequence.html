@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  pipeline_sequence.html — raiveFlier UML Diagram 2 of 5
+  Sequence Diagram: 5-Phase Pipeline
+
+  Architecture Role:
+    Shows the temporal flow of messages through the raiveFlier pipeline
+    from flier upload through OCR, entity extraction, human confirmation,
+    parallel research, interconnection, and final output delivery.
+    The human-in-the-loop gate between Phase 1 and Phase 2 is
+    highlighted as the critical user confirmation step.
+
+  Design Palette: Bunker dark theme with amethyst/verdigris/amber accents.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Pipeline Sequence Diagram</title>
+
+<!-- Google Fonts CDN -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0c;
+    color: #d8d5cd;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .diagram-container {
+    animation: fadeIn 0.8s ease-out both;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .title-bar {
+    background: #14141a;
+    border: 1px solid #2a2a30;
+    border-radius: 8px 8px 0 0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .title-bar h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #d8d5cd;
+  }
+
+  .title-bar .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #a080c0;
+    background: #6a4a8a22;
+    border: 1px solid #6a4a8a44;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .svg-wrapper {
+    background: #0a0a0c;
+    border: 1px solid #2a2a30;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+
+  .svg-wrapper svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .watermark {
+    text-align: center;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #6a6a70;
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <div class="title-bar">
+    <h1>5-Phase Pipeline — Sequence Diagram</h1>
+    <span class="badge">UML Sequence</span>
+  </div>
+
+  <div class="svg-wrapper">
+    <!--
+      SVG Sequence Diagram Structure:
+      - 10 participant lifelines across the top
+      - Vertical dashed lines represent lifeline continuations
+      - Solid arrows = synchronous calls; dashed arrows = returns
+      - Activation boxes on lifelines show active processing
+      - Human-in-the-loop gate highlighted with dashed border and amber accent
+      - Phase labels on the left margin
+    -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 950">
+      <defs>
+        <!-- Solid arrowhead for synchronous messages -->
+        <marker id="arrowRight" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#d8d5cd"/>
+        </marker>
+        <!-- Open arrowhead for return messages -->
+        <marker id="arrowReturn" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="none" stroke="#6a6a70" stroke-width="1"/>
+        </marker>
+        <!-- Left-pointing arrow for returns -->
+        <marker id="arrowLeft" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+          <path d="M8,0 L0,3 L8,6" fill="none" stroke="#6a6a70" stroke-width="1"/>
+        </marker>
+      </defs>
+
+      <!-- Background -->
+      <rect width="1200" height="950" fill="#0a0a0c"/>
+
+      <!--
+        ═══════════════════════════════════════
+        PARTICIPANT HEADERS
+        Each box at the top represents a system
+        actor or component in the pipeline.
+        ═══════════════════════════════════════
+      -->
+
+      <!-- Participant 1: User (human actor) -->
+      <g transform="translate(55, 20)">
+        <rect x="-30" y="0" width="60" height="36" rx="4" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="500" fill="#a080c0">User</text>
+      </g>
+
+      <!-- Participant 2: Frontend -->
+      <g transform="translate(165, 20)">
+        <rect x="-38" y="0" width="76" height="36" rx="4" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="500" fill="#a080c0">Frontend</text>
+      </g>
+
+      <!-- Participant 3: API -->
+      <g transform="translate(275, 20)">
+        <rect x="-22" y="0" width="44" height="36" rx="4" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="500" fill="#a080c0">API</text>
+      </g>
+
+      <!-- Participant 4: Orchestrator -->
+      <g transform="translate(400, 20)">
+        <rect x="-48" y="0" width="96" height="36" rx="4" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="500" fill="#6ab0a0">Orchestrator</text>
+      </g>
+
+      <!-- Participant 5: OCR -->
+      <g transform="translate(520, 20)">
+        <rect x="-22" y="0" width="44" height="36" rx="4" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="500" fill="#6ab0a0">OCR</text>
+      </g>
+
+      <!-- Participant 6: EntityExtractor -->
+      <g transform="translate(630, 20)">
+        <rect x="-42" y="0" width="84" height="36" rx="4" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" font-weight="500" fill="#6ab0a0">Entity Extr.</text>
+      </g>
+
+      <!-- Participant 7: Human Gate -->
+      <g transform="translate(750, 20)">
+        <rect x="-44" y="0" width="88" height="36" rx="4" fill="#1e1e24" stroke="#b89a50" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" font-weight="500" fill="#d0b468">Human Gate</text>
+      </g>
+
+      <!-- Participant 8: Researchers -->
+      <g transform="translate(870, 20)">
+        <rect x="-44" y="0" width="88" height="36" rx="4" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="500" fill="#6ab0a0">Researchers</text>
+      </g>
+
+      <!-- Participant 9: InterconnectionSvc -->
+      <g transform="translate(1000, 20)">
+        <rect x="-50" y="0" width="100" height="36" rx="4" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" font-weight="500" fill="#6ab0a0">Interconnect</text>
+      </g>
+
+      <!-- Participant 10: CitationSvc -->
+      <g transform="translate(1130, 20)">
+        <rect x="-40" y="0" width="80" height="36" rx="4" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+        <text x="0" y="23" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" font-weight="500" fill="#6ab0a0">CitationSvc</text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════
+        LIFELINES — dashed vertical lines
+        ═══════════════════════════════════════
+      -->
+      <line x1="55"   y1="56" x2="55"   y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="165"  y1="56" x2="165"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="275"  y1="56" x2="275"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="400"  y1="56" x2="400"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="520"  y1="56" x2="520"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="630"  y1="56" x2="630"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="750"  y1="56" x2="750"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="870"  y1="56" x2="870"  y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="1000" y1="56" x2="1000" y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="1130" y1="56" x2="1130" y2="900" stroke="#2a2a30" stroke-width="1" stroke-dasharray="4,4"/>
+
+      <!--
+        ═══════════════════════════════════════
+        PHASE 1 LABEL — Upload + OCR + Extraction
+        ═══════════════════════════════════════
+      -->
+      <g transform="translate(8, 80)">
+        <rect x="0" y="0" width="16" height="240" rx="3" fill="#6a4a8a" opacity="0.3"/>
+        <text x="8" y="130" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#a080c0"
+              transform="rotate(-90, 8, 130)">Phase 1: Extract</text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════
+        MESSAGE 1: User uploads flier
+        ═══════════════════════════════════════
+      -->
+      <!-- Activation box on User -->
+      <rect x="51" y="80" width="8" height="30" rx="2" fill="#6a4a8a" opacity="0.6"/>
+
+      <!-- User → Frontend: upload flier -->
+      <line x1="59" y1="90" x2="161" y2="90" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="110" y="84" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">upload flier image</text>
+
+      <!-- Activation box on Frontend -->
+      <rect x="161" y="88" width="8" height="40" rx="2" fill="#6a4a8a" opacity="0.6"/>
+
+      <!-- Frontend → API: POST /analyze -->
+      <line x1="169" y1="108" x2="271" y2="108" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="220" y="102" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">POST /analyze</text>
+
+      <!-- Activation box on API -->
+      <rect x="271" y="106" width="8" height="30" rx="2" fill="#6a4a8a" opacity="0.6"/>
+
+      <!-- API → Orchestrator: start_pipeline() -->
+      <line x1="279" y1="122" x2="396" y2="122" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="337" y="116" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">start_pipeline()</text>
+
+      <!--
+        ═══════════════════════════════════════
+        MESSAGE 2: OCR with fallback chain
+        ═══════════════════════════════════════
+      -->
+      <!-- Activation box on Orchestrator (long, spans OCR + Extraction) -->
+      <rect x="396" y="120" width="8" height="200" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Orchestrator → OCR: extract_text() -->
+      <line x1="404" y1="155" x2="516" y2="155" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="460" y="149" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">extract_text()</text>
+
+      <!-- Activation box on OCR -->
+      <rect x="516" y="153" width="8" height="50" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Fallback note on OCR -->
+      <rect x="540" y="155" width="180" height="40" rx="3" fill="#14141a" stroke="#2a2a30" stroke-width="1"/>
+      <text x="550" y="170" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">Fallback chain:</text>
+      <text x="550" y="183" font-family="IBM Plex Mono" font-size="9" fill="#d0b468">LLMVision → EasyOCR → Tesseract</text>
+
+      <!-- OCR → Orchestrator: return text -->
+      <line x1="516" y1="210" x2="404" y2="210" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowLeft)"/>
+      <text x="460" y="224" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">raw text</text>
+
+      <!--
+        ═══════════════════════════════════════
+        MESSAGE 3: Entity Extraction via LLM
+        ═══════════════════════════════════════
+      -->
+      <!-- Orchestrator → EntityExtractor: extract_entities() -->
+      <line x1="404" y1="245" x2="626" y2="245" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="515" y="239" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">extract_entities(text)</text>
+
+      <!-- Activation box on EntityExtractor -->
+      <rect x="626" y="243" width="8" height="40" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Note: via LLM -->
+      <rect x="648" y="248" width="70" height="20" rx="3" fill="#14141a" stroke="#2a2a30" stroke-width="1"/>
+      <text x="683" y="262" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">via LLM</text>
+
+      <!-- EntityExtractor → Orchestrator: entities -->
+      <line x1="626" y1="288" x2="404" y2="288" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowLeft)"/>
+      <text x="515" y="302" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">entities (artists, venues, dates)</text>
+
+      <!--
+        ═══════════════════════════════════════
+        HUMAN-IN-THE-LOOP GATE
+        Dashed activation box with amber accent
+        marks the pipeline pause for user review.
+        ═══════════════════════════════════════
+      -->
+      <!-- Phase label: Human Gate -->
+      <g transform="translate(8, 330)">
+        <rect x="0" y="0" width="16" height="130" rx="3" fill="#b89a50" opacity="0.3"/>
+        <text x="8" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#d0b468"
+              transform="rotate(-90, 8, 75)">Human Gate</text>
+      </g>
+
+      <!-- Dashed highlight zone around the human-in-the-loop interaction -->
+      <rect x="40" y="325" width="730" height="140" rx="6" fill="#b89a5008"
+            stroke="#b89a50" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <text x="50" y="342" font-family="Space Grotesk" font-size="11" font-weight="600" fill="#d0b468">
+        HUMAN-IN-THE-LOOP CONFIRMATION
+      </text>
+
+      <!-- Orchestrator → Frontend: entities for review -->
+      <line x1="396" y1="365" x2="169" y2="365" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowLeft)"/>
+      <text x="282" y="359" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">entities for review (WS)</text>
+
+      <!-- Activation box on Frontend for review -->
+      <rect x="161" y="363" width="8" height="50" rx="2" fill="#b89a50" opacity="0.5"/>
+
+      <!-- Frontend → User: show entities -->
+      <line x1="161" y1="380" x2="59" y2="380" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowLeft)"/>
+      <text x="110" y="374" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">display entities</text>
+
+      <!-- Activation box on User for review -->
+      <rect x="51" y="378" width="8" height="40" rx="2" fill="#b89a50" opacity="0.5"/>
+
+      <!-- User → Frontend: confirm/edit -->
+      <line x1="59" y1="405" x2="161" y2="405" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="110" y="399" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d0b468">confirm / edit</text>
+
+      <!-- Frontend → Orchestrator: confirmed entities -->
+      <line x1="169" y1="425" x2="396" y2="425" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="282" y="419" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">POST /confirm</text>
+
+      <!-- Dashed activation on Human Gate lifeline -->
+      <rect x="746" y="345" width="8" height="110" rx="2" fill="#b89a50" opacity="0.3"
+            stroke="#b89a50" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!--
+        ═══════════════════════════════════════
+        PHASE 2-4: Parallel Research
+        ═══════════════════════════════════════
+      -->
+      <g transform="translate(8, 475)">
+        <rect x="0" y="0" width="16" height="170" rx="3" fill="#4a8a7a" opacity="0.3"/>
+        <text x="8" y="95" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6ab0a0"
+              transform="rotate(-90, 8, 95)">Phase 2-4: Research</text>
+      </g>
+
+      <!-- Orchestrator activation for research phase -->
+      <rect x="396" y="470" width="8" height="180" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Orchestrator → Researchers: parallel research -->
+      <line x1="404" y1="490" x2="866" y2="490" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="635" y="484" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">research_all(entities)</text>
+
+      <!-- Activation box on Researchers -->
+      <rect x="866" y="488" width="8" height="100" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Parallel research note -->
+      <rect x="890" y="490" width="240" height="70" rx="3" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+      <text x="900" y="506" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">Parallel execution:</text>
+      <text x="900" y="520" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">  Discogs API + Scrape</text>
+      <text x="900" y="533" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">  MusicBrainz, Bandcamp, Beatport</text>
+      <text x="900" y="546" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">  DuckDuckGo web search</text>
+
+      <!-- Researchers → Orchestrator: research results -->
+      <line x1="866" y1="600" x2="404" y2="600" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowLeft)"/>
+      <text x="635" y="614" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">ResearchResult[]</text>
+
+      <!--
+        ═══════════════════════════════════════
+        PHASE 5: Interconnection + Citation
+        ═══════════════════════════════════════
+      -->
+      <g transform="translate(8, 660)">
+        <rect x="0" y="0" width="16" height="140" rx="3" fill="#4a8a7a" opacity="0.3"/>
+        <text x="8" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6ab0a0"
+              transform="rotate(-90, 8, 80)">Phase 5: Output</text>
+      </g>
+
+      <!-- Orchestrator activation for interconnection phase -->
+      <rect x="396" y="660" width="8" height="140" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Orchestrator → InterconnectionSvc -->
+      <line x1="404" y1="685" x2="996" y2="685" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="700" y="679" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">find_connections(results)</text>
+
+      <!-- Activation on InterconnectionSvc -->
+      <rect x="996" y="683" width="8" height="35" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- InterconnectionSvc → Orchestrator: connections -->
+      <line x1="996" y1="722" x2="404" y2="722" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowLeft)"/>
+      <text x="700" y="736" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">Interconnection[]</text>
+
+      <!-- Orchestrator → CitationSvc -->
+      <line x1="404" y1="755" x2="1126" y2="755" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+      <text x="765" y="749" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">verify_citations(results)</text>
+
+      <!-- Activation on CitationSvc -->
+      <rect x="1126" y="753" width="8" height="35" rx="2" fill="#4a8a7a" opacity="0.6"/>
+
+      <!-- Note on CitationSvc: tier ranking -->
+      <rect x="1010" y="760" width="110" height="20" rx="3" fill="#14141a" stroke="#2a2a30" stroke-width="1"/>
+      <text x="1065" y="774" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d0b468">T1 > T2 > T3</text>
+
+      <!-- CitationSvc → Orchestrator: cited results -->
+      <line x1="1126" y1="793" x2="404" y2="793" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowLeft)"/>
+      <text x="765" y="807" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">CitedSource[]</text>
+
+      <!--
+        ═══════════════════════════════════════
+        RETURN: Results delivered to user
+        ═══════════════════════════════════════
+      -->
+      <!-- Orchestrator → API: analysis complete -->
+      <line x1="396" y1="835" x2="279" y2="835" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowLeft)"/>
+      <text x="337" y="829" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">FlierAnalysis</text>
+
+      <!-- API → Frontend: results via WS -->
+      <line x1="271" y1="855" x2="169" y2="855" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowLeft)"/>
+      <text x="220" y="849" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">results (WS)</text>
+
+      <!-- Activation on Frontend for display -->
+      <rect x="161" y="853" width="8" height="30" rx="2" fill="#6a4a8a" opacity="0.6"/>
+
+      <!-- Frontend → User: display results -->
+      <line x1="161" y1="870" x2="59" y2="870" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowLeft)"/>
+      <text x="110" y="864" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d8d5cd">display analysis</text>
+
+      <!--
+        ═══════════════════════════════════════
+        LEGEND
+        ═══════════════════════════════════════
+      -->
+      <g transform="translate(40, 910)">
+        <!-- Solid arrow -->
+        <line x1="0" y1="6" x2="30" y2="6" stroke="#d8d5cd" stroke-width="1.2" marker-end="url(#arrowRight)"/>
+        <text x="38" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Sync call</text>
+        <!-- Dashed arrow -->
+        <line x1="130" y1="6" x2="160" y2="6" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="168" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Return</text>
+        <!-- Activation box -->
+        <rect x="250" y="0" width="8" height="12" rx="2" fill="#4a8a7a" opacity="0.6"/>
+        <text x="264" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Active</text>
+        <!-- Human gate -->
+        <rect x="340" y="0" width="30" height="12" rx="2" fill="#b89a5008" stroke="#b89a50" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="378" y="10" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Human-in-the-loop</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="watermark">raiveFlier — UML Diagrams</div>
+</div>
+
+</body>
+</html>

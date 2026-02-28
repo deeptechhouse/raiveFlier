@@ -1,0 +1,23 @@
+{
+  "language": "es",
+  "slides": {
+    "1": "raiveFlier es un motor de analisis de flyers de rave de codigo abierto que preserva la cultura de la musica electronica. Aproximadamente 92% completo, licencia MIT.",
+    "2": "Seis funciones principales: pipeline OCR con respaldo de vision LLM, investigacion paralela en multiples bases de datos, corpus vectorial con niveles de citacion, mapeo de interconexion de entidades, preguntas y respuestas en lenguaje natural, y motor de recomendaciones.",
+    "3": "Flujo de usuario en cuatro pasos: subir una imagen de flyer, confirmar entidades extraidas por OCR, el pipeline investiga en cinco bases de datos musicales, y luego explorar citas, conexiones y hacer preguntas.",
+    "4": "Metricas cuantitativas del codigo: mas de 30.000 lineas de Python, 1.174 pruebas, 17 endpoints de API, 22 adaptadores de proveedores, 9 interfaces abstractas y 39 modelos de datos Pydantic.",
+    "5": "Estimacion de completitud en aproximadamente 92 por ciento. Pipeline principal, frontend, despliegue y corpus RAG estan terminados. Trabajo restante incluye escalado en produccion, huella digital de audio y linea temporal geoespacial.",
+    "6": "Arquitectura de siete capas desde el frontend pasando por API, pipeline, servicios, interfaces, proveedores, hasta modelos Pydantic inmutables. Todos los servicios externos abstraidos detras de interfaces para cero dependencia de proveedores.",
+    "7": "RAG explicado de forma sencilla: como un bibliotecario musical que indexa pasajes de libros de historia rave, encuentra los mas relevantes para tu pregunta, y siempre cita sus fuentes.",
+    "8": "Pipeline RAG tecnico: ocho pasos desde la ingestion de documentos, fragmentacion, embedding con FastEmbed, almacenamiento en ChromaDB, consulta, recuperacion, aumentacion con LLM, hasta generacion de respuestas con citas. Jerarquia de citacion de seis niveles.",
+    "9": "Trazas de llamadas duales que muestran como una busqueda en el corpus y un flujo de descubrimiento de entidades recorren el sistema, desde la entrada del usuario a traves de la API, almacen vectorial y proveedor LLM hasta la respuesta fundamentada.",
+    "10": "Ejemplos de codigo mostrando dos pilares arquitectonicos: el contrato de interfaz abstracta ILLMProvider que permite intercambiar proveedores, y el estado inmutable del pipeline PipelineState con modelo Pydantic congelado.",
+    "11": "Diagramas UML simplificados: la pila de arquitectura de siete capas y conectores de interfaz tipo bola-y-enchufe mostrando como ILLMProvider, IOCRProvider e IEmbeddingProvider se conectan a sus adaptadores concretos.",
+    "12": "raiveFeeder es la aplicacion companera de gestion de corpus ejecutandose en el puerto 8001. Maneja la ingestion de documentos, audio, imagenes y URLs en el almacen vectorial compartido ChromaDB.",
+    "13": "Hoja de ruta de expansion del corpus: fuentes planificadas incluyen entrevistas de RA Exchange, bases de datos de eventos, transcripciones de entrevistas, articulos academicos y flyers y metadatos aportados por la comunidad.",
+    "14": "Desafios resueltos: OCR en tipografia rave estilizada, restriccion de 512MB de RAM en Docker usando FastEmbed ONNX, deduplicacion de entidades entre multiples bases de datos, clasificacion de autoridad de citas, y estado inmutable del pipeline.",
+    "15": "Camino por delante: escalado en produccion con multi-worker y cache Redis, huella digital de audio para vincular flyers con eventos, visualizacion de linea temporal geoespacial, contribuciones comunitarias y mayor cobertura de pruebas.",
+    "16": "Historial de GitHub: 145 commits en 9 dias, 23 pull requests fusionados, licencia MIT, codigo anotado. Construido con la estrategia de ramificacion GitHub Flow.",
+    "17": "Asociacion de investigacion con Midwest Rave Culture Archive: enriquecimiento del corpus con materiales curados, referencias cruzadas de entidades con registros de archivo y verificacion colaborativa de metadatos. Esta diapositiva es prescindible para presentaciones mas cortas.",
+    "18": "Los flyers eran el internet antes del internet. Construido con Python, FastAPI, ChromaDB y respeto por la cultura. Enlaces a GitHub, demo en vivo y documentacion disponibles."
+  }
+}

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raiveFlier &mdash; General/Mixed Audience Script (155s)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    :root {
+      --bunker-900: #0a0a0c; --bunker-800: #14141a; --bunker-700: #1e1e24;
+      --bunker-600: #2a2a30; --bunker-500: #3a3a40; --bunker-400: #6a6a70;
+      --bunker-300: #9a9a9e; --bunker-100: #d8d5cd;
+      --amethyst: #6a4a8a; --amethyst-light: #8a6aaa; --amethyst-text: #a080c0;
+      --verdigris: #4a8a7a; --verdigris-text: #6ab0a0;
+      --amber: #b89a50; --amber-text: #d0b468;
+    }
+    body { background: var(--bunker-900); color: var(--bunker-100); font-family: 'Inter', sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 2rem; }
+    h1 { font-family: 'Space Grotesk', sans-serif; color: var(--amethyst-light); font-size: 2rem; border-bottom: 2px solid var(--bunker-600); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+    h2 { font-family: 'Space Grotesk', sans-serif; color: var(--amethyst-text); font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--bunker-700); padding-bottom: 0.4rem; }
+    h3 { font-family: 'Space Grotesk', sans-serif; color: var(--verdigris-text); font-size: 1.2rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .timestamp { font-family: 'IBM Plex Mono', monospace; color: var(--amber-text); font-size: 0.85rem; letter-spacing: 0.08em; }
+    .action { color: var(--verdigris-text); font-style: italic; }
+    .highlight { background: var(--amethyst); color: white; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+    .script-line { margin-bottom: 1rem; padding: 0.75rem 1rem; border-left: 3px solid var(--bunker-600); background: var(--bunker-800); border-radius: 0 4px 4px 0; }
+    .script-line:hover { border-left-color: var(--amethyst); }
+    .key-point { border-left-color: var(--amethyst) !important; background: rgba(106, 74, 138, 0.1); }
+    .note { font-size: 0.85rem; color: var(--bunker-300); margin-top: 0.25rem; }
+    .production-note { font-size: 0.85rem; color: var(--bunker-300); margin-top: 0.15rem; font-style: italic; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th { text-align: left; padding: 0.5rem; border-bottom: 2px solid var(--bunker-600); color: var(--amethyst-text); font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    td { padding: 0.5rem; border-bottom: 1px solid var(--bunker-700); }
+    td:last-child { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--amber-text); }
+    code { font-family: 'IBM Plex Mono', monospace; color: var(--verdigris-text); background: var(--bunker-700); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
+    .section-divider { border: none; border-top: 1px solid var(--bunker-600); margin: 2.5rem 0 1rem; }
+    .prod-section { margin-top: 3rem; padding: 1.5rem; background: var(--bunker-800); border: 1px solid var(--bunker-600); border-radius: 6px; }
+    .prod-section h2 { border-bottom: none; margin-top: 0; }
+  </style>
+</head>
+<body>
+
+  <h1>raiveFlier &mdash; General/Mixed Audience Script</h1>
+  <p class="timestamp">VERSION 2 &middot; 2 MIN 35 SEC (155 SECONDS) &middot; 18 SLIDES &middot; GENERAL / MIXED AUDIENCE</p>
+  <p class="note">Tone: warmer, culturally engaged, WaPo humor but accessible. Emphasizes cultural preservation mission, user experience, community impact. Technical details glossed for general comprehension.</p>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h3>Slide Timing Overview</h3>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Slide</th><th>Time</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Title + Mission</td><td>0:00&ndash;0:08</td></tr>
+      <tr><td>2</td><td>Core Features Overview</td><td>0:08&ndash;0:17</td></tr>
+      <tr><td>3</td><td>User Walkthrough</td><td>0:17&ndash;0:26</td></tr>
+      <tr><td>4</td><td>Quantitative Metrics</td><td>0:26&ndash;0:34</td></tr>
+      <tr><td>5</td><td>Completeness Estimate</td><td>0:34&ndash;0:42</td></tr>
+      <tr><td>6</td><td>Architecture (7-layer)</td><td>0:42&ndash;0:52</td></tr>
+      <tr><td>7</td><td>RAG Non-Technical</td><td>0:52&ndash;1:01</td></tr>
+      <tr><td>8</td><td>RAG Technical Deep-Dive</td><td>1:01&ndash;1:11</td></tr>
+      <tr><td>9</td><td>Call Trace</td><td>1:11&ndash;1:20</td></tr>
+      <tr><td>10</td><td>Colorized Code Examples</td><td>1:20&ndash;1:29</td></tr>
+      <tr><td>11</td><td>UML Diagrams</td><td>1:29&ndash;1:37</td></tr>
+      <tr><td>12</td><td>raiveFeeder</td><td>1:37&ndash;1:46</td></tr>
+      <tr><td>13</td><td>RAG Improvements</td><td>1:46&ndash;1:54</td></tr>
+      <tr><td>14</td><td>Challenges Solved</td><td>1:54&ndash;2:02</td></tr>
+      <tr><td>15</td><td>Challenges Ahead</td><td>2:02&ndash;2:10</td></tr>
+      <tr><td>16</td><td>GitHub History</td><td>2:10&ndash;2:18</td></tr>
+      <tr><td>17</td><td>MWRCA Integration</td><td>2:18&ndash;2:26</td></tr>
+      <tr><td>18</td><td>Outro</td><td>2:26&ndash;2:33</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:00&ndash;0:08] Slide 1 &mdash; Title + Mission <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:00</span>
+    <p>&ldquo;raiveFlier turns rave fliers into research. Upload an image &mdash; the kind of flier you&rsquo;d find stapled to a phone booth in 1993 &mdash; and the system identifies every artist, venue, and promoter, then tells you who they are, why they matter, and how they connect. Open source, approximately ninety-two percent complete, and built because rave culture deserved better than a footnote.&rdquo;</p>
+    <p class="action">[Screen: Title slide with raiveFlier logo, tagline, MIT badge, ~92% indicator]</p>
+    <p class="note">KEY POINT &mdash; Cultural mission: framing preservation as the driving purpose.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:08&ndash;0:17] Slide 2 &mdash; Core Features Overview</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:08</span>
+    <p>&ldquo;Six things it does. Reads the text on the flier &mdash; even when the designer thought legibility was optional. Researches every name across five music databases simultaneously. Cross-references a curated library of rave history books and articles. Maps the connections between artists, labels, and scenes. Answers your follow-up questions with cited sources. And recommends what to explore next.&rdquo;</p>
+    <p class="action">[Screen: Six feature cards animate in &mdash; icons and plain-language descriptions]</p>
+    <p class="production-note">Production: Use the same card animation as the technical version but with friendlier labels.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:17&ndash;0:26] Slide 3 &mdash; User Walkthrough</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:17</span>
+    <p>&ldquo;Four steps. Drop in your flier &mdash; drag and drop, the way nature intended. Review the names the system found and fix anything it misread. Hit confirm, and while you wait, the platform is querying Discogs, MusicBrainz, Bandcamp, Beatport, and web archives all at once. Then explore &mdash; artist profiles, venue history, and a web of connections between everyone on that flier.&rdquo;</p>
+    <p class="action">[Screen: Four-step walkthrough with annotated screenshots &mdash; Upload, Confirm, Research, Explore]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:26&ndash;0:34] Slide 4 &mdash; Quantitative Metrics</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:26</span>
+    <p>&ldquo;This isn&rsquo;t a weekend hack. Thirty thousand lines of code. Over eleven hundred automated tests making sure everything stays honest. Twenty-two swappable service connections &mdash; meaning if one music database goes down, the system seamlessly switches to another. Seventeen API endpoints. Thirty-nine data models. Built open-source under the MIT license, which means anyone can use it, extend it, or improve it.&rdquo;</p>
+    <p class="action">[Screen: Animated counters &mdash; 30,088 LOC, 1,174 tests, 22 adapters &mdash; with plain-language annotations]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:34&ndash;0:42] Slide 5 &mdash; Completeness Estimate</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:34</span>
+    <p>&ldquo;About ninety-two percent of the way there. The core experience &mdash; upload, research, explore &mdash; is fully built. What&rsquo;s left is expanding the library of source material, polishing some edges in the interface, and preparing for the real world. The foundation was designed to grow without rebuilding. Think of it as a house where the plumbing is done and we&rsquo;re picking out curtains.&rdquo;</p>
+    <p class="action">[Screen: Progress bar at ~92%, done/remaining breakdown in plain language]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:42&ndash;0:52] Slide 6 &mdash; Architecture</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:42</span>
+    <p>&ldquo;Under the hood, it&rsquo;s built so any part can be swapped without breaking the rest &mdash; like a modular synthesizer. The AI models, the music databases, the text reader &mdash; each one plugs in through a standard connector. Today we use one AI provider; tomorrow we could use a completely different one, and nothing else changes. Seven layers, each doing one job, each replaceable. It&rsquo;s the kind of flexibility that means this project can outlive any single technology trend.&rdquo;</p>
+    <p class="action">[Screen: 7-layer architecture diagram &mdash; simplified with &ldquo;plug and play&rdquo; callouts and modular synth visual metaphor]</p>
+    <p class="production-note">Production: The modular synth metaphor resonates with music audiences &mdash; lean into it visually if possible.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:52&ndash;1:01] Slide 7 &mdash; RAG Non-Technical <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:52</span>
+    <p>&ldquo;Here&rsquo;s what makes this different from just Googling an artist. We&rsquo;ve built a digital librarian. Imagine a researcher who&rsquo;s read every definitive book on rave culture &mdash; Energy Flash, Last Night a DJ Saved My Life, hundreds of archived articles and interviews. When the system tells you about an artist, it can cite the specific page of the specific book. That&rsquo;s not a chatbot making things up. That&rsquo;s a citation. Before raiveFlier, rave culture existed mainly in PhD dissertations and aging Geocities pages. Now it has a proper library.&rdquo;</p>
+    <p class="action">[Screen: Bookshelf metaphor &mdash; books on shelf, search beam finding passage, citation badge with author/page]</p>
+    <p class="note">KEY POINT &mdash; Knowledge base: verifiable citations distinguish this from generic AI. Cultural accessibility.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:01&ndash;1:11] Slide 8 &mdash; How the Library Works</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:01</span>
+    <p>&ldquo;The books and articles are split into small, searchable passages &mdash; like index cards in a card catalog, except each card knows which book it came from and how trustworthy that book is. When you upload a flier, the system finds the passages most relevant to the artists on your flier and uses them &mdash; along with live database lookups &mdash; to build the research profile. Published books rank highest. Forum posts rank lowest. You always know how much weight to give each fact.&rdquo;</p>
+    <p class="action">[Screen: Card catalog analogy &mdash; passages as index cards, trust badges (gold/silver/bronze), flow into research profile]</p>
+    <p class="production-note">Production: This is the general-audience translation of the technical RAG slide. Keep the card catalog visual clean and uncluttered.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:11&ndash;1:20] Slide 9 &mdash; Discovery in Action</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:11</span>
+    <p>&ldquo;Search the knowledge base for &lsquo;Chicago house&rsquo; and you don&rsquo;t just get the obvious names. You get the connections between labels, venues, and scenes that even dedicated crate-diggers might not know. The system surfaces relationships you didn&rsquo;t ask about, because the best way to go down a rabbit hole is to find one you didn&rsquo;t know existed. It&rsquo;s the difference between a search engine and a knowledgeable friend.&rdquo;</p>
+    <p class="action">[Screen: Discovery example &mdash; search query expanding into unexpected connections, relationship web]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:20&ndash;1:29] Slide 10 &mdash; Engineering Quality</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:20</span>
+    <p>&ldquo;For the curious: the code is written with the same rigor you&rsquo;d expect from production software at a serious company. Every external service has a backup. If the primary AI goes down, a secondary takes over automatically. The system can crash at any point and pick up exactly where it left off &mdash; no lost work. And the entire codebase is annotated so any developer can pick it up and understand how it works within an afternoon.&rdquo;</p>
+    <p class="action">[Screen: Code snippets with annotations highlighted &mdash; focus on readability and backup systems, not syntax]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:29&ndash;1:37] Slide 11 &mdash; System Design</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:29</span>
+    <p>&ldquo;Two diagrams. The first shows the seven layers of the system &mdash; each one responsible for exactly one thing, like floors in a building where each floor has a specific purpose. The second shows how the swappable parts connect &mdash; nine interfaces with twenty-two implementations. Think of each interface as a wall outlet and each implementation as a different appliance. Same outlet, different device, everything still works.&rdquo;</p>
+    <p class="action">[Screen: UML diagrams with plain-language annotations &mdash; &ldquo;wall outlet&rdquo; callout on interfaces]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:37&ndash;1:46] Slide 12 &mdash; raiveFeeder</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:37</span>
+    <p>&ldquo;The companion tool: raiveFeeder. This is how the library gets its books. Upload documents, convert formats, preview how the system will index them, and manage the metadata. The headline feature: you can feed it a DJ interview recording &mdash; an actual audio file &mdash; and it transcribes the conversation, breaks it into searchable passages, and adds it to the knowledge base. A forty-five-minute podcast becomes citable research material.&rdquo;</p>
+    <p class="action">[Screen: raiveFeeder UI &mdash; 5 tabs, audio upload highlighted, transcription flow animation]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:46&ndash;1:54] Slide 13 &mdash; Growing the Library <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">1:46</span>
+    <p>&ldquo;The library is growing. Nearly five hundred RA Exchange interview transcripts are queued for ingestion. Event listings from Resident Advisor for geographic and timeline context. Archived interviews from the pre-internet era. And oral histories &mdash; firsthand accounts from the promoters, DJs, and venue operators who built the scenes. Stories that exist nowhere else in any searchable form.&rdquo;</p>
+    <p class="action">[Screen: Corpus expansion roadmap &mdash; source types with volume indicators and cultural significance callouts]</p>
+    <p class="note">KEY POINT &mdash; Cultural breadth: the library represents voices and stories otherwise lost to time.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:54&ndash;2:02] Slide 14 &mdash; Challenges Solved</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:54</span>
+    <p>&ldquo;Four problems we solved. Reading text from rave fliers &mdash; where the graphic designer&rsquo;s primary goal was not, shall we say, accessibility. Fitting the entire system into a tiny server &mdash; the computational equivalent of parking a tour bus in a compact spot. Merging artist information from five different databases that can&rsquo;t agree on how to spell anyone&rsquo;s name. And building a trust system so the platform knows that a published book outranks a Reddit thread.&rdquo;</p>
+    <p class="action">[Screen: Four solved challenges with before/after visuals &mdash; messy flier text vs. clean extraction, etc.]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:02&ndash;2:10] Slide 15 &mdash; What&rsquo;s Next</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">2:02</span>
+    <p>&ldquo;Four things ahead. Scaling the system for more users. Identifying songs from DJ mix recordings and linking them back to flier lineups. Building an interactive map that traces how scenes evolved across cities and decades. And opening a submission pipeline so flier collectors and scene veterans can contribute their own materials and memories.&rdquo;</p>
+    <p class="action">[Screen: Roadmap cards &mdash; scaling, audio fingerprinting, geospatial map, community submissions]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:10&ndash;2:18] Slide 16 &mdash; GitHub History</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">2:10</span>
+    <p>&ldquo;Built in nine days. A hundred and forty-five commits. Twenty-three merged contributions. The code is annotated so thoroughly that a newcomer can read it like a guidebook. All of it open source, MIT license &mdash; free to use, free to build on, free to improve. Because preserving rave history shouldn&rsquo;t require a subscription.&rdquo;</p>
+    <p class="action">[Screen: GitHub timeline, contribution graph, MIT license badge, &ldquo;open source&rdquo; callout]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:18&ndash;2:26] Slide 17 &mdash; MWRCA Integration <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">2:18</span>
+    <p>&ldquo;We&rsquo;re exploring a collaboration with mwrca.org &mdash; the Midwest Rave Culture Archive in Chicago. They&rsquo;ve been collecting and digitizing primary sources for years: fliers, photos, interviews, event records. We have the analysis engine. Together, their archive drives new audiences to the material, and our platform makes that material searchable, citable, and connected. Preserving rave history is too important for any one project. It&rsquo;s a community effort.&rdquo;</p>
+    <p class="action">[Screen: MWRCA partnership diagram &mdash; archive + engine = accessible history, bidirectional flow]</p>
+    <p class="note">KEY POINT &mdash; Community collaboration: MWRCA partnership as a model for grassroots cultural preservation.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:26&ndash;2:33] Slide 18 &mdash; Outro</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">2:26</span>
+    <p>&ldquo;The fliers were the internet before the internet. They were the social network, the event listing, the artist discovery platform &mdash; printed on card stock and handed out at record shops. raiveFlier makes sure that history is searchable, citable, and alive. Open source. MIT license. On GitHub. Thank you.&rdquo;</p>
+    <p class="action">[Screen: Closing slide &mdash; GitHub URL, MIT badge, project links, attribution, vintage flier collage fading in]</p>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="prod-section">
+    <h2>Production Notes</h2>
+
+    <h3>Pacing</h3>
+    <p>Total runtime: 155 seconds across 18 slides. Average ~8.6 seconds per slide. This version runs slightly warmer and more conversational than the technical script. Allow micro-pauses after culturally resonant lines &mdash; especially the &ldquo;phone booth in 1993&rdquo; opener and the &ldquo;internet before the internet&rdquo; closer.</p>
+
+    <h3>Audience Calibration</h3>
+    <p>Slides 6 (Architecture), 8 (How the Library Works), 10 (Engineering Quality), and 11 (System Design) are the four slides where technical content is translated for general audiences. The analogies &mdash; modular synthesizer, card catalog, wall outlet, tour bus &mdash; should be delivered with confidence, not apology. Do not preface with &ldquo;to put it simply&rdquo; or &ldquo;in layman&rsquo;s terms.&rdquo; The analogies are the explanation.</p>
+
+    <h3>Humor Placement</h3>
+    <p>Four humor beats: &ldquo;legibility was optional&rdquo; (Slide 2), &ldquo;drag and drop, the way nature intended&rdquo; (Slide 3), &ldquo;parking a tour bus in a compact spot&rdquo; (Slide 14), and &ldquo;shouldn&rsquo;t require a subscription&rdquo; (Slide 16). The Slide 14 line is the biggest laugh &mdash; give it a beat of silence after delivery.</p>
+
+    <h3>Emotional Arc</h3>
+    <p>Slides 1&ndash;3: enthusiasm and accessibility. Slides 4&ndash;6: credibility and scale. Slides 7&ndash;9: the &ldquo;aha moment&rdquo; &mdash; this is not just another AI tool. Slides 10&ndash;13: depth and ambition. Slides 14&ndash;16: resilience and transparency. Slides 17&ndash;18: community and legacy. The emotional peak is Slide 7 (digital librarian); the closing should feel like a quiet statement of purpose, not a crescendo.</p>
+
+    <h3>Fallback if Running Long</h3>
+    <p>Slides 10 (Engineering Quality) and 11 (System Design) can be compressed to 5&ndash;6 seconds each for mixed audiences. The analogies are strong enough to carry without elaboration. Slide 5 (Completeness) can also be trimmed &mdash; the curtains joke is charming but expendable.</p>
+  </div>
+
+</body>
+</html>

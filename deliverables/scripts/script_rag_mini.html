@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raiveFlier &mdash; RAG Deep-Focus Mini Script (67s)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    :root {
+      --bunker-900: #0a0a0c; --bunker-800: #14141a; --bunker-700: #1e1e24;
+      --bunker-600: #2a2a30; --bunker-500: #3a3a40; --bunker-400: #6a6a70;
+      --bunker-300: #9a9a9e; --bunker-100: #d8d5cd;
+      --amethyst: #6a4a8a; --amethyst-light: #8a6aaa; --amethyst-text: #a080c0;
+      --verdigris: #4a8a7a; --verdigris-text: #6ab0a0;
+      --amber: #b89a50; --amber-text: #d0b468;
+    }
+    body { background: var(--bunker-900); color: var(--bunker-100); font-family: 'Inter', sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 2rem; }
+    h1 { font-family: 'Space Grotesk', sans-serif; color: var(--amethyst-light); font-size: 2rem; border-bottom: 2px solid var(--bunker-600); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+    h2 { font-family: 'Space Grotesk', sans-serif; color: var(--amethyst-text); font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--bunker-700); padding-bottom: 0.4rem; }
+    h3 { font-family: 'Space Grotesk', sans-serif; color: var(--verdigris-text); font-size: 1.2rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .timestamp { font-family: 'IBM Plex Mono', monospace; color: var(--amber-text); font-size: 0.85rem; letter-spacing: 0.08em; }
+    .action { color: var(--verdigris-text); font-style: italic; }
+    .highlight { background: var(--amethyst); color: white; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+    .script-line { margin-bottom: 1rem; padding: 0.75rem 1rem; border-left: 3px solid var(--bunker-600); background: var(--bunker-800); border-radius: 0 4px 4px 0; }
+    .script-line:hover { border-left-color: var(--amethyst); }
+    .key-point { border-left-color: var(--amethyst) !important; background: rgba(106, 74, 138, 0.1); }
+    .note { font-size: 0.85rem; color: var(--bunker-300); margin-top: 0.25rem; }
+    .production-note { font-size: 0.85rem; color: var(--bunker-300); margin-top: 0.15rem; font-style: italic; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th { text-align: left; padding: 0.5rem; border-bottom: 2px solid var(--bunker-600); color: var(--amethyst-text); font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    td { padding: 0.5rem; border-bottom: 1px solid var(--bunker-700); }
+    td:last-child { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--amber-text); }
+    code { font-family: 'IBM Plex Mono', monospace; color: var(--verdigris-text); background: var(--bunker-700); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
+    .section-divider { border: none; border-top: 1px solid var(--bunker-600); margin: 2.5rem 0 1rem; }
+    .prod-section { margin-top: 3rem; padding: 1.5rem; background: var(--bunker-800); border: 1px solid var(--bunker-600); border-radius: 6px; }
+    .prod-section h2 { border-bottom: none; margin-top: 0; }
+    .slide-ref { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--bunker-400); }
+  </style>
+</head>
+<body>
+
+  <h1>raiveFlier &mdash; RAG Deep-Focus Mini Script</h1>
+  <p class="timestamp">MINI SCRIPT &middot; 67 SECONDS &middot; 7 SLIDES (FROM 18-SLIDE DECK) &middot; RAG / AI / ML AUDIENCE</p>
+  <p class="note">Exclusively focused on the Retrieval-Augmented Generation pipeline. Technical but accessible &mdash; for audiences specifically interested in RAG, AI, and ML implementation details. Covers slides 1, 7, 8, 9, 10, 13, 18.</p>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h3>Slide Timing Overview</h3>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <table>
+    <thead>
+      <tr><th>Deck #</th><th>Slide</th><th>Mini Time</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Title + Mission (RAG context)</td><td>0:00&ndash;0:08</td></tr>
+      <tr><td>7</td><td>RAG Non-Technical</td><td>0:08&ndash;0:18</td></tr>
+      <tr><td>8</td><td>RAG Technical Deep-Dive</td><td>0:18&ndash;0:32</td></tr>
+      <tr><td>9</td><td>Call Trace</td><td>0:32&ndash;0:41</td></tr>
+      <tr><td>10</td><td>Colorized Code Examples</td><td>0:41&ndash;0:50</td></tr>
+      <tr><td>13</td><td>RAG Improvements</td><td>0:50&ndash;1:00</td></tr>
+      <tr><td>18</td><td>Outro</td><td>1:00&ndash;1:07</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:00&ndash;0:08] Slide 1 &mdash; Title + RAG Context <span class="slide-ref">DECK SLIDE 1</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:00</span>
+    <p>&ldquo;raiveFlier is an open-source analysis engine for electronic music culture. The core technical challenge: how do you ground an LLM in a domain where the authoritative sources are out-of-print books, archived zines, and oral histories that have never been digitized &mdash; let alone indexed? The answer is a domain-specific RAG pipeline. Let me walk you through it.&rdquo;</p>
+    <p class="action">[Screen: Title slide with raiveFlier logo, RAG pipeline preview diagram in background]</p>
+    <p class="note">Frame immediately as a RAG problem &mdash; domain knowledge that doesn&rsquo;t exist in web crawls or training data.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:08&ndash;0:18] Slide 7 &mdash; RAG Non-Technical <span class="highlight">KEY POINT</span> <span class="slide-ref">DECK SLIDE 7</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:08</span>
+    <p>&ldquo;The intuition: we&rsquo;ve hired a digital librarian. The corpus contains pre-indexed passages from the definitive texts &mdash; Energy Flash by Simon Reynolds, Last Night a DJ Saved My Life, archived RA articles, DJ Mag features, and interview transcripts. When the system researches an artist found on a flier, it doesn&rsquo;t just hit web APIs. It consults the library first and cites the shelf it pulled the book from. The retrieval step is what separates a grounded answer from a hallucinated one.&rdquo;</p>
+    <p class="action">[Screen: Bookshelf metaphor with library-to-citation flow, retrieval beam animation]</p>
+    <p class="note">KEY POINT &mdash; Establishes the &ldquo;why RAG&rdquo; before the &ldquo;how RAG.&rdquo; Even a technical audience benefits from the framing.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:18&ndash;0:32] Slide 8 &mdash; RAG Technical Deep-Dive <span class="highlight">KEY POINT</span> <span class="slide-ref">DECK SLIDE 8</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:18</span>
+    <p>&ldquo;Eight steps. Ingestion: documents are chunked into five-hundred-twelve-token sliding windows with sixty-four-token overlap. Overlap preserves context at chunk boundaries &mdash; a sentence about Derrick May shouldn&rsquo;t get split in half. Embedding: FastEmbed with ONNX runtime &mdash; fifty megabytes, not the five hundred megs of a full PyTorch SentenceTransformers install. We also support OpenAI embeddings, SentenceTransformers, and Nomic as swappable providers behind the same interface.&rdquo;</p>
+    <p class="action">[Screen: 8-step pipeline diagram, steps 1&ndash;3 highlighted &mdash; ingest, chunk, embed]</p>
+  </div>
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:24</span>
+    <p>&ldquo;Storage: ChromaDB with metadata filtering &mdash; each chunk is tagged with entity names, genres, geography, time period, and source authority. At query time: vectorize the query, retrieve with cosine similarity, over-fetch four-x the target count, filter by entity metadata, deduplicate per source &mdash; max three chunks from any single source to prevent one book from dominating the context window. Then NL synthesis: the LLM receives the retrieved chunks alongside live API data and produces a response with inline citations. Every claim maps to a specific passage. Citation tiers: T1 is academic and official sources, T2 is established music press, T3 is web and user-generated content. Higher tiers surface first in the output.&rdquo;</p>
+    <p class="action">[Screen: 8-step pipeline diagram, steps 4&ndash;8 highlighted &mdash; store, query, retrieve, augment, synthesize. Citation tier badges (T1/T2/T3) animate in.]</p>
+    <p class="note">KEY POINT &mdash; Full RAG pipeline: chunking params (512/64), embedding provider options, 4x over-fetch, 3-chunk-per-source cap, T1/T2/T3 citation tiers, NL synthesis with inline citations.</p>
+    <p class="production-note">Production: This is the densest 14 seconds in the mini script. Speak at a measured pace &mdash; the diagram does the heavy lifting visually. Do not rush the citation tier explanation.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:32&ndash;0:41] Slide 9 &mdash; Call Trace <span class="slide-ref">DECK SLIDE 9</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:32</span>
+    <p>&ldquo;Two retrieval paths. Corpus search: user queries &lsquo;industrial techno landscape,&rsquo; the embedding hits ChromaDB, retrieves ten passages from Energy Flash and DJ Mag, the synthesis layer formats them with citation badges and produces a natural-language answer grounded in those sources. Entity discovery: during pipeline research, the orchestrator queries Discogs, MusicBrainz, and the corpus simultaneously &mdash; the corpus results augment the database results with historical context and citation authority that APIs alone can&rsquo;t provide.&rdquo;</p>
+    <p class="action">[Screen: Dual call-trace diagram &mdash; corpus search path on left, entity discovery path on right]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:41&ndash;0:50] Slide 10 &mdash; Code: Embedding &amp; Retrieval <span class="highlight">KEY POINT</span> <span class="slide-ref">DECK SLIDE 10</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:41</span>
+    <p>&ldquo;Two code highlights through the RAG lens. The embedding provider interface &mdash; <code>IEmbeddingProvider</code> &mdash; defines <code>embed_text</code>, <code>embed_batch</code>, and <code>get_dimension</code>. FastEmbed is the default: ONNX inference, no GPU required, fits in five-twelve megs. But swap in OpenAI, SentenceTransformers, or Nomic by changing one environment variable &mdash; the retrieval pipeline never knows the difference. Then <code>PipelineState</code>: the frozen Pydantic model that carries retrieved chunks through the pipeline. State is immutable &mdash; each retrieval step creates a new copy with updated context. If the process crashes mid-retrieval, deserialize from SQLite and resume. No re-embedding, no lost chunks.&rdquo;</p>
+    <p class="action">[Screen: IDE split-pane &mdash; IEmbeddingProvider ABC on left, PipelineState with corpus_chunks field on right, syntax highlighted]</p>
+    <p class="note">KEY POINT &mdash; Embedding provider abstraction (4 implementations), immutable pipeline state preserves retrieval progress.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:50&ndash;1:00] Slide 13 &mdash; Corpus Expansion <span class="slide-ref">DECK SLIDE 13</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:50</span>
+    <p>&ldquo;The corpus is the competitive moat. Expansion roadmap: RA Exchange &mdash; four hundred eighty-nine interview transcripts, each a forty-five-minute conversation with a major artist. Resident Advisor event listings for temporal and geographic metadata. Archived interviews from the pre-internet era &mdash; primary sources that exist in no other searchable form. And a feedback loop: each completed flier analysis feeds back into the corpus as a verified entity record, so the five-hundredth flier you analyze benefits from everything learned in the first four hundred ninety-nine. The corpus compounds.&rdquo;</p>
+    <p class="action">[Screen: Corpus expansion roadmap with volume indicators &mdash; RA Exchange (489), RA events, archives, feedback loop diagram]</p>
+    <p class="production-note">Production: The &ldquo;corpus compounds&rdquo; line is the conceptual payoff. Deliver it with a brief pause before &mdash; let it land as the insight.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:00&ndash;1:07] Slide 18 &mdash; Outro <span class="slide-ref">DECK SLIDE 18</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:00</span>
+    <p>&ldquo;RAG works best when the domain has authoritative sources that aren&rsquo;t in the training data. Rave culture is a textbook case &mdash; literally. The books exist. The interviews exist. The history exists. It just wasn&rsquo;t searchable. Now it is. raiveFlier. Open source. MIT license. On GitHub. Thank you.&rdquo;</p>
+    <p class="action">[Screen: Closing slide &mdash; GitHub URL, MIT badge, RAG pipeline summary icon, project links]</p>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="prod-section">
+    <h2>Production Notes</h2>
+
+    <h3>Pacing</h3>
+    <p>Total runtime: 67 seconds across 7 slides. Average ~9.6 seconds per slide, but Slide 8 (RAG deep-dive) takes 14 seconds &mdash; nearly double. This is intentional: it is the technical centerpiece. Every other slide exists to set up or pay off the deep-dive. Do not rush Slide 8; the audience came for this content.</p>
+
+    <h3>Audience Assumptions</h3>
+    <p>This script assumes the audience understands: vector embeddings, cosine similarity, chunking, context windows, and the general concept of retrieval-augmented generation. Terms like &ldquo;ONNX runtime,&rdquo; &ldquo;over-fetch 4x,&rdquo; and &ldquo;NL synthesis&rdquo; are used without explanation. If the audience is mixed RAG/non-RAG, consider swapping Slide 7 (non-technical) for a more detailed version of Slide 8.</p>
+
+    <h3>Key Technical Details to Land</h3>
+    <ul>
+      <li>512-token chunks with 64-token overlap (not 500/100 &mdash; these are the actual parameters)</li>
+      <li>4 embedding provider options behind one interface (FastEmbed, OpenAI, SentenceTransformers, Nomic)</li>
+      <li>ChromaDB with metadata filtering (not just vector similarity)</li>
+      <li>4x over-fetch + 3-chunk-per-source dedup (prevents source dominance)</li>
+      <li>T1/T2/T3 citation tiers (the trust hierarchy is the differentiator)</li>
+      <li>NL synthesis with inline citations (not just chunk retrieval &mdash; full summarization)</li>
+      <li>Corpus compounding via feedback loop (each analysis enriches the next)</li>
+    </ul>
+
+    <h3>Slide 8 Delivery Strategy</h3>
+    <p>Split into two logical halves: ingestion (0:18&ndash;0:24) and retrieval (0:24&ndash;0:32). The diagram should highlight steps 1&ndash;3 during the first half and steps 4&ndash;8 during the second. This gives the audience a visual anchor for each concept as it&rsquo;s introduced. The citation tier explanation (T1/T2/T3) is the last item &mdash; it sticks because it&rsquo;s the most novel element for most RAG practitioners.</p>
+
+    <h3>Fallback if Running Long</h3>
+    <p>Slide 9 (Call Trace) can be compressed to 6 seconds by cutting the entity discovery path and focusing solely on the corpus search example. The dual-path comparison is informative but not essential to the RAG narrative.</p>
+  </div>
+
+</body>
+</html>

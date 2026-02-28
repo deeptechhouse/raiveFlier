@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raiveFlier &mdash; Technical Audience Script (155s)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    :root {
+      --bunker-900: #0a0a0c; --bunker-800: #14141a; --bunker-700: #1e1e24;
+      --bunker-600: #2a2a30; --bunker-500: #3a3a40; --bunker-400: #6a6a70;
+      --bunker-300: #9a9a9e; --bunker-100: #d8d5cd;
+      --amethyst: #6a4a8a; --amethyst-light: #8a6aaa; --amethyst-text: #a080c0;
+      --verdigris: #4a8a7a; --verdigris-text: #6ab0a0;
+      --amber: #b89a50; --amber-text: #d0b468;
+    }
+    body { background: var(--bunker-900); color: var(--bunker-100); font-family: 'Inter', sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 2rem; }
+    h1 { font-family: 'Space Grotesk', sans-serif; color: var(--amethyst-light); font-size: 2rem; border-bottom: 2px solid var(--bunker-600); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+    h2 { font-family: 'Space Grotesk', sans-serif; color: var(--amethyst-text); font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--bunker-700); padding-bottom: 0.4rem; }
+    h3 { font-family: 'Space Grotesk', sans-serif; color: var(--verdigris-text); font-size: 1.2rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .timestamp { font-family: 'IBM Plex Mono', monospace; color: var(--amber-text); font-size: 0.85rem; letter-spacing: 0.08em; }
+    .action { color: var(--verdigris-text); font-style: italic; }
+    .highlight { background: var(--amethyst); color: white; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+    .script-line { margin-bottom: 1rem; padding: 0.75rem 1rem; border-left: 3px solid var(--bunker-600); background: var(--bunker-800); border-radius: 0 4px 4px 0; }
+    .script-line:hover { border-left-color: var(--amethyst); }
+    .key-point { border-left-color: var(--amethyst) !important; background: rgba(106, 74, 138, 0.1); }
+    .note { font-size: 0.85rem; color: var(--bunker-300); margin-top: 0.25rem; }
+    .production-note { font-size: 0.85rem; color: var(--bunker-300); margin-top: 0.15rem; font-style: italic; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th { text-align: left; padding: 0.5rem; border-bottom: 2px solid var(--bunker-600); color: var(--amethyst-text); font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    td { padding: 0.5rem; border-bottom: 1px solid var(--bunker-700); }
+    td:last-child { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--amber-text); }
+    code { font-family: 'IBM Plex Mono', monospace; color: var(--verdigris-text); background: var(--bunker-700); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
+    .section-divider { border: none; border-top: 1px solid var(--bunker-600); margin: 2.5rem 0 1rem; }
+    .prod-section { margin-top: 3rem; padding: 1.5rem; background: var(--bunker-800); border: 1px solid var(--bunker-600); border-radius: 6px; }
+    .prod-section h2 { border-bottom: none; margin-top: 0; }
+  </style>
+</head>
+<body>
+
+  <h1>raiveFlier &mdash; Technical Audience Script</h1>
+  <p class="timestamp">VERSION 2 &middot; 2 MIN 35 SEC (155 SECONDS) &middot; 18 SLIDES &middot; TECHNICAL AUDIENCE</p>
+  <p class="note">Tone: dry, 2010s Washington Post style humor. Emphasizes architecture patterns, RAG mechanics, code quality, provider fallback chains, dependency injection, immutable state, OOP patterns.</p>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h3>Slide Timing Overview</h3>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Slide</th><th>Time</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Title + Mission</td><td>0:00&ndash;0:08</td></tr>
+      <tr><td>2</td><td>Core Features Overview</td><td>0:08&ndash;0:17</td></tr>
+      <tr><td>3</td><td>User Walkthrough</td><td>0:17&ndash;0:26</td></tr>
+      <tr><td>4</td><td>Quantitative Metrics</td><td>0:26&ndash;0:34</td></tr>
+      <tr><td>5</td><td>Completeness Estimate</td><td>0:34&ndash;0:42</td></tr>
+      <tr><td>6</td><td>Architecture (7-layer)</td><td>0:42&ndash;0:52</td></tr>
+      <tr><td>7</td><td>RAG Non-Technical</td><td>0:52&ndash;1:01</td></tr>
+      <tr><td>8</td><td>RAG Technical Deep-Dive</td><td>1:01&ndash;1:11</td></tr>
+      <tr><td>9</td><td>Call Trace</td><td>1:11&ndash;1:20</td></tr>
+      <tr><td>10</td><td>Colorized Code Examples</td><td>1:20&ndash;1:29</td></tr>
+      <tr><td>11</td><td>UML Diagrams</td><td>1:29&ndash;1:37</td></tr>
+      <tr><td>12</td><td>raiveFeeder</td><td>1:37&ndash;1:46</td></tr>
+      <tr><td>13</td><td>RAG Improvements</td><td>1:46&ndash;1:54</td></tr>
+      <tr><td>14</td><td>Challenges Solved</td><td>1:54&ndash;2:02</td></tr>
+      <tr><td>15</td><td>Challenges Ahead</td><td>2:02&ndash;2:10</td></tr>
+      <tr><td>16</td><td>GitHub History</td><td>2:10&ndash;2:18</td></tr>
+      <tr><td>17</td><td>MWRCA Integration</td><td>2:18&ndash;2:26</td></tr>
+      <tr><td>18</td><td>Outro</td><td>2:26&ndash;2:33</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:00&ndash;0:08] Slide 1 &mdash; Title + Mission</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:00</span>
+    <p>&ldquo;raiveFlier is an open-source analysis engine for electronic music culture. You hand it a rave flier &mdash; the kind of artifact you&rsquo;d peel off a phone booth in 1993 &mdash; and it returns the history: every artist, every venue, every connection, cited. Approximately ninety-two percent complete. MIT license. Let&rsquo;s look at what&rsquo;s under the hood.&rdquo;</p>
+    <p class="action">[Screen: Title slide with raiveFlier logo, tagline, MIT badge, ~92% indicator]</p>
+    <p class="note">KEY POINT &mdash; Frame the project as an analysis engine, not a chatbot. Establish open-source cred immediately.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:08&ndash;0:17] Slide 2 &mdash; Core Features Overview</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:08</span>
+    <p>&ldquo;Six capabilities. OCR with a three-tier fallback chain &mdash; because the OCR had to learn that DJs don&rsquo;t believe in serif fonts, or legibility, or the Latin alphabet. Multi-database parallel research across Discogs, MusicBrainz, Bandcamp, Beatport, and web archives. A RAG corpus with citation tiers. An interconnection graph mapping relationships between entities. Q&amp;A with natural-language synthesis grounded in retrieved sources. And a recommendation engine.&rdquo;</p>
+    <p class="action">[Screen: Six feature cards animate in &mdash; OCR, Research, RAG, Graph, Q&amp;A, Recommendations]</p>
+    <p class="production-note">Production: Pace the six items with brief pauses between each card animation.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:17&ndash;0:26] Slide 3 &mdash; User Walkthrough</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:17</span>
+    <p>&ldquo;Four steps. Upload the image. Review the OCR-extracted entities &mdash; the system catches most DJ names, even the ones spelled in fonts designed during an earthquake. Confirm &mdash; that&rsquo;s the human-in-the-loop gate &mdash; and the pipeline fans out across all five databases in parallel. Then explore: artist cards, citations ranked by authority, a Q&amp;A drawer, and the knowledge sidebar.&rdquo;</p>
+    <p class="action">[Screen: Four-step flow diagram &mdash; Upload, Confirm, Research, Explore &mdash; with human-in-the-loop callout]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:26&ndash;0:34] Slide 4 &mdash; Quantitative Metrics <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:26</span>
+    <p>&ldquo;The numbers. Thirty thousand lines of Python across a hundred and twelve files. Five thousand lines of JavaScript, four thousand CSS. Twenty-three thousand lines of tests across thirty-seven test files &mdash; one thousand, one hundred and seventy-four test functions. Because untested code is just an opinion. Seventeen API endpoints. Twenty-two concrete provider adapters behind nine interfaces.&rdquo;</p>
+    <p class="action">[Screen: Animated counters ticking up &mdash; 30,088 LOC, 1,174 tests, 17 endpoints, 22 adapters, 39 models]</p>
+    <p class="note">KEY POINT &mdash; Volume and quality: test count signals engineering discipline, adapter count signals architecture.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:34&ndash;0:42] Slide 5 &mdash; Completeness Estimate</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:34</span>
+    <p>&ldquo;We estimate approximately ninety-two percent complete. The pipeline, all providers, the RAG system, the full frontend, WebSocket progress tracking, Docker deployment &mdash; done. What remains: production hardening, corpus expansion, and some quality-of-life UI polish. The architecture was built to absorb those additions without structural changes.&rdquo;</p>
+    <p class="action">[Screen: Progress bar at ~92%, split view &mdash; left column: done items, right column: remaining items]</p>
+    <p class="production-note">Production: Let the progress bar animate to 92% before speaking the remaining items.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:42&ndash;0:52] Slide 6 &mdash; Architecture (7-Layer) <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">0:42</span>
+    <p>&ldquo;Seven-layer architecture with a strict adapter pattern. Frontend talks REST and WebSocket to the API layer. API hands off to the pipeline orchestrator. Pipeline calls services. Services talk to abstract interfaces &mdash; never to concrete providers. Providers implement those interfaces. And at the bottom, thirty-nine Pydantic frozen models. All wiring happens in a single composition root &mdash; <code>main.py</code> &mdash; via dependency injection. Swap OpenAI for a local Ollama instance by changing one environment variable. No vendor lock-in. Period.&rdquo;</p>
+    <p class="action">[Screen: 7-layer architecture diagram with arrows flowing top to bottom, DI callout at main.py]</p>
+    <p class="note">KEY POINT &mdash; Architecture: adapter pattern, DI composition root, no vendor lock-in, immutable models.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[0:52&ndash;1:01] Slide 7 &mdash; RAG Non-Technical</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">0:52</span>
+    <p>&ldquo;Quick non-technical framing for those explaining this to stakeholders. The RAG system is a digital librarian. We&rsquo;ve pre-indexed passages from Energy Flash, Last Night a DJ Saved My Life, RA articles, and archived interviews. When the pipeline researches an artist, it doesn&rsquo;t just search the web &mdash; it consults the library first. And it tells you exactly which shelf it pulled the book from.&rdquo;</p>
+    <p class="action">[Screen: Bookshelf metaphor &mdash; books on shelf, search beam finding relevant passage, citation badge appearing]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:01&ndash;1:11] Slide 8 &mdash; RAG Technical Deep-Dive <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">1:01</span>
+    <p>&ldquo;Eight-step RAG pipeline. Documents chunked into five-hundred-twelve-token sliding windows with sixty-four-token overlap, preserving paragraph boundaries. Embedded via FastEmbed &mdash; fifty megs of ONNX runtime, not the five hundred megs of PyTorch we can&rsquo;t afford on a five-twelve-meg container. Stored in ChromaDB. At query time: vectorize, retrieve with cosine similarity, filter by entity metadata, over-fetch four-x, deduplicate per source &mdash; max three chunks per source &mdash; and augment the LLM prompt. Every fact gets a citation tier. T1: published academic and official sources. T2: established music press. T3: web and user-generated. The model synthesizes with inline citations. No hallucinations invited.&rdquo;</p>
+    <p class="action">[Screen: 8-step RAG pipeline diagram &mdash; ingest, chunk, embed, store, query, retrieve, augment, synthesize]</p>
+    <p class="note">KEY POINT &mdash; RAG pipeline: chunking params, embedding choice, retrieval strategy, citation tiers (T1/T2/T3).</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:11&ndash;1:20] Slide 9 &mdash; Call Trace</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:11</span>
+    <p>&ldquo;Two call traces side by side. Left: a corpus search for &lsquo;industrial techno landscape.&rsquo; The embedding hits ChromaDB, retrieves ten passages from Energy Flash and DJ Mag, formats them with citation badges, synthesizes a natural-language answer. Right: entity discovery during pipeline research. The orchestrator fans out to Discogs, MusicBrainz, and the corpus simultaneously, deduplicates, ranks by citation authority, assembles the artist card. Both paths end at the same place: cited, verifiable output.&rdquo;</p>
+    <p class="action">[Screen: Dual call-trace diagram &mdash; corpus search on left, entity discovery on right, both converging at output]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:20&ndash;1:29] Slide 10 &mdash; Colorized Code Examples <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">1:20</span>
+    <p>&ldquo;Two code highlights, IDE-style. The <code>ILLMProvider</code> interface &mdash; every LLM provider must implement five methods: <code>complete</code>, <code>vision_extract</code>, <code>supports_vision</code>, <code>get_provider_name</code>, <code>is_available</code>. That&rsquo;s the contract. Nine interfaces, twenty-two adapters, all following the same pattern. Then <code>PipelineState</code> &mdash; Pydantic <code>frozen=True</code> models. State transitions create new copies via <code>model_copy(update={...})</code>. Crash at any point, deserialize from SQLite, resume exactly where you left off. Functional state management in a mutable world.&rdquo;</p>
+    <p class="action">[Screen: Split-pane IDE view &mdash; ILLMProvider ABC on left, PipelineState frozen model on right, syntax highlighted]</p>
+    <p class="note">KEY POINT &mdash; Code quality: interface contracts, immutable state, crash-safe pipeline resumption.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:29&ndash;1:37] Slide 11 &mdash; UML Diagrams</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:29</span>
+    <p>&ldquo;Two UML views. The layered architecture diagram shows the seven tiers with dependency arrows flowing strictly downward &mdash; no circular dependencies, no layer-skipping. The interface diagram uses ball-and-socket notation: the ball is the interface, the socket is the consumer. Nine balls, twenty-two sockets. Every adapter is hot-swappable without touching the consumers.&rdquo;</p>
+    <p class="action">[Screen: Two UML diagrams &mdash; layered architecture on left, ball-and-socket interface diagram on right]</p>
+    <p class="production-note">Production: Hold this slide slightly longer if the audience is studying the diagrams.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:37&ndash;1:46] Slide 12 &mdash; raiveFeeder</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:37</span>
+    <p>&ldquo;Companion tool: raiveFeeder. Five-tab corpus management interface. Upload documents, convert formats, preview chunks before ingestion, manage metadata, and monitor the vector store. The killer feature: audio transcription via Whisper. Feed it a DJ interview recording, it transcribes, chunks, embeds, and indexes &mdash; turning a forty-five-minute podcast into searchable, citable knowledge. Same adapter pattern as the main app.&rdquo;</p>
+    <p class="action">[Screen: raiveFeeder UI with 5 tabs, Whisper transcription flow highlighted]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:46&ndash;1:54] Slide 13 &mdash; RAG Improvements</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">1:46</span>
+    <p>&ldquo;Corpus expansion roadmap. RA Exchange &mdash; four hundred eighty-nine interview transcripts queued for ingestion. Resident Advisor event listings for temporal and geographic context. Archived interviews from the pre-internet era. And oral histories &mdash; firsthand accounts from promoters, DJs, and venue operators that exist nowhere else in structured form.&rdquo;</p>
+    <p class="action">[Screen: Corpus expansion roadmap &mdash; RA Exchange, RA events, interviews, oral histories, with volume indicators]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[1:54&ndash;2:02] Slide 14 &mdash; Challenges Solved <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">1:54</span>
+    <p>&ldquo;Four problems we solved. One: OCR on stylized rave text &mdash; fonts designed to look cool, not to be read by machines. Three-tier fallback chain: LLM vision, EasyOCR, Tesseract. Two: fitting the entire stack into five-twelve megs of Docker RAM &mdash; FastEmbed ONNX instead of PyTorch, single Uvicorn worker. Three: multi-database entity deduplication &mdash; fuzzy matching across Discogs, MusicBrainz, and web results to merge duplicate artist records. Four: citation authority &mdash; building a tiered trust system so the model knows Energy Flash outranks a Reddit comment.&rdquo;</p>
+    <p class="action">[Screen: Four solved challenges with before/after indicators]</p>
+    <p class="note">KEY POINT &mdash; Solved challenges: OCR fallback, 512MB constraint, dedup, citation authority.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:02&ndash;2:10] Slide 15 &mdash; Challenges Ahead</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">2:02</span>
+    <p>&ldquo;Four ahead. Production scaling &mdash; moving from single-worker Render to horizontal scaling. Audio fingerprinting &mdash; identifying tracks from mix recordings and linking them to flier lineups. Geospatial timeline &mdash; mapping events, venues, and scene evolution on an interactive map. And community contributions &mdash; a submission pipeline for collectors to add their own fliers and oral histories.&rdquo;</p>
+    <p class="action">[Screen: Four upcoming challenges as roadmap cards with estimated complexity indicators]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:10&ndash;2:18] Slide 16 &mdash; GitHub History</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">2:10</span>
+    <p>&ldquo;Built in nine days. A hundred and forty-five commits. Twenty-three merged pull requests. The entire codebase is annotated &mdash; every module, every pattern, every design decision documented inline so a junior developer can read it like a textbook. MIT license. On GitHub. The commit history reads like a novel &mdash; if the novel were about dependency injection and someone kept finding new edge cases at two a.m.&rdquo;</p>
+    <p class="action">[Screen: GitHub contribution graph, commit timeline, PR merge history]</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:18&ndash;2:26] Slide 17 &mdash; MWRCA Integration <span class="highlight">KEY POINT</span></h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line key-point">
+    <span class="timestamp">2:18</span>
+    <p>&ldquo;Potential collaboration: mwrca.org &mdash; the Midwest Rave Culture Archive. They have the primary sources. We have the analysis engine. Integration would mean corpus enrichment from their digitized flier collection, interview transcripts, and event databases. Their traffic drives discovery. Our pipeline drives research. Preserving rave history is better as a distributed system &mdash; in more ways than one.&rdquo;</p>
+    <p class="action">[Screen: MWRCA partnership diagram &mdash; bidirectional data flow, corpus enrichment, traffic/discovery loop]</p>
+    <p class="note">KEY POINT &mdash; MWRCA: research integration, mutual corpus enrichment, community-driven preservation.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>[2:26&ndash;2:33] Slide 18 &mdash; Outro</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <div class="script-line">
+    <span class="timestamp">2:26</span>
+    <p>&ldquo;The fliers were the internet before the internet. They were the social network, the event listing, the artist discovery platform &mdash; printed on card stock and stapled to telephone poles. raiveFlier makes sure that history doesn&rsquo;t stay stapled to a pole. Open source. MIT license. On GitHub. Thank you.&rdquo;</p>
+    <p class="action">[Screen: Closing slide &mdash; GitHub URL, MIT badge, project links, attribution]</p>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="prod-section">
+    <h2>Production Notes</h2>
+
+    <h3>Pacing</h3>
+    <p>Total runtime: 155 seconds across 18 slides. Average ~8.6 seconds per slide. The architecture slide (6), RAG deep-dive (8), and code examples (10) are the densest &mdash; allow a half-beat of silence after each to let the diagrams register. Slides 1, 4, and 18 are the emotional bookends; deliver them with slightly more emphasis.</p>
+
+    <h3>Humor Placement</h3>
+    <p>Three humor beats: &ldquo;fonts designed during an earthquake&rdquo; (Slide 3), &ldquo;untested code is just an opinion&rdquo; (Slide 4), and the two a.m. commit history line (Slide 16). Space them out &mdash; they work as tension release after technical density. The OCR/serif fonts joke (Slide 2) is the first laugh; land it cleanly.</p>
+
+    <h3>Key Transitions</h3>
+    <p>Slide 6 &rarr; 7 is the critical tonal shift: from architecture rigor to accessible analogy. The &ldquo;quick non-technical framing&rdquo; opener on Slide 7 signals the audience to relax briefly before Slide 8 goes deep again. Slide 14 &rarr; 15 (solved &rarr; ahead) should feel like a pivot from confidence to ambition.</p>
+
+    <h3>Metrics to Emphasize</h3>
+    <p>Let the animated counters on Slide 4 run for 2&ndash;3 seconds before narrating. The visual impact of numbers ticking up reinforces the scale claim. On Slide 16, the &ldquo;nine days&rdquo; reveal should land with a slight pause before it &mdash; the timeline is impressive and deserves a beat.</p>
+
+    <h3>Fallback if Running Long</h3>
+    <p>Slides 11 (UML) and 13 (RAG Improvements) can be trimmed to 5&ndash;6 seconds each if pacing runs hot. Cut adjectives, not data points.</p>
+  </div>
+
+</body>
+</html>

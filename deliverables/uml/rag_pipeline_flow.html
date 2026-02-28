@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  rag_pipeline_flow.html — raiveFlier UML Diagram 4 of 5
+  Activity Diagram: RAG (Retrieval-Augmented Generation) Pipeline
+
+  Architecture Role:
+    Visualizes the complete data flow for the reference corpus RAG system,
+    from document upload through chunking, embedding, vector storage,
+    and into query-time retrieval with NL synthesis and citation verification.
+    The diagram splits into two phases: Ingestion (offline/batch) and
+    Query (real-time user interaction). Citation tiers (T1 > T2 > T3)
+    are highlighted as they are central to raiveFlier's credibility system.
+
+  UML Activity Diagram notation:
+    - Rounded rectangles = activities/actions
+    - Diamonds = decision points
+    - Thick bars = fork/join (parallel execution)
+    - Filled circle = initial state
+    - Bullseye = final state
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — RAG Pipeline Activity Diagram</title>
+
+<!-- Google Fonts CDN -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0c;
+    color: #d8d5cd;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .diagram-container {
+    animation: fadeIn 0.8s ease-out both;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .title-bar {
+    background: #14141a;
+    border: 1px solid #2a2a30;
+    border-radius: 8px 8px 0 0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .title-bar h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #d8d5cd;
+  }
+
+  .title-bar .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #a080c0;
+    background: #6a4a8a22;
+    border: 1px solid #6a4a8a44;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .svg-wrapper {
+    background: #0a0a0c;
+    border: 1px solid #2a2a30;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+
+  .svg-wrapper svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .watermark {
+    text-align: center;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #6a6a70;
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <div class="title-bar">
+    <h1>RAG Pipeline — Activity Diagram</h1>
+    <span class="badge">UML Activity</span>
+  </div>
+
+  <div class="svg-wrapper">
+    <!--
+      SVG Activity Diagram Structure:
+      Two swim lanes side by side:
+        Left: Ingestion Phase (offline, batch processing)
+        Right: Query Phase (real-time, user-triggered)
+      Connected by the Vector Store (ChromaDB) which serves as the
+      shared state between ingestion and query.
+    -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 920">
+      <defs>
+        <!-- Flow arrow marker -->
+        <marker id="flowArrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#6a6a70"/>
+        </marker>
+        <!-- Amethyst arrow for main flow -->
+        <marker id="flowAmethyst" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#8a6aaa"/>
+        </marker>
+        <!-- Verdigris arrow -->
+        <marker id="flowVerdigris" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#4a8a7a"/>
+        </marker>
+      </defs>
+
+      <!-- Background -->
+      <rect width="1200" height="920" fill="#0a0a0c"/>
+
+      <!--
+        ═══════════════════════════════════════
+        SWIM LANE HEADERS
+        ═══════════════════════════════════════
+      -->
+      <!-- Ingestion lane header -->
+      <rect x="30" y="15" width="530" height="32" rx="4" fill="#6a4a8a" opacity="0.2"/>
+      <text x="295" y="37" text-anchor="middle" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#a080c0">
+        INGESTION PHASE (Offline / Batch)
+      </text>
+
+      <!-- Query lane header -->
+      <rect x="640" y="15" width="530" height="32" rx="4" fill="#4a8a7a" opacity="0.2"/>
+      <text x="905" y="37" text-anchor="middle" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#6ab0a0">
+        QUERY PHASE (Real-time)
+      </text>
+
+      <!-- Lane divider -->
+      <line x1="600" y1="55" x2="600" y2="850" stroke="#2a2a30" stroke-width="1" stroke-dasharray="6,4"/>
+
+      <!--
+        ═══════════════════════════════════════
+        INGESTION PHASE (Left Lane)
+        ═══════════════════════════════════════
+      -->
+
+      <!-- Initial state: filled black circle -->
+      <circle cx="295" cy="75" r="8" fill="#d8d5cd"/>
+
+      <!-- Flow: initial → Document Upload -->
+      <line x1="295" y1="83" x2="295" y2="105" stroke="#8a6aaa" stroke-width="1.2" marker-end="url(#flowAmethyst)"/>
+
+      <!--
+        Activity 1: Document Upload
+        Supports PDF, HTML, text, and audio transcript formats.
+      -->
+      <rect x="155" y="108" width="280" height="44" rx="22" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+      <text x="295" y="127" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Document Upload</text>
+      <text x="295" y="143" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">PDF / HTML / text / audio transcript</text>
+
+      <!-- Flow → Format Detection -->
+      <line x1="295" y1="152" x2="295" y2="174" stroke="#8a6aaa" stroke-width="1.2" marker-end="url(#flowAmethyst)"/>
+
+      <!--
+        Activity 2: Format Detection & Conversion
+        Identifies document type and normalizes to plain text.
+      -->
+      <rect x="155" y="177" width="280" height="44" rx="22" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+      <text x="295" y="196" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Format Detection &amp; Conversion</text>
+      <text x="295" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">normalize to plain text</text>
+
+      <!-- Flow → Chunking -->
+      <line x1="295" y1="221" x2="295" y2="243" stroke="#8a6aaa" stroke-width="1.2" marker-end="url(#flowAmethyst)"/>
+
+      <!--
+        Activity 3: Chunking
+        Sliding window strategy: 512 tokens per chunk, 64 token overlap.
+        Overlap ensures no information is lost at chunk boundaries.
+      -->
+      <rect x="135" y="246" width="320" height="54" rx="22" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+      <text x="295" y="268" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Text Chunking</text>
+      <text x="295" y="284" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">sliding window: 512 tokens, 64 overlap</text>
+
+      <!-- Flow → Embedding Generation -->
+      <line x1="295" y1="300" x2="295" y2="322" stroke="#8a6aaa" stroke-width="1.2" marker-end="url(#flowAmethyst)"/>
+
+      <!--
+        Activity 4: Embedding Generation
+        FastEmbed ONNX is the default for Docker deployments (low memory).
+        Other providers available for development: OpenAI, SentenceTransformer, Nomic.
+      -->
+      <rect x="135" y="325" width="320" height="54" rx="22" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.2"/>
+      <text x="295" y="347" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Embedding Generation</text>
+      <text x="295" y="363" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d0b468">FastEmbed ONNX (default, low-memory)</text>
+
+      <!-- Flow → Vector Storage -->
+      <line x1="295" y1="379" x2="295" y2="401" stroke="#8a6aaa" stroke-width="1.2" marker-end="url(#flowAmethyst)"/>
+
+      <!--
+        Activity 5: Vector Storage
+        ChromaDB with rich metadata: source, citation tier, date, tags.
+        This is the shared state between ingestion and query phases.
+      -->
+      <rect x="115" y="404" width="360" height="64" rx="22" fill="#14141a" stroke="#b89a50" stroke-width="1.5"/>
+      <text x="295" y="428" text-anchor="middle" font-family="Inter" font-size="13" font-weight="600" fill="#d0b468">Vector Storage (ChromaDB)</text>
+      <text x="295" y="446" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">metadata: source, tier, date, tags</text>
+      <text x="295" y="458" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">persistent at /data/chroma</text>
+
+      <!-- Connector line from Vector Storage to Query Phase -->
+      <line x1="475" y1="436" x2="700" y2="436" stroke="#b89a50" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#flowArrow)"/>
+      <!-- Label on connector -->
+      <text x="588" y="428" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d0b468">shared store</text>
+
+      <!--
+        Ingestion complete — terminal state for ingestion lane
+      -->
+      <line x1="295" y1="468" x2="295" y2="500" stroke="#8a6aaa" stroke-width="1.2" marker-end="url(#flowAmethyst)"/>
+      <!-- Final state: bullseye -->
+      <circle cx="295" cy="512" r="10" fill="none" stroke="#d8d5cd" stroke-width="1.5"/>
+      <circle cx="295" cy="512" r="5" fill="#d8d5cd"/>
+
+      <!-- Note: auto-ingested on first boot -->
+      <rect x="60" y="530" width="260" height="28" rx="4" fill="#14141a" stroke="#2a2a30" stroke-width="1"/>
+      <text x="190" y="549" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">
+        Auto-ingested from data/reference_corpus/
+      </text>
+      <text x="340" y="549" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">(idempotent)</text>
+
+      <!--
+        ═══════════════════════════════════════
+        QUERY PHASE (Right Lane)
+        ═══════════════════════════════════════
+      -->
+
+      <!-- Initial state -->
+      <circle cx="905" cy="75" r="8" fill="#d8d5cd"/>
+
+      <!-- Flow → User asks question -->
+      <line x1="905" y1="83" x2="905" y2="105" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!--
+        Activity Q1: User asks question
+        Via sidebar search or Q&A interface.
+      -->
+      <rect x="765" y="108" width="280" height="44" rx="22" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+      <text x="905" y="127" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">User Asks Question</text>
+      <text x="905" y="143" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">sidebar search / Q&amp;A interface</text>
+
+      <!-- Flow → Query Embedding -->
+      <line x1="905" y1="152" x2="905" y2="174" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!--
+        Activity Q2: Query Embedding
+        Same embedding model used for ingestion — vectors must be comparable.
+      -->
+      <rect x="765" y="177" width="280" height="44" rx="22" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+      <text x="905" y="196" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Query Embedding</text>
+      <text x="905" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">same model as ingestion</text>
+
+      <!-- Flow → Cosine Similarity Search -->
+      <line x1="905" y1="221" x2="905" y2="243" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!--
+        Activity Q3: Cosine Similarity Search
+        Over-fetches 4x the requested results to allow deduplication.
+        Deduplicates per source to avoid repetitive answers.
+      -->
+      <rect x="735" y="246" width="340" height="54" rx="22" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+      <text x="905" y="268" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Cosine Similarity Search</text>
+      <text x="905" y="284" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">over-fetch 4x, deduplicate per source</text>
+
+      <!-- Flow → Retrieved Chunks -->
+      <line x1="905" y1="300" x2="905" y2="322" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!--
+        Activity Q4: Retrieved Chunks
+        Top-k results with full citation metadata attached.
+      -->
+      <rect x="755" y="325" width="300" height="44" rx="22" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+      <text x="905" y="344" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Retrieved Chunks (top-k)</text>
+      <text x="905" y="360" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">with citation metadata</text>
+
+      <!-- Flow → NL Synthesis -->
+      <line x1="905" y1="369" x2="905" y2="405" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!-- ChromaDB connection point on query side -->
+      <rect x="700" y="416" width="12" height="40" rx="2" fill="#b89a50" opacity="0.4"/>
+
+      <!--
+        Activity Q5: NL Synthesis
+        LLM summarizes retrieved chunks into a natural language answer
+        with inline citations ([1], [2], etc.).
+      -->
+      <rect x="745" y="490" width="320" height="54" rx="22" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.2"/>
+      <text x="905" y="512" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">NL Synthesis (LLM)</text>
+      <text x="905" y="528" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#a080c0">summarize with inline citations [1][2]</text>
+
+      <!-- Flow → Chunks to NL Synthesis -->
+      <line x1="905" y1="369" x2="905" y2="487" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!-- Flow → Citation Verification -->
+      <line x1="905" y1="544" x2="905" y2="575" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!--
+        Activity Q6: Citation Verification
+        Tier ranking system ensures higher-quality sources are prioritized.
+        T1 (academic/archival) > T2 (official/label) > T3 (web/blog)
+      -->
+      <rect x="715" y="578" width="380" height="64" rx="22" fill="#1e1e24" stroke="#b89a50" stroke-width="1.5"/>
+      <text x="905" y="600" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Citation Verification</text>
+      <text x="905" y="618" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">T1 academic > T2 official > T3 web</text>
+      <text x="905" y="633" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">rank, validate, flag unreliable</text>
+
+      <!-- Decision diamond: sources verified? -->
+      <line x1="905" y1="642" x2="905" y2="668" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <polygon points="905,670 935,695 905,720 875,695" fill="#14141a" stroke="#b89a50" stroke-width="1.2"/>
+      <text x="905" y="699" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#d0b468">valid?</text>
+
+      <!-- Yes branch → Response -->
+      <line x1="935" y1="695" x2="960" y2="695" stroke="#4a8a7a" stroke-width="1.2"/>
+      <line x1="960" y1="695" x2="960" y2="745" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+      <text x="968" y="725" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">yes</text>
+
+      <!-- No branch → flag and downgrade tier -->
+      <line x1="875" y1="695" x2="840" y2="695" stroke="#6a6a70" stroke-width="1"/>
+      <line x1="840" y1="695" x2="840" y2="745" stroke="#6a6a70" stroke-width="1"/>
+      <rect x="780" y="745" width="120" height="30" rx="15" fill="#14141a" stroke="#6a6a70" stroke-width="1"/>
+      <text x="840" y="764" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#9a9a9e">flag + downgrade</text>
+      <text x="820" y="725" font-family="IBM Plex Mono" font-size="9" fill="#6a6a70">no</text>
+      <!-- Loop back -->
+      <line x1="840" y1="775" x2="840" y2="790" stroke="#6a6a70" stroke-width="1"/>
+      <line x1="840" y1="790" x2="960" y2="790" stroke="#6a6a70" stroke-width="1"/>
+      <line x1="960" y1="790" x2="960" y2="748" stroke="#6a6a70" stroke-width="1"/>
+
+      <!--
+        Activity Q7: Response with Cited Sources
+        Final output delivered to the user.
+      -->
+      <rect x="830" y="748" width="260" height="44" rx="22" fill="#1e1e24" stroke="#4a8a7a" stroke-width="1.5"/>
+      <text x="960" y="767" text-anchor="middle" font-family="Inter" font-size="12" font-weight="500" fill="#d8d5cd">Response with Cited Sources</text>
+      <text x="960" y="783" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">NL answer + [source1] [source2]</text>
+
+      <!-- Flow → Final state -->
+      <line x1="960" y1="792" x2="960" y2="826" stroke="#4a8a7a" stroke-width="1.2" marker-end="url(#flowVerdigris)"/>
+
+      <!-- Final state: bullseye -->
+      <circle cx="960" cy="838" r="10" fill="none" stroke="#d8d5cd" stroke-width="1.5"/>
+      <circle cx="960" cy="838" r="5" fill="#d8d5cd"/>
+
+      <!--
+        ═══════════════════════════════════════
+        LEGEND
+        ═══════════════════════════════════════
+      -->
+      <g transform="translate(30, 875)">
+        <!-- Activity -->
+        <rect x="0" y="0" width="60" height="20" rx="10" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1"/>
+        <text x="30" y="14" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#d8d5cd">action</text>
+        <text x="70" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Activity</text>
+
+        <!-- Decision -->
+        <polygon points="190,10 205,0 220,10 205,20" fill="#14141a" stroke="#b89a50" stroke-width="1"/>
+        <text x="230" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Decision</text>
+
+        <!-- Initial -->
+        <circle cx="320" cy="10" r="6" fill="#d8d5cd"/>
+        <text x="334" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Initial</text>
+
+        <!-- Final -->
+        <circle cx="410" cy="10" r="8" fill="none" stroke="#d8d5cd" stroke-width="1.5"/>
+        <circle cx="410" cy="10" r="4" fill="#d8d5cd"/>
+        <text x="424" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Final</text>
+
+        <!-- Shared store -->
+        <line x1="500" y1="10" x2="540" y2="10" stroke="#b89a50" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="550" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Shared state (ChromaDB)</text>
+
+        <!-- Citation tiers -->
+        <text x="760" y="14" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">T1</text>
+        <text x="780" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">academic</text>
+        <text x="840" y="14" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">T2</text>
+        <text x="860" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">official</text>
+        <text x="920" y="14" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">T3</text>
+        <text x="940" y="14" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">web</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="watermark">raiveFlier — UML Diagrams</div>
+</div>
+
+</body>
+</html>
