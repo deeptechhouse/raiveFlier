@@ -20,6 +20,9 @@ providers can be swapped (e.g. OpenAI -> Ollama) without changing this class.
 from __future__ import annotations
 
 import asyncio
+import gc
+import resource
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -49,6 +52,23 @@ if TYPE_CHECKING:
     from src.models.pipeline import PipelineState
 
 logger = structlog.get_logger(logger_name=__name__)
+
+
+def _get_rss_mb() -> float:
+    """Return current process RSS in megabytes.
+
+    Uses ``resource.getrusage`` which is available on macOS and Linux.
+    macOS returns bytes; Linux returns kilobytes — normalise to MB.
+    """
+    try:
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+        rss = usage.ru_maxrss
+        if sys.platform == "darwin":
+            return rss / (1024 * 1024)
+        # Linux reports in KB
+        return rss / 1024
+    except Exception:
+        return 0.0
 
 
 class IngestionService:
@@ -480,13 +500,51 @@ class IngestionService:
                 )
                 return result
 
-        raw_results = await asyncio.gather(*[_process_file(f) for f in files])
-        results = [r for r in raw_results if r is not None]
+        # Process files sequentially with a memory-aware governor.
+        # ChromaDB's HNSW index grows in memory as vectors accumulate.
+        # On Render's 512 MB container, the index for ~25K vectors plus
+        # the app exhausts available RAM.  The governor stops ingestion
+        # before OOM, letting the container serve from the partial corpus.
+        # On next restart, skip_source_ids skips already-ingested files
+        # and ingestion resumes where it left off.
+        _RSS_CEILING_MB = 400  # 80% of 512 MB container limit
+        results: list[IngestionResult] = []
+
+        # Sort files smallest-first so high-value small files (books,
+        # interviews, references) are ingested before the giant RA event
+        # files (~20 MB each), maximising corpus diversity within the
+        # memory budget.
+        files_by_size = sorted(files, key=lambda f: f.stat().st_size)
+
+        for fp in files_by_size:
+            # Memory check before each file — stop early if we're
+            # approaching the container limit.
+            rss = _get_rss_mb()
+            if rss > _RSS_CEILING_MB:
+                remaining = len(files_by_size) - len(results)
+                logger.warning(
+                    "ingestion_paused_memory_ceiling",
+                    rss_mb=round(rss, 1),
+                    ceiling_mb=_RSS_CEILING_MB,
+                    files_remaining=remaining,
+                    message="Pausing ingestion to avoid OOM; will resume on next restart",
+                )
+                break
+
+            result = await _process_file(fp)
+            if result is not None:
+                results.append(result)
+
+            # Force garbage collection after each file to reclaim
+            # intermediate objects (chunk lists, embedding arrays)
+            # before the next file starts.
+            gc.collect()
 
         logger.info(
             "directory_ingestion_complete",
             dir_path=dir_path,
             files_processed=len(results),
+            rss_mb=round(_get_rss_mb(), 1),
         )
         return results
 
