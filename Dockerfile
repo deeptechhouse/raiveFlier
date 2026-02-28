@@ -49,7 +49,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 #     (used by image processing code even though we do not run EasyOCR)
 #   - curl: Used by the health check and entrypoint corpus download
 # The rm -rf /var/lib/apt/lists/* cleans up apt cache to reduce image size.
+# build-essential provides g++ required by chroma-hnswlib (ChromaDB dep)
+# which compiles from source when no pre-built wheel exists for this platform.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
         tesseract-ocr \
         tesseract-ocr-eng \
         libgl1 \
@@ -86,6 +89,8 @@ COPY src/ src/
 COPY tools/ tools/
 # Static HTML/CSS/JS frontend
 COPY frontend/ frontend/
+# Rave Stories frontend (mounted at /stories/ in production)
+COPY stories_frontend/ stories_frontend/
 # YAML configuration files
 COPY config/ config/
 # Curated RAG corpus text files
