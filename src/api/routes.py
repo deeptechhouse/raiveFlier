@@ -1753,12 +1753,16 @@ async def _synthesize_answer(
     web_results: list[WebSearchResult] | None = None,
     chunk_tiers: dict[int, str] | None = None,
 ) -> tuple[str | None, list[CorpusSearchCitation]]:
-    """Synthesize a natural-language answer from tiered corpus chunks and web results.
+    """Synthesize a natural-language answer from corpus chunks and optional web results.
 
     Passes the user's query and numbered source passages to the LLM, which
     returns a cohesive response with inline [N] citation markers.  Passage
-    labels include tier provenance so the LLM can prioritize authoritative
-    sources (RA Exchange > Books > Corpus > Web).
+    labels include source provenance (e.g. "Book", "RA Exchange") so the LLM
+    has context about each source's nature.
+
+    Web results are only included in the LLM prompt when corpus coverage is
+    thin (fewer than 4 corpus chunks), preventing web snippets from diluting
+    rich corpus passages.
 
     Parameters
     ----------
@@ -1767,9 +1771,9 @@ async def _synthesize_answer(
     query:
         The user's search query.
     chunks:
-        Ranked corpus search chunks from tiers 1-3.
+        Ranked corpus search chunks (unified by semantic relevance).
     web_results:
-        Optional music-relevant web search results from tier 4.
+        Optional music-relevant web search results.
     chunk_tiers:
         Maps ``id(chunk)`` → tier label string (e.g. "RA Exchange", "Book").
 
