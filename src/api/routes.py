@@ -71,6 +71,11 @@ from src.api.schemas import (
     RelatedFact,
     SessionRatingsResponse,
     SubmitRatingRequest,
+    StoredAnalysisResponse,
+    AnalysisListResponse,
+    AddAnnotationRequest,
+    AnnotationResponse,
+    AnnotationListResponse,
     SuggestResponse,
     WebSearchResult,
 )
@@ -343,6 +348,22 @@ async def _run_phases_2_through_5(
                 )
             except Exception as exc:
                 _logger.warning("flier_history_log_failed", session_id=result.session_id, error=str(exc))
+
+            # Store the full InterconnectionMap for permanent retention.
+            if result.interconnection_map is not None:
+                try:
+                    map_dict = result.interconnection_map.model_dump()
+                    research_dicts = None
+                    if result.research_results:
+                        research_dicts = [r.model_dump() for r in result.research_results]
+                    await flier_history.store_analysis(
+                        session_id=result.session_id,
+                        interconnection_map=map_dict,
+                        research_results=research_dicts,
+                    )
+                except Exception as exc:
+                    _logger.warning("analysis_store_failed", session_id=result.session_id, error=str(exc))
+
     except Exception as exc:
         _logger.error(
             "background_phases_failed",
@@ -632,6 +653,7 @@ async def ask_question(
 async def dismiss_connection(
     session_id: str,
     body: DismissConnectionRequest,
+    request: Request,
     session_states: SessionStatesDep,
 ) -> DismissConnectionResponse:
     """Mark a specific interconnection relationship as dismissed/incorrect."""
@@ -663,10 +685,133 @@ async def dismiss_connection(
     updated_state = state.model_copy(update={"interconnection_map": updated_map})
     session_states[session_id] = updated_state
 
+    # Persist dismissal permanently in flier_history.
+    flier_history = getattr(request.app.state, "flier_history", None)
+    if flier_history is not None:
+        try:
+            await flier_history.persist_edge_dismissal(
+                session_id=session_id,
+                source=body.source,
+                target=body.target,
+                relationship_type=body.relationship_type,
+                reason=body.reason,
+            )
+        except Exception as exc:
+            _logger.warning("edge_dismissal_persist_failed", session_id=session_id, error=str(exc))
+
     return DismissConnectionResponse(
         session_id=session_id,
         dismissed_count=dismissed_count,
         message=f"Dismissed {dismissed_count} connection(s).",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Persistent analysis storage endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/fliers/{session_id}/analysis",
+    response_model=StoredAnalysisResponse,
+    responses={404: {"model": ErrorResponse}},
+    summary="Retrieve stored analysis for a session",
+)
+async def get_stored_analysis(
+    session_id: str,
+    request: Request,
+    include_research: bool = False,
+) -> StoredAnalysisResponse:
+    """Retrieve the permanently stored analysis snapshot for a session."""
+    flier_history = getattr(request.app.state, "flier_history", None)
+    if flier_history is None:
+        raise HTTPException(status_code=503, detail="Flier history service unavailable")
+
+    analysis = await flier_history.get_analysis(session_id, include_research=include_research)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail=f"No stored analysis for session: {session_id}")
+
+    return StoredAnalysisResponse(
+        session_id=analysis["session_id"],
+        flier_id=analysis["flier_id"],
+        interconnection_map=analysis["interconnection_map"],
+        research_results=analysis.get("research_results"),
+        revision=analysis.get("revision", 1),
+        created_at=analysis.get("created_at"),
+    )
+
+
+@router.get(
+    "/analyses",
+    response_model=AnalysisListResponse,
+    summary="List all stored analyses",
+)
+async def list_analyses(
+    request: Request,
+    limit: int = 50,
+    offset: int = 0,
+) -> AnalysisListResponse:
+    """List all permanently stored analyses with pagination."""
+    flier_history = getattr(request.app.state, "flier_history", None)
+    if flier_history is None:
+        raise HTTPException(status_code=503, detail="Flier history service unavailable")
+
+    analyses = await flier_history.list_analyses(limit=limit, offset=offset)
+    return AnalysisListResponse(
+        analyses=analyses,
+        total=len(analyses),
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/fliers/{session_id}/analysis/annotate",
+    response_model=AnnotationResponse,
+    responses={404: {"model": ErrorResponse}},
+    summary="Add annotation to stored analysis",
+)
+async def add_analysis_annotation(
+    session_id: str,
+    body: AddAnnotationRequest,
+    request: Request,
+) -> AnnotationResponse:
+    """Add a user annotation to a stored analysis."""
+    flier_history = getattr(request.app.state, "flier_history", None)
+    if flier_history is None:
+        raise HTTPException(status_code=503, detail="Flier history service unavailable")
+
+    try:
+        result = await flier_history.add_annotation(
+            session_id=session_id,
+            note=body.note,
+            target_type=body.target_type,
+            target_key=body.target_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return AnnotationResponse(**result)
+
+
+@router.get(
+    "/fliers/{session_id}/analysis/annotations",
+    summary="Get annotations for stored analysis",
+)
+async def get_analysis_annotations(
+    session_id: str,
+    request: Request,
+) -> AnnotationListResponse:
+    """Get all annotations for a session's stored analysis."""
+    flier_history = getattr(request.app.state, "flier_history", None)
+    if flier_history is None:
+        raise HTTPException(status_code=503, detail="Flier history service unavailable")
+
+    annotations = await flier_history.get_annotations(session_id)
+    return AnnotationListResponse(
+        session_id=session_id,
+        annotations=annotations,
+        total=len(annotations),
     )
 
 
@@ -1363,9 +1508,10 @@ async def _tiered_corpus_query(
     except Exception:
         _logger.debug("tiered_query_tier2_failed")
 
-    # --- Tier 3: Other corpus sources (not event listings, not T1/T2 types) ---
-    # No hard source_type filter here — we just exclude event_listing, interview,
-    # and book types since those are handled by T1/T2.  Post-filter by seen_ids.
+    # --- Tier 3: Other corpus sources (catch-all) ---
+    # No hard source_type filter — interview and book chunks already
+    # appear in T1/T2 and are deduped by seen_ids.  Event listings
+    # (RA event data) belong here alongside other corpus sources.
     t3_filters = _merge_filters({}) if user_filters else None
     try:
         t3_raw = await vector_store.query(
@@ -1374,7 +1520,6 @@ async def _tiered_corpus_query(
         t3_chunks = [
             c for c in t3_raw
             if c.chunk.source_id not in seen_ids
-            and c.chunk.source_type not in ("event_listing",)
         ][:15]
         for c in t3_chunks:
             seen_ids.add(c.chunk.source_id)
@@ -1790,9 +1935,16 @@ async def corpus_search(
     # Safety-net dedup by source_id — keep top N chunks per source.
     _MAX_PER_SOURCE = 5
     source_chunks: dict[str, list[CorpusSearchChunk]] = {}
-    # Map from CorpusSearchChunk id → tier label for synthesis provenance
+    # Map from CorpusSearchChunk id → tier label for synthesis provenance.
+    # Labels are resolved from source_type (authoritative) with the
+    # query-tier number as fallback for unlabeled source types.
     chunk_tier_labels: dict[int, str] = {}
     _TIER_LABELS = {1: "RA Exchange", 2: "Book", 3: "Corpus"}
+    _SOURCE_TYPE_LABELS: dict[str, str] = {
+        "interview": "RA Exchange",
+        "book": "Book",
+        "event_listing": "Event Listing",
+    }
 
     for c in chunks:
         sid = c.chunk.source_id
@@ -1812,9 +1964,15 @@ async def corpus_search(
             time_period=c.chunk.time_period,
         )
         source_chunks.setdefault(sid, []).append(candidate)
-        # Propagate tier label from raw chunk to CorpusSearchChunk
-        raw_tier = chunk_tier_map.get(id(c), 3)
-        chunk_tier_labels[id(candidate)] = _TIER_LABELS.get(raw_tier, "Corpus")
+        # Resolve label from source_type first (reliable), then fall
+        # back to query-tier number.  This avoids mislabeling when the
+        # id()-based tier map loses track of object identity.
+        st = getattr(c.chunk, "source_type", "")
+        label = _SOURCE_TYPE_LABELS.get(st)
+        if label is None:
+            raw_tier = chunk_tier_map.get(id(c), 3)
+            label = _TIER_LABELS.get(raw_tier, "Corpus")
+        chunk_tier_labels[id(candidate)] = label
 
     deduped: list[CorpusSearchChunk] = []
     for entries in source_chunks.values():

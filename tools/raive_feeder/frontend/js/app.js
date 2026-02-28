@@ -46,6 +46,9 @@ const FeederApp = (() => {
     if (tabName === 'corpus' && typeof FeederCorpus !== 'undefined') {
       FeederCorpus.refresh();
     }
+    if (tabName === 'connections' && typeof FeederConnections !== 'undefined') {
+      FeederConnections.refresh();
+    }
   }
 
   // ─── Shared API helper ──────────────────────────────────────────────

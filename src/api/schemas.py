@@ -356,7 +356,7 @@ class CorpusSearchCitation(BaseModel):
     url: str | None = Field(default=None, description="URL for web-sourced citations.")
     source_tier: str | None = Field(
         default=None,
-        description='Which search tier produced this citation: "ra_exchange", "book", "corpus", or "web".',
+        description='Which search tier produced this citation: "ra_exchange", "book", "event_listing", "corpus", or "web".',
     )
 
 
@@ -492,3 +492,57 @@ class RecommendationsResponse(BaseModel):
     genres_analyzed: list[str] = Field(default_factory=list)
     total: int = 0
     is_partial: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Persistent Analysis Storage schemas — stored analysis retrieval,
+# annotations, and listing endpoints.
+# ---------------------------------------------------------------------------
+
+
+class StoredAnalysisResponse(BaseModel):
+    """Response containing a stored analysis snapshot."""
+
+    session_id: str
+    flier_id: int
+    interconnection_map: dict[str, Any]
+    research_results: list[dict[str, Any]] | None = None
+    revision: int = 1
+    created_at: str | None = None
+
+
+class AnalysisListResponse(BaseModel):
+    """Paginated list of stored analyses."""
+
+    analyses: list[dict[str, Any]] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
+class AddAnnotationRequest(BaseModel):
+    """Request to add a user annotation to a stored analysis."""
+
+    note: str = Field(..., min_length=1, max_length=2000)
+    target_type: str = Field(default="analysis", description="analysis, entity, or edge")
+    target_key: str | None = Field(default=None, description="Entity name or source->target for edges")
+
+
+class AnnotationResponse(BaseModel):
+    """Response after adding an annotation."""
+
+    id: int
+    flier_id: int
+    target_type: str
+    target_key: str | None = None
+    note: str
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class AnnotationListResponse(BaseModel):
+    """List of annotations for a session's analysis."""
+
+    session_id: str
+    annotations: list[dict[str, Any]] = Field(default_factory=list)
+    total: int = 0

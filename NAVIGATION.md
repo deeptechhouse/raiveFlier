@@ -22,7 +22,8 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 | `src/providers/cache/` | Integration | Cache providers: In-memory cache |
 | `src/providers/embedding/` | Integration | Embedding providers: OpenAI Embeddings, Nomic (Ollama) |
 | `src/providers/vector_store/` | Integration | Vector store providers: ChromaDB |
-| `src/services/` | Business Logic | Core research services — artist, venue, promoter, date context researchers |
+| `src/providers/flier_history/` | Integration | Flier history persistence: SQLiteFlierHistoryProvider (analysis snapshots, dismissals, annotations) |
+| `src/services/` | Business Logic | Core research services, graph aggregation — artist, venue, promoter, date context researchers, GraphAggregationService |
 | `src/services/ingestion/` | Business Logic | RAG ingestion pipeline — chunking, metadata extraction, source processing |
 | `src/services/ingestion/source_processors/` | Business Logic | Source-specific processors for articles, books, and analysis documents |
 | `src/pipeline/` | Orchestration | Pipeline orchestrator, confirmation gate (human-in-the-loop), progress tracker |
@@ -45,9 +46,10 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 | `tools/raive_feeder/services/` | Business Logic | AudioTranscriber, WebCrawler, ImageIngester, FormatConverter, CorpusManager, BatchProcessor |
 | `tools/raive_feeder/interfaces/` | Abstraction Layer | ITranscriptionProvider ABC for audio transcription |
 | `tools/raive_feeder/providers/transcription/` | Integration | WhisperLocalProvider (faster-whisper), WhisperAPIProvider (OpenAI) |
-| `tools/raive_feeder/frontend/` | Presentation | 5-tab SPA (Documents, Audio, Images, URLs, Corpus) with emerald green accent |
+| `tools/raive_feeder/frontend/` | Presentation | 6-tab SPA (Documents, Audio, Images, URLs, Corpus, Connections) with emerald green accent |
 | `tools/raive_feeder/frontend/css/` | Presentation | Bunker + Emerald design system stylesheet |
-| `tools/raive_feeder/frontend/js/` | Presentation | Client-side modules — upload, audio, images, scraper, corpus, progress, batch |
+| `tools/raive_feeder/frontend/js/` | Presentation | Client-side modules — upload, audio, images, scraper, corpus, progress, batch, connections |
+| `tools/raive_feeder/frontend/js/vendor/` | Presentation | Third-party libraries — vis-network for graph visualization |
 | `tools/raive_feeder/tests/` | Testing | Unit + integration tests for all raiveFeeder services and API |
 
 ## Key Entry Points
@@ -76,6 +78,8 @@ raiveFlier follows a **layered architecture with adapter pattern** for all exter
 - **raiveFeeder** (`tools/raive_feeder/`) imports shared code from `src/` (models, interfaces, providers, ingestion service)
 - **raiveFeeder** runs independently on port 8001 alongside raiveFlier on port 8000
 - **Both apps** share the same ChromaDB vector store at `data/chromadb/`
+- **Both apps** share the same flier_history.db — raiveFlier writes analysis snapshots, raiveFeeder reads them for the combined connection map
+- **GraphAggregationService** (`src/services/`) aggregates all stored analyses into a unified entity graph, used by both apps
 
 ## External Dependencies
 

@@ -718,6 +718,153 @@ body {
 }
 .publish-status__deploy--active { color: var(--color-accent); }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   CONNECTIONS TAB — Combined entity relationship graph
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Stats row */
+.connections-stats {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.connections-stat {
+  flex: 1;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  text-align: center;
+}
+.connections-stat__value {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--color-feeder-accent);
+}
+.connections-stat__label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+/* Toolbar */
+.connections-toolbar {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.connections-search {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.connections-search:focus {
+  outline: none;
+  border-color: var(--color-feeder-accent);
+}
+.connections-filter {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* Main layout */
+.connections-layout {
+  display: flex;
+  gap: var(--space-4);
+  min-height: 500px;
+}
+.connections-graph {
+  flex: 1;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  position: relative;
+  min-height: 500px;
+}
+.connections-graph__placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* Detail sidebar */
+.connections-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-y: auto;
+  max-height: 500px;
+  position: relative;
+}
+.connections-sidebar__close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xl);
+  cursor: pointer;
+  line-height: 1;
+}
+.connections-sidebar__close:hover { color: var(--color-text-primary); }
+.connections-sidebar__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+}
+.connections-sidebar__type {
+  font-size: var(--text-xs);
+  color: var(--color-feeder-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-3);
+}
+.connections-sidebar__section {
+  margin-bottom: var(--space-3);
+}
+.connections-sidebar__section h4 {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+.connections-sidebar__section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.connections-sidebar__section li {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.connections-sidebar__section li:last-child { border-bottom: none; }
+
 /* ---- Footer ---- */
 .site-footer {
   margin-top: auto;
@@ -737,4 +884,8 @@ body {
   .approval-row { grid-template-columns: 30px 1fr 60px 100px; }
   .approval-row__date, .approval-row--header .approval-row__date { display: none; }
   .approval-row__content, .approval-row--header .approval-row__content { display: none; }
+  .connections-layout { flex-direction: column; }
+  .connections-sidebar { width: 100%; max-height: 300px; }
+  .connections-stats { flex-wrap: wrap; }
+  .connections-stat { min-width: 100px; }
 }

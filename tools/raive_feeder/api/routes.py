@@ -766,6 +766,45 @@ async def health(request: Request) -> HealthResponse:
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CONNECTION MAP ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@router.get("/connection-map")
+async def get_connection_map(request: Request) -> dict:
+    """Return the full combined connection map aggregating all stored analyses."""
+    graph_agg = getattr(request.app.state, "graph_aggregation", None)
+    if graph_agg is None:
+        raise HTTPException(status_code=503, detail="Graph aggregation service unavailable")
+
+    combined_map = await graph_agg.aggregate()
+    return combined_map.model_dump()
+
+
+@router.get("/connection-map/stats")
+async def get_connection_map_stats(request: Request) -> dict:
+    """Return summary statistics for the combined connection map."""
+    graph_agg = getattr(request.app.state, "graph_aggregation", None)
+    if graph_agg is None:
+        raise HTTPException(status_code=503, detail="Graph aggregation service unavailable")
+
+    return await graph_agg.get_stats()
+
+
+@router.get("/connection-map/node/{name}")
+async def get_connection_map_node(request: Request, name: str) -> dict:
+    """Return detail for a specific entity across all stored analyses."""
+    graph_agg = getattr(request.app.state, "graph_aggregation", None)
+    if graph_agg is None:
+        raise HTTPException(status_code=503, detail="Graph aggregation service unavailable")
+
+    detail = await graph_agg.get_node_detail(name)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Entity not found: {name}")
+    return detail
+
+
 @router.get("/providers", response_model=list[ProviderInfo])
 async def list_providers(request: Request) -> list[ProviderInfo]:
     """List all available providers and their status."""
