@@ -56,7 +56,12 @@ class FeederAuthMiddleware(BaseHTTPMiddleware):
         if not self._secret:
             return await call_next(request)
 
-        path = request.url.path
+        # Use scope["path"] (relative to mount point) instead of
+        # request.url.path (which includes the root_path prefix like
+        # /feeder/).  The exempt list uses mount-relative paths (/login),
+        # so checking against the full URL path (/feeder/login) would
+        # never match and cause an infinite redirect loop.
+        path = request.scope.get("path", request.url.path)
 
         # Allow exempt paths through without auth.
         if self._is_exempt(path):

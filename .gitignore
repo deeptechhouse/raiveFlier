@@ -66,3 +66,9 @@ node_modules/
 
 # SQLite session state database (runtime data)
 data/session_state.db
+
+# Discogs data dumps (10+ GB XML files, downloaded separately)
+data/discogs_dumps/
+
+# Discogs corpus (generated from dumps, ingested into ChromaDB)
+data/discogs_corpus/

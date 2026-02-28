@@ -8,7 +8,7 @@
 #
 # The CLI layer is the primary interface for operators and developers who
 # need to interact with the system outside of the web frontend/API. It
-# covers three major workflows:
+# covers five major workflows:
 #
 #   1. ANALYSIS  (analyze.py)
 #      Runs the full 5-phase flier analysis pipeline (OCR -> entity
@@ -24,6 +24,18 @@
 #      Scrapes event listings from Resident Advisor (RA.co) via their
 #      GraphQL API, generates corpus text files, and optionally ingests
 #      them into ChromaDB. Covers 17 global cities from 2016-present.
+#
+#   4. RBMA SCRAPER (scrape_rbma.py)
+#      Scrapes articles and lectures from Red Bull Music Academy archives
+#      via the Wayback Machine, generates genre-grouped corpus text files,
+#      and ingests into ChromaDB.
+#
+#   5. DISCOGS DUMP PARSER (parse_discogs.py)
+#      Streaming XML parser for Discogs monthly data dumps (~90+ GB).
+#      Extracts electronic music artists, labels, and master releases
+#      for house, techno, electro, and drum & bass. Converts to prose
+#      corpus files and ingests into ChromaDB. Runs locally (not on
+#      the 512 MB Render instance) due to data size.
 #
 # Architecture Notes:
 #   - All CLI modules use argparse for argument parsing (not Click/Typer)
@@ -44,4 +56,8 @@ Provides standalone command-line utilities:
   into the vector store.
 - ``python -m src.cli.scrape_ra`` — scrape RA.co events and ingest into
   the RAG corpus.
+- ``python -m src.cli.scrape_rbma`` — scrape RBMA articles and lectures
+  into the RAG corpus.
+- ``python -m src.cli.parse_discogs`` — parse Discogs XML data dumps
+  and ingest electronic music data into the RAG corpus.
 """
