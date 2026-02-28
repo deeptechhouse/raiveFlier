@@ -89,8 +89,6 @@ COPY src/ src/
 COPY tools/ tools/
 # Static HTML/CSS/JS frontend
 COPY frontend/ frontend/
-# Rave Stories frontend (mounted at /stories/ in production)
-COPY stories_frontend/ stories_frontend/
 # YAML configuration files
 COPY config/ config/
 # Curated RAG corpus text files
