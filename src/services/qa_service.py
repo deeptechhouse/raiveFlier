@@ -43,6 +43,7 @@ still functional.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -53,6 +54,7 @@ import structlog
 from src.interfaces.cache_provider import ICacheProvider
 from src.interfaces.llm_provider import ILLMProvider
 from src.interfaces.vector_store_provider import IVectorStoreProvider
+from src.interfaces.web_search_provider import IWebSearchProvider
 from src.utils.logging import get_logger
 
 logger: structlog.BoundLogger = get_logger(__name__)
@@ -140,8 +142,10 @@ class QAService:
         "- Write 2-4 substantive paragraphs separated by blank lines. "
         "Each paragraph should add distinct information (context, details, connections, significance).\n"
         "- Cite specific sources when the retrieved passages support your answer\n"
-        "- If the retrieved passages don't cover the topic, draw on general knowledge about "
-        "electronic music history and culture. Briefly note when you're going beyond the sources.\n"
+        "- If the retrieved passages or web search results don't fully cover the topic, "
+        "draw on your general knowledge about electronic music history and culture to give "
+        "a thorough answer. You should ALWAYS provide a substantive answer — never reply "
+        "that you don't have enough information if the question is about electronic music.\n"
         "- Be honest about uncertainty\n"
         "- Stay strictly on-topic: electronic music, rave culture, DJs, labels, venues, promoters, "
         "and the specific entities found on this flier. Do NOT generate content about unrelated topics.\n\n"
@@ -164,19 +168,25 @@ class QAService:
     )
 
     # Minimum cosine similarity score for a RAG passage to be included in
-    # the LLM prompt.  Below this threshold, passages are likely noise and
-    # would dilute the answer quality.  Tuned empirically.
-    _RAG_SIMILARITY_THRESHOLD = 0.6
+    # the LLM prompt.  Lowered from 0.6 to 0.45 — the previous threshold
+    # was too aggressive and discarded borderline-relevant results, causing
+    # many queries to fall back to LLM-only mode with empty RAG context.
+    _RAG_SIMILARITY_THRESHOLD = 0.45
 
     def __init__(
         self,
         llm: ILLMProvider,
         vector_store: IVectorStoreProvider | None = None,
         cache: ICacheProvider | None = None,
+        web_search: IWebSearchProvider | None = None,
     ) -> None:
         self._llm = llm
         self._vector_store = vector_store
         self._cache = cache
+        # Web search fallback — when RAG returns empty results, the service
+        # queries DuckDuckGo (or another IWebSearchProvider) to gather live
+        # web context so the LLM has something substantive to work with.
+        self._web_search = web_search
 
     # ------------------------------------------------------------------
     # Public API
@@ -249,10 +259,17 @@ class QAService:
                 msg="RAG enabled but no relevant passages found above similarity threshold.",
             )
 
+        # WEB SEARCH FALLBACK — when RAG returns nothing useful, query DuckDuckGo
+        # to gather live web context.  This ensures the LLM always has substantive
+        # external material to work with, even for topics not in the corpus.
+        web_context = ""
+        if not rag_context and self._web_search:
+            web_context = await self._web_search_fallback(question, entity_name)
+
         # Build user prompt
         user_prompt = self._build_user_prompt(
             question, context_summary, rag_context, entity_type, entity_name,
-            session_context,
+            session_context, web_context,
         )
 
         # LLM SYNTHESIS -- send context + RAG passages + question to the LLM.
@@ -450,6 +467,69 @@ class QAService:
             return "", []
 
     # ------------------------------------------------------------------
+    # Private helpers — web search fallback
+    # ------------------------------------------------------------------
+
+    async def _web_search_fallback(
+        self, question: str, entity_name: str | None
+    ) -> str:
+        """Query DuckDuckGo when RAG returns empty, providing the LLM with
+        live web context so it can give a substantive answer.
+
+        Builds a focused search query from the question and entity name,
+        limited to 5 results with a 5-second timeout to keep latency
+        acceptable.  Returns formatted snippet text or empty string on failure.
+        """
+        if not self._web_search:
+            return ""
+
+        # Build a targeted search query — prepend entity name and add
+        # domain keywords so results focus on electronic music context.
+        search_query = question
+        if entity_name:
+            search_query = f"{entity_name} {question}"
+        search_query = f"{search_query} electronic music"
+
+        try:
+            results = await asyncio.wait_for(
+                self._web_search.search(query=search_query, num_results=5),
+                timeout=5.0,
+            )
+
+            if not results:
+                logger.debug("qa_web_search_empty", query=search_query[:80])
+                return ""
+
+            # Format results as text passages the LLM can reference
+            passages: list[str] = []
+            for r in results:
+                parts = [f"**{r.title}**"]
+                if r.snippet:
+                    parts.append(r.snippet)
+                parts.append(f"Source: {r.url}")
+                passages.append("\n".join(parts))
+
+            web_text = "\n\n---\n\n".join(passages)
+
+            logger.info(
+                "qa_web_search_used",
+                query=search_query[:80],
+                result_count=len(results),
+            )
+            return web_text
+
+        except asyncio.TimeoutError:
+            logger.warning("qa_web_search_timeout", query=search_query[:80])
+            return ""
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "qa_web_search_failed",
+                query=search_query[:80],
+                error=str(exc),
+            )
+            return ""
+
+    # ------------------------------------------------------------------
     # Private helpers — prompt assembly
     # ------------------------------------------------------------------
 
@@ -461,6 +541,7 @@ class QAService:
         entity_type: str | None,
         entity_name: str | None,
         session_context: dict[str, Any] | None = None,
+        web_context: str = "",
     ) -> str:
         """Assemble the full user prompt for the LLM."""
         parts: list[str] = []
@@ -482,6 +563,12 @@ class QAService:
                 rag_context = rag_context[:max_rag_chars]
             parts.append("\n## Retrieved Knowledge Base Passages")
             parts.append(rag_context)
+
+        # Web search results — included when RAG returned nothing so the LLM
+        # has external context beyond session analysis data.
+        if web_context:
+            parts.append("\n## Web Search Results")
+            parts.append(web_context)
 
         if entity_type and entity_name:
             parts.append(

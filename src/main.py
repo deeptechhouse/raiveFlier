@@ -431,10 +431,13 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     # -- Q&A Service --
     from src.services.qa_service import QAService
 
+    # Web search fallback gives the Q&A sidebar access to live DuckDuckGo
+    # results when the RAG corpus doesn't have relevant passages.
     qa_service = QAService(
         llm=primary_llm,
         vector_store=vector_store,
         cache=cache,
+        web_search=primary_search,
     )
 
     # -- Feedback provider (SQLite-backed ratings persistence) --
