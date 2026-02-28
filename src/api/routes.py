@@ -1445,10 +1445,10 @@ async def _tiered_corpus_query(
     (79% of the corpus) cannot crowd out smaller but higher-authority
     source types.  Each tier has its own fetch/keep budget:
 
-        T1  interviews (RA Exchange)   fetch 20 → keep 10
-        T2  books                       fetch 15 → keep 10
-        T3a event listings              fetch 20 → keep  8
-        T3b catch-all (reference, etc.) fetch 15 → keep 10
+        T1  interviews (RA Exchange)   fetch 25 → keep 10
+        T2  books                       fetch 20 → keep 10
+        T3a event listings              fetch 25 → keep 10
+        T3b catch-all (reference, etc.) fetch 25 → keep 12
 
     T3a and T3b both map to tier number 3 for downstream labeling.
 
@@ -1533,7 +1533,7 @@ async def _tiered_corpus_query(
     if t1_filters is not None:
         try:
             t1_raw = await vector_store.query(
-                query_text=query_text, top_k=20, filters=t1_filters,
+                query_text=query_text, top_k=25, filters=t1_filters,
             )
             # Post-filter: only keep RA Exchange episodes (source_title starts with "EX.")
             t1_chunks = [
@@ -1555,7 +1555,7 @@ async def _tiered_corpus_query(
     if t2_filters is not None:
         try:
             t2_raw = await vector_store.query(
-                query_text=query_text, top_k=15, filters=t2_filters,
+                query_text=query_text, top_k=20, filters=t2_filters,
             )
             t2_chunks = [
                 c for c in t2_raw
@@ -1574,18 +1574,18 @@ async def _tiered_corpus_query(
     # Event listings comprise ~69K chunks (79% of corpus).  Without a
     # dedicated query, they dominate the unfiltered catch-all and crowd
     # out reference docs, analysis, and other smaller source types.
-    # Giving them their own tier with a capped budget (keep 8) ensures
+    # Giving them their own tier with a capped budget (keep 10) ensures
     # relevant event data surfaces without monopolising results.
     t3a_filters = _merge_filters({"source_type": "event"})
     if t3a_filters is not None:
         try:
             t3a_raw = await vector_store.query(
-                query_text=query_text, top_k=20, filters=t3a_filters,
+                query_text=query_text, top_k=25, filters=t3a_filters,
             )
             t3a_chunks = [
                 c for c in t3a_raw
                 if c.chunk.source_id not in seen_ids
-            ][:8]
+            ][:10]
             for c in t3a_chunks:
                 seen_ids.add(c.chunk.source_id)
                 chunk_tier_map[id(c)] = 3
@@ -1607,12 +1607,12 @@ async def _tiered_corpus_query(
     if t3b_filters is not None:
         try:
             t3b_raw = await vector_store.query(
-                query_text=query_text, top_k=15, filters=t3b_filters,
+                query_text=query_text, top_k=25, filters=t3b_filters,
             )
             t3b_chunks = [
                 c for c in t3b_raw
                 if c.chunk.source_id not in seen_ids
-            ][:10]
+            ][:12]
             for c in t3b_chunks:
                 seen_ids.add(c.chunk.source_id)
                 chunk_tier_map[id(c)] = 3
@@ -1983,18 +1983,7 @@ async def corpus_search(
     raw_query = query_text
     query_text = await _expand_query(llm, query_text)
 
-    # --- Tiered corpus retrieval + parallel web search ---
-    # Launch web search as a background task while ChromaDB tiers run
-    # sequentially.  The 3-second timeout on web search means it won't
-    # block synthesis if DDG is slow.
-    web_task: asyncio.Task[list[WebSearchResult]] | None = None
-    if body.offset == 0 and web_search is not None:
-        # Web search runs in parallel — will be awaited after tiered queries
-        web_task = asyncio.create_task(
-            _web_search_tier(web_search, body.query, [])
-        )
-
-    # Tiered ChromaDB queries: T1 (RA Exchange) → T2 (Books) → T3 (Other)
+    # --- Tiered corpus retrieval ---
     tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
         vector_store, query_text, filters if filters else None,
     )
@@ -2011,12 +2000,45 @@ async def corpus_search(
             vector_store, raw_query, filters if filters else None,
         )
 
-    # Now that tiered corpus chunks are available, update the web task
-    # with corpus context (if the task hasn't started fetching yet, this
-    # is a no-op — the initial empty-list context is sufficient).
-    # For the web search, re-launch with corpus context if we have chunks.
-    if web_task is not None and tiered_chunks:
-        web_task.cancel()
+    # Recall safety net: if tiered approach returned some but too few
+    # results, supplement with a single unified query to restore recall.
+    # Skipped when tiered returned zero (corpus has nothing) or when
+    # user has explicit source_type filter (tiered already respected it).
+    _MIN_TIERED_RECALL = 15
+    _user_has_source_filter = bool(filters and "source_type" in filters)
+    if (
+        0 < len(tiered_chunks) < _MIN_TIERED_RECALL
+        and not _user_has_source_filter
+    ):
+        _logger.debug(
+            "tiered_recall_low_supplementing",
+            tiered_count=len(tiered_chunks),
+            threshold=_MIN_TIERED_RECALL,
+        )
+        seen_chunk_ids = {c.chunk.source_id for c in tiered_chunks}
+        supplement = await vector_store.query(
+            query_text=query_text,
+            top_k=body.top_k,
+            filters=filters if filters else None,
+        )
+        for c in supplement:
+            if c.chunk.source_id not in seen_chunk_ids:
+                seen_chunk_ids.add(c.chunk.source_id)
+                st = getattr(c.chunk, "source_type", "")
+                title = getattr(c.chunk, "source_title", "")
+                if st == "interview" and title.startswith("EX."):
+                    chunk_tier_map[id(c)] = 1
+                elif st == "book":
+                    chunk_tier_map[id(c)] = 2
+                else:
+                    chunk_tier_map[id(c)] = 3
+                tiered_chunks.append(c)
+
+    # --- Web search (single launch, after corpus results are available) ---
+    # Fires once with corpus context for enriched query building.
+    # 3-second hard timeout ensures it won't block the response.
+    web_task: asyncio.Task[list[WebSearchResult]] | None = None
+    if body.offset == 0 and web_search is not None:
         web_task = asyncio.create_task(
             _web_search_tier(web_search, body.query, tiered_chunks)
         )
