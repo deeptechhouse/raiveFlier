@@ -1720,12 +1720,7 @@ _SYNTHESIS_SYSTEM_PROMPT = (
     "rave culture, and the history of DJs, venues, labels, and promoters.\n\n"
     "You will be given a user's search query and a set of numbered source passages "
     "retrieved from a curated knowledge base of books, articles, interviews, "
-    "and web search results.\n\n"
-    "Sources are organized by authority tier:\n"
-    "- **RA Exchange** (podcast transcripts): Highest authority — first-person accounts\n"
-    "- **Books**: Published, researched material\n"
-    "- **Corpus** (articles, interviews, other): Curated knowledge base\n"
-    "- **Web**: Live web results — useful for recent info but less authoritative\n\n"
+    "and event listings.\n\n"
     "Your job is to synthesize these passages into a clear, cohesive, and "
     "informative answer. Follow these rules:\n"
     "- Write a natural, flowing response (2-4 paragraphs) that directly answers "
@@ -1733,10 +1728,6 @@ _SYNTHESIS_SYSTEM_PROMPT = (
     "- Cite sources inline using numbered markers like [1], [2], etc. that "
     "correspond to the passage numbers provided.\n"
     "- Only cite passages that actually support a claim — do not cite every passage.\n"
-    "- Prefer higher-authority sources (RA Exchange > Books > Corpus > Web) when "
-    "multiple sources cover the same point.\n"
-    "- If passages contradict each other, note the discrepancy and favor the "
-    "higher-tier source.\n"
     "- If the passages do not contain enough information to answer the query, "
     "say so honestly and provide what you can.\n"
     "- Stay strictly on topic: electronic music, rave culture, DJs, labels, "
@@ -1982,6 +1973,21 @@ async def corpus_search(
     # HyDE-lite: expand short/vague queries with LLM
     raw_query = query_text
     query_text = await _expand_query(llm, query_text)
+
+    # --- Launch unified synthesis query in parallel with tiered query ---
+    # The unified query ignores source_type partitioning so the LLM gets
+    # the globally most relevant chunks for NL synthesis, while the tiered
+    # query (below) still drives the card-display results.
+    _SYNTHESIS_UNIFIED_TOP_K = 20
+    synthesis_query_task: asyncio.Task | None = None
+    if body.offset == 0:
+        synthesis_query_task = asyncio.create_task(
+            vector_store.query(
+                query_text=query_text,
+                top_k=_SYNTHESIS_UNIFIED_TOP_K,
+                filters=filters if filters else None,
+            )
+        )
 
     # --- Tiered corpus retrieval ---
     tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
