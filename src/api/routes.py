@@ -1720,12 +1720,7 @@ _SYNTHESIS_SYSTEM_PROMPT = (
     "rave culture, and the history of DJs, venues, labels, and promoters.\n\n"
     "You will be given a user's search query and a set of numbered source passages "
     "retrieved from a curated knowledge base of books, articles, interviews, "
-    "and web search results.\n\n"
-    "Sources are organized by authority tier:\n"
-    "- **RA Exchange** (podcast transcripts): Highest authority — first-person accounts\n"
-    "- **Books**: Published, researched material\n"
-    "- **Corpus** (articles, interviews, other): Curated knowledge base\n"
-    "- **Web**: Live web results — useful for recent info but less authoritative\n\n"
+    "and event listings.\n\n"
     "Your job is to synthesize these passages into a clear, cohesive, and "
     "informative answer. Follow these rules:\n"
     "- Write a natural, flowing response (2-4 paragraphs) that directly answers "
@@ -1733,10 +1728,6 @@ _SYNTHESIS_SYSTEM_PROMPT = (
     "- Cite sources inline using numbered markers like [1], [2], etc. that "
     "correspond to the passage numbers provided.\n"
     "- Only cite passages that actually support a claim — do not cite every passage.\n"
-    "- Prefer higher-authority sources (RA Exchange > Books > Corpus > Web) when "
-    "multiple sources cover the same point.\n"
-    "- If passages contradict each other, note the discrepancy and favor the "
-    "higher-tier source.\n"
     "- If the passages do not contain enough information to answer the query, "
     "say so honestly and provide what you can.\n"
     "- Stay strictly on topic: electronic music, rave culture, DJs, labels, "
@@ -1762,12 +1753,16 @@ async def _synthesize_answer(
     web_results: list[WebSearchResult] | None = None,
     chunk_tiers: dict[int, str] | None = None,
 ) -> tuple[str | None, list[CorpusSearchCitation]]:
-    """Synthesize a natural-language answer from tiered corpus chunks and web results.
+    """Synthesize a natural-language answer from corpus chunks and optional web results.
 
     Passes the user's query and numbered source passages to the LLM, which
     returns a cohesive response with inline [N] citation markers.  Passage
-    labels include tier provenance so the LLM can prioritize authoritative
-    sources (RA Exchange > Books > Corpus > Web).
+    labels include source provenance (e.g. "Book", "RA Exchange") so the LLM
+    has context about each source's nature.
+
+    Web results are only included in the LLM prompt when corpus coverage is
+    thin (fewer than 4 corpus chunks), preventing web snippets from diluting
+    rich corpus passages.
 
     Parameters
     ----------
@@ -1776,9 +1771,9 @@ async def _synthesize_answer(
     query:
         The user's search query.
     chunks:
-        Ranked corpus search chunks from tiers 1-3.
+        Ranked corpus search chunks (unified by semantic relevance).
     web_results:
-        Optional music-relevant web search results from tier 4.
+        Optional music-relevant web search results.
     chunk_tiers:
         Maps ``id(chunk)`` → tier label string (e.g. "RA Exchange", "Book").
 
@@ -1820,13 +1815,17 @@ async def _synthesize_answer(
         )
         passage_sources.append(("chunk", chunk, tier_label))
 
-    # Append web results as additional passages after corpus chunks
-    for wr in (web_results or [])[:3]:
-        idx = len(passage_lines) + 1
-        passage_lines.append(
-            f"[{idx}] (Web: {wr.source_domain})\n{wr.title}\n{wr.snippet}"
-        )
-        passage_sources.append(("web", wr, "Web"))
+    # Append web results only when corpus coverage is thin — prevents
+    # web snippets from diluting rich corpus passages in the LLM prompt.
+    # Web results remain in the API response for frontend card display.
+    _WEB_IN_SYNTHESIS_THRESHOLD = 4
+    if len(top_chunks) < _WEB_IN_SYNTHESIS_THRESHOLD:
+        for wr in (web_results or [])[:3]:
+            idx = len(passage_lines) + 1
+            passage_lines.append(
+                f"[{idx}] (Web: {wr.source_domain})\n{wr.title}\n{wr.snippet}"
+            )
+            passage_sources.append(("web", wr, "Web"))
 
     user_prompt = (
         f"## Search Query\n{query}\n\n"
@@ -1982,6 +1981,21 @@ async def corpus_search(
     # HyDE-lite: expand short/vague queries with LLM
     raw_query = query_text
     query_text = await _expand_query(llm, query_text)
+
+    # --- Launch unified synthesis query in parallel with tiered query ---
+    # The unified query ignores source_type partitioning so the LLM gets
+    # the globally most relevant chunks for NL synthesis, while the tiered
+    # query (below) still drives the card-display results.
+    _SYNTHESIS_UNIFIED_TOP_K = 20
+    synthesis_query_task: asyncio.Task | None = None
+    if body.offset == 0:
+        synthesis_query_task = asyncio.create_task(
+            vector_store.query(
+                query_text=query_text,
+                top_k=_SYNTHESIS_UNIFIED_TOP_K,
+                filters=filters if filters else None,
+            )
+        )
 
     # --- Tiered corpus retrieval ---
     tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
@@ -2280,14 +2294,81 @@ async def corpus_search(
         except (asyncio.CancelledError, Exception):
             _logger.debug("web_search_task_failed")
 
-    # --- LLM synthesis: generate NL answer from tiered chunks + web results ---
+    # --- Build synthesis-specific chunk list (unified, not tiered) ---
+    # The unified query returns the globally best chunks by pure semantic
+    # relevance — no forced source_type diversity.  Event listings are only
+    # included as fallback when the entity has thin non-event coverage.
+    synthesis_chunks: list[CorpusSearchChunk] = []
+    synthesis_tier_labels: dict[int, str] = {}
+
+    if synthesis_query_task is not None:
+        try:
+            unified_raw = await synthesis_query_task
+        except Exception:
+            unified_raw = []
+
+        # Convert raw query results to CorpusSearchChunk, split by source_type
+        non_event: list[CorpusSearchChunk] = []
+        event_chunks: list[CorpusSearchChunk] = []
+        for c in unified_raw:
+            chunk_obj = CorpusSearchChunk(
+                text=c.chunk.text,
+                source_title=c.chunk.source_title,
+                source_type=c.chunk.source_type,
+                author=c.chunk.author,
+                citation_tier=c.chunk.citation_tier,
+                page_number=c.chunk.page_number,
+                similarity_score=round(c.similarity_score, 3),
+                formatted_citation=c.formatted_citation,
+                entity_tags=c.chunk.entity_tags,
+                entity_types=c.chunk.entity_types,
+                geographic_tags=c.chunk.geographic_tags,
+                genre_tags=c.chunk.genre_tags,
+                time_period=c.chunk.time_period,
+            )
+            st = getattr(c.chunk, "source_type", "")
+            label = _SOURCE_TYPE_LABELS.get(st)
+            if label is None:
+                label = "Corpus"
+            synthesis_tier_labels[id(chunk_obj)] = label
+
+            if st == "event":
+                event_chunks.append(chunk_obj)
+            else:
+                non_event.append(chunk_obj)
+
+        # Primary context: top non-event chunks ranked by semantic relevance
+        synthesis_chunks = non_event[:_SYNTHESIS_MAX_CHUNKS]
+
+        # Event-listing fallback: if the queried entity/name has thin coverage
+        # in books/articles/interviews, supplement with event listings that
+        # actually mention the entity.
+        _entity_name = (_parsed_canonical or body.query).lower()
+        _mentions_in_non_event = sum(
+            1 for ch in synthesis_chunks
+            if _entity_name in ch.text.lower()
+            or any(_entity_name in t.lower() for t in ch.entity_tags)
+        )
+        _EVENT_SUPPLEMENT_THRESHOLD = 2
+        _MAX_EVENT_SUPPLEMENT = 3
+
+        if _mentions_in_non_event < _EVENT_SUPPLEMENT_THRESHOLD and event_chunks:
+            relevant_events = [
+                ch for ch in event_chunks
+                if _entity_name in ch.text.lower()
+                or any(_entity_name in t.lower() for t in ch.entity_tags)
+            ][:_MAX_EVENT_SUPPLEMENT]
+            synthesis_chunks.extend(relevant_events)
+
+    # --- LLM synthesis: generate NL answer from unified chunks + web results ---
     synthesized_answer: str | None = None
     answer_citations: list[CorpusSearchCitation] = []
-    if body.offset == 0 and (results or web_results):
+    if body.offset == 0 and (synthesis_chunks or results or web_results):
         synthesized_answer, answer_citations = await _synthesize_answer(
-            llm, body.query, results,
+            llm, body.query,
+            synthesis_chunks if synthesis_chunks else results,
             web_results=web_results if web_results else None,
-            chunk_tiers=chunk_tier_labels,
+            chunk_tiers=synthesis_tier_labels if synthesis_chunks else chunk_tier_labels,
         )
 
     return CorpusSearchResponse(
