@@ -210,9 +210,18 @@ except Exception as e:
         mkdir -p "$CHROMADB_DIR"
         echo "[entrypoint] Cleared — fresh corpus will be built by background ingestion"
     elif [ "$DB_SIZE" -lt 50000000 ]; then
-        echo "[entrypoint] Clearing stale ChromaDB data ($DB_SIZE bytes < 50 MB threshold)"
-        rm -rf "${CHROMADB_DIR:?}"/*
-        echo "[entrypoint] Cleared — fresh corpus will be built by background ingestion"
+        # Small but valid data — only clear if it came from a GitHub corpus
+        # download (corpus_version.txt exists).  If no version file, the data
+        # is from an in-progress auto-ingest rebuild and must be preserved
+        # across container restarts to avoid a Sisyphean wipe-and-rebuild loop.
+        VERSION_FILE="$CHROMADB_DIR/corpus_version.txt"
+        if [ -f "$VERSION_FILE" ]; then
+            echo "[entrypoint] Clearing stale downloaded corpus ($DB_SIZE bytes < 50 MB threshold)"
+            rm -rf "${CHROMADB_DIR:?}"/*
+            echo "[entrypoint] Cleared — fresh corpus will be built by background ingestion"
+        else
+            echo "[entrypoint] ChromaDB data small ($DB_SIZE bytes) but auto-ingest in progress — preserving"
+        fi
     else
         echo "[entrypoint] ChromaDB data OK (size=$DB_SIZE bytes)"
     fi
