@@ -7,15 +7,16 @@
   =====================
   Vanilla JS + HTML + CSS frontend for the raiveFeeder companion app.
   Communicates with the FastAPI backend at /api/v1/*.  Same SPA pattern
-  as raiveFlier but with a 5-tab navigation instead of 4-view switching.
+  as raiveFlier but with a 6-tab navigation instead of 4-view switching.
 
   TAB STRUCTURE
   =============
-  1. Documents  (#tab-documents)  — Drag-and-drop document upload
-  2. Audio      (#tab-audio)      — Audio transcription + review
-  3. Images     (#tab-images)     — Image OCR + ingestion
-  4. URLs       (#tab-urls)       — Web scraping with LLM guidance
-  5. Corpus     (#tab-corpus)     — Database management dashboard
+  1. Documents    (#tab-documents)    — Drag-and-drop document upload
+  2. Audio        (#tab-audio)        — Audio transcription + review
+  3. Images       (#tab-images)       — Image OCR + ingestion
+  4. URLs         (#tab-urls)         — Web scraping with LLM guidance
+  5. Corpus       (#tab-corpus)       — Database management dashboard
+  6. Connections  (#tab-connections)  — Combined entity relationship graph
 
   DESIGN
   ======
@@ -26,8 +27,9 @@
   MODULE LOADING ORDER
   ====================
   Scripts loaded at bottom of <body> in dependency order:
-    app.js -> upload.js -> audio.js -> images.js -> scraper.js
-    -> corpus.js -> progress.js -> batch.js
+    vis-network.min.js (vendor) -> app.js -> upload.js -> audio.js
+    -> images.js -> scraper.js -> corpus.js -> progress.js -> batch.js
+    -> connections.js
   ============================================================================
 -->
 <!DOCTYPE html>
@@ -81,6 +83,10 @@
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-corpus" data-tab="corpus">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         Corpus
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-connections" data-tab="connections">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="3" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="3" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="3" stroke="currentColor" stroke-width="2"/><path d="M8.5 7.5L15.5 16.5M8.5 6L15.5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Connections
       </button>
     </div>
   </nav>
@@ -375,6 +381,58 @@
       </div>
     </section>
 
+    <!-- ===== TAB 6: CONNECTIONS ===== -->
+    <section id="tab-connections" class="tab-panel" role="tabpanel" aria-label="Entity connections graph" hidden>
+
+      <!-- Stats header -->
+      <div class="connections-stats" id="connections-stats">
+        <div class="connections-stat">
+          <span class="connections-stat__value" id="conn-total-fliers">0</span>
+          <span class="connections-stat__label">Fliers Analyzed</span>
+        </div>
+        <div class="connections-stat">
+          <span class="connections-stat__value" id="conn-total-entities">0</span>
+          <span class="connections-stat__label">Unique Entities</span>
+        </div>
+        <div class="connections-stat">
+          <span class="connections-stat__value" id="conn-total-edges">0</span>
+          <span class="connections-stat__label">Relationships</span>
+        </div>
+      </div>
+
+      <!-- Search / filter -->
+      <div class="connections-toolbar">
+        <input type="text" id="connections-search" class="connections-search" placeholder="Search entities...">
+        <select id="connections-type-filter" class="connections-filter">
+          <option value="">All Types</option>
+          <option value="ARTIST">Artists</option>
+          <option value="VENUE">Venues</option>
+          <option value="PROMOTER">Promoters</option>
+        </select>
+      </div>
+
+      <!-- Graph + detail sidebar layout -->
+      <div class="connections-layout">
+        <div class="connections-graph" id="connections-graph">
+          <p class="connections-graph__placeholder">Analyze fliers to build the connection map...</p>
+        </div>
+        <aside class="connections-sidebar" id="connections-sidebar" hidden>
+          <button class="connections-sidebar__close" id="connections-sidebar-close" aria-label="Close detail">&times;</button>
+          <h3 class="connections-sidebar__title" id="sidebar-entity-name"></h3>
+          <p class="connections-sidebar__type" id="sidebar-entity-type"></p>
+          <div class="connections-sidebar__section">
+            <h4>Appearances</h4>
+            <ul id="sidebar-appearances"></ul>
+          </div>
+          <div class="connections-sidebar__section">
+            <h4>Connections</h4>
+            <ul id="sidebar-connections"></ul>
+          </div>
+        </aside>
+      </div>
+
+    </section>
+
   </main>
 
   <footer class="site-footer">
@@ -384,6 +442,7 @@
   </footer>
 
   <!-- Application scripts — loaded in dependency order -->
+  <script src="js/vendor/vis-network.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/upload.js"></script>
   <script src="js/audio.js"></script>
@@ -392,5 +451,6 @@
   <script src="js/corpus.js"></script>
   <script src="js/progress.js"></script>
   <script src="js/batch.js"></script>
+  <script src="js/connections.js"></script>
 </body>
 </html>

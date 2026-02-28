@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Technical Design Document</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+/* ─── DESIGN TOKENS ─── */
+:root {
+  --bunker-900: #0a0a0c;
+  --bunker-800: #14141a;
+  --bunker-700: #1e1e24;
+  --bunker-600: #2a2a30;
+  --bunker-500: #3a3a40;
+  --bunker-400: #6a6a70;
+  --bunker-300: #9a9a9e;
+  --bunker-100: #d8d5cd;
+  --amethyst: #6a4a8a;
+  --amethyst-light: #8a6aaa;
+  --amethyst-text: #a080c0;
+  --amethyst-muted: #2a1e3a;
+  --verdigris: #4a8a7a;
+  --verdigris-text: #6ab0a0;
+  --amber: #b89a50;
+  --amber-text: #d0b468;
+  --success: #3a7a60;
+  --success-text: #5aaa80;
+  --error: #8a4050;
+  --error-text: #c87080;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+/* ─── RESET & BASE ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  background: var(--bunker-900);
+  color: var(--bunker-100);
+  font-family: var(--font-body);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── LAYOUT ─── */
+.doc-wrapper {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2rem 2.5rem 6rem;
+}
+
+/* ─── HEADER ─── */
+.doc-header {
+  border-bottom: 1px solid var(--bunker-600);
+  padding-bottom: 2.5rem;
+  margin-bottom: 3rem;
+}
+.doc-header__title {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--bunker-100);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.doc-header__subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--amethyst-text);
+  margin-top: 0.5rem;
+  letter-spacing: 0.04em;
+}
+.doc-header__meta {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--bunker-400);
+}
+.doc-header__meta span { white-space: nowrap; }
+.doc-header__meta .label { color: var(--bunker-300); }
+
+/* ─── TABLE OF CONTENTS ─── */
+.toc {
+  background: var(--bunker-800);
+  border: 1px solid var(--bunker-600);
+  border-radius: 8px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 3.5rem;
+}
+.toc__heading {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--amethyst-text);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.toc__list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 2rem;
+}
+.toc__list li { font-size: 0.9rem; }
+.toc__list a {
+  color: var(--bunker-300);
+  text-decoration: none;
+  transition: color 0.2s;
+  font-family: var(--font-body);
+}
+.toc__list a:hover { color: var(--amethyst-text); }
+.toc__list .toc__number {
+  font-family: var(--font-mono);
+  color: var(--bunker-500);
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* ─── SECTIONS ─── */
+.section {
+  margin-bottom: 3.5rem;
+  scroll-margin-top: 2rem;
+}
+.section__number {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--amethyst);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+h2 {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--bunker-100);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--bunker-700);
+}
+h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--amethyst-text);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+h4 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--verdigris-text);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+p { margin-bottom: 1rem; }
+strong { color: var(--bunker-100); font-weight: 600; }
+em { color: var(--bunker-300); font-style: italic; }
+
+/* ─── LISTS ─── */
+ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+li { margin-bottom: 0.35rem; }
+li::marker { color: var(--bunker-500); }
+
+/* ─── TABLES ─── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+th {
+  background: var(--bunker-800);
+  color: var(--amethyst-text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 2px solid var(--bunker-600);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+td {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--bunker-700);
+  vertical-align: top;
+}
+tr:hover td { background: rgba(106, 74, 138, 0.04); }
+.table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--bunker-700);
+  border-radius: 6px;
+}
+.table-wrap table { margin-bottom: 0; }
+
+/* ─── CODE BLOCKS ─── */
+pre {
+  background: var(--bunker-800);
+  border: 1px solid var(--bunker-700);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+code {
+  font-family: var(--font-mono);
+  color: var(--bunker-100);
+}
+p code, li code, td code {
+  background: var(--bunker-800);
+  border: 1px solid var(--bunker-700);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+  color: var(--amethyst-text);
+}
+
+/* Syntax highlight spans */
+.kw { color: #a080c0; }   /* keywords */
+.st { color: #6ab0a0; }   /* strings */
+.cm { color: #6a6a70; }   /* comments */
+.fn { color: #d0b468; }   /* functions */
+.tp { color: #8a6aaa; }   /* types/classes */
+.nu { color: #4a8a7a; }   /* numbers */
+.op { color: #9a9a9e; }   /* operators */
+.pl { color: #d8d5cd; }   /* plain text */
+
+/* ─── SYNTAX HIGHLIGHTING — Bunker IDE Theme ─── */
+/* Styled code blocks with file-name header, line numbers, and syntax
+   color tokens matching the Bunker dark palette.  Used for colorized
+   source examples (ILLMProvider, PipelineState, etc.) throughout TDD. */
+.code-block {
+  background: #14141a;
+  border: 1px solid #2a2a30;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+.code-block__header {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--bunker-400);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #2a2a30;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.code-block pre {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding: 1rem 1.25rem;
+  margin: 0;
+  overflow-x: auto;
+  color: var(--bunker-100);
+}
+.code-block .line-num {
+  color: var(--bunker-500);
+  user-select: none;
+  display: inline-block;
+  width: 2.5em;
+  text-align: right;
+  margin-right: 1em;
+}
+.syn-kw { color: #a080c0; }       /* keyword */
+.syn-str { color: #6ab0a0; }      /* string */
+.syn-cmt { color: #6a6a70; }      /* comment */
+.syn-dec { color: #d0b468; }      /* decorator */
+.syn-typ { color: #8a6aaa; }      /* type */
+.syn-fn { color: #d8d5cd; }       /* function */
+.syn-num { color: #c87080; }      /* number */
+.syn-op { color: #9a9a9e; }       /* operator */
+.syn-bi { color: #5aaa80; }       /* builtin */
+
+/* ─── CALLOUT BOXES ─── */
+.callout {
+  border-left: 3px solid var(--amethyst);
+  background: var(--amethyst-muted);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0 6px 6px 0;
+}
+.callout--info { border-left-color: var(--verdigris); background: rgba(74, 138, 122, 0.08); }
+.callout--warn { border-left-color: var(--amber); background: rgba(184, 154, 80, 0.08); }
+.callout__title {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--amethyst-text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.callout--info .callout__title { color: var(--verdigris-text); }
+.callout--warn .callout__title { color: var(--amber-text); }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ─── MERMAID ─── */
+.mermaid-wrap {
+  background: var(--bunker-800);
+  border: 1px solid var(--bunker-700);
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+.mermaid-wrap .mermaid { display: flex; justify-content: center; }
+.diagram-caption {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--bunker-400);
+  text-align: center;
+  margin-top: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+/* ─── BADGE / TAG ─── */
+.badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+.badge--amethyst { background: var(--amethyst-muted); color: var(--amethyst-text); border: 1px solid var(--amethyst); }
+.badge--verdigris { background: rgba(74,138,122,0.12); color: var(--verdigris-text); border: 1px solid var(--verdigris); }
+.badge--amber { background: rgba(184,154,80,0.12); color: var(--amber-text); border: 1px solid var(--amber); }
+.badge--success { background: rgba(58,122,96,0.12); color: var(--success-text); border: 1px solid var(--success); }
+
+/* ─── DIVIDERS ─── */
+hr {
+  border: none;
+  border-top: 1px solid var(--bunker-700);
+  margin: 3rem 0;
+}
+
+/* ─── LINKS ─── */
+a { color: var(--amethyst-text); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--amethyst-light); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  .doc-wrapper { padding: 1.5rem 1.25rem 4rem; }
+  .doc-header__title { font-size: 2rem; }
+  .toc__list { grid-template-columns: 1fr; }
+  pre { font-size: 0.75rem; padding: 1rem; }
+  table { font-size: 0.8rem; }
+}
+</style>
+</head>
+<body>
+<div class="doc-wrapper">
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                                  -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<header class="doc-header">
+  <h1 class="doc-header__title">raiveFlier</h1>
+  <div class="doc-header__subtitle">Technical Design Document v1.0</div>
+  <div class="doc-header__meta">
+    <span><span class="label">Version</span> 0.1.0</span>
+    <span><span class="label">Date</span> 2026-02-24</span>
+    <span><span class="label">License</span> MIT (Open Source)</span>
+    <span><span class="label">Status</span> ~92% Complete</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS                                                       -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<nav class="toc">
+  <div class="toc__heading">Table of Contents</div>
+  <ol class="toc__list">
+    <li><span class="toc__number">01</span><a href="#executive-summary">Executive Summary</a></li>
+    <li><span class="toc__number">02</span><a href="#architecture-overview">Architecture Overview</a></li>
+    <li><span class="toc__number">03</span><a href="#pipeline">5-Phase Analysis Pipeline</a></li>
+    <li><span class="toc__number">04</span><a href="#data-models">Data Models</a></li>
+    <li><span class="toc__number">05</span><a href="#interface-contracts">Interface Contracts (All 9)</a></li>
+    <li><span class="toc__number">06</span><a href="#rag-pipeline">RAG Pipeline Architecture</a></li>
+    <li><span class="toc__number">07</span><a href="#api-design">API Design</a></li>
+    <li><span class="toc__number">08</span><a href="#fallback-chains">Provider Fallback Chains</a></li>
+    <li><span class="toc__number">09</span><a href="#deployment">Deployment Architecture</a></li>
+    <li><span class="toc__number">10</span><a href="#frontend">Frontend Architecture</a></li>
+    <li><span class="toc__number">11</span><a href="#raive-feeder">raiveFeeder Companion</a></li>
+    <li><span class="toc__number">12</span><a href="#security">Security Considerations</a></li>
+    <li><span class="toc__number">13</span><a href="#testing">Testing Strategy</a></li>
+    <li><span class="toc__number">14</span><a href="#uml-diagrams">UML Diagrams</a></li>
+    <li><span class="toc__number">15</span><a href="#github-history">Development History</a></li>
+  </ol>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1 — EXECUTIVE SUMMARY                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="executive-summary">
+  <span class="section__number">Section 01</span>
+  <h2>Executive Summary</h2>
+
+  <p><strong>raiveFlier</strong> is an open-source (MIT) analysis engine for electronic music culture. Users upload images of rave fliers&mdash;the photocopied, screen-printed, and digitally designed event posters that have documented underground dance music since the late 1980s&mdash;and the system produces deeply researched, citation-backed profiles of every artist, venue, promoter, and event found on the flier.</p>
+
+  <h3>What It Does</h3>
+  <ol>
+    <li><strong>OCR</strong> &mdash; Extracts text from stylized flier images using a multi-provider fallback chain (LLM Vision, EasyOCR, Tesseract).</li>
+    <li><strong>Entity Extraction</strong> &mdash; An LLM parses raw OCR text into structured entities: artists, venue, promoter, date, genres, event name.</li>
+    <li><strong>Human-in-the-Loop Confirmation</strong> &mdash; The user reviews and edits extracted entities before expensive research begins.</li>
+    <li><strong>Research</strong> &mdash; Five parallel researchers query Discogs, MusicBrainz, Bandcamp, Beatport, DuckDuckGo, article scrapers, and a RAG knowledge base to build rich profiles.</li>
+    <li><strong>Interconnection Analysis</strong> &mdash; An LLM maps relationships between entities (shared labels, recurring venues, genre lineages).</li>
+    <li><strong>Cited Output</strong> &mdash; Results are ranked by a 6-tier citation system (published books through forum posts) and presented with source links.</li>
+  </ol>
+
+  <h3>By the Numbers</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Python source code</td><td>30,088 lines across 112 source files</td></tr>
+    <tr><td>Test code</td><td>23,293 lines across 37 test files (1,174 tests)</td></tr>
+    <tr><td>Pydantic models</td><td>39 frozen data objects</td></tr>
+    <tr><td>Abstract interfaces</td><td>9 (ILLMProvider, IOCRProvider, IEmbeddingProvider, etc.)</td></tr>
+    <tr><td>Concrete providers</td><td>22 adapter implementations</td></tr>
+    <tr><td>Frontend modules</td><td>9 vanilla JS modules, ~1,500 lines CSS</td></tr>
+    <tr><td>Commits / PRs</td><td>145 commits, 23 merged pull requests over 9 days</td></tr>
+    <tr><td>Completion estimate</td><td>~92%</td></tr>
+  </table>
+  </div>
+
+  <h3>Tech Stack Overview</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Component</th><th>Technology</th></tr>
+    <tr><td>Backend</td><td>Python 3.12, FastAPI, Pydantic v2</td></tr>
+    <tr><td>Frontend</td><td>Vanilla JS, CSS, HTML (no framework)</td></tr>
+    <tr><td>LLMs</td><td>OpenAI, Anthropic, Ollama (via adapters)</td></tr>
+    <tr><td>OCR</td><td>LLM Vision, Tesseract, EasyOCR</td></tr>
+    <tr><td>Vector Store</td><td>ChromaDB (RAG)</td></tr>
+    <tr><td>Embeddings</td><td>FastEmbed, OpenAI, SentenceTransformers, Nomic</td></tr>
+    <tr><td>Music Databases</td><td>Discogs, MusicBrainz, Bandcamp, Beatport</td></tr>
+    <tr><td>Logging</td><td>structlog (JSON in prod, console in dev)</td></tr>
+    <tr><td>Deployment</td><td>Docker on Render (512 MB RAM, persistent /data disk)</td></tr>
+    <tr><td>Testing</td><td>pytest</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2 — ARCHITECTURE OVERVIEW                                       -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="architecture-overview">
+  <span class="section__number">Section 02</span>
+  <h2>Architecture Overview</h2>
+
+  <p>raiveFlier follows a <strong>layered architecture with adapter pattern</strong> for all external service integrations. The system is organized into seven distinct layers, each with clear responsibilities and dependency rules.</p>
+
+  <h3>Layer Hierarchy</h3>
+  <pre><code><span class="cm">  Frontend (Vanilla JS/CSS/HTML)</span>
+<span class="op">      |</span> <span class="st">REST + WebSocket</span>
+<span class="cm">  API Layer (FastAPI routes, schemas, middleware)</span>
+<span class="op">      |</span>
+<span class="cm">  Pipeline (Orchestrator, Confirmation Gate, Progress Tracker)</span>
+<span class="op">      |</span>
+<span class="cm">  Services (5 Researchers, Citation, Interconnection, Q&amp;A, Recommendations)</span>
+<span class="op">      |</span>
+<span class="cm">  Interfaces (9 ABCs &mdash; ILLMProvider, IOCRProvider, IEmbeddingProvider, etc.)</span>
+<span class="op">      |</span>
+<span class="cm">  Providers (22 concrete adapters &mdash; OpenAI, Anthropic, Ollama, Discogs, ChromaDB, etc.)</span>
+<span class="op">      |</span>
+<span class="cm">  Models (Pydantic v2 frozen data objects)</span></code></pre>
+
+  <h3>Key Design Principles</h3>
+
+  <h4>No Vendor Lock-In</h4>
+  <p>Every external service&mdash;LLMs, OCR engines, music databases, search engines, vector stores, embedding models&mdash;is accessed exclusively through abstract interfaces defined in <code>src/interfaces/</code>. Swapping OpenAI for Anthropic, or ChromaDB for Qdrant, requires changing one line in the composition root (<code>src/main.py</code>) and nothing else.</p>
+
+  <h4>Dependency Injection</h4>
+  <p>All wiring happens in <code>src/main.py</code> via the <code>_build_all()</code> composition root. Services never create their own dependencies. FastAPI's <code>Depends()</code> mechanism retrieves injected instances from <code>app.state</code> at request time.</p>
+
+  <h4>Immutable State</h4>
+  <p><code>PipelineState</code> uses Pydantic's <code>frozen=True</code> configuration. State transitions produce new objects via <code>model_copy(update={...})</code>. This functional approach means any intermediate state can be serialized to SQLite for crash recovery without risk of partially-mutated objects.</p>
+
+  <h4>Graceful Degradation</h4>
+  <p>Provider fallback chains are 3-4 levels deep. If the primary LLM is unavailable, the system falls back to the next available provider. If all external APIs fail, local fallbacks (Ollama, Tesseract) ensure the pipeline can still produce results.</p>
+
+  <h4>Human-in-the-Loop</h4>
+  <p>The pipeline pauses after entity extraction (Phase 2) for user review. This prevents wasting expensive API calls on incorrectly-parsed entities. The <code>ConfirmationGate</code> manages this pause with a 24-hour TTL backed by SQLite.</p>
+
+  <h3>Architecture Component Diagram</h3>
+  <div class="mermaid-wrap">
+    <div class="mermaid">
+graph TB
+    subgraph Frontend["Frontend"]
+        UI["Vanilla JS SPA"]
+    end
+    subgraph API["API Layer"]
+        Routes["FastAPI Routes"]
+        WS["WebSocket"]
+        Schemas["Pydantic Schemas"]
+    end
+    subgraph Pipeline["Pipeline"]
+        Orch["Orchestrator"]
+        Gate["Confirmation Gate"]
+        Prog["Progress Tracker"]
+    end
+    subgraph Services["Services"]
+        RS["ResearchService"]
+        CS["CitationService"]
+        IS["InterconnectionService"]
+        QA["QAService"]
+        Rec["RecommendationService"]
+    end
+    subgraph Interfaces["Interfaces"]
+        ILLM["ILLMProvider"]
+        IOCR["IOCRProvider"]
+        IEmb["IEmbeddingProvider"]
+        IVS["IVectorStoreProvider"]
+        IMD["IMusicDBProvider"]
+    end
+    subgraph Providers["Providers"]
+        OAI["OpenAI"]
+        ANT["Anthropic"]
+        OLL["Ollama"]
+        CHR["ChromaDB"]
+        DIS["Discogs"]
+        MB["MusicBrainz"]
+    end
+    UI --> Routes
+    UI --> WS
+    Routes --> Orch
+    Orch --> RS
+    Orch --> IS
+    RS --> ILLM
+    RS --> IMD
+    QA --> ILLM
+    QA --> IVS
+    ILLM --> OAI
+    ILLM --> ANT
+    ILLM --> OLL
+    IVS --> CHR
+    IMD --> DIS
+    IMD --> MB
+    </div>
+    <div class="diagram-caption">Figure 2.1 &mdash; Architecture Component Diagram</div>
+  </div>
+
+  <h3>Directory Structure</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Directory</th><th>Layer</th><th>Description</th></tr>
+    <tr><td><code>src/models/</code></td><td>Data Layer</td><td>Pydantic v2 models for fliers, entities, pipeline state, research results, RAG</td></tr>
+    <tr><td><code>src/interfaces/</code></td><td>Abstraction</td><td>9 abstract base classes defining contracts for all provider types</td></tr>
+    <tr><td><code>src/providers/</code></td><td>Integration</td><td>Concrete implementations grouped by capability (llm/, ocr/, music_db/, etc.)</td></tr>
+    <tr><td><code>src/services/</code></td><td>Business Logic</td><td>Core researchers, citation, interconnection, Q&amp;A, recommendations</td></tr>
+    <tr><td><code>src/pipeline/</code></td><td>Orchestration</td><td>Pipeline orchestrator, confirmation gate, progress tracker</td></tr>
+    <tr><td><code>src/api/</code></td><td>Interface (HTTP)</td><td>FastAPI routes, request/response schemas, middleware, WebSocket handler</td></tr>
+    <tr><td><code>src/config/</code></td><td>Configuration</td><td>YAML config loader and Pydantic settings (env vars)</td></tr>
+    <tr><td><code>src/utils/</code></td><td>Cross-Cutting</td><td>Shared utilities: logging, error types, image preprocessing, text normalization</td></tr>
+    <tr><td><code>frontend/</code></td><td>Presentation</td><td>Single-page HTML/CSS/JS frontend with drag-and-drop upload</td></tr>
+    <tr><td><code>tests/</code></td><td>Testing</td><td>pytest suite: unit, integration, E2E, fixtures</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3 — 5-PHASE PIPELINE                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="pipeline">
+  <span class="section__number">Section 03</span>
+  <h2>5-Phase Analysis Pipeline</h2>
+
+  <p>The analysis pipeline processes a flier image through seven distinct phases (defined in the <code>PipelinePhase</code> enum), split into two execution blocks with a human-in-the-loop gate between them.</p>
+
+  <h3>Pipeline Phase Flow</h3>
+  <pre><code><span class="st">Upload</span> <span class="op">&rarr;</span> <span class="st">OCR</span> <span class="op">&rarr;</span> <span class="st">Entity Extraction</span> <span class="op">&rarr;</span> <span class="fn">[User Confirmation]</span> <span class="op">&rarr;</span> <span class="st">Research</span> <span class="op">&rarr;</span> <span class="st">Interconnection</span> <span class="op">&rarr;</span> <span class="st">Output</span>
+<span class="cm">         Phase 1 (automatic)      Human-in-the-loop       Phase 2-5 (automatic)</span></code></pre>
+
+  <h3>PipelinePhase Enum</h3>
+  <pre><code><span class="kw">class</span> <span class="tp">PipelinePhase</span><span class="op">(</span><span class="tp">str</span><span class="op">,</span> <span class="tp">Enum</span><span class="op">):</span>
+    <span class="st">"""Phases of the flier analysis pipeline.</span>
+
+<span class="st">    The pipeline progresses through these phases in order:</span>
+<span class="st">        UPLOAD &rarr; OCR &rarr; ENTITY_EXTRACTION &rarr; USER_CONFIRMATION &rarr; RESEARCH &rarr;</span>
+<span class="st">        INTERCONNECTION &rarr; OUTPUT</span>
+<span class="st">    """</span>
+
+    <span class="pl">UPLOAD</span> <span class="op">=</span> <span class="st">"UPLOAD"</span>                       <span class="cm"># Image received and validated</span>
+    <span class="pl">OCR</span> <span class="op">=</span> <span class="st">"OCR"</span>                             <span class="cm"># Text extraction in progress</span>
+    <span class="pl">ENTITY_EXTRACTION</span> <span class="op">=</span> <span class="st">"ENTITY_EXTRACTION"</span> <span class="cm"># LLM parsing entities from OCR text</span>
+    <span class="pl">USER_CONFIRMATION</span> <span class="op">=</span> <span class="st">"USER_CONFIRMATION"</span> <span class="cm"># Waiting for user to review/edit</span>
+    <span class="pl">RESEARCH</span> <span class="op">=</span> <span class="st">"RESEARCH"</span>                   <span class="cm"># Querying music DBs and web</span>
+    <span class="pl">INTERCONNECTION</span> <span class="op">=</span> <span class="st">"INTERCONNECTION"</span>     <span class="cm"># Mapping entity relationships</span>
+    <span class="pl">OUTPUT</span> <span class="op">=</span> <span class="st">"OUTPUT"</span>                       <span class="cm"># Formatting final results</span></code></pre>
+
+  <h3>Phase Details</h3>
+
+  <h4>Phase 1: OCR</h4>
+  <p>The uploaded flier image is processed through the OCR fallback chain. The <code>OCRService</code> tries each configured provider in priority order (LLM Vision, EasyOCR, Tesseract) and uses the first result that meets the minimum confidence threshold (default: 0.7). LLM Vision is preferred because it handles the stylized, warped, neon-outlined typography found on rave fliers far better than traditional OCR engines.</p>
+
+  <h4>Phase 2: Entity Extraction</h4>
+  <p>The <code>EntityExtractor</code> service sends the raw OCR text to the LLM with a structured prompt that requests JSON output containing: artist names, venue, promoter/collective, event date, event name, and genre tags. The LLM uses contextual clues (layout position, font size, common formatting patterns) to distinguish headliners from openers and venues from promoters.</p>
+
+  <h4>Human-in-the-Loop Gate</h4>
+  <div class="callout callout--info">
+    <div class="callout__title">Confirmation Gate</div>
+    <p>The pipeline pauses and presents extracted entities to the user for review. Users can edit artist names (correcting OCR errors), add missing entities, remove false positives, and adjust genre tags. The <code>ConfirmationGate</code> stores pending state in a <code>PersistentSessionStore</code> (SQLite-backed, 24-hour TTL) so users can return to confirm later, even if the container restarts.</p>
+  </div>
+
+  <h4>Phase 3: Research</h4>
+  <p>Five specialized researchers execute in parallel via <code>asyncio.gather</code>:</p>
+  <ul>
+    <li><strong>ArtistResearcher</strong> &mdash; Queries music databases (Discogs, MusicBrainz, Bandcamp, Beatport) for discographies and labels, web search for biographical context, article scraping for interviews and reviews, and the RAG corpus for historical references.</li>
+    <li><strong>VenueResearcher</strong> &mdash; Web search and article scraping for venue history, notable events, capacity, location, cultural significance.</li>
+    <li><strong>PromoterResearcher</strong> &mdash; Web search and article scraping for promoter/collective background, event history, genre associations.</li>
+    <li><strong>DateContextResearcher</strong> &mdash; Web search for what was happening in electronic music on/around the flier's date (releases, events, scene developments).</li>
+    <li><strong>EventNameResearcher</strong> &mdash; Web search for the specific event series or party brand, its history and significance.</li>
+  </ul>
+
+  <h4>Phase 4: Interconnection Analysis</h4>
+  <p>The <code>InterconnectionService</code> sends all research results to the LLM with a prompt that maps relationships between entities: shared record labels, recurring venue bookings, genre lineages, geographic connections, and temporal context. The output is an <code>InterconnectionMap</code> containing edges (entity-to-entity connections with labels and confidence scores) and patterns (higher-level observations about the event's cultural context).</p>
+
+  <h4>Phase 5: Output &amp; RAG Feedback</h4>
+  <p>The completed analysis is formatted for display. If RAG is enabled, the analysis itself is ingested back into the corpus as a tier-3 source, creating a self-improving knowledge base where each analyzed flier makes future analyses richer.</p>
+
+  <h3>Pipeline Sequence Diagram</h3>
+  <div class="mermaid-wrap">
+    <div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend
+    participant API as FastAPI
+    participant O as Orchestrator
+    participant OCR as OCRService
+    participant EE as EntityExtractor
+    participant RS as ResearchService
+    participant IS as InterconnectionService
+
+    U->>FE: Upload flier image
+    FE->>API: POST /upload (multipart)
+    API->>O: start_pipeline(image)
+    O->>OCR: extract_text(image)
+    OCR-->>O: OCRResult
+    O->>EE: extract_entities(text)
+    EE-->>O: ExtractedEntities
+    O-->>API: entities for review
+    API-->>FE: Show confirmation UI
+
+    Note over U,FE: Human-in-the-Loop Gate
+
+    U->>FE: Confirm entities
+    FE->>API: POST /confirm
+    API->>O: resume_pipeline(confirmed)
+
+    par Parallel Research
+        O->>RS: research_artist(artist1)
+        O->>RS: research_artist(artist2)
+        O->>RS: research_venue(venue)
+    end
+
+    RS-->>O: ResearchResults[]
+    O->>IS: analyze_connections(results)
+    IS-->>O: InterconnectionMap
+    O-->>API: Complete results
+    API-->>FE: Render results view
+    </div>
+    <div class="diagram-caption">Figure 3.1 &mdash; Pipeline Sequence Diagram (Upload through Results)</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4 — DATA MODELS                                                 -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="data-models">
+  <span class="section__number">Section 04</span>
+  <h2>Data Models</h2>
+
+  <p>All data models use <strong>Pydantic v2</strong> with <code>frozen=True</code> configuration, enforcing immutability across the entire pipeline. State transitions produce new model instances via <code>model_copy(update={...})</code> rather than mutating existing objects.</p>
+
+  <h3>PipelineState</h3>
+  <p>The central model that tracks the complete state of an analysis session. Located in <code>src/models/pipeline.py</code>.</p>
+
+  <pre><code><span class="kw">class</span> <span class="tp">PipelineState</span><span class="op">(</span><span class="tp">BaseModel</span><span class="op">):</span>
+    <span class="st">"""The current state of a flier analysis pipeline session.</span>
+
+<span class="st">    Immutable &mdash; use model_copy(update={...}) to produce new states.</span>
+<span class="st">    Serialized to SQLite for crash recovery and persistence.</span>
+<span class="st">    """</span>
+
+    <span class="pl">model_config</span> <span class="op">=</span> <span class="fn">ConfigDict</span><span class="op">(</span><span class="pl">frozen</span><span class="op">=</span><span class="kw">True</span><span class="op">)</span>
+
+    <span class="cm"># Unique session identifier &mdash; used in API URLs and WebSocket channels</span>
+    <span class="pl">session_id</span><span class="op">:</span> <span class="tp">str</span>
+    <span class="cm"># The uploaded flier image metadata</span>
+    <span class="pl">flier</span><span class="op">:</span> <span class="tp">FlierImage</span>
+    <span class="cm"># Current phase &mdash; determines what the orchestrator does next</span>
+    <span class="pl">current_phase</span><span class="op">:</span> <span class="tp">PipelinePhase</span> <span class="op">=</span> <span class="tp">PipelinePhase</span><span class="op">.</span><span class="pl">UPLOAD</span>
+    <span class="cm"># Set after OCR phase completes</span>
+    <span class="pl">ocr_result</span><span class="op">:</span> <span class="tp">OCRResult</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="cm"># Set after ENTITY_EXTRACTION &mdash; the LLM's initial parse</span>
+    <span class="pl">extracted_entities</span><span class="op">:</span> <span class="tp">ExtractedEntities</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="cm"># Set after USER_CONFIRMATION &mdash; may differ if user edited</span>
+    <span class="pl">confirmed_entities</span><span class="op">:</span> <span class="tp">ExtractedEntities</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="cm"># Accumulated during RESEARCH phase</span>
+    <span class="pl">research_results</span><span class="op">:</span> <span class="tp">list</span><span class="op">[</span><span class="tp">ResearchResult</span><span class="op">]</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default_factory</span><span class="op">=</span><span class="tp">list</span><span class="op">)</span>
+    <span class="cm"># Set after INTERCONNECTION phase</span>
+    <span class="pl">interconnection_map</span><span class="op">:</span> <span class="tp">InterconnectionMap</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="cm"># Session timing</span>
+    <span class="pl">started_at</span><span class="op">:</span> <span class="tp">datetime</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span>
+        <span class="pl">default_factory</span><span class="op">=</span><span class="kw">lambda</span><span class="op">:</span> <span class="fn">datetime.now</span><span class="op">(</span><span class="pl">tz</span><span class="op">=</span><span class="pl">timezone</span><span class="op">.</span><span class="pl">utc</span><span class="op">)</span>
+    <span class="op">)</span>
+    <span class="pl">completed_at</span><span class="op">:</span> <span class="tp">datetime</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="cm"># Non-fatal errors accumulated during processing</span>
+    <span class="pl">errors</span><span class="op">:</span> <span class="tp">list</span><span class="op">[</span><span class="tp">PipelineError</span><span class="op">]</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default_factory</span><span class="op">=</span><span class="tp">list</span><span class="op">)</span>
+    <span class="cm"># Overall progress (0.0-100.0) &mdash; sent via WebSocket</span>
+    <span class="pl">progress_percent</span><span class="op">:</span> <span class="tp">float</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default</span><span class="op">=</span><span class="nu">0.0</span><span class="op">,</span> <span class="pl">ge</span><span class="op">=</span><span class="nu">0.0</span><span class="op">,</span> <span class="pl">le</span><span class="op">=</span><span class="nu">100.0</span><span class="op">)</span></code></pre>
+
+  <!-- Colorized PipelineState using Bunker IDE theme.  Shows the immutable
+       state model that drives the 5-phase pipeline, rendered with .syn-* tokens
+       for keyword / type / builtin / operator / number differentiation. -->
+  <h3>PipelineState &mdash; Colorized (Bunker IDE Theme)</h3>
+<div class="code-block">
+  <div class="code-block__header">src/models/pipeline.py</div>
+  <pre><span class="line-num"> 1</span><span class="syn-kw">class</span> <span class="syn-typ">PipelineState</span>(<span class="syn-bi">BaseModel</span>):
+<span class="line-num"> 2</span>    <span class="syn-str">"""Immutable pipeline state — transitions via model_copy(update={})."""</span>
+<span class="line-num"> 3</span>
+<span class="line-num"> 4</span>    model_config <span class="syn-op">=</span> ConfigDict(frozen<span class="syn-op">=</span><span class="syn-kw">True</span>)
+<span class="line-num"> 5</span>
+<span class="line-num"> 6</span>    session_id: <span class="syn-bi">str</span>
+<span class="line-num"> 7</span>    flier: <span class="syn-typ">FlierImage</span>
+<span class="line-num"> 8</span>    current_phase: <span class="syn-typ">PipelinePhase</span>
+<span class="line-num"> 9</span>    ocr_result: <span class="syn-typ">OCRResult</span> <span class="syn-op">|</span> <span class="syn-kw">None</span> <span class="syn-op">=</span> <span class="syn-kw">None</span>
+<span class="line-num">10</span>    extracted_entities: <span class="syn-typ">ExtractedEntities</span> <span class="syn-op">|</span> <span class="syn-kw">None</span> <span class="syn-op">=</span> <span class="syn-kw">None</span>
+<span class="line-num">11</span>    confirmed_entities: <span class="syn-typ">ExtractedEntities</span> <span class="syn-op">|</span> <span class="syn-kw">None</span> <span class="syn-op">=</span> <span class="syn-kw">None</span>
+<span class="line-num">12</span>    research_results: <span class="syn-bi">list</span>[<span class="syn-typ">ResearchResult</span>] <span class="syn-op">=</span> Field(
+<span class="line-num">13</span>        default_factory<span class="syn-op">=</span><span class="syn-bi">list</span>
+<span class="line-num">14</span>    )
+<span class="line-num">15</span>    interconnection_map: <span class="syn-typ">InterconnectionMap</span> <span class="syn-op">|</span> <span class="syn-kw">None</span> <span class="syn-op">=</span> <span class="syn-kw">None</span>
+<span class="line-num">16</span>    progress_percent: <span class="syn-bi">float</span> <span class="syn-op">=</span> Field(
+<span class="line-num">17</span>        default<span class="syn-op">=</span><span class="syn-num">0.0</span>, ge<span class="syn-op">=</span><span class="syn-num">0.0</span>, le<span class="syn-op">=</span><span class="syn-num">100.0</span>
+<span class="line-num">18</span>    )</pre>
+</div>
+
+  <h3>DocumentChunk</h3>
+  <p>The fundamental unit of the RAG knowledge base. Located in <code>src/models/rag.py</code>. Each chunk carries rich metadata enabling filtered semantic retrieval.</p>
+
+  <pre><code><span class="kw">class</span> <span class="tp">DocumentChunk</span><span class="op">(</span><span class="tp">BaseModel</span><span class="op">):</span>
+    <span class="st">"""A chunk of text from a source document, ready for embedding and storage."""</span>
+
+    <span class="pl">model_config</span> <span class="op">=</span> <span class="fn">ConfigDict</span><span class="op">(</span><span class="pl">frozen</span><span class="op">=</span><span class="kw">True</span><span class="op">)</span>
+
+    <span class="pl">chunk_id</span><span class="op">:</span> <span class="tp">str</span>                                  <span class="cm"># UUID</span>
+    <span class="pl">text</span><span class="op">:</span> <span class="tp">str</span>                                      <span class="cm"># Chunk content</span>
+    <span class="pl">token_count</span><span class="op">:</span> <span class="tp">int</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default</span><span class="op">=</span><span class="nu">0</span><span class="op">,</span> <span class="pl">ge</span><span class="op">=</span><span class="nu">0</span><span class="op">)</span>     <span class="cm"># For LLM context budgeting</span>
+    <span class="cm"># --- Source provenance ---</span>
+    <span class="pl">source_id</span><span class="op">:</span> <span class="tp">str</span>                                  <span class="cm"># Parent document ID</span>
+    <span class="pl">source_title</span><span class="op">:</span> <span class="tp">str</span>                               <span class="cm"># Human-readable title</span>
+    <span class="pl">source_type</span><span class="op">:</span> <span class="tp">str</span>                                <span class="cm"># "book", "article", "interview", etc.</span>
+    <span class="pl">author</span><span class="op">:</span> <span class="tp">str</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="pl">publication_date</span><span class="op">:</span> <span class="tp">date</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="pl">citation_tier</span><span class="op">:</span> <span class="tp">int</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default</span><span class="op">=</span><span class="nu">6</span><span class="op">,</span> <span class="pl">ge</span><span class="op">=</span><span class="nu">1</span><span class="op">,</span> <span class="pl">le</span><span class="op">=</span><span class="nu">6</span><span class="op">)</span>  <span class="cm"># 1=book, 6=forum</span>
+    <span class="pl">page_number</span><span class="op">:</span> <span class="tp">str</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>
+    <span class="cm"># --- Semantic tags for filtered retrieval ---</span>
+    <span class="pl">entity_tags</span><span class="op">:</span> <span class="tp">list</span><span class="op">[</span><span class="tp">str</span><span class="op">]</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default_factory</span><span class="op">=</span><span class="tp">list</span><span class="op">)</span>       <span class="cm"># Artist/venue/label names</span>
+    <span class="pl">geographic_tags</span><span class="op">:</span> <span class="tp">list</span><span class="op">[</span><span class="tp">str</span><span class="op">]</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default_factory</span><span class="op">=</span><span class="tp">list</span><span class="op">)</span>   <span class="cm"># Cities, countries</span>
+    <span class="pl">genre_tags</span><span class="op">:</span> <span class="tp">list</span><span class="op">[</span><span class="tp">str</span><span class="op">]</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default_factory</span><span class="op">=</span><span class="tp">list</span><span class="op">)</span>        <span class="cm"># Genres/subgenres</span>
+    <span class="pl">entity_types</span><span class="op">:</span> <span class="tp">list</span><span class="op">[</span><span class="tp">str</span><span class="op">]</span> <span class="op">=</span> <span class="fn">Field</span><span class="op">(</span><span class="pl">default_factory</span><span class="op">=</span><span class="tp">list</span><span class="op">)</span>      <span class="cm"># ARTIST, VENUE, LABEL, etc.</span>
+    <span class="pl">time_period</span><span class="op">:</span> <span class="tp">str</span> <span class="op">|</span> <span class="kw">None</span> <span class="op">=</span> <span class="kw">None</span>                           <span class="cm"># "1990s", "1987-1989"</span></code></pre>
+
+  <h3>Model Relationships</h3>
+  <div class="callout">
+    <div class="callout__title">Immutability Pattern</div>
+    <p>Every model in the system uses <code>frozen=True</code>. The pipeline orchestrator advances state by creating <em>new</em> <code>PipelineState</code> instances:</p>
+  </div>
+  <pre><code><span class="cm"># Each phase creates a new state object; the old one is untouched</span>
+<span class="pl">new_state</span> <span class="op">=</span> <span class="pl">state</span><span class="op">.</span><span class="fn">model_copy</span><span class="op">(</span><span class="pl">update</span><span class="op">={</span>
+    <span class="st">"current_phase"</span><span class="op">:</span> <span class="tp">PipelinePhase</span><span class="op">.</span><span class="pl">RESEARCH</span><span class="op">,</span>
+    <span class="st">"confirmed_entities"</span><span class="op">:</span> <span class="pl">confirmed</span><span class="op">,</span>
+<span class="op">})</span></code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5 — INTERFACE CONTRACTS                                         -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="interface-contracts">
+  <span class="section__number">Section 05</span>
+  <h2>Interface Contracts (All 9)</h2>
+
+  <p>Every external service in the raiveFlier pipeline is accessed through abstract base classes defined in <code>src/interfaces/</code>. This is the adapter pattern: business logic depends on interfaces, not concrete implementations. Swapping providers requires changing one line in the composition root.</p>
+
+  <h3>Interface Registry</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Interface</th><th>Purpose</th><th>Key Methods</th><th>Implementations</th></tr>
+    <tr>
+      <td><code>ILLMProvider</code></td>
+      <td>LLM text completion &amp; vision analysis</td>
+      <td><code>complete()</code>, <code>vision_extract()</code>, <code>supports_vision()</code></td>
+      <td>OpenAI, Anthropic, Ollama</td>
+    </tr>
+    <tr>
+      <td><code>IOCRProvider</code></td>
+      <td>Image text extraction</td>
+      <td><code>extract_text()</code>, <code>supports_stylized_text()</code></td>
+      <td>LLMVision, EasyOCR, Tesseract</td>
+    </tr>
+    <tr>
+      <td><code>IEmbeddingProvider</code></td>
+      <td>Text-to-vector embeddings</td>
+      <td><code>embed()</code>, <code>embed_single()</code>, <code>get_dimension()</code></td>
+      <td>FastEmbed, OpenAI, SentenceTransformer, Nomic</td>
+    </tr>
+    <tr>
+      <td><code>IMusicDatabaseProvider</code></td>
+      <td>Artist/release/label lookup</td>
+      <td><code>search_artist()</code>, <code>get_artist_releases()</code>, <code>get_artist_labels()</code>, <code>get_label_releases()</code></td>
+      <td>Discogs API, Discogs Scrape, MusicBrainz, Bandcamp, Beatport</td>
+    </tr>
+    <tr>
+      <td><code>IWebSearchProvider</code></td>
+      <td>General web search</td>
+      <td><code>search()</code></td>
+      <td>DuckDuckGo</td>
+    </tr>
+    <tr>
+      <td><code>IArticleProvider</code></td>
+      <td>Web page content extraction</td>
+      <td><code>extract_content()</code>, <code>check_availability()</code></td>
+      <td>WebScraper, Wayback</td>
+    </tr>
+    <tr>
+      <td><code>IVectorStoreProvider</code></td>
+      <td>RAG storage &amp; semantic search</td>
+      <td><code>add_chunks()</code>, <code>query()</code>, <code>get_stats()</code>, <code>delete_by_source()</code></td>
+      <td>ChromaDB</td>
+    </tr>
+    <tr>
+      <td><code>ICacheProvider</code></td>
+      <td>Key-value result caching</td>
+      <td><code>get()</code>, <code>set()</code>, <code>delete()</code>, <code>exists()</code></td>
+      <td>MemoryCache</td>
+    </tr>
+    <tr>
+      <td><code>IFeedbackProvider</code></td>
+      <td>User ratings persistence</td>
+      <td><code>submit_rating()</code>, <code>get_ratings()</code>, <code>get_rating_summary()</code></td>
+      <td>SQLiteFeedback</td>
+    </tr>
+    <tr>
+      <td><code>IFlierHistoryProvider</code></td>
+      <td>Flier metadata &amp; duplicate detection</td>
+      <td><code>log_flier()</code>, <code>find_co_artists()</code>, <code>find_duplicate_by_phash()</code></td>
+      <td>SQLiteFlierHistory</td>
+    </tr>
+  </table>
+  </div>
+
+  <h3>ILLMProvider &mdash; Core Interface</h3>
+  <p>The most critical interface in the system. Used by entity extraction, all five researchers, interconnection analysis, Q&amp;A, recommendations, and metadata extraction.</p>
+
+  <pre><code><span class="kw">class</span> <span class="tp">ILLMProvider</span><span class="op">(</span><span class="tp">ABC</span><span class="op">):</span>
+    <span class="st">"""Contract for LLM services used throughout the raiveFlier pipeline.</span>
+
+<span class="st">    Providers must support plain text completion; vision (image analysis)</span>
+<span class="st">    is optional and declared via supports_vision().</span>
+<span class="st">    """</span>
+
+    <span class="op">@</span><span class="fn">abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">complete</span><span class="op">(</span>
+        <span class="pl">self</span><span class="op">,</span>
+        <span class="pl">system_prompt</span><span class="op">:</span> <span class="tp">str</span><span class="op">,</span>
+        <span class="pl">user_prompt</span><span class="op">:</span> <span class="tp">str</span><span class="op">,</span>
+        <span class="pl">temperature</span><span class="op">:</span> <span class="tp">float</span> <span class="op">=</span> <span class="nu">0.3</span><span class="op">,</span>
+        <span class="pl">max_tokens</span><span class="op">:</span> <span class="tp">int</span> <span class="op">=</span> <span class="nu">4000</span><span class="op">,</span>
+    <span class="op">) -></span> <span class="tp">str</span><span class="op">:</span> <span class="op">...</span>
+
+    <span class="op">@</span><span class="fn">abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">vision_extract</span><span class="op">(</span><span class="pl">self</span><span class="op">,</span> <span class="pl">image_bytes</span><span class="op">:</span> <span class="tp">bytes</span><span class="op">,</span> <span class="pl">prompt</span><span class="op">:</span> <span class="tp">str</span><span class="op">) -></span> <span class="tp">str</span><span class="op">:</span> <span class="op">...</span>
+
+    <span class="op">@</span><span class="fn">abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">supports_vision</span><span class="op">(</span><span class="pl">self</span><span class="op">) -></span> <span class="tp">bool</span><span class="op">:</span> <span class="op">...</span>
+
+    <span class="op">@</span><span class="fn">abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">get_provider_name</span><span class="op">(</span><span class="pl">self</span><span class="op">) -></span> <span class="tp">str</span><span class="op">:</span> <span class="op">...</span>
+
+    <span class="op">@</span><span class="fn">abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">is_available</span><span class="op">(</span><span class="pl">self</span><span class="op">) -></span> <span class="tp">bool</span><span class="op">:</span> <span class="op">...</span>
+
+    <span class="op">@</span><span class="fn">abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">validate_credentials</span><span class="op">(</span><span class="pl">self</span><span class="op">) -></span> <span class="tp">bool</span><span class="op">:</span> <span class="op">...</span></code></pre>
+
+  <!-- Colorized ILLMProvider example using Bunker IDE syntax highlighting theme.
+       Demonstrates the new .code-block component with line numbers and .syn-* tokens. -->
+  <h3>ILLMProvider &mdash; Colorized (Bunker IDE Theme)</h3>
+<div class="code-block">
+  <div class="code-block__header">src/interfaces/llm_provider.py</div>
+  <pre><span class="line-num"> 1</span><span class="syn-kw">class</span> <span class="syn-typ">ILLMProvider</span>(<span class="syn-bi">ABC</span>):
+<span class="line-num"> 2</span>    <span class="syn-str">"""Contract for LLM services."""</span>
+<span class="line-num"> 3</span>
+<span class="line-num"> 4</span>    <span class="syn-dec">@abstractmethod</span>
+<span class="line-num"> 5</span>    <span class="syn-kw">async def</span> <span class="syn-fn">complete</span>(
+<span class="line-num"> 6</span>        self,
+<span class="line-num"> 7</span>        system_prompt: <span class="syn-bi">str</span>,
+<span class="line-num"> 8</span>        user_prompt: <span class="syn-bi">str</span>,
+<span class="line-num"> 9</span>        temperature: <span class="syn-bi">float</span> <span class="syn-op">=</span> <span class="syn-num">0.3</span>,
+<span class="line-num">10</span>        max_tokens: <span class="syn-bi">int</span> <span class="syn-op">=</span> <span class="syn-num">4000</span>,
+<span class="line-num">11</span>    ) <span class="syn-op">-&gt;</span> <span class="syn-bi">str</span>: ...
+<span class="line-num">12</span>
+<span class="line-num">13</span>    <span class="syn-dec">@abstractmethod</span>
+<span class="line-num">14</span>    <span class="syn-kw">async def</span> <span class="syn-fn">vision_extract</span>(
+<span class="line-num">15</span>        self, image_bytes: <span class="syn-bi">bytes</span>, prompt: <span class="syn-bi">str</span>
+<span class="line-num">16</span>    ) <span class="syn-op">-&gt;</span> <span class="syn-bi">str</span>: ...
+<span class="line-num">17</span>
+<span class="line-num">18</span>    <span class="syn-dec">@abstractmethod</span>
+<span class="line-num">19</span>    <span class="syn-kw">def</span> <span class="syn-fn">supports_vision</span>(self) <span class="syn-op">-&gt;</span> <span class="syn-bi">bool</span>: ...
+<span class="line-num">20</span>
+<span class="line-num">21</span>    <span class="syn-dec">@abstractmethod</span>
+<span class="line-num">22</span>    <span class="syn-kw">def</span> <span class="syn-fn">get_provider_name</span>(self) <span class="syn-op">-&gt;</span> <span class="syn-bi">str</span>: ...
+<span class="line-num">23</span>
+<span class="line-num">24</span>    <span class="syn-dec">@abstractmethod</span>
+<span class="line-num">25</span>    <span class="syn-kw">def</span> <span class="syn-fn">is_available</span>(self) <span class="syn-op">-&gt;</span> <span class="syn-bi">bool</span>: ...</pre>
+</div>
+
+  <h3>Interface Design Conventions</h3>
+  <p>All 9 interfaces follow a consistent contract pattern:</p>
+  <ul>
+    <li><strong>All methods are async</strong> &mdash; Even local operations, to allow network-backed implementations without API changes.</li>
+    <li><strong><code>get_provider_name()</code></strong> &mdash; Every interface includes this for logging and health-check reporting.</li>
+    <li><strong><code>is_available()</code></strong> &mdash; Lightweight check (credentials present, service reachable) without performing actual work.</li>
+    <li><strong>Frozen dataclass helpers</strong> &mdash; Return types like <code>ArtistSearchResult</code>, <code>SearchResult</code>, <code>ArticleContent</code> use <code>@dataclass(frozen=True)</code> for simple value objects that do not need Pydantic's validation overhead.</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6 — RAG PIPELINE                                                -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="rag-pipeline">
+  <span class="section__number">Section 06</span>
+  <h2>RAG Pipeline Architecture</h2>
+
+  <p>The Retrieval-Augmented Generation (RAG) pipeline augments LLM responses with citations from a curated knowledge base of electronic music history. This is what transforms raiveFlier from a "summarize web search results" tool into a deeply contextual analysis engine.</p>
+
+  <h3>RAG Flow Diagram</h3>
+  <div class="mermaid-wrap">
+    <div class="mermaid">
+graph LR
+    A["Source Document"] --> B["SourceProcessor"]
+    B --> C["TextChunker"]
+    C --> D["MetadataExtractor"]
+    D --> E["EmbeddingProvider"]
+    E --> F[("ChromaDB")]
+
+    G["User Query"] --> H["EmbeddingProvider"]
+    H --> I["Vector Search"]
+    F --> I
+    I --> J["Top-k Chunks"]
+    J --> K["LLM Prompt"]
+    L["Live API Data"] --> K
+    K --> M["LLM Provider"]
+    M --> N["Cited Answer"]
+    </div>
+    <div class="diagram-caption">Figure 6.1 &mdash; RAG Pipeline: Ingestion (top) and Retrieval (bottom)</div>
+  </div>
+
+  <h3>Ingestion Pipeline</h3>
+  <p>Located in <code>src/services/ingestion/</code>, the ingestion pipeline transforms source documents into searchable, metadata-rich chunks.</p>
+
+  <ol>
+    <li><strong>Source Processors</strong> &mdash; Format-specific parsers (PDF, EPUB, plain text, article, analysis) extract raw text from each source type. Located in <code>src/services/ingestion/source_processors/</code>.</li>
+    <li><strong>TextChunker</strong> &mdash; Splits text into overlapping windows of ~500 tokens each with 100-token overlap. Chunk boundaries align with paragraph breaks so no chunk starts mid-thought. When a paragraph exceeds the budget, it is split at sentence boundaries using an abbreviation-aware splitter.</li>
+    <li><strong>MetadataExtractor</strong> &mdash; Uses the LLM to tag each chunk with semantic metadata: entity names, geographic references, genre tags, entity types, and time periods. These tags enable filtered vector search.</li>
+    <li><strong>EmbeddingProvider</strong> &mdash; Converts each chunk's text into a numeric vector. Production default is FastEmbed (ONNX, ~50 MB).</li>
+    <li><strong>ChromaDB</strong> &mdash; Stores chunks with their embeddings and metadata. Persists to <code>/data/chromadb/</code> on Render's persistent disk.</li>
+  </ol>
+
+  <h3>Citation Tiers</h3>
+  <p>Every chunk carries a <code>citation_tier</code> field (1-6) that reflects source reliability. Higher-tier sources are weighted more heavily in the LLM context window and displayed more prominently in results.</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Tier</th><th>Source Type</th><th>Examples</th><th>Reliability</th></tr>
+    <tr><td><span class="badge badge--amethyst">1</span></td><td>Published Books</td><td><em>Energy Flash</em> by Simon Reynolds, <em>Last Night a DJ Saved My Life</em></td><td>Highest &mdash; peer-reviewed, edited, fact-checked</td></tr>
+    <tr><td><span class="badge badge--amethyst">2</span></td><td>Academic/Journalistic Articles</td><td>Resident Advisor features, FACT Magazine longform</td><td>High &mdash; editorial oversight</td></tr>
+    <tr><td><span class="badge badge--verdigris">3</span></td><td>Interviews &amp; Prior Analyses</td><td>Artist interviews, previously-analyzed flier results</td><td>Medium-high &mdash; first-person but potentially biased</td></tr>
+    <tr><td><span class="badge badge--verdigris">4</span></td><td>Event Listings &amp; Databases</td><td>Discogs releases, RA event listings, MusicBrainz</td><td>Medium &mdash; user-contributed, community-verified</td></tr>
+    <tr><td><span class="badge badge--amber">5</span></td><td>Blog Posts &amp; Social Media</td><td>Personal blogs, Tumblr archives, Reddit threads</td><td>Low-medium &mdash; unverified, personal perspective</td></tr>
+    <tr><td><span class="badge badge--amber">6</span></td><td>Unverified Web Content</td><td>Forum posts, anonymous comments, scrape-only text</td><td>Lowest &mdash; treat as leads, not facts</td></tr>
+  </table>
+  </div>
+
+  <h3>Retrieval Strategy</h3>
+  <p>During the research phase, each researcher queries the vector store with entity-specific queries and metadata filters:</p>
+  <ul>
+    <li><strong>Query construction</strong> &mdash; Entity name combined with context (e.g., "Carl Cox techno DJ history discography").</li>
+    <li><strong>Metadata filtering</strong> &mdash; Restrict results by entity tags, geographic tags, source type, or time period.</li>
+    <li><strong>Top-k deduplication</strong> &mdash; <code>max_per_source=3</code> prevents one long document from dominating results.</li>
+    <li><strong>LLM context augmentation</strong> &mdash; Retrieved chunks are inserted into the LLM prompt as reference material with citation markers.</li>
+  </ul>
+
+  <h3>Feedback Loop</h3>
+  <p>Completed analyses are ingested back into the corpus as tier-3 sources. This creates a self-improving knowledge base: the more fliers are analyzed, the richer the context available for future analyses. For example, analyzing a 1993 Orbital flier creates corpus chunks about Orbital's early career, which later enhances the analysis of a 1995 flier featuring Orbital alongside Aphex Twin.</p>
+
+  <h3>Reference Corpus</h3>
+  <p>The base corpus is auto-ingested from <code>data/reference_corpus/</code> on first boot (idempotent). A pre-built ChromaDB database can also be downloaded from a private GitHub release via the entrypoint script. Key sources include:</p>
+  <ul>
+    <li><em>Energy Flash</em> by Simon Reynolds (published book, tier 1)</li>
+    <li><em>Last Night a DJ Saved My Life</em> by Bill Brewster &amp; Frank Broughton (tier 1)</li>
+    <li>Resident Advisor articles and interviews (tier 2)</li>
+    <li>Event listings and scene histories (tier 4)</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7 — API DESIGN                                                  -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="api-design">
+  <span class="section__number">Section 07</span>
+  <h2>API Design</h2>
+
+  <p>All endpoints are defined in <code>src/api/routes.py</code> under the <code>/api/v1</code> prefix. Request and response schemas are Pydantic models in <code>src/api/schemas.py</code>.</p>
+
+  <h3>Endpoint Reference</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+    <tr><td><code>/api/v1/fliers/upload</code></td><td><span class="badge badge--amethyst">POST</span></td><td>Upload flier image; triggers OCR and entity extraction (Phase 1)</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/confirm</code></td><td><span class="badge badge--amethyst">POST</span></td><td>Confirm/edit entities; starts research pipeline (Phases 2-5)</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/status</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Poll pipeline progress (phase, percent, message)</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/results</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Fetch complete analysis results</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/ask</code></td><td><span class="badge badge--amethyst">POST</span></td><td>Q&amp;A about results (RAG-enhanced follow-up questions)</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/dismiss-connection</code></td><td><span class="badge badge--amethyst">POST</span></td><td>Dismiss an incorrect interconnection edge</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/rate</code></td><td><span class="badge badge--amethyst">POST</span></td><td>Submit thumbs up/down rating on a result item</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/ratings</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Get all ratings for a session</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/recommendations</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Full artist recommendations (LLM-enhanced)</td></tr>
+    <tr><td><code>/api/v1/fliers/{sid}/recommendations/quick</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Fast label-mate recommendations (no LLM)</td></tr>
+    <tr><td><code>/api/v1/ratings/summary</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Aggregate rating statistics across all sessions</td></tr>
+    <tr><td><code>/api/v1/corpus/stats</code></td><td><span class="badge badge--verdigris">GET</span></td><td>RAG corpus statistics (chunk count, source count, breakdowns)</td></tr>
+    <tr><td><code>/api/v1/corpus/search</code></td><td><span class="badge badge--amethyst">POST</span></td><td>Semantic search of the RAG corpus</td></tr>
+    <tr><td><code>/api/v1/health</code></td><td><span class="badge badge--verdigris">GET</span></td><td>Health check with provider status</td></tr>
+    <tr><td><code>/api/v1/providers</code></td><td><span class="badge badge--verdigris">GET</span></td><td>List all configured providers and their availability</td></tr>
+    <tr><td><code>ws://host/ws/progress/{sid}</code></td><td><span class="badge badge--amber">WS</span></td><td>Real-time progress updates via WebSocket</td></tr>
+  </table>
+  </div>
+
+  <h3>Request/Response Flow</h3>
+
+  <h4>Upload Flow</h4>
+  <pre><code><span class="cm"># POST /api/v1/fliers/upload</span>
+<span class="cm"># Request: multipart/form-data with image file</span>
+<span class="cm"># Response: FlierUploadResponse</span>
+<span class="op">{</span>
+    <span class="st">"session_id"</span><span class="op">:</span> <span class="st">"a1b2c3d4-..."</span><span class="op">,</span>
+    <span class="st">"status"</span><span class="op">:</span> <span class="st">"awaiting_confirmation"</span><span class="op">,</span>
+    <span class="st">"ocr_text"</span><span class="op">:</span> <span class="st">"CARL COX / SASHA / JOHN DIGWEED ..."</span><span class="op">,</span>
+    <span class="st">"ocr_confidence"</span><span class="op">:</span> <span class="nu">0.87</span><span class="op">,</span>
+    <span class="st">"ocr_provider"</span><span class="op">:</span> <span class="st">"openai-gpt4o"</span><span class="op">,</span>
+    <span class="st">"entities"</span><span class="op">:</span> <span class="op">{</span>
+        <span class="st">"artists"</span><span class="op">:</span> <span class="op">[{</span><span class="st">"text"</span><span class="op">:</span> <span class="st">"Carl Cox"</span><span class="op">,</span> <span class="st">"type"</span><span class="op">:</span> <span class="st">"ARTIST"</span><span class="op">}, ...]</span>
+        <span class="st">"venue"</span><span class="op">:</span> <span class="op">{</span><span class="st">"text"</span><span class="op">:</span> <span class="st">"Space Ibiza"</span><span class="op">,</span> <span class="st">"type"</span><span class="op">:</span> <span class="st">"VENUE"</span><span class="op">},</span>
+        <span class="st">"date"</span><span class="op">:</span> <span class="op">{</span><span class="st">"text"</span><span class="op">:</span> <span class="st">"August 15 1998"</span><span class="op">}</span>
+    <span class="op">}</span>
+<span class="op">}</span></code></pre>
+
+  <h4>Dependency Injection Pattern</h4>
+  <p>Route handlers declare dependencies as type-annotated parameters. FastAPI resolves them via <code>Depends()</code> functions that read from <code>app.state</code> (populated at startup by <code>_build_all()</code> in <code>src/main.py</code>).</p>
+
+  <h3>WebSocket Protocol</h3>
+  <p>The <code>/ws/progress/{session_id}</code> WebSocket sends JSON messages for each state change:</p>
+  <pre><code><span class="op">{</span>
+    <span class="st">"phase"</span><span class="op">:</span> <span class="st">"RESEARCH"</span><span class="op">,</span>
+    <span class="st">"progress"</span><span class="op">:</span> <span class="nu">45.0</span><span class="op">,</span>
+    <span class="st">"message"</span><span class="op">:</span> <span class="st">"Researching artist: Carl Cox"</span><span class="op">,</span>
+    <span class="st">"timestamp"</span><span class="op">:</span> <span class="st">"2026-02-24T14:30:00Z"</span>
+<span class="op">}</span></code></pre>
+
+  <h3>Middleware Stack</h3>
+  <p>Middleware executes in reverse-registration order (Starlette LIFO stack):</p>
+  <ol>
+    <li><strong>RequestLoggingMiddleware</strong> &mdash; Logs every request with method, path, status code, and response time.</li>
+    <li><strong>ErrorHandlingMiddleware</strong> &mdash; Catches unhandled exceptions and returns generic 500 responses (no stack traces in production).</li>
+    <li><strong>CORS</strong> &mdash; Restricted to <code>https://raiveflier.onrender.com</code> in production; permissive in development.</li>
+  </ol>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8 — PROVIDER FALLBACK CHAINS                                    -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="fallback-chains">
+  <span class="section__number">Section 08</span>
+  <h2>Provider Fallback Chains</h2>
+
+  <p>Every external capability has a prioritized fallback chain. If the primary provider is unavailable (missing API key, rate limited, service down), the system gracefully degrades to the next available option.</p>
+
+  <h3>LLM Providers</h3>
+  <pre><code><span class="fn">_build_llm_provider</span><span class="op">(</span><span class="pl">settings</span><span class="op">):</span>
+    <span class="nu">1.</span> <span class="tp">OpenAI</span>     <span class="cm"># if OPENAI_API_KEY is set (or OPENAI_BASE_URL for compatible APIs)</span>
+    <span class="nu">2.</span> <span class="tp">Anthropic</span>  <span class="cm"># if ANTHROPIC_API_KEY is set</span>
+    <span class="nu">3.</span> <span class="tp">Ollama</span>     <span class="cm"># always available (local, no API key required)</span></code></pre>
+
+  <h3>OCR Providers</h3>
+  <pre><code><span class="fn">OCRService</span><span class="op">.</span><span class="fn">extract_text</span><span class="op">(</span><span class="pl">image</span><span class="op">):</span>
+    <span class="nu">1.</span> <span class="tp">LLMVisionOCR</span>   <span class="cm"># Best for stylized text; requires vision-capable LLM</span>
+    <span class="nu">2.</span> <span class="tp">EasyOCR</span>        <span class="cm"># ML-based; excluded from Docker (PyTorch too heavy)</span>
+    <span class="nu">3.</span> <span class="tp">Tesseract</span>      <span class="cm"># Always available; good baseline accuracy</span></code></pre>
+  <div class="callout callout--warn">
+    <div class="callout__title">512 MB Constraint</div>
+    <p>EasyOCR is excluded from the Docker build because it depends on PyTorch (~561 MB), which alone would exceed the 512 MB RAM budget on Render. In Docker deployments, the OCR chain is: LLM Vision then Tesseract.</p>
+  </div>
+
+  <h3>Embedding Providers</h3>
+  <pre><code><span class="fn">_build_embedding_provider</span><span class="op">(</span><span class="pl">settings</span><span class="op">):</span>
+    <span class="nu">1.</span> <span class="tp">OpenAI</span>                <span class="cm"># text-embedding-3-small (best quality, costs money)</span>
+    <span class="nu">2.</span> <span class="tp">FastEmbed</span>             <span class="cm"># ONNX, ~50 MB (default for Docker production)</span>
+    <span class="nu">3.</span> <span class="tp">SentenceTransformer</span>   <span class="cm"># PyTorch-based, ~500 MB (excluded from Docker)</span>
+    <span class="nu">4.</span> <span class="tp">Nomic</span>                 <span class="cm"># Via Ollama (local, free)</span></code></pre>
+
+  <h3>Music Database Providers</h3>
+  <pre><code><span class="cm"># All music databases are queried IN PARALLEL, results aggregated</span>
+<span class="fn">ArtistResearcher</span><span class="op">.</span><span class="fn">research</span><span class="op">(</span><span class="pl">name</span><span class="op">):</span>
+    <span class="kw">parallel</span><span class="op">:</span>
+        <span class="nu">1.</span> <span class="tp">DiscogsAPI</span>      <span class="cm"># Official API (if consumer key configured)</span>
+        <span class="nu">2.</span> <span class="tp">DiscogsScrape</span>   <span class="cm"># HTML scraping fallback (no key needed)</span>
+        <span class="nu">3.</span> <span class="tp">MusicBrainz</span>     <span class="cm"># Open database (rate-limited, no key needed)</span>
+        <span class="nu">4.</span> <span class="tp">Bandcamp</span>        <span class="cm"># Artist page scraping</span>
+        <span class="nu">5.</span> <span class="tp">Beatport</span>        <span class="cm"># DJ/electronic-focused catalog scraping</span></code></pre>
+
+  <h3>Selection Logic</h3>
+  <p>Provider selection happens once at startup in the composition root (<code>src/main.py</code>). The <code>_build_llm_provider()</code> and <code>_build_embedding_provider()</code> functions iterate through the priority list and return the first provider that passes an availability check. For music databases, all available providers are used simultaneously with results aggregated.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 9 — DEPLOYMENT ARCHITECTURE                                     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="deployment">
+  <span class="section__number">Section 09</span>
+  <h2>Deployment Architecture</h2>
+
+  <h3>Infrastructure</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Component</th><th>Configuration</th></tr>
+    <tr><td>Platform</td><td>Render.com Web Service</td></tr>
+    <tr><td>Plan</td><td>Starter ($7/mo) &mdash; 512 MB RAM, 0.5 CPU, always-on</td></tr>
+    <tr><td>Runtime</td><td>Docker (custom Dockerfile)</td></tr>
+    <tr><td>Persistent Disk</td><td>1 GB at <code>/data</code> &mdash; ChromaDB + SQLite databases</td></tr>
+    <tr><td>Health Check</td><td><code>GET /api/v1/health</code> every 30 seconds</td></tr>
+    <tr><td>Auto-deploy</td><td>Push to <code>main</code> triggers build and deploy</td></tr>
+    <tr><td>Workers</td><td>Single Uvicorn worker (stays within memory budget)</td></tr>
+  </table>
+  </div>
+
+  <h3>Persistent Storage</h3>
+  <p>The <code>/data</code> mount survives container restarts and redeploys. Without it, the ChromaDB corpus (~154 MB) would need re-downloading on every deploy, and all user feedback and session state would be lost.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Path</th><th>Contents</th><th>Size</th></tr>
+    <tr><td><code>/data/chromadb/</code></td><td>ChromaDB vector store (RAG corpus + embeddings)</td><td>~154 MB</td></tr>
+    <tr><td><code>/data/feedback.db</code></td><td>User feedback ratings (SQLite)</td><td>&lt; 1 MB</td></tr>
+    <tr><td><code>/data/session_state.db</code></td><td>Pipeline session state (SQLite, 72h TTL)</td><td>&lt; 5 MB</td></tr>
+    <tr><td><code>/data/flier_history.db</code></td><td>Flier metadata and perceptual hashes (SQLite)</td><td>&lt; 1 MB</td></tr>
+  </table>
+  </div>
+
+  <h3>Docker Build Strategy</h3>
+  <p>The Dockerfile is optimized for the 512 MB RAM constraint:</p>
+  <ul>
+    <li><strong>Base image:</strong> <code>python:3.12-slim</code> (minimal Debian)</li>
+    <li><strong>Excluded packages:</strong> <code>easyocr</code> (PyTorch ~561 MB) and <code>sentence-transformers</code> (PyTorch dep) are filtered from <code>requirements.txt</code> at build time via <code>grep -ivE</code></li>
+    <li><strong>System dependencies:</strong> Tesseract OCR, OpenCV libs, curl (for health check)</li>
+    <li><strong>Layer caching:</strong> <code>requirements.txt</code> is copied first (before source code) so dependency installation is cached unless dependencies change</li>
+    <li><strong>Reference corpus:</strong> Baked into the image under <code>data/reference_corpus/</code></li>
+  </ul>
+
+  <h3>Startup Sequence</h3>
+  <ol>
+    <li><strong>Entrypoint script</strong> (<code>scripts/entrypoint.sh</code>) checks if ChromaDB has a full corpus and downloads a pre-built one from a private GitHub release if needed.</li>
+    <li><strong>Uvicorn starts</strong> with 1 worker, binding to <code>0.0.0.0:$PORT</code>.</li>
+    <li><strong>FastAPI lifespan hook</strong> runs <code>_build_all()</code> &mdash; creates all providers, services, and the pipeline.</li>
+    <li><strong>Auto-ingestion</strong> checks if the vector store is empty and ingests <code>data/reference_corpus/</code> if so (idempotent).</li>
+    <li><strong>Health check</strong> begins responding at <code>/api/v1/health</code>.</li>
+  </ol>
+
+  <h3>Environment Variables</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>One LLM key required</td><td>OpenAI API key</td></tr>
+    <tr><td><code>ANTHROPIC_API_KEY</code></td><td>One LLM key required</td><td>Anthropic API key</td></tr>
+    <tr><td><code>OPENAI_BASE_URL</code></td><td>Optional</td><td>Redirect OpenAI SDK to compatible API (TogetherAI, etc.)</td></tr>
+    <tr><td><code>DISCOGS_CONSUMER_KEY</code></td><td>Optional</td><td>Discogs API consumer key</td></tr>
+    <tr><td><code>DISCOGS_CONSUMER_SECRET</code></td><td>Optional</td><td>Discogs API consumer secret</td></tr>
+    <tr><td><code>MUSICBRAINZ_CONTACT</code></td><td>Optional</td><td>Contact email for MusicBrainz API User-Agent</td></tr>
+    <tr><td><code>RAG_ENABLED</code></td><td>Optional</td><td>Enable RAG pipeline (default: false)</td></tr>
+    <tr><td><code>CHROMADB_PERSIST_DIR</code></td><td>Optional</td><td>ChromaDB storage path (default: <code>./data/chromadb</code>)</td></tr>
+    <tr><td><code>APP_ENV</code></td><td>Optional</td><td><code>development</code> or <code>production</code></td></tr>
+    <tr><td><code>LOG_LEVEL</code></td><td>Optional</td><td>Logging level (default: INFO)</td></tr>
+    <tr><td><code>GITHUB_TOKEN</code></td><td>Optional</td><td>For downloading pre-built corpus from private release</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 10 — FRONTEND ARCHITECTURE                                      -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="frontend">
+  <span class="section__number">Section 10</span>
+  <h2>Frontend Architecture</h2>
+
+  <h3>Overview</h3>
+  <p>The frontend is a single-page application built with <strong>vanilla JavaScript, CSS, and HTML</strong> (no framework). It uses the <strong>revealing module pattern</strong> for code organization and communicates with the backend via REST and WebSocket.</p>
+
+  <h3>Design System: Bunker + Amethyst</h3>
+  <p>The visual design evokes dark underground rave culture: near-black surfaces, warm parchment text, amethyst purple accents for interactive elements, verdigris teal for venue-related content, and amber gold for promoter-related content. A decorative SVG film grain overlay adds texture.</p>
+
+  <h3>Four Views</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>View</th><th>Description</th><th>Key Interactions</th></tr>
+    <tr><td><strong>Upload</strong></td><td>Drag-and-drop or file picker for flier images</td><td>File validation, image preview, duplicate detection notice</td></tr>
+    <tr><td><strong>Confirm</strong></td><td>Entity review and editing before research begins</td><td>Inline editing of artist names, adding/removing entities, genre chip editing</td></tr>
+    <tr><td><strong>Progress</strong></td><td>Real-time pipeline progress display</td><td>Phase indicator, progress bar, status messages (via WebSocket)</td></tr>
+    <tr><td><strong>Results</strong></td><td>Full analysis output with expandable cards</td><td>Artist/venue/promoter cards, interconnection graph, citations, ratings</td></tr>
+  </table>
+  </div>
+
+  <h3>Three Overlay Panels</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Panel</th><th>Position</th><th>Purpose</th></tr>
+    <tr><td><strong>Corpus Sidebar</strong></td><td>Left slide-in</td><td>RAG corpus statistics and semantic search interface</td></tr>
+    <tr><td><strong>Q&amp;A Drawer</strong></td><td>Right slide-in</td><td>Ask follow-up questions about analysis results (RAG-enhanced)</td></tr>
+    <tr><td><strong>Recommendations</strong></td><td>Bottom-anchored</td><td>Artist recommendations based on flier lineup and label-mate discovery</td></tr>
+  </table>
+  </div>
+
+  <h3>JavaScript Module Map</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Module</th><th>File</th><th>Responsibility</th></tr>
+    <tr><td>App</td><td><code>app.js</code></td><td>Main entry point, view routing, global state</td></tr>
+    <tr><td>Upload</td><td><code>upload.js</code></td><td>File handling, image preview, upload API call</td></tr>
+    <tr><td>Confirmation</td><td><code>confirmation.js</code></td><td>Entity editing UI, confirm API call</td></tr>
+    <tr><td>WebSocket</td><td><code>websocket.js</code></td><td>WebSocket connection management, reconnection logic</td></tr>
+    <tr><td>Results</td><td><code>results.js</code></td><td>Results rendering, expandable cards, interconnection display</td></tr>
+    <tr><td>Q&amp;A</td><td><code>qa.js</code></td><td>Q&amp;A drawer, question submission, answer rendering</td></tr>
+    <tr><td>Corpus</td><td><code>corpus.js</code></td><td>Corpus sidebar, statistics display, semantic search</td></tr>
+    <tr><td>Rating</td><td><code>rating.js</code></td><td>Thumbs up/down rating widgets, rating submission</td></tr>
+    <tr><td>Recommendations</td><td><code>recommendations.js</code></td><td>Artist recommendation panel, label-mate display</td></tr>
+  </table>
+  </div>
+
+  <h3>CSS Architecture</h3>
+  <ul>
+    <li><strong>Naming:</strong> BEM convention (<code>.block__element--modifier</code>)</li>
+    <li><strong>Design tokens:</strong> CSS custom properties for all colors, fonts, spacing</li>
+    <li><strong>Typography:</strong> Three-family system (Space Grotesk headings, Inter body, IBM Plex Mono labels)</li>
+    <li><strong>Type scale:</strong> Major Third ratio (1.25x per step)</li>
+    <li><strong>Contrast:</strong> All accent text colors are WCAG AA compliant (&ge; 4.5:1)</li>
+    <li><strong>Film grain:</strong> Decorative SVG filter overlay for texture</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 11 — raiveFeeder COMPANION                                      -->
+<!-- raiveFeeder is a separate FastAPI service (port 8001) for corpus        -->
+<!-- management: document, audio, image, and URL ingestion into the shared   -->
+<!-- ChromaDB vector store.  This section documents its 5-tab interface,     -->
+<!-- audio transcription adapters, and integration with raiveFlier.          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="raive-feeder">
+  <span class="section__number">Section 11</span>
+  <h2>raiveFeeder &mdash; Corpus Management Companion</h2>
+  <p>raiveFeeder is a companion application for corpus ingestion and database management, running as a separate FastAPI service on port 8001. It shares the same ChromaDB vector store at <code>/data/chromadb/</code> with the main raiveFlier application.</p>
+
+  <h3>Architecture</h3>
+  <p>raiveFeeder follows the same layered architecture with adapter pattern as the main application. It imports core models, interfaces, and providers from <code>src/</code> while adding its own ingestion-specific services.</p>
+
+  <h3>5-Tab Interface</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tab</th><th>Purpose</th><th>Key Service</th></tr></thead>
+      <tbody>
+        <tr><td>Documents</td><td>PDF, DOCX, RTF, MOBI, DJVU &rarr; text &rarr; chunks &rarr; embeddings</td><td>FormatConverter + IngestionService</td></tr>
+        <tr><td>Audio</td><td>Whisper transcription &rarr; text &rarr; chunks</td><td>AudioTranscriber (ITranscriptionProvider)</td></tr>
+        <tr><td>Images</td><td>OCR + metadata extraction from flier images</td><td>ImageIngester (IOCRProvider)</td></tr>
+        <tr><td>URLs</td><td>Web crawling &rarr; content extraction &rarr; chunks</td><td>WebCrawler</td></tr>
+        <tr><td>Corpus</td><td>Index management, statistics, search</td><td>CorpusManager</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Audio Transcription</h3>
+  <p>raiveFeeder abstracts audio transcription behind <code>ITranscriptionProvider</code> with two concrete adapters:</p>
+  <ul>
+    <li><strong>WhisperLocalProvider</strong> &mdash; CTranslate2 backend (faster-whisper), runs locally without API costs</li>
+    <li><strong>WhisperAPIProvider</strong> &mdash; OpenAI Whisper API, higher accuracy for production use</li>
+  </ul>
+
+  <h3>Integration with raiveFlier</h3>
+  <p>Both applications update the same ChromaDB corpus. Content ingested through raiveFeeder is immediately available for RAG retrieval in raiveFlier. The shared vector store uses consistent embedding dimensions and metadata schemas.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 12 — SECURITY CONSIDERATIONS                                    -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="security">
+  <span class="section__number">Section 12</span>
+  <h2>Security Considerations</h2>
+
+  <h3>Authentication Model</h3>
+  <p>raiveFlier is designed as a <strong>single-user analysis tool</strong>. There is no user authentication or account system. The application is deployed behind Render's infrastructure and is accessed directly at its public URL.</p>
+
+  <h3>API Security</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Measure</th><th>Implementation</th></tr>
+    <tr><td>Input Validation</td><td>All request bodies validated via Pydantic schemas; malformed requests rejected with 422</td></tr>
+    <tr><td>File Upload Validation</td><td>Content-type checking, file size limits, image format verification</td></tr>
+    <tr><td>CORS</td><td>Restricted to <code>https://raiveflier.onrender.com</code> in production; permissive in development</td></tr>
+    <tr><td>Error Responses</td><td>Generic error messages to clients; detailed errors logged server-side only via structlog</td></tr>
+    <tr><td>Rate Limiting</td><td>Applied on research-heavy endpoints to prevent abuse of external API quotas</td></tr>
+    <tr><td>Duplicate Detection</td><td>Perceptual hashing detects re-uploads; prevents redundant API consumption</td></tr>
+  </table>
+  </div>
+
+  <h3>Secret Management</h3>
+  <ul>
+    <li><strong><code>.env</code> file</strong> &mdash; All API keys and credentials stored in <code>.env</code>, which is in <code>.gitignore</code>.</li>
+    <li><strong><code>.env.example</code></strong> &mdash; Template with placeholder values committed to the repo.</li>
+    <li><strong>No secrets in client bundle</strong> &mdash; All API keys are server-side only. The frontend communicates exclusively through the <code>/api/v1</code> endpoints.</li>
+    <li><strong>Render dashboard</strong> &mdash; Production secrets set via Render's environment variable UI (<code>sync: false</code> in <code>render.yaml</code>).</li>
+  </ul>
+
+  <h3>Data Security</h3>
+  <ul>
+    <li><strong>SQLite databases</strong> on persistent disk contain session state, ratings, and flier metadata&mdash;no PII or credentials.</li>
+    <li><strong>Uploaded images</strong> are held in memory during processing and not persisted to disk after analysis completes.</li>
+    <li><strong>Session TTL</strong> &mdash; Sessions expire after 72 hours (completed) or 24 hours (pending confirmation).</li>
+  </ul>
+
+  <h3>Dependency Security</h3>
+  <ul>
+    <li><code>pip audit</code> for Python dependency vulnerability scanning</li>
+    <li>All dependencies pinned in <code>requirements.txt</code> with exact versions</li>
+    <li>Docker image built from <code>python:3.12-slim</code> (minimal attack surface)</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 13 — TESTING STRATEGY                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="testing">
+  <span class="section__number">Section 13</span>
+  <h2>Testing Strategy</h2>
+
+  <h3>Test Suite Overview</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Test framework</td><td>pytest</td></tr>
+    <tr><td>Total tests</td><td>1,174 across 37 test files</td></tr>
+    <tr><td>Total test code</td><td>23,293 lines</td></tr>
+    <tr><td>Test directories</td><td><code>tests/unit/</code>, <code>tests/integration/</code>, <code>tests/e2e/</code></td></tr>
+    <tr><td>Fixture directory</td><td><code>tests/fixtures/</code> (mock responses, sample flier images)</td></tr>
+  </table>
+  </div>
+
+  <h3>Test Types</h3>
+
+  <h4>Unit Tests</h4>
+  <p>Test individual functions and classes in isolation. Focus areas:</p>
+  <ul>
+    <li><strong>Data models</strong> &mdash; Pydantic model validation, immutability enforcement, serialization round-trips</li>
+    <li><strong>Text normalization</strong> &mdash; OCR text cleaning, entity name standardization</li>
+    <li><strong>Entity extraction</strong> &mdash; LLM prompt construction, JSON response parsing</li>
+    <li><strong>Citation service</strong> &mdash; Citation formatting, tier ranking logic</li>
+    <li><strong>Text chunker</strong> &mdash; Chunk size, overlap windows, paragraph boundary preservation</li>
+  </ul>
+
+  <h4>Integration Tests</h4>
+  <p>Test multiple components working together. Focus areas:</p>
+  <ul>
+    <li><strong>API endpoints</strong> &mdash; Full request/response cycle via FastAPI's TestClient</li>
+    <li><strong>Pipeline orchestration</strong> &mdash; Phase transitions, state management, error handling</li>
+    <li><strong>RAG retrieval</strong> &mdash; Ingestion pipeline through query, end-to-end</li>
+    <li><strong>Provider fallback</strong> &mdash; Verify graceful degradation when primary providers fail</li>
+  </ul>
+
+  <h4>End-to-End Tests</h4>
+  <p>Test full user flows from upload to results:</p>
+  <ul>
+    <li><strong>Upload flow</strong> &mdash; Image upload, OCR, entity extraction, confirmation, research, results</li>
+    <li><strong>Q&amp;A flow</strong> &mdash; Ask questions about completed analysis results</li>
+    <li><strong>Rating flow</strong> &mdash; Submit ratings, verify persistence, check summary aggregation</li>
+  </ul>
+
+  <h3>Mock Strategy</h3>
+  <p>All external service calls are mocked in tests using the interface abstraction layer. Since every provider implements an abstract interface, tests inject mock implementations that return deterministic data without making real API calls. This ensures tests are:</p>
+  <ul>
+    <li><strong>Fast</strong> &mdash; No network latency</li>
+    <li><strong>Deterministic</strong> &mdash; Same inputs always produce same outputs</li>
+    <li><strong>Free</strong> &mdash; No API quota consumption</li>
+    <li><strong>Reliable</strong> &mdash; No flaky failures from external service downtime</li>
+  </ul>
+
+  <h3>Test Execution</h3>
+  <pre><code><span class="cm"># Run all tests</span>
+<span class="fn">pytest</span> <span class="pl">tests/</span>
+
+<span class="cm"># Run with coverage</span>
+<span class="fn">pytest</span> <span class="pl">tests/</span> <span class="op">--cov=</span><span class="st">src</span> <span class="op">--cov-report=</span><span class="st">term-missing</span>
+
+<span class="cm"># Run specific test types</span>
+<span class="fn">pytest</span> <span class="pl">tests/unit/</span>
+<span class="fn">pytest</span> <span class="pl">tests/integration/</span>
+<span class="fn">pytest</span> <span class="pl">tests/e2e/</span></code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 14 — UML DIAGRAMS                                               -->
+<!-- Standalone interactive UML diagrams live in deliverables/uml/ as        -->
+<!-- self-contained HTML files with inline SVG and the Bunker design palette. -->
+<!-- This section provides an index and brief description of each diagram.   -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="uml-diagrams">
+  <span class="section__number">Section 14</span>
+  <h2>UML Diagrams</h2>
+  <p>Standalone interactive UML diagrams are available in the <code>deliverables/uml/</code> directory:</p>
+  <ul>
+    <li><strong>layered_architecture.html</strong> &mdash; 7-layer component diagram showing the full architecture stack</li>
+    <li><strong>pipeline_sequence.html</strong> &mdash; Sequence diagram of the 5-phase pipeline with human-in-the-loop gate</li>
+    <li><strong>interface_component.html</strong> &mdash; Component diagram with ball-and-socket notation for all 9 interfaces and 22 adapters</li>
+    <li><strong>rag_pipeline_flow.html</strong> &mdash; Activity diagram of the RAG ingestion &rarr; retrieval &rarr; synthesis pipeline</li>
+    <li><strong>provider_adapter.html</strong> &mdash; Class diagram of ILLMProvider with 3 concrete adapter implementations</li>
+  </ul>
+  <p>All diagrams use inline SVG with the Bunker design palette and are fully self-contained HTML files.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 15 — DEVELOPMENT HISTORY                                        -->
+<!-- Git/GitHub metrics documenting the 9-day development sprint: commit     -->
+<!-- count, PR count, branch strategy, and annotated code practice.          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="section" id="github-history">
+  <span class="section__number">Section 15</span>
+  <h2>Development History</h2>
+  <p>raiveFlier was developed over 9 intensive days with a disciplined GitHub Flow workflow.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Total Commits</td><td>145</td></tr>
+        <tr><td>Merged Pull Requests</td><td>23</td></tr>
+        <tr><td>Development Duration</td><td>9 days</td></tr>
+        <tr><td>License</td><td>MIT</td></tr>
+        <tr><td>Branch Strategy</td><td>GitHub Flow (main + feature branches)</td></tr>
+        <tr><td>Commit Convention</td><td>Conventional Commits (feat/fix/docs/refactor)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>All code on the <code>main</code> branch includes an annotated copy with detailed inline comments explaining every element for junior developer onboarding.</p>
+</section>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- FOOTER                                                                  -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<footer style="text-align: center; padding: 2rem 0; color: var(--bunker-400); font-family: var(--font-mono); font-size: 0.75rem;">
+  <p>raiveFlier Technical Design Document v1.0</p>
+  <p>Generated 2026-02-24 &mdash; MIT License</p>
+  <p style="margin-top: 0.5rem; color: var(--bunker-500);">github.com/deeptechhouse/raiveFlier</p>
+</footer>
+
+</div><!-- .doc-wrapper -->
+
+<script>
+// Initialize Mermaid with dark theme matching the Bunker palette
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    darkMode: true,
+    background: '#14141a',
+    primaryColor: '#2a1e3a',
+    primaryTextColor: '#d8d5cd',
+    primaryBorderColor: '#6a4a8a',
+    secondaryColor: '#1e1e24',
+    secondaryTextColor: '#9a9a9e',
+    tertiaryColor: '#2a2a30',
+    lineColor: '#6a6a70',
+    textColor: '#d8d5cd',
+    mainBkg: '#2a1e3a',
+    nodeBorder: '#6a4a8a',
+    clusterBkg: '#1e1e24',
+    clusterBorder: '#3a3a40',
+    titleColor: '#a080c0',
+    edgeLabelBackground: '#14141a',
+    nodeTextColor: '#d8d5cd',
+    actorBkg: '#2a1e3a',
+    actorBorder: '#6a4a8a',
+    actorTextColor: '#d8d5cd',
+    actorLineColor: '#6a6a70',
+    signalColor: '#d8d5cd',
+    signalTextColor: '#d8d5cd',
+    labelBoxBkgColor: '#1e1e24',
+    labelBoxBorderColor: '#6a4a8a',
+    labelTextColor: '#a080c0',
+    loopTextColor: '#d0b468',
+    noteBorderColor: '#6a4a8a',
+    noteBkgColor: '#2a1e3a',
+    noteTextColor: '#d8d5cd',
+    activationBorderColor: '#6a4a8a',
+    activationBkgColor: '#2a1e3a',
+    sequenceNumberColor: '#a080c0',
+    sectionBkgColor: '#1e1e24',
+    altSectionBkgColor: '#14141a',
+    sectionBkgColor2: '#2a1e3a',
+    taskBorderColor: '#6a4a8a',
+    taskBkgColor: '#2a1e3a',
+    taskTextColor: '#d8d5cd',
+    taskTextLightColor: '#d8d5cd',
+    taskTextOutsideColor: '#d8d5cd',
+    taskTextClickableColor: '#a080c0',
+    gridColor: '#3a3a40',
+    doneTaskBkgColor: '#3a7a60',
+    doneTaskBorderColor: '#4a8a7a',
+    critBkgColor: '#8a4050',
+    critBorderColor: '#c87080',
+    todayLineColor: '#d0b468',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '14px'
+  },
+  flowchart: {
+    curve: 'basis',
+    padding: 15,
+    htmlLabels: true,
+    useMaxWidth: true
+  },
+  sequence: {
+    useMaxWidth: true,
+    actorMargin: 50,
+    messageMargin: 35,
+    boxMargin: 10,
+    noteMargin: 10,
+    mirrorActors: false,
+    bottomMarginAdj: 1,
+    diagramMarginX: 50,
+    diagramMarginY: 10,
+    showSequenceNumbers: false
+  }
+});
+</script>
+</body>
+</html>

@@ -22,7 +22,7 @@ and reliability tier (1 = published book … 6 = unverified web content).
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any  # Used for the flexible 'properties' dict on EntityNode
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -176,3 +176,96 @@ class InterconnectionMap(BaseModel):
     # Master citation list — may include citations not attached to specific
     # edges or patterns (e.g. general scene context).
     citations: list[Citation] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Persistent analysis storage models — survive beyond session TTL.
+# These models support permanent storage of InterconnectionMaps in
+# flier_history.db and aggregation into a combined connection map.
+# ---------------------------------------------------------------------------
+
+
+class EdgeDismissal(BaseModel):
+    """A permanent record of a user dismissing an interconnection edge.
+
+    Stored in the edge_dismissals table and applied as a layer on top of
+    any analysis snapshot, so dismissals survive re-analysis.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int | None = None
+    flier_id: int
+    source_entity: str
+    target_entity: str
+    relationship_type: str
+    reason: str | None = None
+    dismissed_at: datetime | None = None
+
+
+class AnalysisAnnotation(BaseModel):
+    """A user-authored note attached to a stored analysis.
+
+    Supports both general annotations (target_type="analysis") and
+    targeted annotations on specific entities or edges.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int | None = None
+    flier_id: int
+    target_type: str  # "analysis", "entity", "edge"
+    target_key: str | None = None  # entity name or "source->target" for edges
+    note: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class CombinedNode(BaseModel):
+    """A deduplicated entity node in the combined connection map.
+
+    Merges appearances of the same entity across multiple flier analyses.
+    appearance_count tracks how many distinct fliers featured this entity.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    entity_type: str
+    name: str
+    appearance_count: int = 1
+    source_sessions: list[str] = Field(default_factory=list)
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
+class CombinedEdge(BaseModel):
+    """A merged relationship edge in the combined connection map.
+
+    Aggregates the same relationship across multiple analyses, tracking
+    average confidence and how many times the relationship was observed.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    source: str
+    target: str
+    relationship_type: str
+    avg_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    occurrence_count: int = 1
+    source_sessions: list[str] = Field(default_factory=list)
+    details: str | None = None
+
+
+class CombinedConnectionMap(BaseModel):
+    """The unified graph aggregating all stored flier analyses.
+
+    Built on-demand by GraphAggregationService from all active analysis
+    snapshots.  Nodes are deduplicated via fuzzy matching, edges are
+    merged, and user dismissals are applied.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    nodes: list[CombinedNode] = Field(default_factory=list)
+    edges: list[CombinedEdge] = Field(default_factory=list)
+    total_analyses: int = 0
+    generated_at: datetime | None = None

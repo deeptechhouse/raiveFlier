@@ -60,3 +60,9 @@ data/flier_history.db
 
 # Scrape logs
 scrape_log.txt
+
+# Node modules (Remotion presentation project)
+node_modules/
+
+# SQLite session state database (runtime data)
+data/session_state.db

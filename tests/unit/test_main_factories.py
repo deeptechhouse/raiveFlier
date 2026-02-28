@@ -760,6 +760,7 @@ class TestBuildAll:
             "flier_history",
             "recommendation_service",
             "web_search",
+            "graph_aggregation",
         }
         assert set(result.keys()) == expected_keys
 
@@ -1044,8 +1045,8 @@ class TestAutoIngestCorpus:
         with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
             await _auto_ingest_reference_corpus(app)
 
-        # get_source_ids was called to determine existing reference sources
-        mock_vs.get_source_ids.assert_awaited_once_with(source_type="reference")
+        # get_source_ids was called to determine existing reference + event_listing sources
+        assert mock_vs.get_source_ids.await_count == 2
         # ingest_directory was called with skip_source_ids
         mock_ingestion.ingest_directory.assert_awaited_once()
         call_kwargs = mock_ingestion.ingest_directory.await_args

@@ -133,6 +133,80 @@ class IFlierHistoryProvider(ABC):
             ``event_date``, ``hamming_distance``; or ``None`` if no match.
         """
 
+    # --- Persistent analysis storage methods ---
+
+    @abstractmethod
+    async def store_analysis(
+        self,
+        session_id: str,
+        interconnection_map: dict[str, Any],
+        research_results: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Store a full InterconnectionMap snapshot for permanent retention."""
+
+    @abstractmethod
+    async def get_analysis(
+        self,
+        session_id: str,
+        include_research: bool = False,
+    ) -> dict[str, Any] | None:
+        """Retrieve the active analysis snapshot for a session."""
+
+    @abstractmethod
+    async def get_analysis_by_flier_id(
+        self,
+        flier_id: int,
+        include_research: bool = False,
+    ) -> dict[str, Any] | None:
+        """Retrieve the active analysis snapshot by flier ID."""
+
+    @abstractmethod
+    async def list_analyses(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List stored analyses with pagination."""
+
+    @abstractmethod
+    async def persist_edge_dismissal(
+        self,
+        session_id: str,
+        source: str,
+        target: str,
+        relationship_type: str,
+        reason: str | None = None,
+    ) -> bool:
+        """Permanently record an edge dismissal."""
+
+    @abstractmethod
+    async def get_edge_dismissals(
+        self,
+        session_id: str,
+    ) -> list[dict[str, Any]]:
+        """Get all edge dismissals for a session's flier."""
+
+    @abstractmethod
+    async def add_annotation(
+        self,
+        session_id: str,
+        note: str,
+        target_type: str = "analysis",
+        target_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Add a user annotation to a stored analysis."""
+
+    @abstractmethod
+    async def get_annotations(
+        self,
+        session_id: str,
+    ) -> list[dict[str, Any]]:
+        """Get all annotations for a session's analysis."""
+
+    @abstractmethod
+    async def get_all_active_analyses(self) -> list[dict[str, Any]]:
+        """Get all active analysis snapshots for aggregation."""
+
     @abstractmethod
     async def initialize(self) -> None:
         """Create tables/indices if they don't exist.  Called at startup."""

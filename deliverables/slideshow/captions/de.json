@@ -1,0 +1,23 @@
+{
+  "language": "de",
+  "slides": {
+    "1": "raiveFlier ist eine Open-Source-Analyse-Engine fuer Rave-Flyer, die elektronische Musikkultur bewahrt. Etwa 92% fertiggestellt, MIT-Lizenz.",
+    "2": "Sechs Kernfunktionen: OCR-Pipeline mit Vision-LLM-Fallback, parallele Recherche ueber mehrere Datenbanken, Vektorsuch-Corpus mit Zitierungsstufen, Entitaets-Vernetzungskartierung, Frage-Antwort-System in natuerlicher Sprache und Empfehlungs-Engine.",
+    "3": "Der Benutzer-Workflow in vier Schritten: Flyer-Bild hochladen, OCR-extrahierte Entitaeten bestaetigen, die Pipeline recherchiert in fuenf Musikdatenbanken, dann Zitate, Verbindungen erkunden und Fragen stellen.",
+    "4": "Quantitative Code-Metriken: ueber 30.000 Zeilen Python, 1.174 Tests, 17 API-Endpunkte, 22 Provider-Adapter, 9 abstrakte Interfaces und 39 Pydantic-Datenmodelle.",
+    "5": "Fertigstellungsschaetzung bei etwa 92 Prozent. Kern-Pipeline, Frontend, Deployment und RAG-Corpus sind abgeschlossen. Verbleibende Arbeit umfasst Produktionsskalierung, Audio-Fingerprinting und geospatiale Zeitleiste.",
+    "6": "Sieben-Schichten-Architektur vom Frontend ueber API, Pipeline, Services, Interfaces, Provider bis zu unveraenderlichen Pydantic-Modellen. Alle externen Dienste hinter Interfaces abstrahiert fuer null Anbieterabhaengigkeit.",
+    "7": "RAG einfach erklaert: wie ein Musik-Bibliothekar, der Passagen aus Rave-Geschichtsbuechern indexiert, die relevantesten fuer Ihre Frage findet und immer seine Quellen zitiert.",
+    "8": "Technische RAG-Pipeline: acht Schritte von Dokumentenaufnahme ueber Fragmentierung, Embedding mit FastEmbed, ChromaDB-Speicherung, Abfrage, Abruf, LLM-Augmentierung bis zur zitatgestuetzten Antwortgenerierung. Sechs-stufige Zitierhierarchie.",
+    "9": "Duale Aufrufverfolgungen zeigen, wie eine Corpus-Suche und ein Entitaets-Entdeckungsfluss durch das System laufen, vom Benutzereingabe ueber API, Vektorspeicher und LLM-Provider bis zur fundierten Antwort.",
+    "10": "Code-Beispiele zeigen zwei architektonische Saeulen: den abstrakten ILLMProvider-Interface-Vertrag fuer Provider-Austausch und den unveraenderlichen PipelineState als eingefrorenes Pydantic-Modell zur Vermeidung von Mutationsfehlern.",
+    "11": "Vereinfachte UML-Diagramme: der Sieben-Schichten-Architekturstapel und Kugel-Sockel-Interface-Konnektoren, die zeigen, wie ILLMProvider, IOCRProvider und IEmbeddingProvider mit ihren konkreten Adaptern verbunden sind.",
+    "12": "raiveFeeder ist die begleitende Corpus-Verwaltungsanwendung auf Port 8001. Sie verarbeitet die Aufnahme von Dokumenten, Audio, Bildern und URLs in den gemeinsamen ChromaDB-Vektorspeicher.",
+    "13": "Corpus-Erweiterungsfahrplan: geplante Quellen umfassen RA-Exchange-Interviews, Event-Listing-Datenbanken, Interview-Transkripte, akademische Arbeiten und von der Community beigesteuerte Flyer und Metadaten.",
+    "14": "Geloeste Herausforderungen: OCR bei stilisierter Rave-Typografie, 512MB Docker-RAM-Beschraenkung mit FastEmbed ONNX, Entitaets-Deduplizierung ueber mehrere Datenbanken, Zitierungsautoritaets-Ranking und unveraenderlicher Pipeline-Zustand.",
+    "15": "Weg voraus: Produktionsskalierung mit Multi-Worker und Redis-Cache, Audio-Fingerprinting fuer Flyer-zu-Event-Zuordnung, geospatiale Zeitleisten-Visualisierung, Community-Beitraege und erweiterte Testabdeckung.",
+    "16": "GitHub-Historie: 145 Commits in 9 Tagen, 23 zusammengefuehrte Pull Requests, MIT-Lizenz, annotierte Codebasis. Erstellt mit GitHub-Flow-Branching-Strategie.",
+    "17": "Forschungspartnerschaft mit dem Midwest Rave Culture Archive: Corpus-Anreicherung aus kuratierten Materialien, Kreuzreferenzierung von Entitaeten mit Archivdatensaetzen und kollaborative Metadaten-Verifizierung. Diese Folie ist fuer kuerzere Praesentationen optional.",
+    "18": "Die Flyer waren das Internet vor dem Internet. Erstellt mit Python, FastAPI, ChromaDB und Respekt fuer die Kultur. Links zu GitHub, Live-Demo und Dokumentation verfuegbar."
+  }
+}

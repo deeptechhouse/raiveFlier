@@ -396,6 +396,11 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     flier_history = SQLiteFlierHistoryProvider(db_path=app_settings.flier_history_db_path)
     await flier_history.initialize()
 
+    # -- Graph aggregation service (combines all stored analyses) --
+    from src.services.graph_aggregation_service import GraphAggregationService
+
+    graph_aggregation = GraphAggregationService(flier_history=flier_history)
+
     # -- Services --
     # Services are the business-logic layer.  Each service receives its
     # dependencies (providers) via constructor injection — never via globals.
@@ -559,6 +564,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "qa_service": qa_service,
         "feedback_provider": feedback_provider,
         "flier_history": flier_history,
+        "graph_aggregation": graph_aggregation,
         "recommendation_service": recommendation_service,
         # Web search provider — exposed for the corpus sidebar's web-search
         # tier, which augments RAG results with live DDG web results filtered
@@ -833,10 +839,12 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
         _logger.info("reference_corpus_no_files", path=str(corpus_dir))
         return
 
-    # Get source_ids already ingested as "reference" type
+    # Get source_ids already ingested as "reference" or "event_listing"
+    # (RA event files are now ingested as event_listing, not reference).
     existing_ids: set[str] = set()
     try:
         existing_ids = await vector_store.get_source_ids(source_type="reference")
+        existing_ids |= await vector_store.get_source_ids(source_type="event_listing")
     except Exception:
         _logger.debug("get_source_ids_failed_proceeding_with_full_ingest")
 

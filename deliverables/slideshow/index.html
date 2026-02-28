@@ -1,0 +1,2352 @@
+<!DOCTYPE html>
+<!--
+  raiveFlier — Interactive Presentation Slideshow (18 Slides)
+  =============================================================
+  Self-contained reveal.js 5.x slideshow using the Bunker design palette.
+  All CSS and JS is inline; only CDN dependencies are reveal.js and Google Fonts.
+
+  Design system: Bunker palette (dark/warm parchment), Space Grotesk display,
+  Inter body, IBM Plex Mono code. Film grain overlay via SVG feTurbulence.
+
+  Motion: Spring easing, staggered reveals, CSS counter animations,
+  parallax backgrounds, pipeline illumination.
+
+  18 slides: title, features, walkthrough, metrics, completeness, architecture,
+  RAG non-tech, RAG tech, call trace, code examples, UML, raiveFeeder,
+  corpus roadmap, challenges solved, challenges ahead, GitHub, MWRCA, outro.
+
+  Caption system: multilingual overlay (EN/ES/DE/ZH) toggled via C key or button.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>raiveFlier — Presentation</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Reveal.js 5.x CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
+
+  <style>
+    /* ─────────────────────────────────────────────
+       CSS Custom Properties — Bunker Design System
+       ───────────────────────────────────────────── */
+    :root {
+      --bunker-900: #0a0a0c;
+      --bunker-800: #14141a;
+      --bunker-700: #1e1e24;
+      --bunker-600: #2a2a30;
+      --bunker-500: #3a3a40;
+      --bunker-400: #6a6a70;
+      --bunker-300: #9a9a9e;
+      --bunker-100: #d8d5cd;
+
+      --amethyst: #6a4a8a;
+      --amethyst-hover: #8a6aaa;
+      --amethyst-text: #a080c0;
+      --amethyst-muted: #2a1e3a;
+      --verdigris: #4a8a7a;
+      --verdigris-text: #6ab0a0;
+      --amber: #b89a50;
+      --amber-text: #d0b468;
+
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+
+      --spring: cubic-bezier(0.25, 1.5, 0.5, 1);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+      /* Bunker IDE syntax colors */
+      --syn-keyword: #a080c0;
+      --syn-string: #6ab0a0;
+      --syn-comment: #6a6a70;
+      --syn-decorator: #d0b468;
+      --syn-type: #8a6aaa;
+      --syn-function: #d8d5cd;
+      --syn-number: #c87080;
+      --syn-operator: #9a9a9e;
+      --syn-builtin: #5aaa80;
+      --syn-bg: #14141a;
+      --syn-border: #2a2a30;
+    }
+
+    /* ─────────────────────────────────────────────
+       Reveal.js Theme Overrides
+       ───────────────────────────────────────────── */
+    .reveal-viewport { background: var(--bunker-900) !important; }
+
+    .reveal {
+      font-family: var(--font-body);
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--bunker-100);
+    }
+
+    .reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+      font-family: var(--font-display);
+      color: var(--bunker-100);
+      text-transform: none;
+      letter-spacing: -0.02em;
+      font-weight: 600;
+      line-height: 1.15;
+      margin-bottom: 0.6em;
+    }
+    .reveal h1 { font-size: 3.2em; font-weight: 700; }
+    .reveal h2 { font-size: 2em; }
+    .reveal h3 { font-size: 1.4em; color: var(--bunker-300); }
+
+    .reveal p, .reveal li { color: var(--bunker-300); line-height: 1.6; }
+    .reveal strong { color: var(--bunker-100); font-weight: 600; }
+    .reveal em { color: var(--amethyst-text); font-style: italic; }
+
+    .reveal a {
+      color: var(--amethyst-text);
+      text-decoration: underline;
+      text-decoration-color: var(--amethyst-muted);
+      transition: color 0.2s;
+    }
+    .reveal a:hover { color: var(--amethyst-hover); }
+
+    .reveal .slides > section,
+    .reveal .slides > section > section { padding: 40px 60px; padding-bottom: 80px; }
+
+    .reveal .slide-background { background: var(--bunker-900); }
+    .reveal .controls { color: var(--amethyst); }
+    .reveal .progress { color: var(--amethyst); height: 4px; }
+
+    .reveal .slide-number {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--bunker-400);
+      background: transparent;
+    }
+
+    /* ─────────────────────────────────────────────
+       Fragment Animations — Spring + Stagger
+       ───────────────────────────────────────────── */
+    .reveal .slides section .fragment {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: all 0.6s var(--spring);
+    }
+    .reveal .slides section .fragment.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal .fragment.stagger-1 { transition-delay: 0ms; }
+    .reveal .fragment.stagger-2 { transition-delay: 100ms; }
+    .reveal .fragment.stagger-3 { transition-delay: 200ms; }
+    .reveal .fragment.stagger-4 { transition-delay: 300ms; }
+    .reveal .fragment.stagger-5 { transition-delay: 400ms; }
+    .reveal .fragment.stagger-6 { transition-delay: 500ms; }
+    .reveal .fragment.stagger-7 { transition-delay: 600ms; }
+    .reveal .fragment.stagger-8 { transition-delay: 700ms; }
+
+    .reveal .fragment.slide-in-left {
+      opacity: 0;
+      transform: translateX(-60px);
+      transition: all 0.7s var(--spring);
+    }
+    .reveal .fragment.slide-in-left.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .reveal .fragment.build-up {
+      opacity: 0;
+      transform: translateY(40px) scale(0.96);
+      transition: all 0.65s var(--spring);
+    }
+    .reveal .fragment.build-up.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .reveal .fragment.illuminate {
+      opacity: 0.25;
+      filter: brightness(0.5);
+      transition: all 0.5s var(--ease-out-expo);
+    }
+    .reveal .fragment.illuminate.visible {
+      opacity: 1;
+      filter: brightness(1);
+    }
+
+    /* ─────────────────────────────────────────────
+       CSS Counter Animation via @property
+       ───────────────────────────────────────────── */
+    @property --counter-val {
+      syntax: '<integer>';
+      initial-value: 0;
+      inherits: false;
+    }
+
+    .animated-counter {
+      --counter-val: 0;
+      counter-reset: val var(--counter-val);
+      font-family: var(--font-mono);
+      font-size: 2.8em;
+      font-weight: 700;
+      color: var(--amethyst-text);
+      line-height: 1;
+      transition: --counter-val 2s var(--ease-out-expo);
+    }
+    .animated-counter::after { content: counter(val); }
+    .counter-label {
+      font-family: var(--font-body);
+      font-size: 0.48em;
+      font-weight: 400;
+      color: var(--bunker-300);
+      display: block;
+      margin-top: 0.3em;
+    }
+    .counter-suffix {
+      font-size: 0.6em;
+      color: var(--amethyst-hover);
+    }
+
+    /* ─────────────────────────────────────────────
+       Film Grain Overlay — SVG feTurbulence
+       ───────────────────────────────────────────── */
+    .film-grain {
+      position: fixed;
+      inset: 0;
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: overlay;
+      animation: grain-shift 0.8s steps(4) infinite;
+    }
+    .film-grain svg { width: 100%; height: 100%; }
+
+    @keyframes grain-shift {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-2px, 1px); }
+      50% { transform: translate(1px, -1px); }
+      75% { transform: translate(-1px, 2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 1: Title
+       ───────────────────────────────────────────── */
+    .title-slide { text-align: center; }
+    .title-slide h1 {
+      font-size: 4.5em;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--bunker-100) 0%, var(--amethyst-text) 50%, var(--verdigris-text) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.15em;
+    }
+    .title-subtitle {
+      font-family: var(--font-body);
+      font-size: 1.3em;
+      color: var(--bunker-300);
+      font-weight: 300;
+      margin-bottom: 0.5em;
+    }
+    .title-tagline {
+      font-family: var(--font-mono);
+      font-size: 0.95em;
+      color: var(--amethyst-text);
+      opacity: 0.85;
+      margin-bottom: 1.5em;
+    }
+
+    .badge-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 1.5em;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.65em;
+      font-weight: 500;
+      border: 1px solid var(--bunker-600);
+      background: var(--bunker-800);
+      color: var(--bunker-300);
+    }
+    .badge .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .badge .dot.green { background: var(--verdigris); }
+    .badge .dot.purple { background: var(--amethyst); }
+    .badge-amethyst {
+      border-color: var(--amethyst) !important;
+      color: var(--amethyst-text) !important;
+      background: var(--amethyst-muted) !important;
+    }
+    .badge-verdigris {
+      border-color: var(--verdigris) !important;
+      color: var(--verdigris-text) !important;
+      background: rgba(74,138,122,0.15) !important;
+    }
+
+    .parallax-bg {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .parallax-bg .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      animation: float-orb 12s ease-in-out infinite alternate;
+    }
+    .parallax-bg .orb-1 {
+      width: 500px; height: 500px;
+      background: var(--amethyst);
+      top: -10%; left: -5%;
+      animation-duration: 14s;
+    }
+    .parallax-bg .orb-2 {
+      width: 400px; height: 400px;
+      background: var(--verdigris);
+      bottom: -15%; right: -5%;
+      animation-duration: 10s;
+      animation-delay: 2s;
+    }
+    .parallax-bg .orb-3 {
+      width: 300px; height: 300px;
+      background: var(--amber);
+      top: 60%; left: 50%;
+      animation-duration: 16s;
+      animation-delay: 4s;
+      opacity: 0.08;
+    }
+
+    @keyframes float-orb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(30px, -20px) scale(1.1); }
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 2: Feature Cards (2x3 grid)
+       ───────────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .feature-card {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-left: 3px solid var(--amethyst);
+      border-radius: 8px;
+      padding: 22px 20px;
+      text-align: left;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .feature-card .fc-icon {
+      font-size: 1.6em;
+      flex-shrink: 0;
+      width: 40px;
+      text-align: center;
+    }
+    .feature-card .fc-body h4 {
+      font-family: var(--font-display);
+      font-size: 0.95em;
+      color: var(--bunker-100);
+      margin: 0 0 0.3em 0;
+    }
+    .feature-card .fc-body p {
+      font-size: 0.72em;
+      color: var(--bunker-400);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 3: Walkthrough
+       ───────────────────────────────────────────── */
+    .walkthrough-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    .walk-step {
+      text-align: center;
+      padding: 32px 20px;
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 12px;
+      position: relative;
+    }
+    .walk-step .step-icon { font-size: 2.4em; margin-bottom: 0.4em; display: block; }
+    .walk-step .step-num {
+      font-family: var(--font-mono);
+      font-size: 0.65em;
+      color: var(--amethyst-text);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.3em;
+    }
+    .walk-step h4 {
+      font-family: var(--font-display);
+      font-size: 1.15em;
+      color: var(--bunker-100);
+      margin: 0 0 0.5em 0;
+    }
+    .walk-step p { font-size: 0.85em; color: var(--bunker-400); margin: 0; }
+    .walk-step::after {
+      content: '';
+      position: absolute;
+      top: 50%; right: -18px;
+      width: 4px; height: 4px;
+      background: var(--amethyst);
+      border-radius: 50%;
+      box-shadow: 8px 0 0 var(--amethyst), 16px 0 0 var(--amethyst);
+    }
+    .walk-step:last-child::after { display: none; }
+
+    /* ─────────────────────────────────────────────
+       Slide 4: Metrics
+       ───────────────────────────────────────────── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0.8em auto;
+    }
+    .metric-card {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 10px;
+      padding: 24px 16px;
+      text-align: center;
+    }
+    .metrics-note {
+      font-family: var(--font-mono);
+      font-size: 0.6em;
+      color: var(--bunker-400);
+      text-align: center;
+      margin-top: 0.5em;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 5: Completeness
+       ───────────────────────────────────────────── */
+    .completeness-hero {
+      text-align: center;
+      margin-bottom: 0.6em;
+    }
+    .completeness-hero .big-pct {
+      font-family: var(--font-mono);
+      font-size: 4.5em;
+      font-weight: 700;
+      color: var(--amethyst-text);
+      line-height: 1;
+    }
+    .progress-track {
+      background: var(--bunker-700);
+      border-radius: 8px;
+      height: 16px;
+      max-width: 600px;
+      margin: 0.3em auto;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--amethyst), var(--verdigris));
+      width: 0;
+      transition: width 2s var(--ease-out-expo);
+    }
+    .progress-fill.active { width: 92%; }
+
+    .done-remaining {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 1300px;
+      margin: 1em auto 0;
+    }
+    .dr-col { text-align: left; }
+    .dr-col h4 {
+      font-family: var(--font-display);
+      font-size: 0.9em;
+      margin: 0 0 0.4em 0;
+    }
+    .dr-col.done h4 { color: var(--verdigris-text); }
+    .dr-col.remaining h4 { color: var(--amethyst-text); }
+    .dr-col ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .dr-col ul li {
+      font-size: 0.7em;
+      color: var(--bunker-300);
+      padding: 3px 0 3px 20px;
+      position: relative;
+      line-height: 1.5;
+    }
+    .dr-col.done ul li::before {
+      content: '\2713';
+      position: absolute;
+      left: 0;
+      color: var(--verdigris-text);
+      font-weight: 700;
+    }
+    .dr-col.remaining ul li::before {
+      content: '\2192';
+      position: absolute;
+      left: 0;
+      color: var(--amethyst-text);
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 6: Architecture
+       ───────────────────────────────────────────── */
+    .arch-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      max-width: 900px;
+      margin: 0 auto 0.5em auto;
+    }
+    .arch-layer {
+      width: 100%;
+      padding: 14px 24px;
+      border-radius: 8px;
+      border: 1px solid var(--bunker-600);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-display);
+      font-size: 0.85em;
+      font-weight: 500;
+      color: var(--bunker-100);
+    }
+    .arch-layer .layer-detail {
+      font-family: var(--font-mono);
+      font-size: 0.8em;
+      color: var(--bunker-400);
+      font-weight: 400;
+    }
+    .arch-layer:nth-child(1) { background: linear-gradient(90deg, rgba(106,74,138,0.25), rgba(106,74,138,0.08)); border-color: rgba(106,74,138,0.4); }
+    .arch-layer:nth-child(2) { background: linear-gradient(90deg, rgba(74,138,122,0.25), rgba(74,138,122,0.08)); border-color: rgba(74,138,122,0.4); }
+    .arch-layer:nth-child(3) { background: linear-gradient(90deg, rgba(184,154,80,0.25), rgba(184,154,80,0.08)); border-color: rgba(184,154,80,0.4); }
+    .arch-layer:nth-child(4) { background: linear-gradient(90deg, rgba(106,74,138,0.2), rgba(106,74,138,0.05)); border-color: rgba(106,74,138,0.3); }
+    .arch-layer:nth-child(5) { background: linear-gradient(90deg, rgba(74,138,122,0.2), rgba(74,138,122,0.05)); border-color: rgba(74,138,122,0.3); }
+    .arch-layer:nth-child(6) { background: linear-gradient(90deg, rgba(184,154,80,0.2), rgba(184,154,80,0.05)); border-color: rgba(184,154,80,0.3); }
+    .arch-layer:nth-child(7) { background: linear-gradient(90deg, rgba(106,74,138,0.15), rgba(106,74,138,0.03)); border-color: rgba(106,74,138,0.2); }
+    .arch-arrow { font-size: 0.7em; color: var(--bunker-500); margin: -2px 0; }
+    .arch-note {
+      font-family: var(--font-mono);
+      font-size: 0.6em;
+      color: var(--amethyst-text);
+      text-align: center;
+      margin-top: 0.4em;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 7: RAG Non-Technical
+       ───────────────────────────────────────────── */
+    .analogy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 36px;
+      max-width: 1300px;
+      margin: 1em auto;
+    }
+    .analogy-card {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 12px;
+      padding: 40px 28px;
+      text-align: center;
+    }
+    .analogy-card .card-icon { font-size: 3em; margin-bottom: 0.3em; display: block; }
+    .analogy-card h4 {
+      font-family: var(--font-display);
+      color: var(--bunker-100);
+      font-size: 1.1em;
+      margin: 0 0 0.5em 0;
+    }
+    .analogy-card p { font-size: 0.85em; color: var(--bunker-400); margin: 0; }
+
+    .flow-arrow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      margin: 1.5em auto;
+      max-width: 700px;
+    }
+    .flow-box {
+      font-family: var(--font-display);
+      font-size: 0.95em;
+      color: var(--bunker-100);
+      background: var(--bunker-700);
+      border: 1px solid var(--bunker-600);
+      border-radius: 8px;
+      padding: 12px 24px;
+    }
+    .flow-arrow-icon { font-size: 1.6em; color: var(--amethyst-text); }
+    .rag-note {
+      font-family: var(--font-mono);
+      font-size: 0.7em;
+      color: var(--verdigris-text);
+      text-align: center;
+      margin-top: 1em;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 8: RAG Technical
+       ───────────────────────────────────────────── */
+    .pipeline-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      max-width: 1700px;
+      margin: 0.5em auto;
+      overflow-x: auto;
+    }
+    .pipeline-step { flex: 1; text-align: center; min-width: 140px; }
+    .pipeline-step .step-box {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 8px;
+      padding: 12px 8px;
+      font-family: var(--font-display);
+      font-size: 0.78em;
+      font-weight: 600;
+      color: var(--bunker-100);
+      margin-bottom: 6px;
+      transition: border-color 0.5s, box-shadow 0.5s;
+    }
+    .pipeline-step.lit .step-box {
+      border-color: var(--amethyst);
+      box-shadow: 0 0 12px rgba(106,74,138,0.3);
+    }
+    .pipeline-step .step-detail {
+      font-family: var(--font-mono);
+      font-size: 0.55em;
+      color: var(--bunker-400);
+      line-height: 1.4;
+    }
+    .pipeline-connector {
+      display: flex;
+      align-items: center;
+      padding-top: 14px;
+      color: var(--bunker-500);
+      font-size: 0.7em;
+    }
+
+    .citation-table {
+      width: 100%;
+      max-width: 800px;
+      margin: 0.6em auto;
+      border-collapse: collapse;
+      font-size: 0.65em;
+    }
+    .citation-table th {
+      font-family: var(--font-display);
+      color: var(--bunker-100);
+      background: var(--bunker-700);
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--bunker-600);
+    }
+    .citation-table td {
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--bunker-600);
+      color: var(--bunker-300);
+      font-family: var(--font-body);
+    }
+    .citation-table td:first-child {
+      font-family: var(--font-mono);
+      color: var(--amethyst-text);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 9: Call Trace (dual CSS sequence diagrams)
+       ───────────────────────────────────────────── */
+    .seq-dual {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      max-width: 1600px;
+      margin: 0.5em auto;
+    }
+    .seq-panel {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .seq-panel h4 {
+      font-family: var(--font-display);
+      font-size: 0.85em;
+      color: var(--bunker-100);
+      margin: 0 0 12px 0;
+      text-align: center;
+    }
+    .seq-actors {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 8px;
+    }
+    .seq-actor {
+      font-family: var(--font-mono);
+      font-size: 0.55em;
+      color: var(--amethyst-text);
+      background: var(--bunker-700);
+      border: 1px solid var(--amethyst);
+      border-radius: 4px;
+      padding: 4px 10px;
+      text-align: center;
+      min-width: 60px;
+    }
+    .seq-msgs { display: flex; flex-direction: column; gap: 4px; }
+    .seq-msg {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.48em;
+      color: var(--bunker-300);
+      padding: 3px 8px;
+    }
+    .seq-msg .arrow {
+      flex-shrink: 0;
+      color: var(--verdigris-text);
+      font-weight: 700;
+    }
+    .seq-msg .arrow.return { color: var(--bunker-400); }
+    .seq-msg .label { flex: 1; }
+
+    .call-trace-note {
+      font-family: var(--font-body);
+      font-size: 0.75em;
+      color: var(--bunker-400);
+      text-align: center;
+      max-width: 900px;
+      margin: 0.8em auto 0;
+      line-height: 1.6;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 10: Code Examples (IDE style, manual syntax)
+       ───────────────────────────────────────────── */
+    .code-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 1700px;
+      margin: 0.5em auto;
+    }
+    .code-pane {
+      background: var(--syn-bg);
+      border: 1px solid var(--syn-border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .code-pane-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--bunker-700);
+      border-bottom: 1px solid var(--bunker-600);
+    }
+    .code-pane-header .dot-row { display: flex; gap: 6px; }
+    .code-pane-header .dot-row span { width: 10px; height: 10px; border-radius: 50%; }
+    .code-pane-header .dot-row span:nth-child(1) { background: #ff5f57; }
+    .code-pane-header .dot-row span:nth-child(2) { background: #febc2e; }
+    .code-pane-header .dot-row span:nth-child(3) { background: #28c840; }
+    .code-pane-header .pane-title {
+      font-family: var(--font-mono);
+      font-size: 0.65em;
+      color: var(--bunker-400);
+      margin-left: 8px;
+    }
+    .code-pane .code-body {
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 0.52em;
+      line-height: 1.6;
+      color: var(--syn-function);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .code-pane .line-num {
+      display: inline-block;
+      width: 2.5em;
+      color: var(--bunker-500);
+      text-align: right;
+      padding-right: 1em;
+      user-select: none;
+    }
+    .kw { color: var(--syn-keyword); }
+    .st { color: var(--syn-string); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .dc { color: var(--syn-decorator); }
+    .ty { color: var(--syn-type); }
+    .fn { color: var(--syn-function); }
+    .nm { color: var(--syn-number); }
+    .op { color: var(--syn-operator); }
+    .bi { color: var(--syn-builtin); }
+
+    /* ─────────────────────────────────────────────
+       Slide 11: UML Diagrams (simplified SVG)
+       ───────────────────────────────────────────── */
+    .uml-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 1500px;
+      margin: 0.5em auto;
+    }
+    .uml-panel {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+    }
+    .uml-panel h4 {
+      font-family: var(--font-display);
+      font-size: 0.9em;
+      color: var(--bunker-100);
+      margin: 0 0 16px 0;
+    }
+    .uml-panel svg { max-width: 100%; height: auto; }
+    .uml-note {
+      font-family: var(--font-mono);
+      font-size: 0.6em;
+      color: var(--bunker-400);
+      text-align: center;
+      margin-top: 0.8em;
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 12: raiveFeeder
+       ───────────────────────────────────────────── */
+    .feeder-tabs {
+      display: flex;
+      gap: 12px;
+      max-width: 1400px;
+      margin: 0.5em auto;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .feeder-tab {
+      flex: 1;
+      min-width: 200px;
+      max-width: 260px;
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-top: 3px solid var(--amethyst);
+      border-radius: 0 0 8px 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .feeder-tab .tab-icon { font-size: 1.8em; display: block; margin-bottom: 0.3em; }
+    .feeder-tab h4 {
+      font-family: var(--font-display);
+      font-size: 0.85em;
+      color: var(--bunker-100);
+      margin: 0 0 0.3em 0;
+    }
+    .feeder-tab p { font-size: 0.62em; color: var(--bunker-400); margin: 0; line-height: 1.4; }
+    .feeder-connection {
+      max-width: 700px;
+      margin: 0.8em auto 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.7em;
+    }
+    .feeder-box {
+      background: var(--bunker-700);
+      border: 1px solid var(--bunker-600);
+      border-radius: 8px;
+      padding: 10px 20px;
+      color: var(--bunker-100);
+    }
+    .feeder-box.amethyst-border { border-color: var(--amethyst); }
+    .feeder-box.verdigris-border { border-color: var(--verdigris); }
+    .feeder-arrow { color: var(--amber-text); font-size: 1.4em; }
+
+    /* ─────────────────────────────────────────────
+       Slide 13: Corpus Roadmap
+       ───────────────────────────────────────────── */
+    .roadmap-list {
+      max-width: 900px;
+      margin: 0.5em auto;
+      list-style: none;
+      padding: 0;
+    }
+    .roadmap-list li {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--bunker-600);
+      font-size: 0.8em;
+    }
+    .roadmap-list li:last-child { border-bottom: none; }
+    .roadmap-list .rl-status {
+      font-family: var(--font-mono);
+      font-size: 0.7em;
+      padding: 3px 10px;
+      border-radius: 12px;
+      flex-shrink: 0;
+      min-width: 80px;
+      text-align: center;
+    }
+    .rl-done { background: rgba(74,138,122,0.2); color: var(--verdigris-text); border: 1px solid var(--verdigris); }
+    .rl-progress { background: rgba(184,154,80,0.2); color: var(--amber-text); border: 1px solid var(--amber); }
+    .rl-planned { background: var(--amethyst-muted); color: var(--amethyst-text); border: 1px solid var(--amethyst); }
+    .roadmap-list .rl-source {
+      font-family: var(--font-display);
+      color: var(--bunker-100);
+      font-weight: 500;
+      min-width: 200px;
+    }
+    .roadmap-list .rl-desc { color: var(--bunker-400); flex: 1; }
+
+    /* ─────────────────────────────────────────────
+       Slides 14-15: Challenges (two-col panels)
+       ───────────────────────────────────────────── */
+    .challenge-list {
+      max-width: 1100px;
+      margin: 0.5em auto;
+    }
+    .challenge-list ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .challenge-list ul li {
+      font-size: 0.82em;
+      color: var(--bunker-300);
+      padding: 10px 0 10px 28px;
+      position: relative;
+      line-height: 1.5;
+      border-bottom: 1px solid var(--bunker-700);
+    }
+    .challenge-list.solved ul li::before {
+      content: '\2713';
+      position: absolute;
+      left: 0;
+      color: var(--verdigris-text);
+      font-weight: 700;
+    }
+    .challenge-list.ahead ul li::before {
+      content: '\2192';
+      position: absolute;
+      left: 0;
+      color: var(--amethyst-text);
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 16: GitHub History
+       ───────────────────────────────────────────── */
+    .git-stats {
+      max-width: 1200px;
+      margin: 0.5em auto;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+    .git-stat {
+      background: var(--bunker-700);
+      border: 1px solid var(--bunker-600);
+      border-radius: 8px;
+      padding: 16px 12px;
+      text-align: center;
+    }
+    .git-stat .stat-val {
+      font-family: var(--font-mono);
+      font-size: 1.6em;
+      font-weight: 700;
+      color: var(--amethyst-text);
+    }
+    .git-stat .stat-label {
+      font-size: 0.55em;
+      color: var(--bunker-400);
+      margin-top: 4px;
+    }
+
+    .commit-chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 8px;
+      height: 100px;
+      max-width: 700px;
+      margin: 0.8em auto;
+    }
+    .commit-bar {
+      flex: 1;
+      border-radius: 4px 4px 0 0;
+      background: var(--amethyst);
+      transition: height 1.2s var(--ease-out-expo);
+      height: 0;
+      position: relative;
+    }
+    .commit-bar .cb-label {
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--bunker-400);
+      white-space: nowrap;
+    }
+    .commit-bar .cb-val {
+      position: absolute;
+      top: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--bunker-100);
+      font-weight: 600;
+    }
+
+    .git-milestones {
+      max-width: 1200px;
+      margin: 1.5em auto 0;
+      font-family: var(--font-mono);
+      font-size: 0.55em;
+      color: var(--bunker-400);
+      text-align: center;
+      line-height: 1.8;
+    }
+    .git-milestones span { color: var(--verdigris-text); }
+
+    /* ─────────────────────────────────────────────
+       Slide 17: MWRCA
+       ───────────────────────────────────────────── */
+    .mwrca-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0.6em auto;
+    }
+    .mwrca-card {
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 8px;
+      padding: 24px 20px;
+      text-align: left;
+    }
+    .mwrca-card h4 {
+      font-family: var(--font-display);
+      font-size: 0.9em;
+      color: var(--amber-text);
+      margin: 0 0 0.4em 0;
+    }
+    .mwrca-card p { font-size: 0.75em; color: var(--bunker-300); margin: 0; line-height: 1.5; }
+    .cuttable-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.55em;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(184,154,80,0.15);
+      border: 1px solid var(--amber);
+      color: var(--amber-text);
+    }
+
+    /* ─────────────────────────────────────────────
+       Slide 18: Outro
+       ───────────────────────────────────────────── */
+    .outro-slide { text-align: center; }
+    .outro-quote {
+      font-family: var(--font-display);
+      font-size: 1.6em;
+      font-weight: 300;
+      color: var(--bunker-100);
+      font-style: italic;
+      max-width: 900px;
+      margin: 0 auto 0.8em;
+      line-height: 1.4;
+    }
+    .outro-wordmark {
+      font-family: var(--font-display);
+      font-size: 2.8em;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--bunker-100), var(--amethyst-text), var(--verdigris-text));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.4em;
+    }
+    .outro-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin: 0.8em auto;
+    }
+    .outro-links a {
+      font-family: var(--font-mono);
+      font-size: 0.75em;
+      color: var(--amethyst-text);
+      text-decoration: none;
+      padding: 8px 20px;
+      border: 1px solid var(--bunker-600);
+      border-radius: 8px;
+      background: var(--bunker-800);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .outro-links a:hover {
+      border-color: var(--amethyst);
+      background: var(--amethyst-muted);
+    }
+    .outro-built {
+      font-family: var(--font-mono);
+      font-size: 0.6em;
+      color: var(--bunker-400);
+      margin-top: 1em;
+    }
+    .outro-questions {
+      font-family: var(--font-display);
+      font-size: 1.8em;
+      color: var(--amethyst-text);
+      margin-top: 0.8em;
+    }
+
+    /* ─────────────────────────────────────────────
+       Caption Overlay
+       ───────────────────────────────────────────── */
+    .caption-overlay {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(10,10,12,0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 0 80px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .caption-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .caption-overlay .caption-text {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      color: var(--bunker-100);
+      text-align: center;
+      max-width: 1200px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .caption-toggle {
+      position: fixed;
+      bottom: 68px;
+      right: 16px;
+      z-index: 101;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--bunker-300);
+      background: var(--bunker-800);
+      border: 1px solid var(--bunker-600);
+      border-radius: 14px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      user-select: none;
+    }
+    .caption-toggle:hover {
+      border-color: var(--amethyst);
+      color: var(--amethyst-text);
+    }
+    .caption-toggle.active-lang {
+      border-color: var(--amethyst);
+      color: var(--amethyst-text);
+    }
+
+    /* ─────────────────────────────────────────────
+       Speaker Notes (visible only in speaker view)
+       ───────────────────────────────────────────── */
+    .reveal aside.notes { display: none; }
+
+    /* ─────────────────────────────────────────────
+       Responsive Helpers
+       ───────────────────────────────────────────── */
+    .text-center { text-align: center; }
+    .mt-1 { margin-top: 0.5em; }
+    .mt-2 { margin-top: 1em; }
+    .mb-1 { margin-bottom: 0.5em; }
+    .mb-2 { margin-bottom: 1em; }
+    .text-muted { color: var(--bunker-400); }
+    .text-amethyst { color: var(--amethyst-text); }
+    .text-verdigris { color: var(--verdigris-text); }
+    .text-amber { color: var(--amber-text); }
+    .font-mono { font-family: var(--font-mono); }
+    .font-display { font-family: var(--font-display); }
+    .small { font-size: 0.7em; }
+    .smaller { font-size: 0.6em; }
+
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--amethyst), var(--verdigris));
+      border: none;
+      border-radius: 2px;
+      margin: 0.6em auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─────────────────────────────────────────────
+       Film Grain Overlay (fixed on all slides)
+       ───────────────────────────────────────────── -->
+  <div class="film-grain" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg">
+      <filter id="grain-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" stitchTiles="stitch" seed="42"/>
+        <feColorMatrix type="saturate" values="0"/>
+      </filter>
+      <rect width="100%" height="100%" filter="url(#grain-filter)"/>
+    </svg>
+  </div>
+
+  <!-- ─────────────────────────────────────────────
+       Caption Overlay
+       ───────────────────────────────────────────── -->
+  <div class="caption-overlay" id="captionOverlay">
+    <div class="caption-text" id="captionText"></div>
+  </div>
+  <div class="caption-toggle" id="captionToggle" title="Toggle captions (C key)">CC</div>
+
+  <!-- ─────────────────────────────────────────────
+       Reveal.js Slide Deck
+       ───────────────────────────────────────────── -->
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ==========================================
+           SLIDE 1: Title + Mission
+           ========================================== -->
+      <section class="title-slide" data-transition="fade">
+        <div class="parallax-bg">
+          <div class="orb orb-1"></div>
+          <div class="orb orb-2"></div>
+          <div class="orb orb-3"></div>
+        </div>
+
+        <div class="fragment fade-in stagger-1" data-fragment-index="0">
+          <h1>raiveFlier</h1>
+        </div>
+        <div class="fragment fade-in stagger-2" data-fragment-index="1">
+          <p class="title-subtitle">Rave Flier Analysis Engine</p>
+        </div>
+        <div class="fragment fade-in stagger-3" data-fragment-index="2">
+          <hr class="divider">
+          <p class="title-tagline">Preserving electronic music culture through intelligent flier analysis</p>
+        </div>
+        <div class="fragment fade-in stagger-4" data-fragment-index="3">
+          <div class="badge-row">
+            <span class="badge badge-amethyst"><span class="dot purple"></span> ~92% Complete</span>
+            <span class="badge badge-verdigris"><span class="dot green"></span> MIT License</span>
+            <span class="badge"><span class="dot purple"></span> Python 3.12 + FastAPI</span>
+            <span class="badge"><a href="https://github.com" style="color:var(--bunker-300);text-decoration:none;">GitHub &rarr;</a></span>
+          </div>
+        </div>
+
+        <aside class="notes">
+          Open with the project name, mission, and completeness status. Emphasize open-source and culture focus.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 2: Core Features Overview
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center">Core Features</h2>
+        <hr class="divider">
+
+        <div class="feature-grid">
+          <div class="feature-card fragment stagger-1" data-fragment-index="0">
+            <div class="fc-icon">&#128065;</div>
+            <div class="fc-body">
+              <h4>OCR Pipeline</h4>
+              <p>Multi-engine OCR with vision LLM fallback for stylized rave typography</p>
+            </div>
+          </div>
+          <div class="feature-card fragment stagger-2" data-fragment-index="1">
+            <div class="fc-icon">&#128451;</div>
+            <div class="fc-body">
+              <h4>Multi-DB Research</h4>
+              <p>Parallel queries across 5 music databases &mdash; Discogs, MusicBrainz, Bandcamp, Beatport, web</p>
+            </div>
+          </div>
+          <div class="feature-card fragment stagger-3" data-fragment-index="2">
+            <div class="fc-icon">&#128218;</div>
+            <div class="fc-body">
+              <h4>RAG Corpus</h4>
+              <p>Vector search with 3-tier citation system and source provenance tracking</p>
+            </div>
+          </div>
+          <div class="feature-card fragment stagger-4" data-fragment-index="3">
+            <div class="fc-icon">&#128279;</div>
+            <div class="fc-body">
+              <h4>Interconnection Graph</h4>
+              <p>Relationship mapping between artists, labels, venues, and events</p>
+            </div>
+          </div>
+          <div class="feature-card fragment stagger-5" data-fragment-index="4">
+            <div class="fc-icon">&#128172;</div>
+            <div class="fc-body">
+              <h4>Q&amp;A Engine</h4>
+              <p>Natural language answers with inline citations backed by the corpus</p>
+            </div>
+          </div>
+          <div class="feature-card fragment stagger-6" data-fragment-index="5">
+            <div class="fc-icon">&#10024;</div>
+            <div class="fc-body">
+              <h4>Recommendations</h4>
+              <p>Discovery engine for related artists, labels, and events you haven't explored yet</p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="notes">
+          Six core features presented as cards. Each represents a major subsystem of the pipeline.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 3: User Walkthrough
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center">How It Works</h2>
+        <hr class="divider">
+
+        <div class="walkthrough-grid">
+          <div class="walk-step fragment slide-in-left stagger-1" data-fragment-index="0">
+            <span class="step-icon">&#128247;</span>
+            <div class="step-num">Step 1</div>
+            <h4>Upload</h4>
+            <p>Drop in a rave flier image</p>
+          </div>
+          <div class="walk-step fragment slide-in-left stagger-2" data-fragment-index="1">
+            <span class="step-icon">&#9989;</span>
+            <div class="step-num">Step 2</div>
+            <h4>Confirm</h4>
+            <p>Review OCR-extracted entities</p>
+          </div>
+          <div class="walk-step fragment slide-in-left stagger-3" data-fragment-index="2">
+            <span class="step-icon">&#128269;</span>
+            <div class="step-num">Step 3</div>
+            <h4>Research</h4>
+            <p>Pipeline queries 5 music databases</p>
+          </div>
+          <div class="walk-step fragment slide-in-left stagger-4" data-fragment-index="3">
+            <span class="step-icon">&#10024;</span>
+            <div class="step-num">Step 4</div>
+            <h4>Discover</h4>
+            <p>Explore citations, connections, Q&amp;A</p>
+          </div>
+        </div>
+
+        <aside class="notes">
+          Walk through the 4 user-facing steps. Emphasize simplicity: upload to insight.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 4: Quantitative Metrics
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center">Codebase at a Glance</h2>
+        <hr class="divider">
+
+        <div class="metrics-grid">
+          <div class="metric-card fragment stagger-1" data-fragment-index="0">
+            <div class="animated-counter" data-target="30088" style="--counter-val: 0;"></div>
+            <span class="counter-label">Python LOC</span>
+          </div>
+          <div class="metric-card fragment stagger-2" data-fragment-index="1">
+            <div class="animated-counter" data-target="1174" style="--counter-val: 0;"></div>
+            <span class="counter-label">Tests</span>
+          </div>
+          <div class="metric-card fragment stagger-3" data-fragment-index="2">
+            <div class="animated-counter" data-target="17" style="--counter-val: 0;"></div>
+            <span class="counter-label">API Endpoints</span>
+          </div>
+          <div class="metric-card fragment stagger-4" data-fragment-index="3">
+            <div class="animated-counter" data-target="22" style="--counter-val: 0;"></div>
+            <span class="counter-label">Provider Adapters</span>
+          </div>
+          <div class="metric-card fragment stagger-5" data-fragment-index="4">
+            <div class="animated-counter" data-target="9" style="--counter-val: 0;"></div>
+            <span class="counter-label">Interfaces</span>
+          </div>
+          <div class="metric-card fragment stagger-6" data-fragment-index="5">
+            <div class="animated-counter" data-target="39" style="--counter-val: 0;"></div>
+            <span class="counter-label">Models</span>
+          </div>
+        </div>
+
+        <p class="metrics-note fragment stagger-7" data-fragment-index="6">All metrics measured from live codebase &middot; MIT license</p>
+
+        <aside class="notes">
+          Let the counters animate. Point out the breadth of the codebase.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 5: Completeness Estimate
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center">Project Completeness</h2>
+        <hr class="divider">
+
+        <div class="completeness-hero fragment fade-in stagger-1" data-fragment-index="0">
+          <div class="big-pct">~92%</div>
+        </div>
+
+        <div class="fragment fade-in stagger-2" data-fragment-index="1">
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill-5"></div>
+          </div>
+        </div>
+
+        <div class="done-remaining fragment fade-in stagger-3" data-fragment-index="2">
+          <div class="dr-col done">
+            <h4>Done</h4>
+            <ul>
+              <li>OCR pipeline (3-engine fallback)</li>
+              <li>Entity extraction &amp; confirmation</li>
+              <li>Multi-DB research (5 sources)</li>
+              <li>RAG corpus &amp; citation tiers</li>
+              <li>Interconnection mapping</li>
+              <li>Q&amp;A engine with citations</li>
+              <li>Recommendation engine</li>
+              <li>Frontend (vanilla JS/CSS/HTML)</li>
+              <li>17 API endpoints</li>
+              <li>Docker deployment on Render</li>
+            </ul>
+          </div>
+          <div class="dr-col remaining">
+            <h4>Remaining</h4>
+            <ul>
+              <li>Production scaling (multi-worker, Redis)</li>
+              <li>Audio fingerprinting integration</li>
+              <li>Geospatial timeline visualization</li>
+              <li>Community contribution system</li>
+              <li>Additional corpus sources</li>
+            </ul>
+          </div>
+        </div>
+
+        <aside class="notes">
+          Show the progress bar animation and the done/remaining breakdown.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 6: Architecture — 7 Layers
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center">Architecture</h2>
+        <hr class="divider">
+
+        <div class="arch-stack">
+          <div class="arch-layer fragment build-up stagger-7" data-fragment-index="6">
+            <span>Frontend</span>
+            <span class="layer-detail">Vanilla JS / CSS / HTML</span>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-layer fragment build-up stagger-6" data-fragment-index="5">
+            <span>API Layer</span>
+            <span class="layer-detail">FastAPI routes, WebSocket</span>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-layer fragment build-up stagger-5" data-fragment-index="4">
+            <span>Pipeline</span>
+            <span class="layer-detail">Orchestrator, Confirmation Gate</span>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-layer fragment build-up stagger-4" data-fragment-index="3">
+            <span>Services</span>
+            <span class="layer-detail">5 Researchers, Citation, Q&amp;A, Recs</span>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-layer fragment build-up stagger-3" data-fragment-index="2">
+            <span>Interfaces</span>
+            <span class="layer-detail">9 ABCs &mdash; ILLMProvider, IOCRProvider&hellip;</span>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-layer fragment build-up stagger-2" data-fragment-index="1">
+            <span>Providers</span>
+            <span class="layer-detail">22 adapters &mdash; OpenAI, Discogs, ChromaDB&hellip;</span>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-layer fragment build-up stagger-1" data-fragment-index="0">
+            <span>Models</span>
+            <span class="layer-detail">Pydantic v2 frozen data objects</span>
+          </div>
+        </div>
+
+        <p class="arch-note fragment fade-in stagger-8" data-fragment-index="7">Adapter pattern &mdash; swap any provider without touching business logic</p>
+
+        <aside class="notes">
+          Build layers bottom-up with spring easing. Emphasize: no vendor lock-in via adapter pattern.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 7: RAG Non-Technical
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center">The Knowledge Base</h2>
+        <h3 class="text-center" style="margin-top:-0.2em;">Think of It as a Music Librarian</h3>
+        <hr class="divider">
+
+        <div class="analogy-grid">
+          <div class="analogy-card fragment stagger-1" data-fragment-index="0">
+            <span class="card-icon">&#128218;</span>
+            <h4>The Bookshelf</h4>
+            <p>We index passages from rave history books, RA articles, and archived interviews</p>
+          </div>
+          <div class="analogy-card fragment stagger-2" data-fragment-index="1">
+            <span class="card-icon">&#128270;</span>
+            <h4>The Search</h4>
+            <p>When you ask about an artist, it finds the most relevant passages</p>
+          </div>
+          <div class="analogy-card fragment stagger-3" data-fragment-index="2">
+            <span class="card-icon">&#128203;</span>
+            <h4>The Citation</h4>
+            <p>Every fact comes with a source &mdash; from published books to web archives</p>
+          </div>
+        </div>
+
+        <div class="fragment stagger-4" data-fragment-index="3">
+          <div class="flow-arrow-row">
+            <div class="flow-box">&#128218; Books</div>
+            <span class="flow-arrow-icon">&rarr;</span>
+            <div class="flow-box">&#128270; Search</div>
+            <span class="flow-arrow-icon">&rarr;</span>
+            <div class="flow-box">&#9989; Grounded Answer</div>
+          </div>
+        </div>
+
+        <p class="rag-note fragment stagger-5" data-fragment-index="4">No hallucinations &mdash; every claim has a citation trail</p>
+
+        <aside class="notes">
+          Non-technical audience: explain RAG as a librarian analogy. Emphasize provenance and trust.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 8: RAG Technical Deep-Dive
+           ========================================== -->
+      <section data-transition="slide" data-auto-animate>
+        <h2 class="text-center" style="font-size:1.5em;">RAG Pipeline Architecture</h2>
+        <hr class="divider" style="margin-bottom:0.4em;">
+
+        <div class="pipeline-row">
+          <div class="pipeline-step fragment illuminate stagger-1" data-fragment-index="0">
+            <div class="step-box">Ingest</div>
+            <div class="step-detail">PDF/EPUB/text<br>source processors</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-2" data-fragment-index="1">
+            <div class="step-box">Chunk</div>
+            <div class="step-detail">500-token<br>overlapping windows</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-3" data-fragment-index="2">
+            <div class="step-box">Embed</div>
+            <div class="step-detail">FastEmbed<br>(ONNX, 50MB)</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-4" data-fragment-index="3">
+            <div class="step-box">Store</div>
+            <div class="step-detail">ChromaDB<br>(cosine similarity)</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-5" data-fragment-index="4">
+            <div class="step-box">Query</div>
+            <div class="step-detail">Entity metadata<br>filtering</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-6" data-fragment-index="5">
+            <div class="step-box">Retrieve</div>
+            <div class="step-detail">Top-k<br>deduplication</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-7" data-fragment-index="6">
+            <div class="step-box">Augment</div>
+            <div class="step-detail">LLM prompt<br>injection</div>
+          </div>
+          <div class="pipeline-connector">&rarr;</div>
+          <div class="pipeline-step fragment illuminate stagger-8" data-fragment-index="7">
+            <div class="step-box">Generate</div>
+            <div class="step-detail">Citation-backed<br>synthesis</div>
+          </div>
+        </div>
+
+        <div class="fragment fade-in" data-fragment-index="8" style="margin-top:0.4em;">
+          <table class="citation-table">
+            <thead>
+              <tr><th>Tier</th><th>Source Type</th><th>Example</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>Published books</td><td>Energy Flash, p.142</td></tr>
+              <tr><td>2</td><td>Established press</td><td>DJ Mag, Resident Advisor</td></tr>
+              <tr><td>3</td><td>Flier archives</td><td>19hz.info</td></tr>
+              <tr><td>4</td><td>Structured databases</td><td>Discogs, MusicBrainz</td></tr>
+              <tr><td>5</td><td>General web</td><td>Blog posts</td></tr>
+              <tr><td>6</td><td>Forums</td><td>Reddit, Discogs forums</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <aside class="notes">
+          Technical deep-dive into RAG. Walk through the 8 pipeline steps. Show the citation tier hierarchy.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 9: Call Trace (dual CSS sequence diagrams)
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Under the Hood: Call Traces</h2>
+        <hr class="divider">
+
+        <div class="seq-dual">
+          <div class="seq-panel fragment fade-in stagger-1" data-fragment-index="0">
+            <h4>Corpus Search</h4>
+            <div class="seq-actors">
+              <div class="seq-actor">User</div>
+              <div class="seq-actor">API</div>
+              <div class="seq-actor">VectorStore</div>
+              <div class="seq-actor">LLM</div>
+            </div>
+            <div class="seq-msgs">
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">POST /api/v1/corpus/search</span></div>
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">query(embedding, top_k=10)</span></div>
+              <div class="seq-msg"><span class="arrow return">&larr;</span><span class="label">10 DocumentChunks</span></div>
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">synthesize(question, chunks)</span></div>
+              <div class="seq-msg"><span class="arrow return">&larr;</span><span class="label">NL answer + citations</span></div>
+              <div class="seq-msg"><span class="arrow return">&larr;</span><span class="label">Response with source badges</span></div>
+            </div>
+          </div>
+
+          <div class="seq-panel fragment fade-in stagger-2" data-fragment-index="1">
+            <h4>Entity Discovery</h4>
+            <div class="seq-actors">
+              <div class="seq-actor">Upload</div>
+              <div class="seq-actor">OCR</div>
+              <div class="seq-actor">Extract</div>
+              <div class="seq-actor">Research</div>
+            </div>
+            <div class="seq-msgs">
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">image_bytes &rarr; OCR engine</span></div>
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">raw_text &rarr; LLM extraction</span></div>
+              <div class="seq-msg"><span class="arrow return">&larr;</span><span class="label">ExtractedEntities (artists, venues, dates)</span></div>
+              <div class="seq-msg" style="color:var(--amber-text);font-weight:600;"><span class="arrow" style="color:var(--amber-text);">&#9632;</span><span class="label">Human confirmation gate</span></div>
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">parallel DB queries (5 sources)</span></div>
+              <div class="seq-msg"><span class="arrow">&rarr;</span><span class="label">interconnection mapping</span></div>
+              <div class="seq-msg"><span class="arrow return">&larr;</span><span class="label">ResearchResults + InterconnectionMap</span></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="call-trace-note fragment fade-in stagger-3" data-fragment-index="2">
+          Every answer traces back to sources. The human-in-the-loop gate ensures entity accuracy before research begins.
+        </p>
+
+        <aside class="notes">
+          Trace real flows through the system. Two diagrams: corpus search and entity discovery pipeline.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 10: Colorized Code Examples
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Code Highlights</h2>
+        <hr class="divider">
+
+        <div class="code-split">
+          <div class="code-pane fragment fade-in stagger-1" data-fragment-index="0">
+            <div class="code-pane-header">
+              <div class="dot-row"><span></span><span></span><span></span></div>
+              <span class="pane-title">interfaces/illm_provider.py</span>
+            </div>
+            <div class="code-body"><span class="line-num"> 1</span><span class="kw">class</span> <span class="ty">ILLMProvider</span>(<span class="ty">ABC</span>):
+<span class="line-num"> 2</span>    <span class="dc">@abstractmethod</span>
+<span class="line-num"> 3</span>    <span class="kw">async</span> <span class="kw">def</span> <span class="fn">complete</span>(
+<span class="line-num"> 4</span>        <span class="fn">self</span>,
+<span class="line-num"> 5</span>        system_prompt: <span class="ty">str</span>,
+<span class="line-num"> 6</span>        user_prompt: <span class="ty">str</span>,
+<span class="line-num"> 7</span>        temperature: <span class="ty">float</span> <span class="op">=</span> <span class="nm">0.3</span>,
+<span class="line-num"> 8</span>        max_tokens: <span class="ty">int</span> <span class="op">=</span> <span class="nm">4000</span>,
+<span class="line-num"> 9</span>    ) <span class="op">-></span> <span class="ty">str</span>: ...
+<span class="line-num">10</span>
+<span class="line-num">11</span>    <span class="dc">@abstractmethod</span>
+<span class="line-num">12</span>    <span class="kw">async</span> <span class="kw">def</span> <span class="fn">vision_extract</span>(
+<span class="line-num">13</span>        <span class="fn">self</span>, image_bytes: <span class="ty">bytes</span>, prompt: <span class="ty">str</span>
+<span class="line-num">14</span>    ) <span class="op">-></span> <span class="ty">str</span>: ...
+<span class="line-num">15</span>
+<span class="line-num">16</span>    <span class="dc">@abstractmethod</span>
+<span class="line-num">17</span>    <span class="kw">def</span> <span class="fn">supports_vision</span>(<span class="fn">self</span>) <span class="op">-></span> <span class="ty">bool</span>: ...</div>
+          </div>
+
+          <div class="code-pane fragment fade-in stagger-2" data-fragment-index="1">
+            <div class="code-pane-header">
+              <div class="dot-row"><span></span><span></span><span></span></div>
+              <span class="pane-title">models/pipeline.py</span>
+            </div>
+            <div class="code-body"><span class="line-num"> 1</span><span class="kw">class</span> <span class="ty">PipelineState</span>(<span class="ty">BaseModel</span>):
+<span class="line-num"> 2</span>    model_config <span class="op">=</span> <span class="fn">ConfigDict</span>(frozen<span class="op">=</span><span class="bi">True</span>)
+<span class="line-num"> 3</span>
+<span class="line-num"> 4</span>    session_id: <span class="ty">str</span>
+<span class="line-num"> 5</span>    flier: <span class="ty">FlierImage</span>
+<span class="line-num"> 6</span>    current_phase: <span class="ty">PipelinePhase</span>
+<span class="line-num"> 7</span>    ocr_result: <span class="ty">OCRResult</span> <span class="op">|</span> <span class="bi">None</span> <span class="op">=</span> <span class="bi">None</span>
+<span class="line-num"> 8</span>    extracted_entities: <span class="ty">ExtractedEntities</span> <span class="op">|</span> <span class="bi">None</span> <span class="op">=</span> <span class="bi">None</span>
+<span class="line-num"> 9</span>    confirmed_entities: <span class="ty">ExtractedEntities</span> <span class="op">|</span> <span class="bi">None</span> <span class="op">=</span> <span class="bi">None</span>
+<span class="line-num">10</span>    research_results: <span class="ty">list</span>[<span class="ty">ResearchResult</span>] <span class="op">=</span> <span class="fn">Field</span>(
+<span class="line-num">11</span>        default_factory<span class="op">=</span><span class="ty">list</span>
+<span class="line-num">12</span>    )
+<span class="line-num">13</span>    interconnection_map: <span class="ty">InterconnectionMap</span> <span class="op">|</span> <span class="bi">None</span> <span class="op">=</span> <span class="bi">None</span>
+<span class="line-num">14</span>    progress_percent: <span class="ty">float</span> <span class="op">=</span> <span class="fn">Field</span>(
+<span class="line-num">15</span>        default<span class="op">=</span><span class="nm">0.0</span>, ge<span class="op">=</span><span class="nm">0.0</span>, le<span class="op">=</span><span class="nm">100.0</span>
+<span class="line-num">16</span>    )</div>
+          </div>
+        </div>
+
+        <aside class="notes">
+          Two key design patterns: the interface contract (adapter pattern) and immutable pipeline state (frozen Pydantic).
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 11: UML Diagrams (simplified SVG)
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Architecture Diagrams</h2>
+        <hr class="divider">
+
+        <div class="uml-split">
+          <div class="uml-panel fragment fade-in stagger-1" data-fragment-index="0">
+            <h4>7-Layer Stack</h4>
+            <svg width="340" height="380" viewBox="0 0 340 380" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="rgba(106,74,138,0.4)"/><stop offset="100%" stop-color="rgba(106,74,138,0.1)"/></linearGradient>
+                <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="rgba(74,138,122,0.4)"/><stop offset="100%" stop-color="rgba(74,138,122,0.1)"/></linearGradient>
+                <linearGradient id="g3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="rgba(184,154,80,0.4)"/><stop offset="100%" stop-color="rgba(184,154,80,0.1)"/></linearGradient>
+              </defs>
+              <rect x="10" y="10" width="320" height="42" rx="6" fill="url(#g1)" stroke="#6a4a8a" stroke-width="1"/>
+              <text x="170" y="36" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">Frontend</text>
+              <line x1="170" y1="52" x2="170" y2="62" stroke="#6a6a70" stroke-width="1" stroke-dasharray="3,3"/>
+              <rect x="10" y="62" width="320" height="42" rx="6" fill="url(#g2)" stroke="#4a8a7a" stroke-width="1"/>
+              <text x="170" y="88" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">API Layer</text>
+              <line x1="170" y1="104" x2="170" y2="114" stroke="#6a6a70" stroke-width="1" stroke-dasharray="3,3"/>
+              <rect x="10" y="114" width="320" height="42" rx="6" fill="url(#g3)" stroke="#b89a50" stroke-width="1"/>
+              <text x="170" y="140" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">Pipeline</text>
+              <line x1="170" y1="156" x2="170" y2="166" stroke="#6a6a70" stroke-width="1" stroke-dasharray="3,3"/>
+              <rect x="10" y="166" width="320" height="42" rx="6" fill="url(#g1)" stroke="rgba(106,74,138,0.5)" stroke-width="1"/>
+              <text x="170" y="192" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">Services</text>
+              <line x1="170" y1="208" x2="170" y2="218" stroke="#6a6a70" stroke-width="1" stroke-dasharray="3,3"/>
+              <rect x="10" y="218" width="320" height="42" rx="6" fill="url(#g2)" stroke="rgba(74,138,122,0.5)" stroke-width="1"/>
+              <text x="170" y="244" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">Interfaces (9 ABCs)</text>
+              <line x1="170" y1="260" x2="170" y2="270" stroke="#6a6a70" stroke-width="1" stroke-dasharray="3,3"/>
+              <rect x="10" y="270" width="320" height="42" rx="6" fill="url(#g3)" stroke="rgba(184,154,80,0.5)" stroke-width="1"/>
+              <text x="170" y="296" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">Providers (22 Adapters)</text>
+              <line x1="170" y1="312" x2="170" y2="322" stroke="#6a6a70" stroke-width="1" stroke-dasharray="3,3"/>
+              <rect x="10" y="322" width="320" height="42" rx="6" fill="url(#g1)" stroke="rgba(106,74,138,0.3)" stroke-width="1"/>
+              <text x="170" y="348" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="14" text-anchor="middle" font-weight="600">Models (Pydantic v2)</text>
+            </svg>
+          </div>
+
+          <div class="uml-panel fragment fade-in stagger-2" data-fragment-index="1">
+            <h4>Interface Connectors</h4>
+            <svg width="380" height="380" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
+              <!-- ILLMProvider -->
+              <circle cx="100" cy="60" r="14" fill="none" stroke="#a080c0" stroke-width="2"/>
+              <text x="100" y="64" fill="#a080c0" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">I</text>
+              <text x="100" y="90" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="11" text-anchor="middle" font-weight="600">ILLMProvider</text>
+              <line x1="100" y1="100" x2="100" y2="110" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="40" y1="110" x2="160" y2="110" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="40" y1="110" x2="40" y2="120" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="100" y1="110" x2="100" y2="120" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="160" y1="110" x2="160" y2="120" stroke="#6a6a70" stroke-width="1"/>
+              <rect x="10" y="120" width="60" height="24" rx="4" fill="#14141a" stroke="#6a4a8a" stroke-width="1"/>
+              <text x="40" y="136" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">OpenAI</text>
+              <rect x="70" y="120" width="60" height="24" rx="4" fill="#14141a" stroke="#6a4a8a" stroke-width="1"/>
+              <text x="100" y="136" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">Anthropic</text>
+              <rect x="130" y="120" width="60" height="24" rx="4" fill="#14141a" stroke="#6a4a8a" stroke-width="1"/>
+              <text x="160" y="136" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">Ollama</text>
+
+              <!-- IOCRProvider -->
+              <circle cx="100" cy="190" r="14" fill="none" stroke="#6ab0a0" stroke-width="2"/>
+              <text x="100" y="194" fill="#6ab0a0" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">I</text>
+              <text x="100" y="220" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="11" text-anchor="middle" font-weight="600">IOCRProvider</text>
+              <line x1="100" y1="230" x2="100" y2="240" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="40" y1="240" x2="160" y2="240" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="40" y1="240" x2="40" y2="250" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="100" y1="240" x2="100" y2="250" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="160" y1="240" x2="160" y2="250" stroke="#6a6a70" stroke-width="1"/>
+              <rect x="10" y="250" width="60" height="24" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+              <text x="40" y="266" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">Vision</text>
+              <rect x="70" y="250" width="60" height="24" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+              <text x="100" y="266" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">EasyOCR</text>
+              <rect x="130" y="250" width="60" height="24" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1"/>
+              <text x="160" y="266" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">Tesseract</text>
+
+              <!-- IEmbeddingProvider -->
+              <circle cx="290" cy="130" r="14" fill="none" stroke="#d0b468" stroke-width="2"/>
+              <text x="290" y="134" fill="#d0b468" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">I</text>
+              <text x="290" y="160" fill="#d8d5cd" font-family="Space Grotesk,sans-serif" font-size="11" text-anchor="middle" font-weight="600">IEmbeddingProvider</text>
+              <line x1="290" y1="170" x2="290" y2="180" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="230" y1="180" x2="350" y2="180" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="230" y1="180" x2="230" y2="190" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="290" y1="180" x2="290" y2="190" stroke="#6a6a70" stroke-width="1"/>
+              <line x1="350" y1="180" x2="350" y2="190" stroke="#6a6a70" stroke-width="1"/>
+              <rect x="200" y="190" width="60" height="24" rx="4" fill="#14141a" stroke="#b89a50" stroke-width="1"/>
+              <text x="230" y="206" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">FastEmbed</text>
+              <rect x="260" y="190" width="60" height="24" rx="4" fill="#14141a" stroke="#b89a50" stroke-width="1"/>
+              <text x="290" y="206" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">OpenAI</text>
+              <rect x="320" y="190" width="60" height="24" rx="4" fill="#14141a" stroke="#b89a50" stroke-width="1"/>
+              <text x="350" y="206" fill="#d8d5cd" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle">Nomic</text>
+            </svg>
+          </div>
+        </div>
+
+        <p class="uml-note fragment fade-in stagger-3" data-fragment-index="2">Full interactive UML diagrams available in deliverables/uml/</p>
+
+        <aside class="notes">
+          Simplified UML showing the architecture stack and interface connector pattern.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 12: raiveFeeder
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">raiveFeeder &mdash; Corpus Management Companion</h2>
+        <hr class="divider">
+
+        <div class="feeder-tabs">
+          <div class="feeder-tab fragment stagger-1" data-fragment-index="0">
+            <span class="tab-icon">&#128196;</span>
+            <h4>Documents</h4>
+            <p>PDF / DOCX / RTF &rarr; text &rarr; chunks &rarr; embeddings</p>
+          </div>
+          <div class="feeder-tab fragment stagger-2" data-fragment-index="1">
+            <span class="tab-icon">&#127911;</span>
+            <h4>Audio</h4>
+            <p>Whisper transcription &rarr; text &rarr; chunks</p>
+          </div>
+          <div class="feeder-tab fragment stagger-3" data-fragment-index="2">
+            <span class="tab-icon">&#128444;</span>
+            <h4>Images</h4>
+            <p>OCR + metadata extraction &rarr; indexed</p>
+          </div>
+          <div class="feeder-tab fragment stagger-4" data-fragment-index="3">
+            <span class="tab-icon">&#127760;</span>
+            <h4>URLs</h4>
+            <p>Web crawler &rarr; content &rarr; chunks</p>
+          </div>
+          <div class="feeder-tab fragment stagger-5" data-fragment-index="4">
+            <span class="tab-icon">&#128202;</span>
+            <h4>Corpus</h4>
+            <p>Index management, stats, search</p>
+          </div>
+        </div>
+
+        <div class="feeder-connection fragment fade-in stagger-6" data-fragment-index="5">
+          <div class="feeder-box amethyst-border">raiveFlier <span class="smaller text-muted">:8000</span></div>
+          <span class="feeder-arrow">&harr;</span>
+          <div class="feeder-box" style="border-color:var(--amber);">ChromaDB</div>
+          <span class="feeder-arrow">&harr;</span>
+          <div class="feeder-box verdigris-border">raiveFeeder <span class="smaller text-muted">:8001</span></div>
+        </div>
+
+        <aside class="notes">
+          raiveFeeder handles corpus ingestion across multiple media types, sharing ChromaDB with raiveFlier.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 13: RAG Improvements / Corpus Roadmap
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Corpus Expansion Roadmap</h2>
+        <hr class="divider">
+
+        <ul class="roadmap-list">
+          <li class="fragment stagger-1" data-fragment-index="0">
+            <span class="rl-status rl-done">done</span>
+            <span class="rl-source">Reference Books</span>
+            <span class="rl-desc">Energy Flash, Last Night a DJ Saved My Life, rave history texts</span>
+          </li>
+          <li class="fragment stagger-2" data-fragment-index="1">
+            <span class="rl-status rl-progress">in progress</span>
+            <span class="rl-source">RA Exchange</span>
+            <span class="rl-desc">Resident Advisor artist interviews and event reviews</span>
+          </li>
+          <li class="fragment stagger-3" data-fragment-index="2">
+            <span class="rl-status rl-planned">planned</span>
+            <span class="rl-source">Event Databases</span>
+            <span class="rl-desc">Partyflock, Resident Advisor events, 19hz.info archives</span>
+          </li>
+          <li class="fragment stagger-4" data-fragment-index="3">
+            <span class="rl-status rl-planned">planned</span>
+            <span class="rl-source">Interview Transcripts</span>
+            <span class="rl-desc">Oral histories, documentary transcriptions, podcast episodes</span>
+          </li>
+          <li class="fragment stagger-5" data-fragment-index="4">
+            <span class="rl-status rl-planned">planned</span>
+            <span class="rl-source">Academic Papers</span>
+            <span class="rl-desc">Music studies, cultural research, ethnographic fieldwork</span>
+          </li>
+          <li class="fragment stagger-6" data-fragment-index="5">
+            <span class="rl-status rl-planned">planned</span>
+            <span class="rl-source">Community Contributions</span>
+            <span class="rl-desc">User-submitted fliers, metadata corrections, local knowledge</span>
+          </li>
+        </ul>
+
+        <aside class="notes">
+          Corpus expansion roadmap with status indicators for each source type.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 14: Challenges Solved
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Challenges Conquered</h2>
+        <hr class="divider">
+
+        <div class="challenge-list solved">
+          <ul>
+            <li class="fragment stagger-1" data-fragment-index="0"><strong>OCR on stylized rave typography</strong> &mdash; 90s fonts, neon gradients, distorted text handled by 3-engine fallback chain (Vision LLM &rarr; EasyOCR &rarr; Tesseract)</li>
+            <li class="fragment stagger-2" data-fragment-index="1"><strong>512MB Docker RAM constraint</strong> &mdash; excluded PyTorch and SentenceTransformers; FastEmbed uses ONNX runtime at 50MB</li>
+            <li class="fragment stagger-3" data-fragment-index="2"><strong>Multi-database deduplication</strong> &mdash; entity matching across 5 sources with fuzzy string comparison and confidence scoring</li>
+            <li class="fragment stagger-4" data-fragment-index="3"><strong>Citation authority ranking</strong> &mdash; 6-tier system with source verification ensuring published books outrank forum posts</li>
+            <li class="fragment stagger-5" data-fragment-index="4"><strong>Immutable pipeline state</strong> &mdash; Pydantic frozen=True models with model_copy(update={...}) eliminate mutation bugs and enable crash recovery</li>
+          </ul>
+        </div>
+
+        <aside class="notes">
+          Five key engineering challenges that were solved during development.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 15: Challenges Ahead
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Road Ahead</h2>
+        <hr class="divider">
+
+        <div class="challenge-list ahead">
+          <ul>
+            <li class="fragment stagger-1" data-fragment-index="0"><strong>Production scaling</strong> &mdash; multi-worker Uvicorn, Redis caching layer, CDN for static assets</li>
+            <li class="fragment stagger-2" data-fragment-index="1"><strong>Audio fingerprinting</strong> &mdash; Shazam-style matching to link flier events to audio recordings and mixes</li>
+            <li class="fragment stagger-3" data-fragment-index="2"><strong>Geospatial timeline</strong> &mdash; map visualization of rave history across cities and decades</li>
+            <li class="fragment stagger-4" data-fragment-index="3"><strong>Community contributions</strong> &mdash; user-submitted fliers, corrections, and local scene knowledge</li>
+            <li class="fragment stagger-5" data-fragment-index="4"><strong>Expanded test coverage</strong> &mdash; targeting 98% line coverage from current ~92% baseline</li>
+          </ul>
+        </div>
+
+        <aside class="notes">
+          Five areas of future development and improvement.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 16: GitHub History
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">GitHub History</h2>
+        <hr class="divider">
+
+        <div class="git-stats fragment fade-in stagger-1" data-fragment-index="0">
+          <div class="git-stat">
+            <div class="stat-val">145</div>
+            <div class="stat-label">commits</div>
+          </div>
+          <div class="git-stat">
+            <div class="stat-val">9</div>
+            <div class="stat-label">days</div>
+          </div>
+          <div class="git-stat">
+            <div class="stat-val">23</div>
+            <div class="stat-label">PRs merged</div>
+          </div>
+          <div class="git-stat">
+            <div class="stat-val">MIT</div>
+            <div class="stat-label">license</div>
+          </div>
+          <div class="git-stat">
+            <div class="stat-val">GH Flow</div>
+            <div class="stat-label">branch strategy</div>
+          </div>
+        </div>
+
+        <div class="fragment fade-in stagger-2" data-fragment-index="1">
+          <div class="commit-chart" id="commit-chart">
+            <div class="commit-bar" data-height="20" style="background:var(--amethyst);"><span class="cb-val">8</span><span class="cb-label">Feb 18</span></div>
+            <div class="commit-bar" data-height="65" style="background:var(--amethyst);"><span class="cb-val">26</span><span class="cb-label">Feb 19</span></div>
+            <div class="commit-bar" data-height="100" style="background:linear-gradient(180deg,var(--amethyst),var(--verdigris));"><span class="cb-val">40</span><span class="cb-label">Feb 20</span></div>
+            <div class="commit-bar" data-height="55" style="background:var(--amethyst);"><span class="cb-val">22</span><span class="cb-label">Feb 21</span></div>
+            <div class="commit-bar" data-height="45" style="background:var(--verdigris);"><span class="cb-val">18</span><span class="cb-label">Feb 22</span></div>
+            <div class="commit-bar" data-height="38" style="background:var(--verdigris);"><span class="cb-val">15</span><span class="cb-label">Feb 23</span></div>
+            <div class="commit-bar" data-height="15" style="background:var(--amber);"><span class="cb-val">6</span><span class="cb-label">Feb 24</span></div>
+            <div class="commit-bar" data-height="18" style="background:var(--amber);"><span class="cb-val">7</span><span class="cb-label">Feb 25</span></div>
+            <div class="commit-bar" data-height="8" style="background:var(--amber);"><span class="cb-val">3</span><span class="cb-label">Feb 26</span></div>
+          </div>
+        </div>
+
+        <div class="git-milestones fragment fade-in stagger-3" data-fragment-index="2">
+          <span>Feb 18</span> Core architecture &rarr;
+          <span>Feb 19-20</span> Frontend + RAG &rarr;
+          <span>Feb 21</span> Docker deploy &rarr;
+          <span>Feb 22-23</span> Polish + Tests &rarr;
+          <span>Feb 24-26</span> Docs + Deliverables
+        </div>
+
+        <p class="text-center smaller text-muted mt-1 fragment fade-in stagger-4" data-fragment-index="3">Annotated codebase with inline comments on GitHub &middot; Open source</p>
+
+        <aside class="notes">
+          GitHub velocity stats and commit frequency chart showing 9 days of intensive development.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 17: MWRCA Integration
+           ========================================== -->
+      <section data-transition="slide">
+        <h2 class="text-center" style="font-size:1.4em;">Midwest Rave Culture Archive</h2>
+        <p class="text-center"><span class="cuttable-badge">Cuttable</span></p>
+        <hr class="divider">
+
+        <p class="text-center" style="font-size:0.85em;color:var(--bunker-300);max-width:900px;margin:0 auto 0.8em;">Research partnership with <strong>mwrca.org</strong> &mdash; shared mission in digital preservation of electronic music culture</p>
+
+        <div class="mwrca-grid">
+          <div class="mwrca-card fragment stagger-1" data-fragment-index="0">
+            <h4>Corpus Enrichment</h4>
+            <p>Ingest curated archive materials &mdash; flier scans, event records, artist biographies &mdash; into the raiveFlier knowledge base</p>
+          </div>
+          <div class="mwrca-card fragment stagger-2" data-fragment-index="1">
+            <h4>Cross-Referencing</h4>
+            <p>Match flier entities against archival records for verification and discovery of new connections</p>
+          </div>
+          <div class="mwrca-card fragment stagger-3" data-fragment-index="2">
+            <h4>Research Traffic</h4>
+            <p>Drive new researchers and enthusiasts to the archive catalog through raiveFlier search results</p>
+          </div>
+          <div class="mwrca-card fragment stagger-4" data-fragment-index="3">
+            <h4>Metadata Verification</h4>
+            <p>Collaborative verification of dates, locations, lineups, and other flier metadata</p>
+          </div>
+        </div>
+
+        <aside class="notes">
+          Cuttable slide for shorter presentations. mwrca.org partnership for corpus enrichment and cross-referencing.
+        </aside>
+      </section>
+
+      <!-- ==========================================
+           SLIDE 18: Outro
+           ========================================== -->
+      <section class="outro-slide" data-transition="fade">
+        <div class="parallax-bg">
+          <div class="orb orb-1"></div>
+          <div class="orb orb-2"></div>
+          <div class="orb orb-3"></div>
+        </div>
+
+        <div class="fragment fade-in stagger-1" data-fragment-index="0">
+          <p class="outro-quote">&ldquo;The fliers were the internet before the internet.&rdquo;</p>
+        </div>
+
+        <div class="fragment fade-in stagger-2" data-fragment-index="1">
+          <div class="outro-wordmark">raiveFlier</div>
+          <hr class="divider">
+        </div>
+
+        <div class="fragment fade-in stagger-3" data-fragment-index="2">
+          <div class="outro-links">
+            <a href="https://github.com">GitHub Repo</a>
+            <a href="#">Live Demo</a>
+            <a href="#">Documentation</a>
+          </div>
+        </div>
+
+        <div class="fragment fade-in stagger-4" data-fragment-index="3">
+          <p class="outro-built">Built with Python, FastAPI, ChromaDB, and respect for the culture</p>
+          <p class="outro-questions">Questions?</p>
+        </div>
+
+        <aside class="notes">
+          Closing slide with the iconic quote, links, and invitation for questions.
+        </aside>
+      </section>
+
+    </div><!-- /.slides -->
+  </div><!-- /.reveal -->
+
+  <!-- ─────────────────────────────────────────────
+       CDN Scripts
+       ───────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+
+  <script>
+    // ─────────────────────────────────────────────
+    // Reveal.js Initialization
+    // ─────────────────────────────────────────────
+    Reveal.initialize({
+      width: 1920,
+      height: 1080,
+      margin: 0.04,
+      minScale: 0.2,
+      maxScale: 2.0,
+      hash: true,
+      slideNumber: true,
+      controls: true,
+      progress: true,
+      center: true,
+      transition: 'slide',
+      transitionSpeed: 'default',
+      backgroundTransition: 'fade',
+      plugins: []
+    }).then(() => {
+      setupCounterAnimations();
+      setupProgressBarAnimation();
+      setupCommitChartAnimation();
+    });
+
+    // ─────────────────────────────────────────────
+    // Animated Counter Logic
+    // Uses CSS @property for smooth number animation.
+    // When a counter's parent fragment becomes visible,
+    // we set the --counter-val to the target value and
+    // CSS transition handles the rest.
+    // ─────────────────────────────────────────────
+    function setupCounterAnimations() {
+      const counters = document.querySelectorAll('.animated-counter');
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            const target = mutation.target;
+            if (target.classList.contains('visible')) {
+              const counter = target.querySelector('.animated-counter');
+              if (counter && !counter.dataset.animated) {
+                const targetVal = parseInt(counter.dataset.target, 10);
+                counter.style.setProperty('--counter-val', targetVal);
+                counter.dataset.animated = 'true';
+              }
+            }
+          }
+        });
+      });
+
+      counters.forEach((counter) => {
+        const parent = counter.closest('.fragment');
+        if (parent) {
+          observer.observe(parent, { attributes: true });
+        }
+      });
+    }
+
+    // ─────────────────────────────────────────────
+    // Progress Bar Animation (Slide 5)
+    // Triggered when the parent fragment becomes visible.
+    // ─────────────────────────────────────────────
+    function setupProgressBarAnimation() {
+      const progressFill = document.getElementById('progress-fill-5');
+      if (!progressFill) return;
+
+      const fragment = progressFill.closest('.fragment');
+      if (!fragment) return;
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            if (fragment.classList.contains('visible')) {
+              progressFill.classList.add('active');
+            }
+          }
+        });
+      });
+
+      observer.observe(fragment, { attributes: true });
+    }
+
+    // ─────────────────────────────────────────────
+    // Commit Chart Animation (Slide 16)
+    // Animates bar heights when the parent fragment
+    // becomes visible.
+    // ─────────────────────────────────────────────
+    function setupCommitChartAnimation() {
+      const chart = document.getElementById('commit-chart');
+      if (!chart) return;
+
+      const fragment = chart.closest('.fragment');
+      if (!fragment) return;
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            if (fragment.classList.contains('visible')) {
+              const bars = chart.querySelectorAll('.commit-bar');
+              bars.forEach((bar) => {
+                const h = bar.dataset.height;
+                bar.style.height = h + 'px';
+              });
+            }
+          }
+        });
+      });
+
+      observer.observe(fragment, { attributes: true });
+    }
+
+    // ─────────────────────────────────────────────
+    // Pipeline illumination (Slide 8)
+    // When each pipeline step fragment becomes visible,
+    // add the .lit class for the glow effect.
+    // ─────────────────────────────────────────────
+    Reveal.on('fragmentshown', (event) => {
+      const fragment = event.fragment;
+      if (fragment.classList.contains('illuminate')) {
+        const step = fragment.closest('.pipeline-step') || fragment;
+        step.classList.add('lit');
+      }
+    });
+
+    Reveal.on('fragmenthidden', (event) => {
+      const fragment = event.fragment;
+      if (fragment.classList.contains('illuminate')) {
+        const step = fragment.closest('.pipeline-step') || fragment;
+        step.classList.remove('lit');
+      }
+    });
+
+    // ─────────────────────────────────────────────
+    // Caption System
+    // Loads JSON caption files and displays them
+    // in the overlay based on current slide and
+    // selected language.
+    // ─────────────────────────────────────────────
+    (function() {
+      const LANGS = ['OFF', 'EN', 'ES', 'DE', 'ZH'];
+      let currentLangIndex = 0;
+      let captionData = {};
+      const overlay = document.getElementById('captionOverlay');
+      const captionText = document.getElementById('captionText');
+      const toggleBtn = document.getElementById('captionToggle');
+
+      // Preload all caption files
+      ['en', 'es', 'de', 'zh'].forEach((lang) => {
+        fetch('captions/' + lang + '.json')
+          .then(r => r.json())
+          .then(data => { captionData[lang.toUpperCase()] = data.slides; })
+          .catch(() => { /* Caption file not available, fail silently */ });
+      });
+
+      function updateCaption() {
+        const lang = LANGS[currentLangIndex];
+        if (lang === 'OFF') {
+          overlay.classList.remove('active');
+          toggleBtn.classList.remove('active-lang');
+          toggleBtn.textContent = 'CC';
+          return;
+        }
+
+        overlay.classList.add('active');
+        toggleBtn.classList.add('active-lang');
+        toggleBtn.textContent = lang;
+
+        const slideNum = Reveal.getIndices().h + 1;
+        const slides = captionData[lang];
+        if (slides && slides[String(slideNum)]) {
+          captionText.textContent = slides[String(slideNum)];
+        } else {
+          captionText.textContent = '';
+        }
+      }
+
+      function cycleLang() {
+        currentLangIndex = (currentLangIndex + 1) % LANGS.length;
+        updateCaption();
+      }
+
+      toggleBtn.addEventListener('click', cycleLang);
+
+      // Keyboard shortcut: C key to cycle captions
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'c' || e.key === 'C') {
+          // Only cycle if not typing in an input
+          if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            cycleLang();
+          }
+        }
+      });
+
+      // Update caption on slide change
+      Reveal.on('slidechanged', updateCaption);
+
+      // Also update on fragment changes (same slide, different content)
+      Reveal.on('fragmentshown', updateCaption);
+      Reveal.on('fragmenthidden', updateCaption);
+    })();
+  </script>
+</body>
+</html>

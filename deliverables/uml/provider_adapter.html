@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  provider_adapter.html — raiveFlier UML Diagram 5 of 5
+  Class Diagram: ILLMProvider Interface and Concrete Adapters
+
+  Architecture Role:
+    Detailed UML class diagram showing the ILLMProvider abstract base class
+    and its three concrete implementations (OpenAI, Anthropic, Ollama).
+    Uses standard UML class notation: interface stereotype, three compartments
+    (name, fields, methods), and dashed realization arrows with open triangles.
+    Also shows the Settings dependency injected into each provider.
+
+  This diagram demonstrates the core adapter pattern that eliminates
+  vendor lock-in. All LLM calls go through the ILLMProvider interface;
+  switching from OpenAI to Anthropic or Ollama requires only changing
+  the DI wiring in main.py.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Provider Adapter Class Diagram</title>
+
+<!-- Google Fonts CDN -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0c;
+    color: #d8d5cd;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .diagram-container {
+    animation: fadeIn 0.8s ease-out both;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .title-bar {
+    background: #14141a;
+    border: 1px solid #2a2a30;
+    border-radius: 8px 8px 0 0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .title-bar h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #d8d5cd;
+  }
+
+  .title-bar .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #a080c0;
+    background: #6a4a8a22;
+    border: 1px solid #6a4a8a44;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .svg-wrapper {
+    background: #0a0a0c;
+    border: 1px solid #2a2a30;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+
+  .svg-wrapper svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .watermark {
+    text-align: center;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #6a6a70;
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <div class="title-bar">
+    <h1>ILLMProvider — Class Diagram</h1>
+    <span class="badge">UML Class</span>
+  </div>
+
+  <div class="svg-wrapper">
+    <!--
+      SVG Class Diagram Structure:
+      - Top center: ILLMProvider interface (ABC) with stereotype, no fields, all abstract methods
+      - Bottom row: three concrete adapter classes, each with three compartments
+      - Dashed arrows with open triangle heads (realization) connect adapters to interface
+      - Right side: Settings class showing dependency injection
+      - Dependency arrows from each adapter to Settings
+    -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+      <defs>
+        <!--
+          Open triangle marker for UML realization arrows.
+          Dashed line + open triangle = "implements" in UML.
+        -->
+        <marker id="realizationTriangle" markerWidth="12" markerHeight="10" refX="12" refY="5" orient="auto">
+          <path d="M0,0 L12,5 L0,10 Z" fill="none" stroke="#8a6aaa" stroke-width="1.2"/>
+        </marker>
+
+        <!-- Dependency arrow (open, smaller) -->
+        <marker id="dependArrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="none" stroke="#6a6a70" stroke-width="1"/>
+        </marker>
+      </defs>
+
+      <!-- Background -->
+      <rect width="1200" height="800" fill="#0a0a0c"/>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        ILLMProvider INTERFACE (ABC)
+        Central class box at the top.
+        Three compartments: name, fields (empty — it is an interface), methods.
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(370, 30)">
+        <!--
+          Class box outer border — amethyst accent for interfaces.
+          Total height: name (50) + separator + methods (~155) = ~210
+        -->
+        <rect x="0" y="0" width="380" height="218" rx="4" fill="#1e1e24" stroke="#6a4a8a" stroke-width="2"/>
+
+        <!--
+          Compartment 1: Name
+          Includes the interface stereotype and class name.
+        -->
+        <rect x="0" y="0" width="380" height="50" rx="4" fill="#1e1e24" stroke="none"/>
+        <!-- Round only top corners by clipping -->
+        <text x="190" y="20" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          &#171;interface&#187;
+        </text>
+        <text x="190" y="40" text-anchor="middle" font-family="Space Grotesk" font-size="16" font-weight="700" fill="#d8d5cd">
+          ILLMProvider
+        </text>
+        <!-- Separator line between name and methods -->
+        <line x1="0" y1="50" x2="380" y2="50" stroke="#6a4a8a" stroke-width="1"/>
+
+        <!--
+          Compartment 2: Fields
+          Interfaces have no instance fields — section is labeled as empty.
+        -->
+        <text x="12" y="68" font-family="IBM Plex Mono" font-size="10" fill="#6a6a70">
+          (no fields — abstract)
+        </text>
+        <!-- Separator -->
+        <line x1="0" y1="78" x2="380" y2="78" stroke="#6a4a8a" stroke-width="1"/>
+
+        <!--
+          Compartment 3: Methods
+          All methods are abstract (italicized by convention; shown with + prefix).
+          Method signatures match the actual ILLMProvider ABC in the codebase.
+        -->
+        <text x="12" y="96" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          + complete(system_prompt: str,
+        </text>
+        <text x="36" y="112" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          user_prompt: str,
+        </text>
+        <text x="36" y="128" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          temperature: float = 0.3,
+        </text>
+        <text x="36" y="144" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          max_tokens: int = 4000) → str
+        </text>
+        <text x="12" y="164" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          + vision_extract(image_bytes, prompt) → str
+        </text>
+        <text x="12" y="182" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          + supports_vision() → bool
+        </text>
+        <text x="12" y="198" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          + get_provider_name() → str
+        </text>
+        <text x="12" y="214" font-family="IBM Plex Mono" font-size="10" fill="#6a6a70">
+          + is_available() → bool  |  + validate_credentials() → bool
+        </text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        REALIZATION ARROWS
+        Dashed lines with open triangles connecting adapters to interface.
+        Arrow points UP from adapter to interface.
+        ═══════════════════════════════════════════════════
+      -->
+
+      <!-- Arrow from OpenAILLMProvider → ILLMProvider -->
+      <line x1="200" y1="420" x2="480" y2="252"
+            stroke="#8a6aaa" stroke-width="1.2" stroke-dasharray="6,4"
+            marker-end="url(#realizationTriangle)"/>
+
+      <!-- Arrow from AnthropicLLMProvider → ILLMProvider -->
+      <line x1="560" y1="420" x2="560" y2="252"
+            stroke="#8a6aaa" stroke-width="1.2" stroke-dasharray="6,4"
+            marker-end="url(#realizationTriangle)"/>
+
+      <!-- Arrow from OllamaLLMProvider → ILLMProvider -->
+      <line x1="920" y1="420" x2="640" y2="252"
+            stroke="#8a6aaa" stroke-width="1.2" stroke-dasharray="6,4"
+            marker-end="url(#realizationTriangle)"/>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        CONCRETE ADAPTER 1: OpenAILLMProvider
+        Three compartments: name, fields, methods.
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(40, 430)">
+        <rect x="0" y="0" width="320" height="250" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1.5"/>
+
+        <!-- Name compartment -->
+        <text x="160" y="22" text-anchor="middle" font-family="Space Grotesk" font-size="15" font-weight="600" fill="#d8d5cd">
+          OpenAILLMProvider
+        </text>
+        <line x1="0" y1="32" x2="320" y2="32" stroke="#4a8a7a" stroke-width="1"/>
+
+        <!--
+          Fields compartment
+          Private fields (prefixed with -) hold model configuration.
+        -->
+        <text x="12" y="52" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _model: str = "gpt-4o-mini"
+        </text>
+        <text x="12" y="70" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _vision_model: str = "gpt-4o"
+        </text>
+        <text x="12" y="88" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _client: AsyncOpenAI
+        </text>
+        <text x="12" y="106" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _settings: Settings
+        </text>
+        <line x1="0" y1="116" x2="320" y2="116" stroke="#4a8a7a" stroke-width="1"/>
+
+        <!--
+          Methods compartment
+          Overrides all abstract methods from ILLMProvider.
+        -->
+        <text x="12" y="136" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + complete(...) → str
+        </text>
+        <text x="12" y="154" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + vision_extract(...) → str
+        </text>
+        <text x="12" y="172" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + supports_vision() → True
+        </text>
+        <text x="12" y="190" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + get_provider_name() → "openai"
+        </text>
+        <text x="12" y="208" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + is_available() → bool
+        </text>
+        <text x="12" y="226" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + validate_credentials() → bool
+        </text>
+
+        <!-- Provider badge -->
+        <rect x="230" y="6" width="80" height="18" rx="3" fill="#4a8a7a" opacity="0.2"/>
+        <text x="270" y="19" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">OpenAI API</text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        CONCRETE ADAPTER 2: AnthropicLLMProvider
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(400, 430)">
+        <rect x="0" y="0" width="320" height="250" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1.5"/>
+
+        <text x="160" y="22" text-anchor="middle" font-family="Space Grotesk" font-size="15" font-weight="600" fill="#d8d5cd">
+          AnthropicLLMProvider
+        </text>
+        <line x1="0" y1="32" x2="320" y2="32" stroke="#4a8a7a" stroke-width="1"/>
+
+        <text x="12" y="52" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _model: str = "claude-sonnet"
+        </text>
+        <text x="12" y="70" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _client: AsyncAnthropic
+        </text>
+        <text x="12" y="88" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _settings: Settings
+        </text>
+        <text x="12" y="106" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _max_retries: int = 3
+        </text>
+        <line x1="0" y1="116" x2="320" y2="116" stroke="#4a8a7a" stroke-width="1"/>
+
+        <text x="12" y="136" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + complete(...) → str
+        </text>
+        <text x="12" y="154" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + vision_extract(...) → str
+        </text>
+        <text x="12" y="172" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + supports_vision() → True
+        </text>
+        <text x="12" y="190" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + get_provider_name() → "anthropic"
+        </text>
+        <text x="12" y="208" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + is_available() → bool
+        </text>
+        <text x="12" y="226" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + validate_credentials() → bool
+        </text>
+
+        <rect x="220" y="6" width="90" height="18" rx="3" fill="#4a8a7a" opacity="0.2"/>
+        <text x="265" y="19" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Anthropic API</text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        CONCRETE ADAPTER 3: OllamaLLMProvider
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(760, 430)">
+        <rect x="0" y="0" width="320" height="250" rx="4" fill="#14141a" stroke="#4a8a7a" stroke-width="1.5"/>
+
+        <text x="160" y="22" text-anchor="middle" font-family="Space Grotesk" font-size="15" font-weight="600" fill="#d8d5cd">
+          OllamaLLMProvider
+        </text>
+        <line x1="0" y1="32" x2="320" y2="32" stroke="#4a8a7a" stroke-width="1"/>
+
+        <text x="12" y="52" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _model: str = "llama3.1"
+        </text>
+        <text x="12" y="70" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _vision_model: str = "llava"
+        </text>
+        <text x="12" y="88" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _base_url: str
+        </text>
+        <text x="12" y="106" font-family="IBM Plex Mono" font-size="11" fill="#6ab0a0">
+          - _settings: Settings
+        </text>
+        <line x1="0" y1="116" x2="320" y2="116" stroke="#4a8a7a" stroke-width="1"/>
+
+        <text x="12" y="136" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + complete(...) → str
+        </text>
+        <text x="12" y="154" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + vision_extract(...) → str
+        </text>
+        <text x="12" y="172" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + supports_vision() → True
+        </text>
+        <text x="12" y="190" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + get_provider_name() → "ollama"
+        </text>
+        <text x="12" y="208" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + is_available() → bool
+        </text>
+        <text x="12" y="226" font-family="IBM Plex Mono" font-size="11" fill="#d8d5cd">
+          + validate_credentials() → bool
+        </text>
+
+        <rect x="230" y="6" width="80" height="18" rx="3" fill="#4a8a7a" opacity="0.2"/>
+        <text x="270" y="19" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6ab0a0">Local/Self</text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        SETTINGS CLASS (Dependency)
+        Injected into all providers via constructor.
+        Shows the DI pattern: providers never create Settings themselves.
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(880, 50)">
+        <rect x="0" y="0" width="260" height="160" rx="4" fill="#14141a" stroke="#b89a50" stroke-width="1.2"/>
+
+        <text x="130" y="20" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          &#171;config&#187;
+        </text>
+        <text x="130" y="38" text-anchor="middle" font-family="Space Grotesk" font-size="14" font-weight="600" fill="#d8d5cd">
+          Settings
+        </text>
+        <line x1="0" y1="48" x2="260" y2="48" stroke="#b89a50" stroke-width="1"/>
+
+        <!-- Key fields from Settings relevant to LLM providers -->
+        <text x="12" y="68" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          + openai_api_key: str | None
+        </text>
+        <text x="12" y="84" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          + anthropic_api_key: str | None
+        </text>
+        <text x="12" y="100" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          + ollama_base_url: str
+        </text>
+        <text x="12" y="116" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          + llm_temperature: float
+        </text>
+        <text x="12" y="132" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          + llm_max_tokens: int
+        </text>
+        <text x="12" y="148" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">
+          + default_llm_provider: str
+        </text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        DEPENDENCY ARROWS: Adapters → Settings
+        Dashed arrows showing constructor injection dependency.
+        ═══════════════════════════════════════════════════
+      -->
+
+      <!-- OpenAI → Settings -->
+      <line x1="360" y1="536" x2="880" y2="180"
+            stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3"
+            marker-end="url(#dependArrow)"/>
+
+      <!-- Anthropic → Settings -->
+      <line x1="720" y1="450" x2="880" y2="200"
+            stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3"
+            marker-end="url(#dependArrow)"/>
+
+      <!-- Ollama → Settings -->
+      <line x1="920" y1="430" x2="1010" y2="215"
+            stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3"
+            marker-end="url(#dependArrow)"/>
+
+      <!-- Dependency label -->
+      <text x="850" y="320" font-family="IBM Plex Mono" font-size="10" fill="#6a6a70">
+        &#171;inject&#187;
+      </text>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        WIRING NOTE
+        Shows where dependency injection happens in the codebase.
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(40, 700)">
+        <rect x="0" y="0" width="480" height="50" rx="5" fill="#14141a" stroke="#2a2a30" stroke-width="1"/>
+        <text x="16" y="18" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Dependency Injection wiring point:
+        </text>
+        <text x="16" y="36" font-family="IBM Plex Mono" font-size="11" fill="#d0b468">
+          src/main.py → create_app() → build_providers(settings)
+        </text>
+      </g>
+
+      <!-- Fallback chain note -->
+      <g transform="translate(560, 700)">
+        <rect x="0" y="0" width="520" height="50" rx="5" fill="#14141a" stroke="#2a2a30" stroke-width="1"/>
+        <text x="16" y="18" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">
+          Fallback chain (graceful degradation):
+        </text>
+        <text x="16" y="36" font-family="IBM Plex Mono" font-size="11" fill="#a080c0">
+          OpenAI → Anthropic → Ollama
+        </text>
+        <text x="300" y="36" font-family="IBM Plex Mono" font-size="10" fill="#6a6a70">
+          (first available wins)
+        </text>
+      </g>
+
+      <!--
+        ═══════════════════════════════════════════════════
+        LEGEND
+        ═══════════════════════════════════════════════════
+      -->
+      <g transform="translate(40, 770)">
+        <!-- Interface -->
+        <rect x="0" y="0" width="40" height="16" rx="2" fill="#1e1e24" stroke="#6a4a8a" stroke-width="1.5"/>
+        <text x="50" y="12" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Interface (ABC)</text>
+
+        <!-- Concrete class -->
+        <rect x="190" y="0" width="40" height="16" rx="2" fill="#14141a" stroke="#4a8a7a" stroke-width="1.5"/>
+        <text x="240" y="12" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Concrete adapter</text>
+
+        <!-- Realization arrow -->
+        <line x1="400" y1="8" x2="440" y2="8" stroke="#8a6aaa" stroke-width="1.2" stroke-dasharray="6,4" marker-end="url(#realizationTriangle)"/>
+        <text x="452" y="12" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Realization (implements)</text>
+
+        <!-- Dependency arrow -->
+        <line x1="650" y1="8" x2="690" y2="8" stroke="#6a6a70" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#dependArrow)"/>
+        <text x="700" y="12" font-family="IBM Plex Mono" font-size="10" fill="#9a9a9e">Dependency (inject)</text>
+
+        <!-- Visibility -->
+        <text x="900" y="12" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">+ public</text>
+        <text x="970" y="12" font-family="IBM Plex Mono" font-size="10" fill="#d0b468">- private</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="watermark">raiveFlier — UML Diagrams</div>
+</div>
+
+</body>
+</html>

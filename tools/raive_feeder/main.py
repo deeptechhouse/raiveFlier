@@ -227,6 +227,19 @@ def _build_all(settings: FeederSettings) -> dict[str, Any]:
         components["approval_provider"] = None
         components["approval_service"] = None
 
+    # Flier history provider — connects to the same flier_history.db
+    # used by raiveFlier so the Connections tab can read all analyses.
+    from src.providers.flier_history.sqlite_flier_history_provider import SQLiteFlierHistoryProvider
+
+    flier_history = SQLiteFlierHistoryProvider(db_path=settings.flier_history_db_path)
+    components["flier_history"] = flier_history
+
+    # Graph aggregation service — builds the combined connection map.
+    from src.services.graph_aggregation_service import GraphAggregationService
+
+    graph_aggregation = GraphAggregationService(flier_history=flier_history)
+    components["graph_aggregation"] = graph_aggregation
+
     logger.info(
         "feeder_components_built",
         ingestion=status,
@@ -254,6 +267,11 @@ async def _lifespan(app: FastAPI):
     approval_provider = components.get("approval_provider")
     if approval_provider is not None:
         await approval_provider.initialize()
+
+    # Initialize flier history DB tables (idempotent CREATE TABLE).
+    flier_history = components.get("flier_history")
+    if flier_history is not None:
+        await flier_history.initialize()
 
     logger.info(
         "raive_feeder_started",
