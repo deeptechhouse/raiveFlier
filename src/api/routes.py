@@ -40,7 +40,7 @@ import uuid
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, UploadFile
 
 from src.api.schemas import (
     AskQuestionRequest,
@@ -748,8 +748,8 @@ async def get_stored_analysis(
 )
 async def list_analyses(
     request: Request,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ) -> AnalysisListResponse:
     """List all permanently stored analyses with pagination."""
     flier_history = getattr(request.app.state, "flier_history", None)

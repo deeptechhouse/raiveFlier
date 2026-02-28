@@ -800,7 +800,7 @@ async def get_connection_map_node(request: Request, name: str) -> dict:
         raise HTTPException(status_code=503, detail="Graph aggregation service unavailable")
 
     detail = await graph_agg.get_node_detail(name)
-    if detail is None:
+    if not detail or not detail.get("found"):
         raise HTTPException(status_code=404, detail=f"Entity not found: {name}")
     return detail
 

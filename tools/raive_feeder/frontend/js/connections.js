@@ -18,11 +18,23 @@
  *   PROMOTER → Amber    (#f39c12)
  *   DEFAULT  → Muted    (#6a6a70)
  *
+ * Security: All API-sourced strings inserted into the DOM via innerHTML
+ * are escaped through _escapeHtml() to prevent XSS from LLM-generated
+ * or user-submitted content stored in the database.
+ *
  * Pattern: Module (IIFE returning public API).
  * Depends on: FeederApp (app.js), vis-network (vendor).
  */
 const FeederConnections = (() => {
   'use strict';
+
+  // ─── HTML escaping for XSS prevention ────────────────────────────
+  // All API-sourced strings must pass through this before innerHTML.
+  function _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
 
   // ─── Entity type → vis-network node color ─────────────────────────
   const TYPE_COLORS = {
@@ -211,9 +223,9 @@ const FeederConnections = (() => {
     _els.sidebarType.textContent = nodeData.entity_type;
     _els.sidebarType.className = `connections-sidebar__type connections-sidebar__type--${typeLower}`;
 
-    // Stats
+    // Stats — appearance_count is a number, but escape defensively.
     _els.sidebarStats.innerHTML = `
-      <p>Appears on <strong>${nodeData.appearance_count}</strong> flier(s)</p>
+      <p>Appears on <strong>${_escapeHtml(nodeData.appearance_count)}</strong> flier(s)</p>
     `;
 
     // Fetch full detail from API
@@ -223,9 +235,9 @@ const FeederConnections = (() => {
       const edgesHtml = (detail.edges || []).map(e => {
         const other = e.source === nodeData.name ? e.target : e.source;
         return `<div class="sidebar-edge-item">
-          <span class="sidebar-edge-item__type">${e.relationship_type}</span>
-          <span class="sidebar-edge-item__target">${other}</span>
-          <span class="sidebar-edge-item__confidence">${(e.avg_confidence * 100).toFixed(0)}%</span>
+          <span class="sidebar-edge-item__type">${_escapeHtml(e.relationship_type)}</span>
+          <span class="sidebar-edge-item__target">${_escapeHtml(other)}</span>
+          <span class="sidebar-edge-item__confidence">${_escapeHtml((e.avg_confidence * 100).toFixed(0))}%</span>
         </div>`;
       }).join('');
       _els.sidebarEdges.innerHTML = edgesHtml
@@ -234,7 +246,7 @@ const FeederConnections = (() => {
 
       // Render flier sessions
       const fliersHtml = (detail.source_sessions || []).map(sid =>
-        `<div class="sidebar-flier-item">${sid.slice(0, 8)}...</div>`
+        `<div class="sidebar-flier-item">${_escapeHtml(sid.slice(0, 8))}...</div>`
       ).join('');
       _els.sidebarFliers.innerHTML = fliersHtml
         ? `<h4>Fliers</h4>${fliersHtml}`
