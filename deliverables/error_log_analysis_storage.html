@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Error/Bug Log: Analysis Storage &amp; Security Fixes</title>
+<style>
+  /* ─── BUNKER + AMETHYST DESIGN SYSTEM ─── */
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #0a0a0c;
+    color: #d4d4d8;
+    line-height: 1.7;
+    padding: 2.5rem 1.5rem;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    border-bottom: 2px solid #9b59b6;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .header h1 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: #f4f4f5;
+    letter-spacing: -0.02em;
+  }
+
+  .header h1 span.accent {
+    color: #9b59b6;
+  }
+
+  .header .subtitle {
+    font-size: 0.95rem;
+    color: #71717a;
+    margin-top: 0.35rem;
+  }
+
+  .header .meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: #a1a1aa;
+  }
+
+  .header .meta strong {
+    color: #d4d4d8;
+  }
+
+  /* ─── SECTION HEADINGS ─── */
+  h2 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    color: #c084fc;
+    margin-top: 2.5rem;
+    margin-bottom: 1.25rem;
+    padding-left: 0.75rem;
+    border-left: 3px solid #9b59b6;
+  }
+
+  /* ─── SUMMARY STATS ─── */
+  .stats-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .stat {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    flex: 1;
+    min-width: 160px;
+    text-align: center;
+  }
+
+  .stat .number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 2rem;
+    font-weight: 600;
+    color: #9b59b6;
+    display: block;
+  }
+
+  .stat .label {
+    font-size: 0.8rem;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+  }
+
+  .stat.critical .number { color: #ef4444; }
+  .stat.resolved .number { color: #22c55e; }
+
+  /* ─── BUG ENTRY CARDS ─── */
+  .entry {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-left: 4px solid #9b59b6;
+    border-radius: 0 8px 8px 0;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    transition: border-color 0.2s ease;
+  }
+
+  .entry:hover {
+    border-left-color: #c084fc;
+  }
+
+  .entry-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .entry-header h3 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #f4f4f5;
+    line-height: 1.4;
+  }
+
+  .entry-header h3 .bug-num {
+    color: #9b59b6;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    margin-right: 0.5rem;
+  }
+
+  /* ─── SEVERITY & STATUS BADGES ─── */
+  .badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .badge-critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .badge-medium {
+    background: rgba(234, 179, 8, 0.12);
+    color: #eab308;
+    border: 1px solid rgba(234, 179, 8, 0.25);
+  }
+
+  .badge-low {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+  }
+
+  .badge-resolved {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+
+  /* ─── DETAIL ROWS ─── */
+  .detail {
+    margin-bottom: 0.65rem;
+    font-size: 0.92rem;
+    color: #a1a1aa;
+  }
+
+  .detail strong {
+    color: #d4d4d8;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 110px;
+  }
+
+  .detail code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.84rem;
+    background: #27272a;
+    color: #c084fc;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+  }
+
+  .detail .filepath {
+    color: #a78bfa;
+  }
+
+  /* ─── RISK CALLOUT ─── */
+  .risk {
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    font-size: 0.88rem;
+    color: #fca5a5;
+  }
+
+  .risk::before {
+    content: "RISK: ";
+    font-weight: 700;
+    color: #ef4444;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+
+  /* ─── FIX DESCRIPTION ─── */
+  .fix {
+    background: rgba(34, 197, 94, 0.06);
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    font-size: 0.88rem;
+    color: #86efac;
+  }
+
+  .fix::before {
+    content: "FIX: ";
+    font-weight: 700;
+    color: #22c55e;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+
+  /* ─── COMMIT REF ─── */
+  .commit-ref {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.6rem;
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: #9b59b6;
+  }
+
+  .commit-ref::before {
+    content: "commit";
+    color: #52525b;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #27272a;
+    font-size: 0.8rem;
+    color: #52525b;
+    text-align: center;
+  }
+
+  .footer span.project-name {
+    color: #9b59b6;
+    font-weight: 600;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 640px) {
+    .entry-header { flex-direction: column; }
+    .badges { align-self: flex-start; }
+    .header .meta { flex-direction: column; gap: 0.25rem; }
+    .stats-bar { flex-direction: column; }
+    .stat { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ─── HEADER ─── -->
+  <div class="header">
+    <h1><span class="accent">raiveFlier</span> — Error/Bug Log</h1>
+    <p class="subtitle">Analysis Storage &amp; Security Fixes Session</p>
+    <div class="meta">
+      <span><strong>Date:</strong> 2026-02-27</span>
+      <span><strong>Session focus:</strong> OWASP security audit, test failures, dead-code cleanup</span>
+      <span><strong>Status:</strong> All resolved</span>
+    </div>
+  </div>
+
+  <!-- ─── SUMMARY STATS ─── -->
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="number">5</span>
+      <span class="label">Bugs Found</span>
+    </div>
+    <div class="stat critical">
+      <span class="number">2</span>
+      <span class="label">Critical</span>
+    </div>
+    <div class="stat">
+      <span class="number">2</span>
+      <span class="label">Commits</span>
+    </div>
+    <div class="stat resolved">
+      <span class="number">5</span>
+      <span class="label">Resolved</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>Critical Security Vulnerabilities</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- ─── BUG 1 ─── -->
+  <div class="entry">
+    <div class="entry-header">
+      <h3><span class="bug-num">#1</span> XSS Vulnerability in connections.js</h3>
+      <div class="badges">
+        <span class="badge badge-critical">Critical</span>
+        <span class="badge badge-resolved">Resolved</span>
+      </div>
+    </div>
+
+    <div class="detail">
+      <strong>Location:</strong>
+      <code class="filepath">tools/raive_feeder/frontend/js/connections.js</code>, lines 225&ndash;237
+    </div>
+    <div class="detail">
+      <strong>Symptom:</strong>
+      API-sourced strings (entity names, relationship types, session IDs) were injected directly into <code>innerHTML</code> without escaping.
+    </div>
+    <div class="detail">
+      <strong>Root Cause:</strong>
+      <code>_showEntityDetail()</code> used template literals with raw API data inside <code>innerHTML</code> assignments. No sanitization layer existed between the API response and DOM insertion.
+    </div>
+
+    <div class="risk">
+      LLM-generated content or OCR results containing HTML/script tags could execute arbitrary JavaScript in the browser. Since raiveFlier processes user-uploaded flier images through OCR and LLM entity extraction, an attacker could craft a flier image containing malicious text that would be extracted as an entity name and rendered unsafely in the connection map UI.
+    </div>
+
+    <div class="fix">
+      Added <code>_escapeHtml()</code> helper that creates a temporary DOM element and uses the <code>textContent</code>/<code>innerHTML</code> roundtrip for safe escaping. Applied to all interpolated values in <code>innerHTML</code> calls throughout the connections module.
+    </div>
+
+    <span class="commit-ref">07196a6</span>
+  </div>
+
+  <!-- ─── BUG 2 ─── -->
+  <div class="entry">
+    <div class="entry-header">
+      <h3><span class="bug-num">#2</span> Missing Pagination Bounds Validation</h3>
+      <div class="badges">
+        <span class="badge badge-critical">Critical</span>
+        <span class="badge badge-resolved">Resolved</span>
+      </div>
+    </div>
+
+    <div class="detail">
+      <strong>Location:</strong>
+      <code class="filepath">src/api/routes.py</code>, <code>list_analyses()</code> endpoint
+    </div>
+    <div class="detail">
+      <strong>Symptom:</strong>
+      <code>limit</code> and <code>offset</code> query params accepted any integer value including negative numbers and extremely large values.
+    </div>
+    <div class="detail">
+      <strong>Root Cause:</strong>
+      Parameters were declared as plain <code>int</code> with defaults but no FastAPI <code>Query()</code> constraints. No input validation was applied at the API boundary.
+    </div>
+
+    <div class="risk">
+      <code>limit=-1</code> returns all rows in SQLite; very large limits could cause memory exhaustion on the 512MB Render deployment. This is a denial-of-service vector exploitable by any authenticated API consumer.
+    </div>
+
+    <div class="fix">
+      Changed parameters to use FastAPI's <code>Query()</code> with explicit bounds: <code>Query(default=50, ge=1, le=200)</code> for limit and <code>Query(default=0, ge=0)</code> for offset. FastAPI now rejects out-of-range values with a 422 response before the handler executes.
+    </div>
+
+    <span class="commit-ref">07196a6</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>Logic &amp; Dead-Code Bugs</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- ─── BUG 3 ─── -->
+  <div class="entry">
+    <div class="entry-header">
+      <h3><span class="bug-num">#3</span> Dead-Code 404 Check in Connection Map Node Endpoint</h3>
+      <div class="badges">
+        <span class="badge badge-medium">Medium</span>
+        <span class="badge badge-resolved">Resolved</span>
+      </div>
+    </div>
+
+    <div class="detail">
+      <strong>Location:</strong>
+      <code class="filepath">tools/raive_feeder/api/routes.py</code>, <code>get_connection_map_node()</code>
+    </div>
+    <div class="detail">
+      <strong>Symptom:</strong>
+      The 404 check <code>if detail is None</code> never triggered, meaning requests for non-existent nodes returned a 200 with a <code>{"found": False}</code> body instead of a proper 404 status code.
+    </div>
+    <div class="detail">
+      <strong>Root Cause:</strong>
+      Mismatch between the service's return contract and the endpoint's guard check. <code>get_node_detail()</code> returns <code>{"found": False}</code> (a truthy dict), never <code>None</code>.
+    </div>
+
+    <div class="fix">
+      Changed the guard to <code>if not detail or not detail.get("found")</code>, which correctly catches both <code>None</code> returns and the <code>{"found": False}</code> dict. The endpoint now returns HTTP 404 for missing nodes as intended.
+    </div>
+
+    <span class="commit-ref">07196a6</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <h2>Test Suite Fixes</h2>
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- ─── BUG 4 ─── -->
+  <div class="entry">
+    <div class="entry-header">
+      <h3><span class="bug-num">#4</span> Test Expectation Mismatches (4 failures)</h3>
+      <div class="badges">
+        <span class="badge badge-medium">Medium</span>
+        <span class="badge badge-resolved">Resolved</span>
+      </div>
+    </div>
+
+    <div class="detail">
+      <strong>Location:</strong>
+      <code class="filepath">tests/unit/test_sqlite_flier_history_provider.py</code>
+    </div>
+    <div class="detail">
+      <strong>Symptom:</strong>
+      Tests expected <code>ValueError</code> on missing flier, but provider returned error dicts. Tests expected a <code>"dismissals"</code> key in <code>get_all_active_analyses()</code> results, but the key was absent.
+    </div>
+    <div class="detail">
+      <strong>Root Cause:</strong>
+      Two-part mismatch: (1) the implementation returned error dicts <code>{"error": "..."}</code> instead of raising exceptions as the tests expected; (2) <code>get_all_active_analyses()</code> did not include edge dismissal data in its response.
+    </div>
+
+    <div class="fix">
+      Changed <code>store_analysis()</code> and <code>add_annotation()</code> to raise <code>ValueError</code> on missing flier, matching the test contract. Added a dismissal query to <code>get_all_active_analyses()</code> so the <code>"dismissals"</code> key is present. Updated the <code>add_analysis_annotation</code> API endpoint to catch <code>ValueError</code> and return an appropriate HTTP error response.
+    </div>
+
+    <span class="commit-ref">d95cce9</span>
+  </div>
+
+  <!-- ─── BUG 5 ─── -->
+  <div class="entry">
+    <div class="entry-header">
+      <h3><span class="bug-num">#5</span> Test Expected Key Set Out of Date</h3>
+      <div class="badges">
+        <span class="badge badge-low">Low</span>
+        <span class="badge badge-resolved">Resolved</span>
+      </div>
+    </div>
+
+    <div class="detail">
+      <strong>Location:</strong>
+      <code class="filepath">tests/unit/test_main_factories.py</code>, <code>test_returns_dict_with_expected_keys</code>
+    </div>
+    <div class="detail">
+      <strong>Symptom:</strong>
+      Test failed because <code>_build_all()</code> now returns a <code>"graph_aggregation"</code> key that was not in the hardcoded expected set.
+    </div>
+    <div class="detail">
+      <strong>Root Cause:</strong>
+      The expected_keys set in the test was not updated when <code>graph_aggregation</code> was added to the factory's return dict. A secondary issue: <code>test_all_files_already_ingested_skips</code> expected 1 call to <code>get_source_ids</code> but the implementation now makes 2 calls.
+    </div>
+
+    <div class="fix">
+      Added <code>"graph_aggregation"</code> to the expected_keys set. Fixed <code>test_all_files_already_ingested_skips</code> to expect 2 <code>get_source_ids</code> calls, matching the current implementation behavior.
+    </div>
+
+    <span class="commit-ref">d95cce9</span>
+  </div>
+
+  <!-- ─── FOOTER ─── -->
+  <div class="footer">
+    <span class="project-name">raiveFlier</span> &mdash; Error/Bug Log: Analysis Storage &amp; Security Fixes
+    &nbsp;|&nbsp; Generated 2026-02-27
+  </div>
+
+</div>
+
+</body>
+</html>

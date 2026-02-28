@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>raiveFlier — Session Summary: Persistent Analysis Storage + Combined Connection Map</title>
+<style>
+  /* ─── BASE ─── */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #0a0a0c;
+    color: #d4d4d8;
+    line-height: 1.7;
+    padding: 2.5rem 1.5rem 4rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  /* ─── TYPOGRAPHY ─── */
+  h1 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    color: #f0f0f0;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+
+  h1 span.accent { color: #9b59b6; }
+
+  h2 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1.35rem;
+    color: #9b59b6;
+    margin-top: 2.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #9b59b622;
+  }
+
+  h3 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #c084fc;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h4 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: #a78bfa;
+    margin-top: 1.25rem;
+    margin-bottom: 0.4rem;
+  }
+
+  p { margin-bottom: 0.75rem; }
+
+  a { color: #9b59b6; text-decoration: none; }
+  a:hover { text-decoration: underline; color: #c084fc; }
+
+  strong { color: #e4e4e7; font-weight: 600; }
+
+  /* ─── HEADER ─── */
+  .header {
+    border-bottom: 2px solid #9b59b6;
+    padding-bottom: 1.25rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .header .subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: #71717a;
+    margin-top: 0.4rem;
+  }
+
+  .meta-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    font-size: 0.88rem;
+  }
+
+  .meta-bar .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .meta-bar .meta-label {
+    font-family: 'IBM Plex Mono', monospace;
+    color: #71717a;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .meta-bar .meta-value { color: #d4d4d8; }
+  .meta-bar .meta-value.pass { color: #4ade80; font-weight: 600; }
+
+  /* ─── CODE & MONO ─── */
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    background: #18181b;
+    color: #c084fc;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    border: 1px solid #27272a;
+  }
+
+  /* ─── LISTS ─── */
+  ul, ol {
+    margin: 0.5rem 0 1rem 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.35rem;
+  }
+
+  li code {
+    font-size: 0.83em;
+  }
+
+  /* ─── TABLES ─── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  thead th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9b59b6;
+    background: #12121a;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    border-bottom: 2px solid #9b59b633;
+  }
+
+  tbody td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1e1e26;
+    vertical-align: top;
+  }
+
+  tbody tr:hover { background: #12121a; }
+
+  /* ─── STAT BADGES ─── */
+  .stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 1rem 0;
+  }
+
+  .stat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #12121a;
+    border: 1px solid #27272a;
+    border-radius: 6px;
+    padding: 0.4rem 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  .stat-badge .num { font-weight: 600; }
+  .stat-badge .num.pass { color: #4ade80; }
+  .stat-badge .num.zero { color: #4ade80; }
+  .stat-badge .num.files { color: #9b59b6; }
+  .stat-badge .num.ins { color: #38bdf8; }
+  .stat-badge .label { color: #71717a; }
+
+  /* ─── WAVE CARDS ─── */
+  .wave-card {
+    background: #0f0f14;
+    border: 1px solid #1e1e26;
+    border-left: 3px solid #9b59b6;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0;
+  }
+
+  .wave-card h4 {
+    margin-top: 0;
+    color: #c084fc;
+    font-size: 1rem;
+  }
+
+  .wave-card ul { margin-left: 1.25rem; }
+
+  /* ─── COMMIT LOG ─── */
+  .commit-log {
+    list-style: none;
+    margin: 0.75rem 0 1.25rem 0;
+    padding: 0;
+  }
+
+  .commit-log li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .commit-hash {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: #9b59b6;
+    background: #18181b;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #27272a;
+    flex-shrink: 0;
+  }
+
+  .commit-msg { color: #d4d4d8; }
+
+  /* ─── PR LINK ─── */
+  .pr-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #9b59b615;
+    border: 1px solid #9b59b644;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.88rem;
+    transition: background 0.2s;
+  }
+
+  .pr-link:hover {
+    background: #9b59b625;
+    text-decoration: none;
+  }
+
+  .pr-link .pr-icon { font-size: 1.1rem; }
+
+  /* ─── PIPELINE DIAGRAM ─── */
+  .pipeline-diagram {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    background: #0f0f14;
+    border: 1px solid #1e1e26;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    line-height: 1.5;
+    color: #a1a1aa;
+  }
+
+  .pipeline-diagram .highlight { color: #9b59b6; font-weight: 500; }
+  .pipeline-diagram .new { color: #4ade80; font-weight: 500; }
+
+  /* ─── SECTION 2 DIVIDER ─── */
+  .section-divider {
+    margin: 3rem 0 2rem;
+    border: none;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #9b59b644, transparent);
+  }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #1e1e26;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: #52525b;
+    text-align: center;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 640px) {
+    body { padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.5rem; }
+    .meta-bar { flex-direction: column; gap: 0.5rem; }
+    .stats-row { flex-direction: column; }
+    table { font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     raiveFlier Session Summary
+     Feature: Persistent Analysis Storage + Combined Connection Map
+     Date: 2026-02-27
+     ═══════════════════════════════════════════════════════════════ -->
+
+<div class="header">
+  <h1><span class="accent">raiveFlier</span> — Session Summary</h1>
+  <div class="subtitle">Persistent Analysis Storage + Combined Connection Map</div>
+  <div class="meta-bar">
+    <div class="meta-item">
+      <span class="meta-label">Date</span>
+      <span class="meta-value">2026-02-27</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Branch</span>
+      <span class="meta-value">feat/analysis-storage</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Tests</span>
+      <span class="meta-value pass">1,260 passed, 0 failures</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Status</span>
+      <span class="meta-value pass">Merged</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2>Section 1: Work Completed This Session</h2>
+<!-- ════════════════════════════════════════════════════════════ -->
+
+<h3>Feature: Persistent Analysis Storage + Combined Connection Map</h3>
+
+<p><strong>Objective:</strong> Store InterconnectionMap analysis snapshots permanently in
+<code>flier_history.db</code> (beyond the 72-hour session TTL), make them refinable with
+persistent edge dismissals and annotations, and create a combined connection map view in
+raiveFeeder.</p>
+
+<!-- ─── Wave 1 ─── -->
+<div class="wave-card">
+  <h4>Wave 1 — Foundation (Models, Interface, Storage)</h4>
+  <ul>
+    <li>Added <strong>5 Pydantic models</strong>: <code>EdgeDismissal</code>,
+        <code>AnalysisAnnotation</code>, <code>CombinedNode</code>,
+        <code>CombinedEdge</code>, <code>CombinedConnectionMap</code></li>
+    <li>Added <strong>9 abstract methods</strong> to <code>IFlierHistoryProvider</code></li>
+    <li>Created <strong>3 new SQLite tables</strong>: <code>analysis_snapshots</code>,
+        <code>edge_dismissals</code>, <code>analysis_annotations</code></li>
+    <li>Full implementations in <code>SQLiteFlierHistoryProvider</code></li>
+  </ul>
+</div>
+
+<!-- ─── Wave 2 ─── -->
+<div class="wave-card">
+  <h4>Wave 2 — Parallel Tracks (Pipeline, Aggregation, Frontend)</h4>
+  <ul>
+    <li><strong>Pipeline integration:</strong> Auto-store analysis snapshot after <code>log_flier</code></li>
+    <li><strong>GraphAggregationService:</strong> Fuzzy entity deduplication via <code>rapidfuzz</code>,
+        edge merging across multiple flier analyses</li>
+    <li><strong>Frontend scaffolding:</strong> vis-network graph visualization library,
+        Connections tab HTML/CSS/JS skeleton</li>
+  </ul>
+</div>
+
+<!-- ─── Wave 3 ─── -->
+<div class="wave-card">
+  <h4>Wave 3 — API Endpoints</h4>
+  <ul>
+    <li><strong>4 new raiveFlier endpoints:</strong> Analysis CRUD + annotations</li>
+    <li><strong>3 new raiveFeeder endpoints:</strong> Combined connection map, graph stats, node detail</li>
+  </ul>
+</div>
+
+<!-- ─── Wave 4 ─── -->
+<div class="wave-card">
+  <h4>Wave 4 — Tests + Integration</h4>
+  <ul>
+    <li><strong>37 new unit tests</strong> — 26 provider tests, 11 aggregation tests</li>
+    <li>All passing. Updated <code>NAVIGATION.md</code></li>
+  </ul>
+</div>
+
+<!-- ─── Post-Implementation ─── -->
+<h3>Post-Implementation Verification</h3>
+
+<p>Code verification identified <strong>3 critical issues</strong>:</p>
+
+<table>
+  <thead>
+    <tr><th>Issue</th><th>Severity</th><th>Resolution</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>XSS vulnerability in <code>innerHTML</code> usage</td>
+      <td style="color: #f87171;">Critical</td>
+      <td>Escaped all dynamic HTML content</td>
+    </tr>
+    <tr>
+      <td>Missing pagination bounds validation</td>
+      <td style="color: #fbbf24;">High</td>
+      <td>Added bounds checking to all paginated endpoints</td>
+    </tr>
+    <tr>
+      <td>Dead-code 404 check (unreachable condition)</td>
+      <td style="color: #a78bfa;">Medium</td>
+      <td>Fixed conditional logic</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All 3 fixed and committed. Full test suite re-run confirmed zero regressions.</p>
+
+<!-- ─── Stats ─── -->
+<h3>Session Statistics</h3>
+
+<div class="stats-row">
+  <div class="stat-badge">
+    <span class="num files">18</span>
+    <span class="label">files changed</span>
+  </div>
+  <div class="stat-badge">
+    <span class="num ins">2,308</span>
+    <span class="label">insertions</span>
+  </div>
+  <div class="stat-badge">
+    <span class="num pass">1,260</span>
+    <span class="label">tests passed</span>
+  </div>
+  <div class="stat-badge">
+    <span class="num zero">0</span>
+    <span class="label">failures</span>
+  </div>
+</div>
+
+<!-- ─── Key New Files ─── -->
+<h3>Key New Files</h3>
+
+<table>
+  <thead>
+    <tr><th>File</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>src/services/graph_aggregation_service.py</code></td>
+      <td>Entity deduplication + edge merging service (rapidfuzz)</td>
+    </tr>
+    <tr>
+      <td><code>tools/raive_feeder/frontend/js/connections.js</code></td>
+      <td>vis-network graph UI for combined connection map</td>
+    </tr>
+    <tr>
+      <td><code>tests/unit/test_sqlite_flier_history_provider.py</code></td>
+      <td>26 unit tests for analysis snapshot storage</td>
+    </tr>
+    <tr>
+      <td><code>tests/unit/test_graph_aggregation_service.py</code></td>
+      <td>11 unit tests for graph aggregation logic</td>
+    </tr>
+    <tr>
+      <td><code>tools/raive_feeder/frontend/js/vendor/vis-network.min.js</code></td>
+      <td>Graph visualization library (vis-network)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ─── Commits ─── -->
+<h3>Commits</h3>
+
+<ol class="commit-log">
+  <li>
+    <span class="commit-hash">d95cce9</span>
+    <span class="commit-msg">feat(analysis): add persistent analysis storage and combined connection map</span>
+  </li>
+  <li>
+    <span class="commit-hash">07196a6</span>
+    <span class="commit-msg">fix(security): escape innerHTML, validate pagination, fix 404 check</span>
+  </li>
+</ol>
+
+<!-- ─── PR ─── -->
+<h3>Pull Request</h3>
+
+<a class="pr-link" href="https://github.com/deeptechhouse/raiveFlier/pull/25" target="_blank" rel="noopener">
+  <span class="pr-icon">&#8599;</span>
+  <span>PR #25 — deeptechhouse/raiveFlier</span>
+</a>
+
+<!-- ─── Architecture Diagram ─── -->
+<h3>Updated Architecture Flow</h3>
+
+<div class="pipeline-diagram">
+<span class="highlight">Upload</span> &#8594; <span class="highlight">OCR</span> &#8594; <span class="highlight">Entity Extraction</span> &#8594; [User Confirmation] &#8594; <span class="highlight">Research</span> &#8594; <span class="highlight">Interconnection</span> &#8594; <span class="highlight">Output</span>
+                                                                                                         &#8595;
+                                                                              <span class="new">&#9679; auto-store analysis snapshot</span>
+                                                                                                         &#8595;
+                                                                              <span class="new">flier_history.db (analysis_snapshots table)</span>
+                                                                                                         &#8595;
+                                                                              <span class="new">GraphAggregationService (fuzzy dedup + merge)</span>
+                                                                                                         &#8595;
+                                                                              <span class="new">raiveFeeder Connections tab (vis-network)</span>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<hr class="section-divider">
+<h2>Section 2: Summary of Prior Work</h2>
+<!-- ════════════════════════════════════════════════════════════ -->
+
+<p>raiveFlier is a rave flier analysis pipeline using OCR, LLM entity extraction, and
+multi-source research. Prior sessions built the following:</p>
+
+<h3>Core Pipeline</h3>
+<ul>
+  <li><strong>5-phase pipeline:</strong> Upload &rarr; OCR &rarr; Entity Extraction &rarr; Research &rarr; Interconnection</li>
+  <li>Human-in-the-loop confirmation gate between extraction and research</li>
+  <li>Immutable pipeline state via Pydantic <code>frozen=True</code> models</li>
+  <li>Provider fallback chains (LLM: OpenAI &rarr; Anthropic &rarr; Ollama; OCR: Vision &rarr; EasyOCR &rarr; Tesseract)</li>
+</ul>
+
+<h3>Architecture</h3>
+<ul>
+  <li>Layered architecture with adapter pattern for all external services</li>
+  <li>Dependency injection &mdash; all wiring in <code>src/main.py</code></li>
+  <li>No vendor lock-in &mdash; all services behind abstract interfaces</li>
+  <li>Deployed on Render (512MB RAM, persistent <code>/data</code> disk)</li>
+</ul>
+
+<h3>raiveFeeder Companion App</h3>
+<ul>
+  <li>5-tab corpus management GUI (Documents, Audio, Images, URLs, Corpus)</li>
+  <li>Batch processing with pause/resume/cancel and WebSocket progress</li>
+  <li>Format conversion (MOBI, DJVU, DOCX, DOC, RTF), audio transcription (Whisper), image OCR, web crawling</li>
+</ul>
+
+<h3>Corpus Search Enhancements</h3>
+<ul>
+  <li>Smart corpus search with natural language synthesis from retrieved chunks</li>
+  <li>Faceted filtering, debounced search queries</li>
+  <li>Web-search tier fallback when corpus results are insufficient</li>
+</ul>
+
+<h3>Presentation Deliverables</h3>
+<ul>
+  <li>18-slide Remotion presentation package</li>
+  <li>Technical design document, UML diagrams, demo scripts</li>
+  <li>RAG tuning guide and group project manual</li>
+</ul>
+
+<h3>Test Suite at Session Start</h3>
+
+<div class="stats-row">
+  <div class="stat-badge">
+    <span class="num pass">1,223</span>
+    <span class="label">existing tests (pre-session)</span>
+  </div>
+  <div class="stat-badge">
+    <span class="num files">+37</span>
+    <span class="label">new tests added this session</span>
+  </div>
+</div>
+
+<!-- ─── Footer ─── -->
+<div class="footer">
+  raiveFlier &mdash; Session Summary &mdash; 2026-02-27 &mdash; Bunker + Amethyst
+</div>
+
+</body>
+</html>

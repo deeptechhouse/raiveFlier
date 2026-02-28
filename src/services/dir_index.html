@@ -2,33 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>dir_index — services</title>
+  <title>dir_index — src/services/</title>
   <style>
     body { background: #0a0a0c; color: #d8d5cd; font-family: 'IBM Plex Mono', 'Courier New', monospace; padding: 2rem; line-height: 1.6; }
-    h1 { color: #a080c0; font-size: 1.4rem; border-bottom: 1px solid #2a2a30; padding-bottom: 0.5rem; margin-bottom: 1rem; }
-    .dir { color: #a080c0; } .file { color: #9a9a9e; } .info { color: #6a6a70; font-size: 0.85rem; margin-top: 2rem; }
-    ul { list-style: none; padding: 0; } li { padding: 0.25rem 0; }
-    li::before { content: ''; display: inline-block; width: 1.5rem; }
-    li.dir-item::before { content: '📁 '; } li.file-item::before { content: '📄 '; }
-    a { color: inherit; text-decoration: none; } a:hover { color: #a080c0; }
+    h1 { color: #9b59b6; font-size: 1.4rem; border-bottom: 1px solid #2a2a30; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th { text-align: left; color: #9b59b6; border-bottom: 1px solid #2a2a30; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+    td { padding: 0.35rem 0.8rem; border-bottom: 1px solid #18181c; font-size: 0.9rem; }
+    tr:hover { background: #14141a; }
+    .dir { color: #9b59b6; } .file { color: #9a9a9e; }
+    .size { color: #6a6a70; text-align: right; }
+    .new-badge { background: #9b59b6; color: #0a0a0c; font-size: 0.7rem; font-weight: bold; padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.5rem; }
+    .info { color: #6a6a70; font-size: 0.85rem; margin-top: 2rem; }
+    a { color: inherit; text-decoration: none; } a:hover { color: #9b59b6; }
   </style>
 </head>
 <body>
   <h1>src/services/</h1>
-  <ul>
-    <li class="dir-item"><a class="dir" href="ingestion/dir_index.html">ingestion/</a></li>
-    <li class="file-item"><span class="file">__init__.py</span></li>
-    <li class="file-item"><span class="file">artist_researcher.py</span></li>
-    <li class="file-item"><span class="file">citation_service.py</span></li>
-    <li class="file-item"><span class="file">date_context_researcher.py</span></li>
-    <li class="file-item"><span class="file">entity_extractor.py</span></li>
-    <li class="file-item"><span class="file">interconnection_service.py</span></li>
-    <li class="file-item"><span class="file">ocr_service.py</span></li>
-    <li class="file-item"><span class="file">output_formatter.py</span></li>
-    <li class="file-item"><span class="file">promoter_researcher.py</span></li>
-    <li class="file-item"><span class="file">research_service.py</span></li>
-    <li class="file-item"><span class="file">venue_researcher.py</span></li>
-  </ul>
-  <p class="info">Generated: 2026-02-19 | raiveFlier v0.1.0</p>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Type</th><th style="text-align:right">Size</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><a class="dir" href="ingestion/dir_index.html">ingestion/</a></td><td>Directory</td><td class="size">--</td><td></td></tr>
+      <tr><td><span class="file">__init__.py</span></td><td>Python</td><td class="size">0 B</td><td></td></tr>
+      <tr><td><span class="file">artist_researcher.py</span></td><td>Python</td><td class="size">41.4 KB</td><td></td></tr>
+      <tr><td><span class="file">citation_service.py</span></td><td>Python</td><td class="size">18.2 KB</td><td></td></tr>
+      <tr><td><span class="file">date_context_researcher.py</span></td><td>Python</td><td class="size">23.6 KB</td><td></td></tr>
+      <tr><td><span class="file">entity_extractor.py</span></td><td>Python</td><td class="size">20.6 KB</td><td></td></tr>
+      <tr><td><span class="file">event_name_researcher.py</span></td><td>Python</td><td class="size">28.2 KB</td><td></td></tr>
+      <tr><td><span class="file">graph_aggregation_service.py</span></td><td>Python</td><td class="size">11.5 KB</td><td><span class="new-badge">NEW</span></td></tr>
+      <tr><td><span class="file">interconnection_service.py</span></td><td>Python</td><td class="size">66.1 KB</td><td></td></tr>
+      <tr><td><span class="file">ocr_service.py</span></td><td>Python</td><td class="size">6.5 KB</td><td></td></tr>
+      <tr><td><span class="file">output_formatter.py</span></td><td>Python</td><td class="size">14.3 KB</td><td></td></tr>
+      <tr><td><span class="file">promoter_researcher.py</span></td><td>Python</td><td class="size">26.9 KB</td><td></td></tr>
+      <tr><td><span class="file">qa_service.py</span></td><td>Python</td><td class="size">24.4 KB</td><td></td></tr>
+      <tr><td><span class="file">ra_scrape_service.py</span></td><td>Python</td><td class="size">16.2 KB</td><td></td></tr>
+      <tr><td><span class="file">recommendation_service.py</span></td><td>Python</td><td class="size">62.6 KB</td><td></td></tr>
+      <tr><td><span class="file">research_service.py</span></td><td>Python</td><td class="size">16.9 KB</td><td></td></tr>
+      <tr><td><span class="file">venue_researcher.py</span></td><td>Python</td><td class="size">23.8 KB</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="info">Generated: 2026-02-27 | raiveFlier v0.1.0</p>
 </body>
 </html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next Steps: Persistent Analysis Storage Optimizations — raiveFlier</title>
+    <style>
+        /* ─── Bunker + Amethyst Design System ─── */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0c;
+            --bg-secondary: #111114;
+            --bg-tertiary: #1a1a1f;
+            --bg-card: #14141a;
+            --amethyst: #9b59b6;
+            --amethyst-light: #c39bd3;
+            --amethyst-dark: #7d3c98;
+            --amethyst-glow: rgba(155, 89, 182, 0.15);
+            --amethyst-border: rgba(155, 89, 182, 0.3);
+            --text-primary: #e8e8ec;
+            --text-secondary: #a0a0a8;
+            --text-muted: #6a6a74;
+            --text-code: #c39bd3;
+            --border: #2a2a32;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --info: #3498db;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 15px;
+            line-height: 1.7;
+            padding: 2rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        /* ─── Header ─── */
+        header {
+            border-bottom: 2px solid var(--amethyst);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--amethyst-light);
+            letter-spacing: -0.02em;
+        }
+
+        header .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 0.4rem;
+        }
+
+        header .meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.8rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        header .meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* ─── Agent Instruction Block ─── */
+        .agent-instruction {
+            background: var(--amethyst-glow);
+            border: 1px solid var(--amethyst-border);
+            border-left: 4px solid var(--amethyst);
+            border-radius: 6px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .agent-instruction .label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--amethyst);
+            margin-bottom: 0.6rem;
+        }
+
+        .agent-instruction p {
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        /* ─── Sections ─── */
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        h2 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--amethyst-light);
+            margin-bottom: 1rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h3 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.6rem;
+            margin-top: 1.2rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 0.8rem;
+        }
+
+        /* ─── Status Badge ─── */
+        .status-badge {
+            display: inline-block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.2rem 0.6rem;
+            border-radius: 3px;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .status-merged {
+            background: rgba(46, 204, 113, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .status-pending {
+            background: rgba(243, 156, 18, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .status-future {
+            background: rgba(52, 152, 219, 0.15);
+            color: var(--info);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        /* ─── Optimization Cards ─── */
+        .opt-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .opt-card:hover {
+            border-color: var(--amethyst-border);
+        }
+
+        .opt-card .opt-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .opt-card .opt-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--amethyst);
+            background: var(--amethyst-glow);
+            border: 1px solid var(--amethyst-border);
+            border-radius: 3px;
+            padding: 0.1rem 0.5rem;
+            min-width: 1.8rem;
+            text-align: center;
+        }
+
+        .opt-card .opt-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .opt-card .opt-description {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        .opt-card code {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--text-code);
+            background: var(--bg-tertiary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        /* ─── Feature Cards ─── */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.9rem 1.2rem;
+            margin-bottom: 0.6rem;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+        }
+
+        .feature-list li::before {
+            content: "\25C6";
+            color: var(--amethyst);
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        /* ─── Context Block ─── */
+        .context-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .context-block p {
+            font-size: 0.9rem;
+        }
+
+        .context-block .highlight {
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        /* ─── Footer ─── */
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── Header ─── -->
+    <header>
+        <h1>raiveFlier // Next Steps</h1>
+        <div class="subtitle">Persistent Analysis Storage + Combined Connection Map — Post-Merge Optimizations</div>
+        <div class="meta">
+            <span>Project: raiveFlier</span>
+            <span>Date: 2026-02-27</span>
+            <span>Type: Agent Prompt</span>
+        </div>
+    </header>
+
+    <!-- ─── Agent Instruction ─── -->
+    <div class="agent-instruction">
+        <div class="label">Agent Instructions</div>
+        <p>
+            Read this file for context on the Persistent Analysis Storage feature. Implement the
+            remaining optimizations listed below, starting with the highest-priority items:
+            aggregation caching, N+1 query fix, and pagination total fix. Each optimization
+            includes the affected file/method and the specific change required.
+        </p>
+    </div>
+
+    <!-- ─── Context ─── -->
+    <section>
+        <h2>Context <span class="status-badge status-merged">Merged</span></h2>
+        <div class="context-block">
+            <p>
+                The <strong>Persistent Analysis Storage + Combined Connection Map</strong> feature
+                has been implemented and merged. All <span class="highlight">1,260 tests pass</span>.
+                The feature stores InterconnectionMaps permanently, supports edge dismissals and
+                annotations, and renders a combined entity graph in raiveFeeder's Connections tab.
+            </p>
+        </div>
+    </section>
+
+    <!-- ─── Remaining Optimizations ─── -->
+    <section>
+        <h2>Remaining Optimizations <span class="status-badge status-pending">Pending</span></h2>
+
+        <div class="opt-card">
+            <div class="opt-header">
+                <span class="opt-number">1</span>
+                <span class="opt-title">Add aggregation caching</span>
+            </div>
+            <div class="opt-description">
+                <code>get_node_detail()</code> and <code>get_stats()</code> each trigger a full
+                <code>aggregate()</code> rebuild. Add a short TTL cache (e.g., 30s) to avoid
+                redundant computation when the Connections tab loads.
+            </div>
+        </div>
+
+        <div class="opt-card">
+            <div class="opt-header">
+                <span class="opt-number">2</span>
+                <span class="opt-title">Fix N+1 query</span>
+            </div>
+            <div class="opt-description">
+                <code>get_all_active_analyses()</code> runs a separate dismissal query per analysis.
+                Refactor to use a single JOIN-based query.
+            </div>
+        </div>
+
+        <div class="opt-card">
+            <div class="opt-header">
+                <span class="opt-number">3</span>
+                <span class="opt-title">Fix pagination total</span>
+            </div>
+            <div class="opt-description">
+                <code>AnalysisListResponse.total</code> returns page count instead of global total.
+                Add a <code>SELECT COUNT(*)</code> query.
+            </div>
+        </div>
+
+        <div class="opt-card">
+            <div class="opt-header">
+                <span class="opt-number">4</span>
+                <span class="opt-title">Add Literal validation</span>
+            </div>
+            <div class="opt-description">
+                Change <code>AnalysisAnnotation.target_type</code> from <code>str</code> to
+                <code>Literal["analysis", "entity", "edge"]</code>.
+            </div>
+        </div>
+
+        <div class="opt-card">
+            <div class="opt-header">
+                <span class="opt-number">5</span>
+                <span class="opt-title">Fix edge resolution threshold</span>
+            </div>
+            <div class="opt-description">
+                Edge source/target fuzzy matching in <code>GraphAggregationService</code> should
+                look up the entity type and use the appropriate threshold (0.85 for artists, 0.90
+                for venues) instead of always using 0.90.
+            </div>
+        </div>
+
+        <div class="opt-card">
+            <div class="opt-header">
+                <span class="opt-number">6</span>
+                <span class="opt-title">Add error state to sidebar</span>
+            </div>
+            <div class="opt-description">
+                When <code>_fetchNodeDetail()</code> fails in <code>connections.js</code>, show an
+                error message in the sidebar instead of leaving stale content.
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Potential Next Features ─── -->
+    <section>
+        <h2>Potential Next Features <span class="status-badge status-future">Future</span></h2>
+        <ul class="feature-list">
+            <li>Re-analysis button in raiveFeeder that triggers a new analysis from a stored snapshot</li>
+            <li>Export combined connection map as SVG/PNG</li>
+            <li>Time-based filtering on the connections graph (filter by date range)</li>
+            <li>Annotation display in the connections sidebar</li>
+        </ul>
+    </section>
+
+    <!-- ─── Footer ─── -->
+    <footer>
+        <span>raiveFlier // Agent Next-Steps Prompt</span>
+        <span>Generated 2026-02-27</span>
+    </footer>
+
+</body>
+</html>
