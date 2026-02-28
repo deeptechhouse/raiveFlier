@@ -3386,6 +3386,11 @@ body {
   color: var(--color-secondary-text, #7dc4b4);
 }
 
+.corpus-answer__tier-badge--event {
+  background: rgba(204, 138, 45, 0.25);
+  color: var(--color-warning-text, #e0b870);
+}
+
 .corpus-answer__tier-badge--corpus {
   background: rgba(255, 255, 255, 0.08);
   color: var(--color-text-muted, #8a8592);

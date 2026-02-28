@@ -356,7 +356,7 @@ class CorpusSearchCitation(BaseModel):
     url: str | None = Field(default=None, description="URL for web-sourced citations.")
     source_tier: str | None = Field(
         default=None,
-        description='Which search tier produced this citation: "ra_exchange", "book", "event_listing", "corpus", or "web".',
+        description='Which search tier produced this citation: "ra_exchange", "book", "event", "corpus", or "web".',
     )
 
 

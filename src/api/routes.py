@@ -1417,17 +1417,21 @@ def _compute_facets(chunks: list[CorpusSearchChunk]) -> FacetCounts:
 # ---------------------------------------------------------------------------
 # Tiered corpus query — priority-ordered ChromaDB retrieval
 # ---------------------------------------------------------------------------
-# The tiered strategy queries ChromaDB three times in sequence, each time
+# The tiered strategy queries ChromaDB four times in sequence, each time
 # targeting a different source priority:
 #   Tier 1: RA Exchange podcast transcripts (source_type="interview",
 #           source_title starts with "EX.")
 #   Tier 2: Books (source_type="book")
-#   Tier 3: Everything else except event listings and tiers 1-2
-# Chunks are deduped across tiers via a seen_chunk_ids set so the same
-# passage never appears in two tiers.
+#   Tier 3a: Event listings (source_type="event") — dedicated
+#            query with its own budget so the 69K event chunks don't
+#            crowd out other sources in the catch-all tier.
+#   Tier 3b: Catch-all — everything not already captured by T1/T2/T3a,
+#            including reference docs and any future source types.
+# Chunks are deduped across tiers via a seen_ids set so the same
+# source never appears in two tiers.
 #
-# Returns (all_chunks, chunk_tier_map) where chunk_tier_map maps
-# id(chunk) → tier number for downstream provenance labeling.
+# Returns (all_chunks, chunk_tier_map, tiers_used) where chunk_tier_map
+# maps id(chunk) → tier number for downstream provenance labeling.
 
 
 async def _tiered_corpus_query(
@@ -1435,7 +1439,18 @@ async def _tiered_corpus_query(
     query_text: str,
     user_filters: dict[str, Any] | None,
 ) -> tuple[list[Any], dict[int, int], list[int]]:
-    """Execute priority-ordered ChromaDB queries across three source tiers.
+    """Execute priority-ordered ChromaDB queries across four sub-tiers.
+
+    The query budget is split so that the 69K event chunks
+    (79% of the corpus) cannot crowd out smaller but higher-authority
+    source types.  Each tier has its own fetch/keep budget:
+
+        T1  interviews (RA Exchange)   fetch 20 → keep 10
+        T2  books                       fetch 15 → keep 10
+        T3a event listings              fetch 20 → keep  8
+        T3b catch-all (reference, etc.) fetch 15 → keep 10
+
+    T3a and T3b both map to tier number 3 for downstream labeling.
 
     Parameters
     ----------
@@ -1444,8 +1459,10 @@ async def _tiered_corpus_query(
     query_text:
         The (possibly expanded) search query text.
     user_filters:
-        User-applied ChromaDB where-clause filters (entity, geo, genre, etc.)
-        to be merged into each tier's query.
+        User-applied ChromaDB where-clause filters (entity, geo, genre,
+        etc.) to be merged into each tier's query.  When the user's
+        source_type filter excludes a tier's designated type, that tier
+        is skipped entirely.
 
     Returns
     -------
@@ -1459,76 +1476,150 @@ async def _tiered_corpus_query(
     seen_ids: set[str] = set()
     tiers_used: list[int] = []
 
-    # Helper to merge user filters with tier-specific filters
+    # Helper to merge user filters with tier-specific filters.
+    # Tier-specific source_type filters are authoritative — if the user
+    # also supplied a source_type filter, the intersection is used (the
+    # tier only returns its designated type, further narrowed by the user
+    # selection).  If the user's $in list doesn't include the tier's
+    # type, the tier query is skipped (returns None to signal "skip").
     def _merge_filters(tier_filter: dict[str, Any]) -> dict[str, Any] | None:
         merged = dict(tier_filter)
-        if user_filters:
-            merged.update(user_filters)
+        if not user_filters:
+            return merged if merged else None
+
+        # source_type needs special merge: tier filter is authoritative,
+        # user filter narrows within it.
+        tier_st = tier_filter.get("source_type")
+        user_st = user_filters.get("source_type")
+        # Copy non-source_type user filters first
+        for k, v in user_filters.items():
+            if k != "source_type":
+                merged[k] = v
+        # Merge source_type: if tier specifies a type and user also
+        # filters by type, check compatibility.
+        if tier_st and user_st and isinstance(user_st, dict):
+            user_in = user_st.get("$in", [])
+            if isinstance(tier_st, str):
+                # Tier wants one specific type — keep it only if user
+                # allows it.  If user's $in list doesn't include it,
+                # this tier is irrelevant.
+                if user_in and tier_st not in user_in:
+                    return None  # signal: skip this tier entirely
+                # Otherwise tier's exact filter is more specific; keep it
+            elif isinstance(tier_st, dict) and "$nin" in tier_st:
+                # Tier 3b exclusion list — intersect with user's $in.
+                # If no user types survive the exclusion, skip this tier.
+                if user_in:
+                    surviving = [
+                        t for t in user_in
+                        if t not in tier_st["$nin"]
+                    ]
+                    if not surviving:
+                        return None  # all user types excluded by this tier
+                    merged["source_type"] = {"$in": surviving}
+                # If no user $in, keep the tier's $nin as-is
+        elif not tier_st and user_st:
+            # No tier filter, just apply user's
+            merged["source_type"] = user_st
+
         return merged if merged else None
 
     # --- Tier 1: RA Exchange interviews ---
     # ChromaDB query filtered to source_type="interview"; post-filter to
     # source_title starting with "EX." (the RA Exchange episode prefix).
+    # _merge_filters returns None when the user's source_type filter
+    # excludes this tier's type — skip the query entirely in that case.
     t1_filters = _merge_filters({"source_type": "interview"})
-    try:
-        t1_raw = await vector_store.query(
-            query_text=query_text, top_k=20, filters=t1_filters,
-        )
-        # Post-filter: only keep RA Exchange episodes (source_title starts with "EX.")
-        t1_chunks = [
-            c for c in t1_raw
-            if getattr(c.chunk, "source_title", "").startswith("EX.")
-            and c.chunk.source_id not in seen_ids
-        ][:10]
-        for c in t1_chunks:
-            seen_ids.add(c.chunk.source_id)
-            chunk_tier_map[id(c)] = 1
-        all_chunks.extend(t1_chunks)
-        if t1_chunks:
-            tiers_used.append(1)
-    except Exception:
-        _logger.debug("tiered_query_tier1_failed")
+    if t1_filters is not None:
+        try:
+            t1_raw = await vector_store.query(
+                query_text=query_text, top_k=20, filters=t1_filters,
+            )
+            # Post-filter: only keep RA Exchange episodes (source_title starts with "EX.")
+            t1_chunks = [
+                c for c in t1_raw
+                if getattr(c.chunk, "source_title", "").startswith("EX.")
+                and c.chunk.source_id not in seen_ids
+            ][:10]
+            for c in t1_chunks:
+                seen_ids.add(c.chunk.source_id)
+                chunk_tier_map[id(c)] = 1
+            all_chunks.extend(t1_chunks)
+            if t1_chunks:
+                tiers_used.append(1)
+        except Exception:
+            _logger.debug("tiered_query_tier1_failed")
 
     # --- Tier 2: Books ---
     t2_filters = _merge_filters({"source_type": "book"})
-    try:
-        t2_raw = await vector_store.query(
-            query_text=query_text, top_k=15, filters=t2_filters,
-        )
-        t2_chunks = [
-            c for c in t2_raw
-            if c.chunk.source_id not in seen_ids
-        ][:10]
-        for c in t2_chunks:
-            seen_ids.add(c.chunk.source_id)
-            chunk_tier_map[id(c)] = 2
-        all_chunks.extend(t2_chunks)
-        if t2_chunks:
-            tiers_used.append(2)
-    except Exception:
-        _logger.debug("tiered_query_tier2_failed")
+    if t2_filters is not None:
+        try:
+            t2_raw = await vector_store.query(
+                query_text=query_text, top_k=15, filters=t2_filters,
+            )
+            t2_chunks = [
+                c for c in t2_raw
+                if c.chunk.source_id not in seen_ids
+            ][:10]
+            for c in t2_chunks:
+                seen_ids.add(c.chunk.source_id)
+                chunk_tier_map[id(c)] = 2
+            all_chunks.extend(t2_chunks)
+            if t2_chunks:
+                tiers_used.append(2)
+        except Exception:
+            _logger.debug("tiered_query_tier2_failed")
 
-    # --- Tier 3: Other corpus sources (catch-all) ---
-    # No hard source_type filter — interview and book chunks already
-    # appear in T1/T2 and are deduped by seen_ids.  Event listings
-    # (RA event data) belong here alongside other corpus sources.
-    t3_filters = _merge_filters({}) if user_filters else None
-    try:
-        t3_raw = await vector_store.query(
-            query_text=query_text, top_k=30, filters=t3_filters,
-        )
-        t3_chunks = [
-            c for c in t3_raw
-            if c.chunk.source_id not in seen_ids
-        ][:15]
-        for c in t3_chunks:
-            seen_ids.add(c.chunk.source_id)
-            chunk_tier_map[id(c)] = 3
-        all_chunks.extend(t3_chunks)
-        if t3_chunks:
-            tiers_used.append(3)
-    except Exception:
-        _logger.debug("tiered_query_tier3_failed")
+    # --- Tier 3a: Event listings (dedicated budget) ---
+    # Event listings comprise ~69K chunks (79% of corpus).  Without a
+    # dedicated query, they dominate the unfiltered catch-all and crowd
+    # out reference docs, analysis, and other smaller source types.
+    # Giving them their own tier with a capped budget (keep 8) ensures
+    # relevant event data surfaces without monopolising results.
+    t3a_filters = _merge_filters({"source_type": "event"})
+    if t3a_filters is not None:
+        try:
+            t3a_raw = await vector_store.query(
+                query_text=query_text, top_k=20, filters=t3a_filters,
+            )
+            t3a_chunks = [
+                c for c in t3a_raw
+                if c.chunk.source_id not in seen_ids
+            ][:8]
+            for c in t3a_chunks:
+                seen_ids.add(c.chunk.source_id)
+                chunk_tier_map[id(c)] = 3
+            all_chunks.extend(t3a_chunks)
+            if t3a_chunks:
+                tiers_used.append(3)
+        except Exception:
+            _logger.debug("tiered_query_tier3a_event_failed")
+
+    # --- Tier 3b: Catch-all (everything not in T1/T2/T3a) ---
+    # Covers reference docs, analysis, and any future source types.
+    # Uses $nin to exclude types already handled by dedicated tiers,
+    # preventing duplicate retrieval of interview/book/event
+    # chunks that would just be deduped away by seen_ids.
+    t3b_base: dict[str, Any] = {
+        "source_type": {"$nin": ["interview", "book", "event"]},
+    }
+    t3b_filters = _merge_filters(t3b_base)
+    if t3b_filters is not None:
+        try:
+            t3b_raw = await vector_store.query(
+                query_text=query_text, top_k=15, filters=t3b_filters,
+            )
+            t3b_chunks = [
+                c for c in t3b_raw
+                if c.chunk.source_id not in seen_ids
+            ][:10]
+            for c in t3b_chunks:
+                seen_ids.add(c.chunk.source_id)
+                chunk_tier_map[id(c)] = 3
+            all_chunks.extend(t3b_chunks)
+            # T3b shares tier number 3 with T3a — no separate tiers_used entry
+        except Exception:
+            _logger.debug("tiered_query_tier3b_catchall_failed")
 
     return all_chunks, chunk_tier_map, tiers_used
 
@@ -1943,7 +2034,7 @@ async def corpus_search(
     _SOURCE_TYPE_LABELS: dict[str, str] = {
         "interview": "RA Exchange",
         "book": "Book",
-        "event_listing": "Event Listing",
+        "event": "Event",
     }
 
     for c in chunks:

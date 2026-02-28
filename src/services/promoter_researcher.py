@@ -504,7 +504,7 @@ class PromoterResearcher:
             elif "review" in title_lower:
                 article_type = "review"
             elif "event" in title_lower or "party" in title_lower:
-                article_type = "event_listing"
+                article_type = "event"
         elif search_result.snippet:
             snippet = search_result.snippet
 

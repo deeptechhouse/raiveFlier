@@ -61,7 +61,7 @@ _SOURCE_TYPE_TIERS: dict[str, int] = {
     "review": 2,
     "database": 3,
     "discography": 3,
-    "event_listing": 3,  # RA event listings — tier 3 (same as database sources)
+    "event": 3,  # RA event listings — tier 3 (same as database sources)
     "wiki": 4,
     "video": 4,
     "social_media": 5,

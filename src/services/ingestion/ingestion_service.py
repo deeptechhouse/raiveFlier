@@ -368,8 +368,24 @@ class IngestionService:
         async def _process_file(fp: Path) -> IngestionResult | None:
             async with semaphore:
                 start = time.monotonic()
+                # RA event files (ra_events_*.txt) need event
+                # metadata instead of the generic "reference" label.
+                # The RAEventProcessor expects structured RAEvent objects
+                # (from JSON/API), so we still use ArticleProcessor for
+                # the raw .txt files but override source_type and tier
+                # to match the citation system's event mapping
+                # (tier 3, same authority as database sources).
+                _is_ra_event = (
+                    fp.name.startswith("ra_events_") and fp.suffix == ".txt"
+                )
+                _file_source_type = (
+                    "event" if _is_ra_event else source_type
+                )
+                _file_tier = 3 if _is_ra_event else 5
                 raw_chunks = self._article_processor.process_file(
-                    str(fp), source_type=source_type
+                    str(fp),
+                    source_type=_file_source_type,
+                    tier=_file_tier,
                 )
                 if not raw_chunks:
                     return None
@@ -384,7 +400,10 @@ class IngestionService:
                         source_id=source_id[:12],
                     )
                     return None
-                _needs_preprocess = source_type in ("transcript", "interview")
+                _needs_preprocess = _file_source_type in (
+                    "transcript",
+                    "interview",
+                )
                 all_chunks: list[DocumentChunk] = []
                 for rc in raw_chunks:
                     text = rc.text

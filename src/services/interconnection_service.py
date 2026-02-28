@@ -561,7 +561,7 @@ class InterconnectionService:
         Parameters
         ----------
         chunk_text:
-            Raw text from a DocumentChunk with ``source_type="event_listing"``.
+            Raw text from a DocumentChunk with ``source_type="event"``.
 
         Returns
         -------
@@ -622,7 +622,7 @@ class InterconnectionService:
         """Query the RA event corpus for events where 2+ flier artists co-appeared.
 
         For each artist on the flier, issues a filtered ChromaDB query
-        restricted to ``source_type="event_listing"`` chunks whose
+        restricted to ``source_type="event"`` chunks whose
         ``entity_tags`` metadata contains the artist's name.  All queries
         run concurrently via ``asyncio.gather``.  Results are parsed and
         intersected pairwise to find events shared by multiple flier artists.
@@ -668,7 +668,7 @@ class InterconnectionService:
                     top_k=15,
                     filters={
                         "entity_tags": {"$contains": name},
-                        "source_type": {"$in": ["event_listing"]},
+                        "source_type": {"$in": ["event"]},
                     },
                     max_per_source=5,
                 )
@@ -1202,7 +1202,7 @@ class InterconnectionService:
 
             # Detect RA event citations by checking for "ra" indicators
             # in the citation text.  RA-backed citations get source_type
-            # "event_listing" (tier 3) instead of generic "research".
+            # "event" (tier 3) instead of generic "research".
             citation_lower = citation_text.lower()
             is_ra_citation = (
                 "ra-" in citation_lower
@@ -1214,7 +1214,7 @@ class InterconnectionService:
             citation = self._citation_service.build_citation(
                 text=citation_text,
                 source_name="Resident Advisor Events" if is_ra_citation else citation_text,
-                source_type="event_listing" if is_ra_citation else "research",
+                source_type="event" if is_ra_citation else "research",
             )
 
             confidence = float(rel.get("confidence", 0.5))
@@ -1501,7 +1501,7 @@ class InterconnectionService:
                 is_ra_backed = any(
                     "ra" in (c.source_name or "").lower()
                     or "resident advisor" in (c.source_name or "").lower()
-                    or "event_listing" in (c.source_type or "")
+                    or "event" in (c.source_type or "")
                     for c in edge.citations
                 )
                 if is_ra_backed:

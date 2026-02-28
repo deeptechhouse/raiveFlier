@@ -89,7 +89,7 @@ def _make_document_chunk(
     text: str,
     source_title: str = "RA Events: London (2019-06-01 to 2019-06-30)",
     entity_tags: list[str] | None = None,
-    source_type: str = "event_listing",
+    source_type: str = "event",
 ) -> DocumentChunk:
     """Build a DocumentChunk with RA event metadata."""
     return DocumentChunk(
@@ -475,7 +475,7 @@ class TestBoostRaBackedEdges:
             citations=[
                 Citation(
                     text="RA Events: London",
-                    source_type="event_listing",
+                    source_type="event",
                     source_name="Resident Advisor Events",
                 )
             ],
@@ -521,7 +521,7 @@ class TestBoostRaBackedEdges:
             citations=[
                 Citation(
                     text="RA Events",
-                    source_type="event_listing",
+                    source_type="event",
                     source_name="Resident Advisor Events",
                 )
             ],
@@ -542,10 +542,10 @@ class TestBoostRaBackedEdges:
 class TestBuildEdgesRaCitationTier:
     """Tests that _build_edges assigns proper tier to RA citations."""
 
-    def test_ra_citation_gets_event_listing_type(
+    def test_ra_citation_gets_event_type(
         self, mock_llm: MagicMock, citation_service: CitationService
     ) -> None:
-        """Edge citing RA events gets source_type='event_listing' (tier 3)."""
+        """Edge citing RA events gets source_type='event' (tier 3)."""
         svc = InterconnectionService(
             llm_provider=mock_llm,
             citation_service=citation_service,

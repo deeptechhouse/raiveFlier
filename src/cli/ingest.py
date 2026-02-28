@@ -319,7 +319,7 @@ async def _handle_purge(args: argparse.Namespace, app_settings: Settings) -> int
 
     This is a destructive operation — it removes all vector embeddings and
     metadata for chunks matching the specified source_type (e.g., "interview",
-    "reference", "event_listing"). Requires confirmation unless --yes is passed.
+    "reference", "event"). Requires confirmation unless --yes is passed.
     """
     source_type = args.type
     print(f"Purging all chunks with source_type='{source_type}'")

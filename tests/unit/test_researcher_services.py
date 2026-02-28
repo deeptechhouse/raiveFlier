@@ -4832,8 +4832,8 @@ class TestPromoterResearcherCoverageFill:
         assert ref.article_type == "interview"
 
     @pytest.mark.asyncio
-    async def test_extract_article_reference_event_listing_type(self):
-        """Promoter article with 'event' in title classified as event_listing."""
+    async def test_extract_article_reference_event_type(self):
+        """Promoter article with 'event' in title classified as event."""
         from src.services.promoter_researcher import PromoterResearcher
 
         researcher = PromoterResearcher(
@@ -4852,7 +4852,7 @@ class TestPromoterResearcherCoverageFill:
             "Bugged Out",
         )
 
-        assert ref.article_type == "event_listing"
+        assert ref.article_type == "event"
 
     @pytest.mark.asyncio
     async def test_extract_article_reference_no_content_fallback(self):
@@ -5205,8 +5205,8 @@ class TestEventNameResearcherCoverageFill:
         assert ref.article_type == "interview"
 
     @pytest.mark.asyncio
-    async def test_extract_article_reference_event_listing_type(self):
-        """Event article with 'event' in title classified as event_listing."""
+    async def test_extract_article_reference_event_type(self):
+        """Event article with 'event' in title classified as event."""
         from src.services.event_name_researcher import EventNameResearcher
 
         researcher = EventNameResearcher(
@@ -5225,7 +5225,7 @@ class TestEventNameResearcherCoverageFill:
             "BLOC",
         )
 
-        assert ref.article_type == "event_listing"
+        assert ref.article_type == "event"
 
     @pytest.mark.asyncio
     async def test_extract_article_reference_no_content_fallback(self):

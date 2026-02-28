@@ -12,7 +12,7 @@ needed.  This allows the expensive MetadataExtractor tagging step to be
 skipped with ``--skip-tagging`` during bulk event ingestion.
 
 Events are assigned ``citation_tier = 3`` (event listings) and
-``source_type = "event_listing"``.
+``source_type = "event"``.
 """
 
 from __future__ import annotations
@@ -164,7 +164,7 @@ class RAEventProcessor:
             text=text,
             source_id=source_id,
             source_title=f"RA Events: {city.title()} ({first_date} to {last_date})",
-            source_type="event_listing",
+            source_type="event",
             citation_tier=3,
             publication_date=last_date,
             entity_tags=sorted(entity_tags),

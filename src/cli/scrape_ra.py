@@ -286,13 +286,13 @@ async def _handle_ingest(args: argparse.Namespace) -> int:
     else:
         # FULL PATH: Use the standard ingestion pipeline with LLM metadata tagging.
         # This produces richer semantic tags but costs API tokens and takes longer.
-        # The corpus text files are ingested as "event_listing" source type.
+        # The corpus text files are ingested as "event" source type.
         import os
 
         corpus_dir = os.path.dirname(corpus_files[0]) if corpus_files else "data/reference_corpus"
         results = await service.ingest_directory(
             dir_path=corpus_dir,
-            source_type="event_listing",
+            source_type="event",
         )
         total_chunks = sum(r.chunks_created for r in results)
         total_tokens = sum(r.total_tokens for r in results)

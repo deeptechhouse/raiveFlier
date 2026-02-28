@@ -839,12 +839,12 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
         _logger.info("reference_corpus_no_files", path=str(corpus_dir))
         return
 
-    # Get source_ids already ingested as "reference" or "event_listing"
-    # (RA event files are now ingested as event_listing, not reference).
+    # Get source_ids already ingested as "reference" or "event"
+    # (RA event files are now ingested as event, not reference).
     existing_ids: set[str] = set()
     try:
         existing_ids = await vector_store.get_source_ids(source_type="reference")
-        existing_ids |= await vector_store.get_source_ids(source_type="event_listing")
+        existing_ids |= await vector_store.get_source_ids(source_type="event")
     except Exception:
         _logger.debug("get_source_ids_failed_proceeding_with_full_ingest")
 
@@ -860,7 +860,9 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
     # headroom for the embed+store pipeline.  Once the corpus reaches
     # this threshold, further ingestion must be done locally via
     # scripts/rebuild_corpus.py and uploaded via scripts/package_corpus.sh.
-    _MIN_EXISTING_SOURCES = 10
+    # Raised from 10 to 35 to accommodate ~22 RA corpus files + ~8 RBMA
+    # genre-grouped corpus files + curated knowledge files.
+    _MIN_EXISTING_SOURCES = 35
     if len(existing_ids) >= _MIN_EXISTING_SOURCES:
         _logger.info(
             "reference_corpus_sufficient",

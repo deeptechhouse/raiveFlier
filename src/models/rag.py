@@ -61,7 +61,7 @@ class DocumentChunk(BaseModel):
     source_type: str = Field(
         description=(
             'Type of the source document: "book", "article", '
-            '"interview", "flier", or "analysis".'
+            '"interview", "event", "flier", or "analysis".'
         )
     )
     author: str | None = Field(default=None, description="Author of the source document, if known.")

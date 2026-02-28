@@ -39,7 +39,7 @@ class SourceType(str, Enum):
     INTERVIEW = "interview"
     REFERENCE = "reference"
     FLIER = "flier"
-    EVENT_LISTING = "event_listing"
+    EVENT = "event"
     TRANSCRIPT = "transcript"
 
 
