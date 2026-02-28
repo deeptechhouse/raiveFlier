@@ -117,6 +117,15 @@ class QAService:
         Optional cache provider to avoid re-asking identical questions.
     """
 
+    # ─── SYSTEM PROMPT ───
+    # Governs the tone, structure, and JSON output format for all Q&A
+    # answers.  Key design decisions:
+    # - Conversational but direct: avoids cliché openers while still
+    #   producing readable, multi-paragraph answers.
+    # - Paragraph separation via \n\n is required so the frontend can
+    #   split the answer into <p> tags (qa.js _renderAssistantMessage).
+    # - JSON output requirement is placed LAST so the LLM treats it as
+    #   a formatting constraint, not a content directive.
     _SYSTEM_PROMPT = (
         "You are a knowledgeable assistant specializing in electronic music, rave culture, "
         "and the history of DJs, venues, labels, and promoters. You are helping a user explore "
@@ -125,14 +134,15 @@ class QAService:
         "1. The analysis results from the flier (artists, venue, date, research findings)\n"
         "2. Relevant passages from a curated knowledge base of books, articles, and prior analyses\n\n"
         "Guidelines:\n"
-        "- Jump straight to the information. NO preamble, hedging, or throat-clearing. "
-        "Never open with phrases like 'When it comes to...', 'There isn't a straightforward answer...', "
-        "'That's a great question...', 'Based on the passages...', or 'Let me explain...'. "
-        "Start your answer with the actual facts.\n"
-        "- Answer concisely but thoroughly (2-4 paragraphs max)\n"
+        "- Lead with substance. Do NOT open with filler phrases like "
+        "'That's a great question', 'When it comes to...', 'Based on the passages...', "
+        "or 'Let me explain...'. Instead, open with a concrete statement about the topic.\n"
+        "- Write 2-4 substantive paragraphs separated by blank lines. "
+        "Each paragraph should add distinct information (context, details, connections, significance).\n"
         "- Cite specific sources when the retrieved passages support your answer\n"
-        "- If passages lack info, answer from general knowledge — don't dwell on what the passages lack\n"
-        "- Be honest about uncertainty, but state it briefly, not as a lead-in\n"
+        "- If the retrieved passages don't cover the topic, draw on general knowledge about "
+        "electronic music history and culture. Briefly note when you're going beyond the sources.\n"
+        "- Be honest about uncertainty\n"
         "- Stay strictly on-topic: electronic music, rave culture, DJs, labels, venues, promoters, "
         "and the specific entities found on this flier. Do NOT generate content about unrelated topics.\n\n"
         "IMPORTANT: Your response MUST be valid JSON with this exact structure:\n"
@@ -141,6 +151,8 @@ class QAService:
         '"related_facts": [{"text": "A concise, interesting fact", '
         '"category": "LABEL or HISTORY or SCENE or VENUE or ARTIST or CONNECTION", '
         '"entity_name": "name or null"}]}\n\n'
+        "The 'answer' field must contain your full multi-paragraph response "
+        "with paragraphs separated by \\n\\n (double newline).\n\n"
         "Include 3-4 related facts. Each fact MUST be:\n"
         "- A specific, true, interesting tidbit about one of the entities on this flier\n"
         "- Written as a short declarative statement (NOT a question)\n"
@@ -549,7 +561,17 @@ class QAService:
 
         try:
             data = json.loads(text)
-            answer = data.get("answer", text)
+            answer = data.get("answer", "")
+            # Guard against empty/whitespace answers — the LLM occasionally
+            # returns valid JSON with an empty answer field when aggressive
+            # prompt constraints confuse generation.  Fall back to raw text.
+            if not answer or not answer.strip():
+                logger.warning(
+                    "qa_empty_answer_field",
+                    response_preview=text[:200],
+                    msg="JSON parsed but 'answer' field was empty; using raw text.",
+                )
+                answer = text
             llm_citations = data.get("citations", [])
             # Support both new key and legacy key for transitional compatibility
             facts = data.get("related_facts", data.get("suggested_questions", []))

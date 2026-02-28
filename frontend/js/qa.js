@@ -146,13 +146,27 @@ const QA = (() => {
     return text.replace(/\s*\[\d+\]/g, "").replace(/ {2,}/g, " ");
   }
 
-  /** Render an assistant answer with citations and related fact chips. */
+  /** Render an assistant answer with citations and related fact chips.
+   *  Splits the answer into paragraphs for readability.  Prefers double-
+   *  newline (\n\n) as the paragraph delimiter since the system prompt
+   *  asks the LLM for that format.  Falls back to single newlines if no
+   *  double newlines are found, so terse single-paragraph answers still
+   *  render cleanly. */
   function _renderAssistantMessage(answer, citations, facts, question) {
     let html = '<div class="qa-message qa-message--assistant">';
 
     // Answer text — strip inline [n] refs (citations shown as tier badges below)
     const cleaned = _stripCiteRefs(answer);
-    const paragraphs = cleaned.split("\n\n").filter(Boolean);
+
+    // Paragraph splitting: prefer \n\n, fall back to \n for single-spaced output
+    let paragraphs = cleaned.split("\n\n").filter(Boolean);
+    if (paragraphs.length <= 1 && cleaned.includes("\n")) {
+      paragraphs = cleaned.split("\n").filter(Boolean);
+    }
+    // Last resort: if still empty, show the raw cleaned text as one paragraph
+    if (paragraphs.length === 0 && cleaned.trim()) {
+      paragraphs = [cleaned.trim()];
+    }
     paragraphs.forEach((p) => {
       html += `<p>${_esc(p)}</p>`;
     });
