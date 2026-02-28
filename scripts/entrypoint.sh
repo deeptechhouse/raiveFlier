@@ -177,17 +177,44 @@ except Exception as e:
 download_corpus || echo "[entrypoint] Corpus download encountered an error — continuing..."
 
 # =============================================================================
-# Phase 1b: Clear Stale ChromaDB Data (if needed)
+# Phase 1b: Clear Incompatible ChromaDB Data
 # =============================================================================
-# If the corpus is undersized after the download phase, it may be stale data
-# from an older ChromaDB version. Clear it so a fresh schema is created.
+# ChromaDB 0.5.x+ changed the internal SQLite schema (added _type to
+# collection config JSON).  If the persistent disk has data written by
+# 0.5.x/0.6.x but the pinned version is 0.4.x, startup will crash with
+# KeyError: '_type'.  Detect this and wipe the data so the auto-ingest
+# rebuilds it with the compatible schema.
 DB_FILE="$CHROMADB_DIR/chroma.sqlite3"
 if [ -f "$DB_FILE" ]; then
     DB_SIZE=$(wc -c < "$DB_FILE" 2>/dev/null || echo "0")
-    if [ "$DB_SIZE" -lt 50000000 ]; then
+    # Check for schema incompatibility: try to open the collection.
+    # If it fails with a KeyError or any import error, the data is
+    # from an incompatible ChromaDB version.
+    COMPAT_OK=$(python3 -c "
+import sys
+try:
+    import chromadb
+    client = chromadb.PersistentClient(path='$CHROMADB_DIR')
+    # Attempt to list collections — triggers config deserialization
+    client.list_collections()
+    print('ok')
+except Exception as e:
+    print(f'fail: {e}', file=sys.stderr)
+    print('fail')
+" 2>&1 | tail -1)
+
+    if [ "$COMPAT_OK" != "ok" ]; then
+        echo "[entrypoint] ChromaDB data incompatible with installed version"
+        echo "[entrypoint] Clearing $CHROMADB_DIR so auto-ingest rebuilds the corpus..."
+        rm -rf "${CHROMADB_DIR:?}"/*
+        mkdir -p "$CHROMADB_DIR"
+        echo "[entrypoint] Cleared — fresh corpus will be built by background ingestion"
+    elif [ "$DB_SIZE" -lt 50000000 ]; then
         echo "[entrypoint] Clearing stale ChromaDB data ($DB_SIZE bytes < 50 MB threshold)"
         rm -rf "${CHROMADB_DIR:?}"/*
         echo "[entrypoint] Cleared — fresh corpus will be built by background ingestion"
+    else
+        echo "[entrypoint] ChromaDB data OK (size=$DB_SIZE bytes)"
     fi
 fi
 

@@ -149,11 +149,16 @@ class TestCorpusSearchEndpoint:
         )
 
         assert resp.status_code == 200
+        # Tiered query runs up to 4 sub-queries (T1 interviews, T2 books,
+        # T3a event_listings, T3b catch-all).  When user filters to
+        # source_type=["book"], only tier 2 (books) is relevant — the
+        # other tiers are skipped because "book" is not in their type
+        # or is excluded by the catch-all's $nin list.
+        # Verify tier 2 was called with the exact source_type filter.
+        assert mock_store.query.call_count == 1
         call_kwargs = mock_store.query.call_args
         filters = call_kwargs.kwargs.get("filters")
-        # Only the explicit source_type filter is pushed to ChromaDB.
-        # Auto-detected signals (genre, geo) are soft boosts, not hard filters.
-        assert filters == {"source_type": {"$in": ["book"]}}
+        assert filters == {"source_type": "book"}
 
     def test_search_passes_entity_tag_filter(self) -> None:
         mock_store = AsyncMock()
@@ -207,11 +212,24 @@ class TestCorpusSearchEndpoint:
         )
 
         assert resp.status_code == 200
-        call_kwargs = mock_store.query.call_args
-        filters = call_kwargs.kwargs.get("filters")
-        assert filters["source_type"] == {"$in": ["article", "interview"]}
-        assert filters["entity_tags"] == {"$contains": "Jeff Mills"}
-        assert filters["geographic_tags"] == {"$contains": "Detroit"}
+        # Tiered query: T1 (interview) runs because "interview" is in
+        # the user's list; T2 (book) and T3a (event_listing) are skipped;
+        # T3b (catch-all) runs with surviving type ["article"].
+        assert mock_store.query.call_count == 2
+        # Verify common filters (entity, geo) are present on every call,
+        # and that the combined source_type coverage across all tiers
+        # matches the user's requested types.
+        all_source_types: set[str] = set()
+        for call in mock_store.query.call_args_list:
+            f = call.kwargs.get("filters", {})
+            assert f["entity_tags"] == {"$contains": "Jeff Mills"}
+            assert f["geographic_tags"] == {"$contains": "Detroit"}
+            st = f.get("source_type")
+            if isinstance(st, str):
+                all_source_types.add(st)
+            elif isinstance(st, dict) and "$in" in st:
+                all_source_types.update(st["$in"])
+        assert all_source_types == {"article", "interview"}
 
     def test_search_custom_top_k(self) -> None:
         """Tiered search calls vector_store.query() multiple times (once per tier).
@@ -283,20 +301,27 @@ class TestCorpusSearchEndpoint:
         assert pf is not None
         assert "techno" in pf["genres"]
 
-        # But no hard genre filter should be pushed to ChromaDB
-        call_kwargs = mock_store.query.call_args
-        filters = call_kwargs.kwargs.get("filters")
-        assert filters is None
+        # No hard genre/entity/geo filter should be pushed to any
+        # ChromaDB call.  Tier-specific source_type filters are expected
+        # internal infrastructure, not user-applied filters.
+        for call in mock_store.query.call_args_list:
+            filters = call.kwargs.get("filters") or {}
+            assert "genre_tags" not in filters, "genre auto-detect leaked as hard filter"
+            assert "entity_tags" not in filters, "entity auto-detect leaked as hard filter"
+            assert "geographic_tags" not in filters, "geo auto-detect leaked as hard filter"
 
-        # A query with no detectable signals should also pass filters=None
+        # Same for a query with no detectable signals
         mock_store.query.reset_mock()
         resp2 = client.post(
             "/api/v1/corpus/search",
             json={"query": "what happened at the party"},
         )
         assert resp2.status_code == 200
-        call_kwargs2 = mock_store.query.call_args
-        assert call_kwargs2.kwargs.get("filters") is None
+        for call in mock_store.query.call_args_list:
+            filters = call.kwargs.get("filters") or {}
+            assert "genre_tags" not in filters
+            assert "entity_tags" not in filters
+            assert "geographic_tags" not in filters
 
     def test_search_empty_results(self) -> None:
         mock_store = AsyncMock()
