@@ -106,6 +106,20 @@ class ChromaDBProvider(IVectorStoreProvider):
                 name=collection_name,
                 metadata={"hnsw:space": "cosine"},
             )
+        except KeyError as exc:
+            # ChromaDB 0.5.x expects a '_type' key in persisted collection
+            # config JSON that 0.4.x never wrote.  If this fires, the
+            # persistent data on disk is incompatible with the installed
+            # chromadb version.  Pin chromadb<0.5.0 or delete the
+            # persistent ChromaDB directory to regenerate from scratch.
+            raise RAGError(
+                message=(
+                    f"ChromaDB collection config incompatible with installed version "
+                    f"(missing key: {exc}).  Pin chromadb<0.5.0 in requirements.txt "
+                    f"or delete '{persist_directory}' to rebuild the corpus."
+                ),
+                provider_name="chromadb",
+            ) from exc
         self._cached_stats: CorpusStats | None = None
         self._cached_stats_count: int = -1
 
@@ -614,11 +628,20 @@ class ChromaDBProvider(IVectorStoreProvider):
         # to ChromaDB — $contains is not a valid ChromaDB where operator.
         # These are post-filtered in Python after retrieval (routes.py).
 
+        # source_type filter: supports plain string (exact match), $in
+        # (inclusion list), and $nin (exclusion list) for tiered queries.
         source_filter = filters.get("source_type")
-        if source_filter and isinstance(source_filter, dict):
-            in_val = source_filter.get("$in")
-            if in_val and isinstance(in_val, list):
-                clauses.append({"source_type": {"$in": in_val}})
+        if source_filter:
+            if isinstance(source_filter, str):
+                # Plain string → exact match (used by tier 1/2/3a)
+                clauses.append({"source_type": source_filter})
+            elif isinstance(source_filter, dict):
+                in_val = source_filter.get("$in")
+                if in_val and isinstance(in_val, list):
+                    clauses.append({"source_type": {"$in": in_val}})
+                nin_val = source_filter.get("$nin")
+                if nin_val and isinstance(nin_val, list):
+                    clauses.append({"source_type": {"$nin": nin_val}})
 
         # Citation tier filter: only include chunks with citation_tier at
         # or better than the threshold.  Lower number = higher quality,
