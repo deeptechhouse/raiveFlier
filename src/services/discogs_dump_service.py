@@ -1104,12 +1104,18 @@ def _clean_discogs_markup(text: str) -> str:
     if not text:
         return ""
 
-    # [a=Name], [l=Name] → just "Name"
+    # [a=Name], [l=Name] → just "Name" (named entity references)
     text = re.sub(r"\[a=([^\]]+)\]", r"\1", text)
     text = re.sub(r"\[l=([^\]]+)\]", r"\1", text)
 
-    # [r=12345] and [m=12345] → remove entirely (numeric IDs aren't useful)
-    text = re.sub(r"\[[rm]=\d+\]", "", text)
+    # [a12345], [a674], [l270709], [r12345], [m53063] → remove entirely
+    # These are numeric ID-only references (no readable name) that appear
+    # frequently in Discogs profiles. They resolve to nothing useful in
+    # prose destined for embedding.
+    text = re.sub(r"\[[alrm]\d+\]", "", text)
+
+    # [r=12345] and [m=12345] → remove entirely (numeric IDs with = sign)
+    text = re.sub(r"\[[rmalRMAL]=\d+\]", "", text)
 
     # [url=...]Text[/url] → just "Text"
     text = re.sub(r"\[url=[^\]]*\](.*?)\[/url\]", r"\1", text)

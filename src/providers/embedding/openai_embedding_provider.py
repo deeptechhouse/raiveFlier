@@ -65,6 +65,11 @@ class OpenAIEmbeddingProvider(IEmbeddingProvider):
         self._provider_label = (
             "openai-compatible_embedding" if settings.openai_base_url else "openai_embedding"
         )
+        # Load a fast tokenizer for accurate token-level truncation.
+        # Models like intfloat/multilingual-e5-large-instruct have tight
+        # 512-token limits; char-based estimates are unreliable for dense
+        # text (Discogs data with names, abbreviations, punctuation).
+        self._tokenizer = self._load_tokenizer()
 
     # ------------------------------------------------------------------
     # IEmbeddingProvider implementation
@@ -123,27 +128,73 @@ class OpenAIEmbeddingProvider(IEmbeddingProvider):
         """Return ``True`` if an API key is configured."""
         return bool(self._api_key)
 
+    @staticmethod
+    def _load_tokenizer():  # noqa: ANN205 – optional dep
+        """Load a fast HuggingFace tokenizer for accurate token counting.
+
+        Uses ``xlm-roberta-large`` — the same tokenizer family as the
+        ``intfloat/multilingual-e5-large-instruct`` and BGE embedding
+        models.  Falls back to ``bert-base-uncased`` if xlm-roberta is
+        unavailable (requires an initial download).
+        """
+        try:
+            from tokenizers import Tokenizer  # type: ignore[import-untyped]
+
+            # xlm-roberta matches the E5/BGE model family's tokenizer.
+            for model_id in ("xlm-roberta-large", "bert-base-uncased"):
+                try:
+                    return Tokenizer.from_pretrained(model_id)
+                except Exception:  # noqa: BLE001
+                    continue
+            return None
+        except Exception:  # noqa: BLE001
+            logger.info(
+                "embedding_tokenizer_unavailable",
+                msg="Falling back to char-based truncation for token limits.",
+            )
+            return None
+
     def _truncate_to_token_limit(self, text: str) -> str:
         """Truncate text to fit within the model's max token limit.
 
-        Uses a conservative character-based estimate (~3.5 chars per token)
-        to safely stay under the limit without requiring a tokenizer.
+        Two strategies, in priority order:
+        1. Tokenizer-based (accurate): encode with xlm-roberta tokenizer,
+           truncate at 95% of max_tokens (5% margin for edge cases), decode.
+        2. Char-based fallback: use 1.5 chars/token estimate (very conservative,
+           handles dense text with short words and punctuation).
         """
         max_tokens = self._max_tokens
         if max_tokens <= 0:
             return text
 
-        # Very conservative: ~2.5 characters per token ensures we stay
-        # well under the limit even for text heavy with short words, names,
-        # and punctuation that tokenize to multiple tokens.
-        max_chars = int(max_tokens * 2.5)
+        # Strategy 1: accurate tokenizer-based truncation.
+        if self._tokenizer is not None:
+            ids = self._tokenizer.encode(text).ids
+            # 5% safety margin — minimal because xlm-roberta matches
+            # the actual E5/BGE model tokenizer closely.
+            safe_limit = int(max_tokens * 0.95)
+            if len(ids) <= safe_limit:
+                return text
+            truncated = self._tokenizer.decode(ids[:safe_limit])
+            logger.debug(
+                "truncating_embedding_input_tokenizer",
+                original_tokens=len(ids),
+                truncated_tokens=safe_limit,
+                model=self._model,
+            )
+            return truncated
+
+        # Strategy 2: very conservative char-based fallback.
+        # 1.5 chars/token is aggressive but safe for dense text (names,
+        # abbreviations, punctuation that tokenize at ~2-3 chars/token).
+        max_chars = int(max_tokens * 1.5)
         if len(text) <= max_chars:
             return text
 
         # Truncate at the last word boundary before max_chars.
         truncated = text[:max_chars].rsplit(" ", 1)[0]
         logger.debug(
-            "truncating_embedding_input",
+            "truncating_embedding_input_chars",
             original_chars=len(text),
             truncated_chars=len(truncated),
             model=self._model,
