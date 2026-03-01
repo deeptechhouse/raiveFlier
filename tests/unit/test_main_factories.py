@@ -1030,6 +1030,7 @@ class TestAutoIngestCorpus:
         corpus_dir = tmp_path / "reference_corpus"
         corpus_dir.mkdir()
         (corpus_dir / "test.txt").write_text("already ingested content")
+        nonexistent = tmp_path / "nonexistent"
 
         app = FastAPI()
         mock_vs = AsyncMock()
@@ -1043,12 +1044,15 @@ class TestAutoIngestCorpus:
         app.state.vector_store = mock_vs
         app.state.ingestion_service = mock_ingestion
 
-        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
+        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir), \
+             patch("src.main._INTERVIEW_DIR", nonexistent), \
+             patch("src.main._BOOKS_DIR", nonexistent):
             await _auto_ingest_reference_corpus(app)
 
-        # get_source_ids was called to determine existing reference + event sources
-        assert mock_vs.get_source_ids.await_count == 2
-        # ingest_directory was called with skip_source_ids
+        # get_source_ids called once per source type in _INGEST_SOURCE_TYPES
+        assert mock_vs.get_source_ids.await_count == 4
+        # ingest_directory called once (reference phase only; interview
+        # and books phases skipped because dirs don't exist)
         mock_ingestion.ingest_directory.assert_awaited_once()
         call_kwargs = mock_ingestion.ingest_directory.await_args
         assert call_kwargs.kwargs.get("skip_source_ids") is not None or (
@@ -1057,21 +1061,21 @@ class TestAutoIngestCorpus:
 
     @pytest.mark.asyncio
     async def test_corpus_dir_not_found_skips(self) -> None:
-        """When the reference corpus directory does not exist, ingestion is skipped."""
+        """When all corpus directories do not exist, ingestion is skipped."""
         from src.main import _auto_ingest_reference_corpus
 
         app = FastAPI()
         mock_vs = AsyncMock()
+        mock_vs.get_source_ids = AsyncMock(return_value=set())
         mock_ingestion = AsyncMock()
 
         app.state.vector_store = mock_vs
         app.state.ingestion_service = mock_ingestion
 
-        # Point to a non-existent directory
-        with patch(
-            "src.main._REFERENCE_CORPUS_DIR",
-            Path("/tmp/nonexistent_corpus_dir_99999"),
-        ):
+        nonexistent = Path("/tmp/nonexistent_corpus_dir_99999")
+        with patch("src.main._REFERENCE_CORPUS_DIR", nonexistent), \
+             patch("src.main._INTERVIEW_DIR", nonexistent), \
+             patch("src.main._BOOKS_DIR", nonexistent):
             await _auto_ingest_reference_corpus(app)
 
         mock_ingestion.ingest_directory.assert_not_awaited()
@@ -1087,6 +1091,7 @@ class TestAutoIngestCorpus:
         corpus_dir = tmp_path / "reference_corpus"
         corpus_dir.mkdir()
         (corpus_dir / "test.txt").write_text("Berlin techno history")
+        nonexistent = tmp_path / "nonexistent"
 
         app = FastAPI()
         mock_vs = AsyncMock()
@@ -1109,11 +1114,12 @@ class TestAutoIngestCorpus:
         app.state.vector_store = mock_vs
         app.state.ingestion_service = mock_ingestion
 
-        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
+        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir), \
+             patch("src.main._INTERVIEW_DIR", nonexistent), \
+             patch("src.main._BOOKS_DIR", nonexistent):
             await _auto_ingest_reference_corpus(app)
 
-        # ingest_directory called with the corpus dir, reference type, and
-        # no skip_source_ids (empty set is falsy, so passed as None)
+        # ingest_directory called once for the reference phase
         mock_ingestion.ingest_directory.assert_awaited_once()
         call_args = mock_ingestion.ingest_directory.await_args
         assert call_args.args[0] == str(corpus_dir)
@@ -1129,6 +1135,7 @@ class TestAutoIngestCorpus:
         corpus_dir = tmp_path / "corpus"
         corpus_dir.mkdir()
         (corpus_dir / "data.txt").write_text("Some text")
+        nonexistent = tmp_path / "nonexistent"
 
         app = FastAPI()
         mock_vs = AsyncMock()
@@ -1150,7 +1157,9 @@ class TestAutoIngestCorpus:
         app.state.vector_store = mock_vs
         app.state.ingestion_service = mock_ingestion
 
-        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
+        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir), \
+             patch("src.main._INTERVIEW_DIR", nonexistent), \
+             patch("src.main._BOOKS_DIR", nonexistent):
             await _auto_ingest_reference_corpus(app)
 
         mock_ingestion.ingest_directory.assert_awaited_once()
@@ -1165,6 +1174,7 @@ class TestAutoIngestCorpus:
         corpus_dir = tmp_path / "corpus"
         corpus_dir.mkdir()
         (corpus_dir / "boom.txt").write_text("Will fail")
+        nonexistent = tmp_path / "nonexistent"
 
         app = FastAPI()
         mock_vs = AsyncMock()
@@ -1180,7 +1190,9 @@ class TestAutoIngestCorpus:
         app.state.vector_store = mock_vs
         app.state.ingestion_service = mock_ingestion
 
-        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir):
+        with patch("src.main._REFERENCE_CORPUS_DIR", corpus_dir), \
+             patch("src.main._INTERVIEW_DIR", nonexistent), \
+             patch("src.main._BOOKS_DIR", nonexistent):
             # Should NOT raise — error is caught internally
             await _auto_ingest_reference_corpus(app)
 

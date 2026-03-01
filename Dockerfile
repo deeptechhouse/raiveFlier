@@ -93,6 +93,10 @@ COPY frontend/ frontend/
 COPY config/ config/
 # Curated RAG corpus text files
 COPY data/reference_corpus/ data/reference_corpus/
+# RA Exchange interview transcripts (489 episodes, ~25 MB)
+COPY transcripts/ra_exchange/ transcripts/ra_exchange/
+# User-provided book text files (auto-ingested as tier 1)
+COPY data/books/ data/books/
 # Docker entrypoint script
 COPY scripts/entrypoint.sh scripts/entrypoint.sh
 

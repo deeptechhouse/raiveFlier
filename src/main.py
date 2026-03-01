@@ -858,79 +858,87 @@ async def run_pipeline(flier: FlierImage) -> PipelineState:
 
 
 # ---------------------------------------------------------------------------
-# Auto-ingest reference corpus on first boot
+# Auto-ingest corpus on startup (multi-phase, priority-ordered)
 # ---------------------------------------------------------------------------
+#
+# Ingests content from three source directories in priority order:
+#   Phase 1: RA Exchange interviews  (tier 1, highest search value)
+#   Phase 2: Books                   (tier 1, user-provided .txt files)
+#   Phase 3: Reference corpus        (tier 5 refs / tier 3 events)
+#
+# Each phase is memory-aware — the governor inside ingest_directory
+# pauses ingestion before OOM.  On restart, skip_source_ids ensures
+# already-ingested files are skipped and the next phase picks up.
 
-# Path to the curated reference corpus — books, articles, interviews about
-# rave culture and electronic music history.  These are plain-text files
-# that get chunked, embedded, and stored in ChromaDB at first boot.
-_REFERENCE_CORPUS_DIR = Path(__file__).resolve().parent.parent / "data" / "reference_corpus"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_REFERENCE_CORPUS_DIR = _PROJECT_ROOT / "data" / "reference_corpus"
+_INTERVIEW_DIR = _PROJECT_ROOT / "transcripts" / "ra_exchange"
+_BOOKS_DIR = _PROJECT_ROOT / "data" / "books"
+
+# Source types that participate in auto-ingest.  The set is used to
+# build a comprehensive skip list so files are never re-ingested.
+_INGEST_SOURCE_TYPES = ("reference", "event", "interview", "book")
 
 
 async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
-    """Incrementally ingest reference corpus files into the RAG vector store.
+    """Incrementally ingest corpus files into the RAG vector store.
 
     Runs on every startup but only processes NEW files.  Uses the vector
-    store's ``get_source_ids`` method to find which reference sources are
-    already ingested, then passes that set to ``ingest_directory`` so
-    already-ingested files are skipped (no wasted LLM / embedding calls).
+    store's ``get_source_ids`` method to find which sources are already
+    ingested, then passes that set to ``ingest_directory`` so already-
+    ingested files are skipped (no wasted embedding calls).
 
-    # JUNIOR DEV NOTE — Incremental idempotent startup
-    # Previous versions skipped ALL ingestion when total_chunks > 0, which
-    # meant new reference files added to data/reference_corpus/ were never
-    # ingested on an existing deployment.  This version compares files on
-    # disk with sources already in the store and only ingests the difference.
-    # The ingest_directory method also uses upsert, so even if a file were
-    # re-processed, the result would be the same (idempotent).
+    Three source directories are processed in priority order:
+
+    1. **RA Exchange interviews** (``transcripts/ra_exchange/``)
+       489 long-form artist interview transcripts.  Tier 1 (highest
+       authority).  These power the T1 tier in sidebar search and
+       are the most valuable content for artist-specific queries.
+
+    2. **Books** (``data/books/``)
+       User-provided ``.txt`` files of electronic music books.  Tier 1.
+       Place plain-text book files here and they'll be auto-ingested.
+
+    3. **Reference corpus** (``data/reference_corpus/``)
+       Curated knowledge files, RBMA lectures, and RA event listings.
+       Knowledge files get tier 5 (reference); event files get tier 3.
+
+    The memory governor inside ``ingest_directory`` pauses ingestion
+    before hitting the 512 MB container limit.  Each restart cycle
+    picks up where the previous one left off via ``skip_source_ids``.
     """
     ingestion_service = getattr(application.state, "ingestion_service", None)
     vector_store = getattr(application.state, "vector_store", None)
     if ingestion_service is None or vector_store is None:
         return  # RAG not enabled
 
-    corpus_dir = _REFERENCE_CORPUS_DIR
-    if not corpus_dir.is_dir():
-        _logger.warning("reference_corpus_dir_not_found", path=str(corpus_dir))
-        return
-
-    # Count files on disk
-    disk_files = sorted(corpus_dir.glob("*.txt")) + sorted(corpus_dir.glob("*.html"))
-    if not disk_files:
-        _logger.info("reference_corpus_no_files", path=str(corpus_dir))
-        return
-
-    # Get source_ids already ingested as "reference" or "event"
-    # (RA event files are now ingested as event, not reference).
+    # Build a comprehensive skip list from ALL source types so files
+    # ingested in previous cycles (possibly from a different phase)
+    # are never re-processed.
     existing_ids: set[str] = set()
     try:
-        existing_ids = await vector_store.get_source_ids(source_type="reference")
-        existing_ids |= await vector_store.get_source_ids(source_type="event")
+        for st in _INGEST_SOURCE_TYPES:
+            existing_ids |= await vector_store.get_source_ids(source_type=st)
     except Exception:
         _logger.debug("get_source_ids_failed_proceeding_with_full_ingest")
 
     _logger.info(
-        "reference_corpus_check",
-        files_on_disk=len(disk_files),
-        existing_reference_sources=len(existing_ids),
+        "corpus_ingest_check",
+        existing_sources=len(existing_ids),
     )
 
-    # Guard: skip ingestion if the corpus already has enough reference
-    # sources.  On Render's 512 MB instance, the ChromaDB HNSW index
-    # for 28K+ vectors (~100 MB) plus the app leaves insufficient
-    # headroom for the embed+store pipeline.  Once the corpus reaches
-    # this threshold, further ingestion must be done locally via
-    # scripts/rebuild_corpus.py and uploaded via scripts/package_corpus.sh.
-    # Raised from 10 to 35 to accommodate ~22 RA corpus files + ~8 RBMA
-    # genre-grouped corpus files + curated knowledge files.
-    _MIN_EXISTING_SOURCES = 35
+    # Guard: skip ingestion if the corpus already has enough sources.
+    # The memory governor provides the real OOM protection; this is a
+    # secondary safeguard.  Threshold accommodates ~489 interviews +
+    # ~34 reference files + books.
+    _MIN_EXISTING_SOURCES = 550
     if len(existing_ids) >= _MIN_EXISTING_SOURCES:
         _logger.info(
-            "reference_corpus_sufficient",
+            "corpus_sufficient",
             existing_sources=len(existing_ids),
             threshold=_MIN_EXISTING_SOURCES,
-            message="Corpus has enough reference sources; skipping ingestion to stay within memory budget",
+            message="Corpus fully ingested; skipping",
         )
-        # Still log final corpus state, then return early
         try:
             final_stats = await vector_store.get_stats()
             _logger.info(
@@ -943,29 +951,88 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
             _logger.error("corpus_readiness_check_failed", error=str(exc))
         return
 
-    # Ingest — skip_source_ids skips already-stored files; skip_tagging
-    # bypasses LLM metadata extraction for the reference corpus (RA event
-    # listings don't need entity/genre tagging — semantic search via
-    # embeddings is sufficient).  This cuts ingestion from ~2.5 hours to
-    # ~15 minutes for 72MB of text.
-    try:
-        results = await ingestion_service.ingest_directory(
-            str(corpus_dir),
-            source_type="reference",
-            skip_source_ids=existing_ids if existing_ids else None,
-            skip_tagging=True,
-        )
-        total_chunks = sum(r.chunks_created for r in results)
-        if results:
-            _logger.info(
-                "reference_corpus_ingested",
-                new_files=len(results),
-                new_chunks=total_chunks,
+    total_new_chunks = 0
+
+    # --- Phase 1: RA Exchange interviews (highest priority) ---
+    # These are tier 1 content — long-form artist interviews that
+    # power the T1 tier in sidebar search.  Ingested before reference
+    # corpus so they get memory priority over the large event files.
+    if _INTERVIEW_DIR.is_dir():
+        try:
+            _logger.info("corpus_phase_start", phase=1, source="interviews")
+            results = await ingestion_service.ingest_directory(
+                str(_INTERVIEW_DIR),
+                source_type="interview",
+                default_tier=1,
+                skip_source_ids=existing_ids if existing_ids else None,
+                skip_tagging=True,
             )
-        else:
-            _logger.info("reference_corpus_up_to_date")
-    except Exception as exc:
-        _logger.error("reference_corpus_ingestion_failed", error=str(exc))
+            phase_chunks = sum(r.chunks_created for r in results)
+            total_new_chunks += phase_chunks
+            if results:
+                _logger.info(
+                    "corpus_phase_complete",
+                    phase=1,
+                    new_files=len(results),
+                    new_chunks=phase_chunks,
+                )
+        except Exception as exc:
+            _logger.error("corpus_interview_ingestion_failed", error=str(exc))
+
+    # --- Phase 2: Books (user-provided .txt files) ---
+    # Place plain-text book files in data/books/ and they'll be
+    # auto-ingested as tier 1 book sources.
+    if _BOOKS_DIR.is_dir():
+        try:
+            _logger.info("corpus_phase_start", phase=2, source="books")
+            results = await ingestion_service.ingest_directory(
+                str(_BOOKS_DIR),
+                source_type="book",
+                default_tier=1,
+                skip_source_ids=existing_ids if existing_ids else None,
+                skip_tagging=True,
+            )
+            phase_chunks = sum(r.chunks_created for r in results)
+            total_new_chunks += phase_chunks
+            if results:
+                _logger.info(
+                    "corpus_phase_complete",
+                    phase=2,
+                    new_files=len(results),
+                    new_chunks=phase_chunks,
+                )
+        except Exception as exc:
+            _logger.error("corpus_book_ingestion_failed", error=str(exc))
+
+    # --- Phase 3: Reference corpus (knowledge files + events) ---
+    # Curated text files and RA event listings.  Event files are the
+    # largest (up to 20 MB each) and lowest priority — the memory
+    # governor typically pauses during this phase.
+    if _REFERENCE_CORPUS_DIR.is_dir():
+        try:
+            _logger.info("corpus_phase_start", phase=3, source="reference")
+            results = await ingestion_service.ingest_directory(
+                str(_REFERENCE_CORPUS_DIR),
+                source_type="reference",
+                skip_source_ids=existing_ids if existing_ids else None,
+                skip_tagging=True,
+            )
+            phase_chunks = sum(r.chunks_created for r in results)
+            total_new_chunks += phase_chunks
+            if results:
+                _logger.info(
+                    "corpus_phase_complete",
+                    phase=3,
+                    new_files=len(results),
+                    new_chunks=phase_chunks,
+                )
+        except Exception as exc:
+            _logger.error("corpus_reference_ingestion_failed", error=str(exc))
+
+    if total_new_chunks:
+        _logger.info("corpus_ingestion_total", new_chunks=total_new_chunks)
+    else:
+        _logger.info("corpus_up_to_date")
 
     # Always log final corpus state for operational visibility
     try:

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import os
 import resource
 import sys
 import time
@@ -342,6 +343,7 @@ class IngestionService:
         skip_source_ids: set[str] | None = None,
         skip_tagging: bool = False,
         concurrency: int = 1,
+        default_tier: int = 5,
     ) -> list[IngestionResult]:
         """Ingest all ``.txt`` and ``.html`` files in *dir_path*.
 
@@ -368,6 +370,11 @@ class IngestionService:
             Render.  Each concurrent file holds its full text, chunks,
             and embeddings in memory simultaneously.  Increase on
             machines with more memory for faster ingestion.
+        default_tier:
+            Citation tier assigned to files that don't have a special
+            override (e.g. RA events use tier 3).  Defaults to 5
+            (generic web/article).  Set to 1 for books, 1 for
+            interviews, etc.
 
         Returns
         -------
@@ -401,7 +408,7 @@ class IngestionService:
                 _file_source_type = (
                     "event" if _is_ra_event else source_type
                 )
-                _file_tier = 3 if _is_ra_event else 5
+                _file_tier = 3 if _is_ra_event else default_tier
                 raw_chunks = self._article_processor.process_file(
                     str(fp),
                     source_type=_file_source_type,
@@ -507,7 +514,10 @@ class IngestionService:
         # before OOM, letting the container serve from the partial corpus.
         # On next restart, skip_source_ids skips already-ingested files
         # and ingestion resumes where it left off.
-        _RSS_CEILING_MB = 400  # 80% of 512 MB container limit
+        # Configurable via INGESTION_RSS_CEILING_MB env var for local
+        # runs on machines with more RAM (e.g. Discogs corpus ingestion).
+        # Defaults to 400 MB (80% of the 512 MB Render container limit).
+        _RSS_CEILING_MB = int(os.environ.get("INGESTION_RSS_CEILING_MB", "400"))
         results: list[IngestionResult] = []
 
         # Sort files smallest-first so high-value small files (books,

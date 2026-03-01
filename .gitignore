@@ -49,8 +49,19 @@ data/chromadb/
 # SQLite feedback database (runtime data)
 data/feedback.db
 
-# Transcripts (large data files, not code)
-transcripts/
+# Transcripts — ignore all except the RA Exchange interview
+# transcripts which are included in the Docker build for auto-ingest.
+transcripts/*
+!transcripts/ra_exchange/
+# Ignore progress/log files within ra_exchange
+transcripts/ra_exchange/_*.json
+transcripts/ra_exchange/_*.log
+
+# Book text files (user-provided, potentially copyrighted)
+# Keep the directory structure (.gitkeep) but ignore content files
+data/books/*.txt
+data/books/*.pdf
+data/books/*.epub
 
 # RA.co scrape checkpoints (large JSON files, resumable)
 data/ra_scrape/

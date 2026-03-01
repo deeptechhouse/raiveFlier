@@ -45,7 +45,10 @@ uploads/
 next_steps/
 scripts/*
 !scripts/entrypoint.sh
-transcripts/
+# Exclude all transcripts except RA Exchange (needed for auto-ingest)
+transcripts/*
+!transcripts/ra_exchange/
+transcripts/ra_exchange/_*
 annotated/
 README*
 CHANGELOG*
