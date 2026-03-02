@@ -751,15 +751,25 @@ async def list_analyses(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> AnalysisListResponse:
-    """List all permanently stored analyses with pagination."""
+    """List all permanently stored analyses with pagination.
+
+    Uses count_analyses() for the total instead of len(analyses) so the
+    frontend receives the true count of all active snapshots, not just
+    the page-sized slice.  The previous len(analyses) approach returned
+    the page size as the total, making pagination controls unusable.
+    """
     flier_history = getattr(request.app.state, "flier_history", None)
     if flier_history is None:
         raise HTTPException(status_code=503, detail="Flier history service unavailable")
 
-    analyses = await flier_history.list_analyses(limit=limit, offset=offset)
+    # Run both queries concurrently — count is independent of page fetch.
+    analyses, total = await asyncio.gather(
+        flier_history.list_analyses(limit=limit, offset=offset),
+        flier_history.count_analyses(),
+    )
     return AnalysisListResponse(
         analyses=analyses,
-        total=len(analyses),
+        total=total,
         offset=offset,
         limit=limit,
     )

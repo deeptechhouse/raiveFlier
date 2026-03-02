@@ -399,3 +399,86 @@ class TestGetAllActiveAnalyses:
         result = await provider.get_all_active_analyses()
         assert len(result) == 1
         assert result[0]["interconnection_map"]["narrative"] == "Rev 2"
+
+    @pytest.mark.asyncio
+    async def test_batch_dismissals_distributed_correctly(self, provider):
+        """Verify batch-fetched dismissals are correctly distributed to their analyses.
+
+        Regression test for the N+1 → batch-fetch refactor: ensures that
+        dismissals belonging to flier A do not leak into flier B's results
+        when both are fetched in a single IN(...) query.
+        """
+        # Create two fliers with dismissals on only the first one.
+        await provider.log_flier(
+            session_id="sess-batch-a", artists=["A1"], venue="V1",
+            promoter=None, event_name=None, event_date=None, genre_tags=[],
+        )
+        await provider.store_analysis(session_id="sess-batch-a", interconnection_map=SAMPLE_MAP)
+        await provider.persist_edge_dismissal(
+            session_id="sess-batch-a",
+            source="Carl Cox", target="Adam Beyer",
+            relationship_type="shared_label",
+        )
+
+        await provider.log_flier(
+            session_id="sess-batch-b", artists=["A2"], venue="V2",
+            promoter=None, event_name=None, event_date=None, genre_tags=[],
+        )
+        await provider.store_analysis(session_id="sess-batch-b", interconnection_map=SAMPLE_MAP)
+
+        result = await provider.get_all_active_analyses()
+        assert len(result) == 2
+
+        # Find which analysis has dismissals — must match the correct flier.
+        a_result = next(r for r in result if r["session_id"] == "sess-batch-a")
+        b_result = next(r for r in result if r["session_id"] == "sess-batch-b")
+
+        assert len(a_result["dismissals"]) == 1
+        assert len(b_result["dismissals"]) == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# count_analyses
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestCountAnalyses:
+    """Tests for count_analyses() — the COUNT(*) companion to list_analyses.
+
+    Ensures the count reflects only active (is_active=1) snapshots so the
+    API layer can provide accurate pagination totals.
+    """
+
+    @pytest.mark.asyncio
+    async def test_count_empty(self, provider):
+        count = await provider.count_analyses()
+        assert count == 0
+
+    @pytest.mark.asyncio
+    async def test_count_with_analyses(self, provider):
+        for i in range(3):
+            await provider.log_flier(
+                session_id=f"sess-cnt-{i}", artists=[f"A{i}"], venue=f"V{i}",
+                promoter=None, event_name=None, event_date=None, genre_tags=[],
+            )
+            await provider.store_analysis(
+                session_id=f"sess-cnt-{i}", interconnection_map=SAMPLE_MAP,
+            )
+        count = await provider.count_analyses()
+        assert count == 3
+
+    @pytest.mark.asyncio
+    async def test_count_excludes_inactive_revisions(self, provider):
+        """Only one active revision per flier should be counted.
+
+        store_analysis sets is_active=0 on prior revisions, so storing
+        two analyses for the same flier must still yield count == 1.
+        """
+        await provider.log_flier(
+            session_id="sess-rev-cnt", artists=["A"], venue="V",
+            promoter=None, event_name=None, event_date=None, genre_tags=[],
+        )
+        await provider.store_analysis(session_id="sess-rev-cnt", interconnection_map=SAMPLE_MAP)
+        await provider.store_analysis(session_id="sess-rev-cnt", interconnection_map=SAMPLE_MAP)
+        count = await provider.count_analyses()
+        assert count == 1
