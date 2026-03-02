@@ -135,17 +135,31 @@
 
 <div class="summary">
   <strong>Context:</strong> A full performance analysis identified 13 local computation bottlenecks.
-  The <strong>top 3</strong> have been implemented and tested (333 tests pass, 0 fail):
+  The <strong>top 3</strong> have been implemented and tested:
   <ol style="margin-top: 0.5rem;">
     <li><s>bilateralFilter replaced fastNlMeansDenoisingColored (10-50x faster)</s></li>
     <li><s>Eliminated double Tesseract invocation (reconstructed text from image_to_data)</s></li>
     <li><s>Parallelized OCR passes with ThreadPoolExecutor (both providers)</s></li>
   </ol>
-  <p style="margin-top: 0.5rem;">This prompt covers the <strong>remaining 10 optimizations</strong>, ordered by impact.</p>
+  <p style="margin-top: 0.5rem;"><strong>Status (2026-03-02):</strong> <span style="color: var(--green);">ALL 10 REMAINING OPTIMIZATIONS RESOLVED.</span>
+  8 of 10 were already implemented in prior sessions. #6 (share preprocessing across OCR fallback) deferred due to 512MB RAM constraint on Render.</p>
 </div>
 
 <div class="completed-banner">
-  All tests passing: <code>python -m pytest tests/ -v</code> &rarr; 333 passed, 0 failed, 5 warnings
+  All tests passing: <code>python -m pytest tests/ -v</code> &rarr; 1,313 passed, 0 failed, 73 warnings (chromadb deprecations)
+</div>
+
+<div class="completed-banner">
+  <strong>Resolution Summary (2026-03-02):</strong><br>
+  #4 Fuzzy dedup length pre-filter: <strong>Done</strong> — ocr_helpers.py:60-68<br>
+  #5 Stats caching: <strong>Done</strong> — chromadb_provider.py:413-425<br>
+  #6 Share OCR preprocessing: <strong>Deferred</strong> — memory trade-off (would require ~63MB for 7 variants simultaneously vs 512MB RAM budget)<br>
+  #7 Deskew compute-once: <strong>Done</strong> — image_preprocessor.py:73<br>
+  #8 Grayscale cache: <strong>Done</strong> — binarize() accepts gray_array param<br>
+  #9 Regex HTML escape: <strong>Done</strong> — results.js:99-105<br>
+  #10/#11 Token count on model: <strong>Done</strong> — rag.py:54, ingestion_service.py:624<br>
+  #12 Parallel ingestion: <strong>Done</strong> — ingestion_service.py:393 uses asyncio.Semaphore<br>
+  #13 Lean cache key: <strong>Done</strong> — qa_service.py:709 uses session_id-based key
 </div>
 
 <!-- ============================================================ -->

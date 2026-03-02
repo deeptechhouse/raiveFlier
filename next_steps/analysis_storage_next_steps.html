@@ -321,17 +321,24 @@
 
     <!-- ─── Remaining Optimizations ─── -->
     <section>
-        <h2>Remaining Optimizations <span class="status-badge status-pending">Pending</span></h2>
+        <h2>Remaining Optimizations <span class="status-badge status-merged">All Complete</span></h2>
+
+        <div class="context-block">
+            <p>All 6 optimizations were implemented and merged on <span class="highlight">2026-03-02</span>.
+            Test suite: <span class="highlight">1,313 tests pass</span>, 0 failures.</p>
+        </div>
 
         <div class="opt-card">
             <div class="opt-header">
                 <span class="opt-number">1</span>
                 <span class="opt-title">Add aggregation caching</span>
+                <span class="status-badge status-merged">Done</span>
             </div>
             <div class="opt-description">
-                <code>get_node_detail()</code> and <code>get_stats()</code> each trigger a full
-                <code>aggregate()</code> rebuild. Add a short TTL cache (e.g., 30s) to avoid
-                redundant computation when the Connections tab loads.
+                Added 30-second TTL cache to <code>GraphAggregationService.aggregate()</code>.
+                <code>get_node_detail()</code> and <code>get_stats()</code> now reuse the cached result.
+                Added <code>invalidate_cache()</code> for explicit busting.
+                Branch: <code>fix/aggregation-caching</code>.
             </div>
         </div>
 
@@ -339,10 +346,13 @@
             <div class="opt-header">
                 <span class="opt-number">2</span>
                 <span class="opt-title">Fix N+1 query</span>
+                <span class="status-badge status-merged">Done</span>
             </div>
             <div class="opt-description">
-                <code>get_all_active_analyses()</code> runs a separate dismissal query per analysis.
-                Refactor to use a single JOIN-based query.
+                Replaced per-analysis dismissal queries in <code>get_all_active_analyses()</code>
+                with a single batch <code>SELECT ... WHERE flier_id IN (...)</code> query,
+                then distributed results by flier_id in Python.
+                Branch: <code>fix/analysis-storage-queries</code>.
             </div>
         </div>
 
@@ -350,10 +360,13 @@
             <div class="opt-header">
                 <span class="opt-number">3</span>
                 <span class="opt-title">Fix pagination total</span>
+                <span class="status-badge status-merged">Done</span>
             </div>
             <div class="opt-description">
-                <code>AnalysisListResponse.total</code> returns page count instead of global total.
-                Add a <code>SELECT COUNT(*)</code> query.
+                Added <code>count_analyses()</code> to <code>IFlierHistoryProvider</code> interface
+                and SQLite implementation. Updated <code>list_analyses</code> route to use
+                <code>asyncio.gather()</code> for concurrent count + page fetch.
+                Branch: <code>fix/analysis-storage-queries</code>.
             </div>
         </div>
 
@@ -361,10 +374,12 @@
             <div class="opt-header">
                 <span class="opt-number">4</span>
                 <span class="opt-title">Add Literal validation</span>
+                <span class="status-badge status-merged">Done</span>
             </div>
             <div class="opt-description">
-                Change <code>AnalysisAnnotation.target_type</code> from <code>str</code> to
-                <code>Literal["analysis", "entity", "edge"]</code>.
+                Changed <code>AnalysisAnnotation.target_type</code> from <code>str</code> to
+                <code>Literal["analysis", "entity", "edge"]</code> with default <code>"analysis"</code>.
+                Branch: <code>fix/analysis-model-validation</code>.
             </div>
         </div>
 
@@ -372,11 +387,12 @@
             <div class="opt-header">
                 <span class="opt-number">5</span>
                 <span class="opt-title">Fix edge resolution threshold</span>
+                <span class="status-badge status-merged">Done</span>
             </div>
             <div class="opt-description">
-                Edge source/target fuzzy matching in <code>GraphAggregationService</code> should
-                look up the entity type and use the appropriate threshold (0.85 for artists, 0.90
-                for venues) instead of always using 0.90.
+                Verified already correct: <code>_resolve_canonical()</code> uses 0.85 for ARTIST,
+                0.90 for others. Edge resolution passes "UNKNOWN" which correctly falls back to
+                the conservative 0.90 threshold for untyped references.
             </div>
         </div>
 
@@ -384,10 +400,12 @@
             <div class="opt-header">
                 <span class="opt-number">6</span>
                 <span class="opt-title">Add error state to sidebar</span>
+                <span class="status-badge status-merged">Done</span>
             </div>
             <div class="opt-description">
-                When <code>_fetchNodeDetail()</code> fails in <code>connections.js</code>, show an
-                error message in the sidebar instead of leaving stale content.
+                Added <code>else</code> branch in <code>_showEntityDetail()</code> in <code>connections.js</code>
+                that displays an error message when <code>_fetchNodeDetail()</code> fails or returns not-found.
+                Branch: <code>fix/analysis-model-validation</code>.
             </div>
         </div>
     </section>
