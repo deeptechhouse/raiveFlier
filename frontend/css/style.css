@@ -3078,6 +3078,18 @@ body {
   flex-shrink: 0;
 }
 
+/* ---- Construction Notice (toggle off when search is fully operational) ---- */
+.corpus-sidebar__notice {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  border-left: 2px solid var(--color-accent);
+  margin: 0.25rem 1rem 0.5rem;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
 /* ---- Loading Indicator ---- */
 .corpus-sidebar__loading {
   display: flex;

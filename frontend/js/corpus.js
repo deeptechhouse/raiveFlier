@@ -243,6 +243,10 @@ const Corpus = (() => {
       </div>
       <div class="corpus-sidebar__results" id="corpus-results" role="list" aria-label="Search results"></div>
       <div class="corpus-sidebar__stats" id="corpus-stats"></div>
+      <p class="corpus-sidebar__notice" id="corpus-search-notice">
+        Notice: Search functionality is under active development.
+        Some features may be temporarily unavailable. &mdash; 2 March 2026
+      </p>
       <div class="corpus-sidebar__drag-handle" id="corpus-drag-handle"></div>
     `;
 
