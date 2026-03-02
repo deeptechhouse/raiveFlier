@@ -228,3 +228,72 @@ class TestGetStats:
         stats = await svc.get_stats()
         assert stats["total_analyses"] == 0
         assert stats["unique_nodes"] == 0
+
+
+class TestCaching:
+    """Tests for TTL-based aggregate caching."""
+
+    @pytest.mark.asyncio
+    async def test_cache_reused_on_second_call(self):
+        """Second aggregate() call within TTL should not re-query the provider."""
+        mock_provider = _make_mock_provider([ANALYSIS_1])
+        svc = GraphAggregationService(flier_history=mock_provider)
+
+        result1 = await svc.aggregate()
+        result2 = await svc.aggregate()
+
+        # Provider should only be called once (second call uses cache)
+        assert mock_provider.get_all_active_analyses.call_count == 1
+        assert result1.total_analyses == result2.total_analyses
+
+    @pytest.mark.asyncio
+    async def test_get_node_detail_reuses_cache(self):
+        """get_node_detail() should reuse the aggregate cache."""
+        mock_provider = _make_mock_provider([ANALYSIS_1])
+        svc = GraphAggregationService(flier_history=mock_provider)
+
+        await svc.aggregate()
+        await svc.get_node_detail("Carl Cox")
+
+        # Still only one call — get_node_detail reused the cache
+        assert mock_provider.get_all_active_analyses.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_get_stats_reuses_cache(self):
+        """get_stats() should reuse the aggregate cache."""
+        mock_provider = _make_mock_provider([ANALYSIS_1])
+        svc = GraphAggregationService(flier_history=mock_provider)
+
+        await svc.aggregate()
+        await svc.get_stats()
+
+        assert mock_provider.get_all_active_analyses.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_invalidate_cache_forces_rebuild(self):
+        """invalidate_cache() should force the next aggregate() to rebuild."""
+        mock_provider = _make_mock_provider([ANALYSIS_1])
+        svc = GraphAggregationService(flier_history=mock_provider)
+
+        await svc.aggregate()
+        assert mock_provider.get_all_active_analyses.call_count == 1
+
+        svc.invalidate_cache()
+        await svc.aggregate()
+        assert mock_provider.get_all_active_analyses.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_cache_expires_after_ttl(self):
+        """Cache should expire after TTL seconds."""
+        import src.services.graph_aggregation_service as mod
+
+        mock_provider = _make_mock_provider([ANALYSIS_1])
+        svc = GraphAggregationService(flier_history=mock_provider)
+
+        await svc.aggregate()
+        assert mock_provider.get_all_active_analyses.call_count == 1
+
+        # Simulate TTL expiry by backdating the cache time
+        svc._cache_time -= mod._CACHE_TTL_SECONDS + 1
+        await svc.aggregate()
+        assert mock_provider.get_all_active_analyses.call_count == 2
