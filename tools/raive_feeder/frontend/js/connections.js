@@ -228,7 +228,8 @@ const FeederConnections = (() => {
       <p>Appears on <strong>${_escapeHtml(nodeData.appearance_count)}</strong> flier(s)</p>
     `;
 
-    // Fetch full detail from API
+    // Fetch full detail from API — shows error state if the request fails
+    // so the user knows something went wrong instead of seeing empty content.
     const detail = await _fetchNodeDetail(nodeData.name);
     if (detail && detail.found) {
       // Render edges
@@ -251,6 +252,16 @@ const FeederConnections = (() => {
       _els.sidebarFliers.innerHTML = fliersHtml
         ? `<h4>Fliers</h4>${fliersHtml}`
         : '';
+    } else {
+      // Error or not-found state — show feedback instead of empty/stale content.
+      // detail===null means the API call failed; detail.found===false means
+      // the entity wasn't found in any stored analysis.
+      const errorMsg = detail === null
+        ? 'Failed to load entity details. Try again later.'
+        : 'Entity not found in stored analyses.';
+      _els.sidebarEdges.innerHTML =
+        `<p style="color:var(--color-text-muted);font-size:var(--text-sm);padding:var(--space-sm) 0">${_escapeHtml(errorMsg)}</p>`;
+      _els.sidebarFliers.innerHTML = '';
     }
   }
 

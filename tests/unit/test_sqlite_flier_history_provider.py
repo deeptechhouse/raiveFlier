@@ -399,3 +399,39 @@ class TestGetAllActiveAnalyses:
         result = await provider.get_all_active_analyses()
         assert len(result) == 1
         assert result[0]["interconnection_map"]["narrative"] == "Rev 2"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# AnalysisAnnotation model validation
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestAnalysisAnnotationValidation:
+    """Tests for AnalysisAnnotation model validation."""
+
+    def test_valid_target_types(self):
+        """All three valid target types should be accepted."""
+        from src.models.analysis import AnalysisAnnotation
+
+        for target_type in ("analysis", "entity", "edge"):
+            ann = AnalysisAnnotation(
+                flier_id=1, target_type=target_type, note="test"
+            )
+            assert ann.target_type == target_type
+
+    def test_invalid_target_type_rejected(self):
+        """Invalid target_type should raise a validation error."""
+        from pydantic import ValidationError
+        from src.models.analysis import AnalysisAnnotation
+
+        with pytest.raises(ValidationError):
+            AnalysisAnnotation(
+                flier_id=1, target_type="invalid_type", note="test"
+            )
+
+    def test_default_target_type(self):
+        """Default target_type should be 'analysis'."""
+        from src.models.analysis import AnalysisAnnotation
+
+        ann = AnalysisAnnotation(flier_id=1, note="test")
+        assert ann.target_type == "analysis"
