@@ -345,13 +345,32 @@
       <!-- Source type breakdown -->
       <div class="type-breakdown" id="type-breakdown"></div>
 
-      <!-- Search -->
+      <!-- Search with filter controls -->
       <div class="corpus-search">
         <div class="form-group">
           <label for="corpus-search-input">Semantic Search</label>
           <div class="search-row">
             <input type="text" id="corpus-search-input" placeholder="Search the corpus...">
             <button type="button" class="btn-primary" id="corpus-search-btn">Search</button>
+          </div>
+        </div>
+        <!-- Filter controls — populated dynamically from corpus stats -->
+        <div class="search-filters" id="corpus-search-filters">
+          <div class="form-group form-group--inline">
+            <label for="corpus-filter-type">Source Type</label>
+            <select id="corpus-filter-type">
+              <option value="">All types</option>
+            </select>
+          </div>
+          <div class="form-group form-group--inline">
+            <label for="corpus-filter-genre">Genre</label>
+            <select id="corpus-filter-genre">
+              <option value="">All genres</option>
+            </select>
+          </div>
+          <div class="form-group form-group--inline">
+            <label for="corpus-filter-similarity">Min Similarity: <span id="corpus-similarity-value">0%</span></label>
+            <input type="range" id="corpus-filter-similarity" min="0" max="100" value="0" step="5" class="slider">
           </div>
         </div>
       </div>
