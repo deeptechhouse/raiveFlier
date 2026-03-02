@@ -278,6 +278,13 @@ body {
 }
 
 
+/* ---- Upload View ----
+   Center all content so the browse button and actions don't overlap
+   the fixed corpus-toggle button anchored at the bottom-left. */
+#upload-view {
+  text-align: center;
+}
+
 /* ---- Drop Zone ----
    The main interactive area of the upload view. Supports three interaction states:
    - Default: dashed border, dark surface background
