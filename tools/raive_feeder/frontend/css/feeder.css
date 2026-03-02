@@ -662,6 +662,17 @@ body {
   margin-top: var(--space-2);
 }
 
+/* ---- Corpus Search Construction Notice (toggle off when ready) ---- */
+.corpus-search-notice {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--color-feeder-accent);
+  opacity: 0.8;
+}
+
 /* ---- Source Table ---- */
 .source-table-wrap { margin-top: var(--space-5); }
 .source-table {
