@@ -169,6 +169,16 @@ class IFlierHistoryProvider(ABC):
         """List stored analyses with pagination."""
 
     @abstractmethod
+    async def count_analyses(self) -> int:
+        """Return the total count of active analysis snapshots.
+
+        Used for accurate pagination totals without fetching full rows.
+        Separated from list_analyses so the API layer can run both
+        concurrently via asyncio.gather — the count is independent of
+        the page-sized slice.
+        """
+
+    @abstractmethod
     async def persist_edge_dismissal(
         self,
         session_id: str,

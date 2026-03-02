@@ -505,6 +505,20 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
             results.append(r)
         return results
 
+    async def count_analyses(self) -> int:
+        """Return the total count of active analysis snapshots.
+
+        Single COUNT(*) query — avoids fetching rows just to count them.
+        Used by the API layer for accurate pagination totals so the
+        frontend knows the true total, not just the page-sized slice.
+        """
+        async with aiosqlite.connect(str(self._db_path)) as db:
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM analysis_snapshots WHERE is_active = 1;"
+            )
+            row = await cursor.fetchone()
+        return row[0] if row else 0
+
     async def persist_edge_dismissal(
         self,
         session_id: str,
@@ -616,6 +630,13 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
         Each result includes a ``dismissals`` list containing any edge
         dismissals stored for that flier, so the aggregation layer can
         filter them out without a separate query.
+
+        Optimization: batch-fetches all dismissals in one query instead of
+        N+1 per-analysis queries.  The original implementation issued a
+        separate SELECT per analysis row; with many stored fliers that
+        round-trip overhead dominates latency.  Gathering all flier_ids and
+        using a single IN(...) query reduces DB round-trips to exactly 2
+        regardless of how many analyses exist.
         """
         async with aiosqlite.connect(str(self._db_path)) as db:
             db.row_factory = aiosqlite.Row
@@ -631,22 +652,37 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
             rows = await cursor.fetchall()
 
             results = []
+            flier_ids: set[int] = set()
             for row in rows:
                 r = dict(row)
                 r["interconnection_map"] = json.loads(r.pop("interconnection_map_json"))
+                # Placeholder — populated after the batch dismissal fetch below.
+                r["dismissals"] = []
+                results.append(r)
+                flier_ids.add(r["flier_id"])
 
-                # Fetch dismissals for this flier.
+            # Batch-fetch all dismissals for every active analysis in one query,
+            # then distribute by flier_id — eliminates N+1 per-analysis queries.
+            if flier_ids:
+                placeholders = ",".join("?" for _ in flier_ids)
                 d_cursor = await db.execute(
-                    """SELECT id, flier_id, source_entity, target_entity,
-                              relationship_type, reason, dismissed_at
-                       FROM edge_dismissals
-                       WHERE flier_id = ?;""",
-                    (r["flier_id"],),
+                    f"""SELECT id, flier_id, source_entity, target_entity,
+                               relationship_type, reason, dismissed_at
+                        FROM edge_dismissals
+                        WHERE flier_id IN ({placeholders});""",
+                    list(flier_ids),
                 )
                 d_rows = await d_cursor.fetchall()
-                r["dismissals"] = [dict(d) for d in d_rows]
 
-                results.append(r)
+                # Group dismissals by flier_id for O(1) lookup per analysis row.
+                dismissals_by_flier: dict[int, list[dict]] = {}
+                for d in d_rows:
+                    d_dict = dict(d)
+                    fid = d_dict["flier_id"]
+                    dismissals_by_flier.setdefault(fid, []).append(d_dict)
+
+                for r in results:
+                    r["dismissals"] = dismissals_by_flier.get(r["flier_id"], [])
 
         return results
 
