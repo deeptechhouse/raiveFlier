@@ -10,11 +10,17 @@ Architecture:
     - Depends on IFlierHistoryProvider for data retrieval.
     - Uses src/utils/text_normalizer for name normalization and fuzzy matching.
 
-Design pattern: Service (stateless, receives dependencies via constructor).
+Design patterns:
+    - Service (stateless logic, receives dependencies via constructor).
+    - TTL cache — the combined map is expensive to rebuild (fetches all
+      analyses, normalizes names, fuzzy-matches). A 30-second cache
+      ensures that sequential calls to aggregate(), get_node_detail(),
+      and get_stats() within the same user interaction reuse one build.
 """
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,21 +37,45 @@ logger = structlog.get_logger(logger_name=__name__)
 _ARTIST_FUZZY_THRESHOLD = 0.85
 _DEFAULT_FUZZY_THRESHOLD = 0.90
 
+# TTL for the cached aggregate result (seconds).
+# 30 seconds is enough to serve a full page load (map + stats + node
+# detail clicks) without rebuilding, but short enough that new analyses
+# or dismissals appear within half a minute.
+_CACHE_TTL_SECONDS = 30
+
 
 class GraphAggregationService:
     """Aggregates InterconnectionMaps from all analyses into a combined graph.
 
     Injected with an IFlierHistoryProvider to retrieve stored analyses.
-    Stateless — safe to call aggregate() concurrently.
+    Maintains a TTL-based cache of the aggregated CombinedConnectionMap
+    so that get_node_detail() and get_stats() reuse the same build
+    instead of re-aggregating.
     """
 
     def __init__(self, flier_history: IFlierHistoryProvider) -> None:
         self._flier_history = flier_history
+        # TTL cache state — holds the last aggregate result and its build time.
+        # Cache is invalidated after _CACHE_TTL_SECONDS or via invalidate_cache().
+        self._cached_map: CombinedConnectionMap | None = None
+        self._cache_time: float = 0.0
+
+    def invalidate_cache(self) -> None:
+        """Force the next aggregate() call to rebuild from the database.
+
+        Called when the caller knows the underlying data has changed
+        (e.g. after storing a new analysis or dismissing an edge).
+        """
+        self._cached_map = None
+        self._cache_time = 0.0
 
     async def aggregate(self) -> CombinedConnectionMap:
         """Build a CombinedConnectionMap from all active analysis snapshots.
 
-        Steps:
+        Returns a cached result if the previous build is less than
+        _CACHE_TTL_SECONDS old.  Otherwise rebuilds from scratch.
+
+        Steps (on cache miss):
             1. Fetch all active analyses from flier_history.
             2. For each analysis, extract nodes and edges.
             3. Normalize entity names and deduplicate via fuzzy matching.
@@ -53,15 +83,23 @@ class GraphAggregationService:
             5. Apply edge dismissals.
             6. Return the unified graph.
         """
+        # ── Cache check ──
+        now = time.monotonic()
+        if self._cached_map is not None and (now - self._cache_time) < _CACHE_TTL_SECONDS:
+            return self._cached_map
+
         analyses = await self._flier_history.get_all_active_analyses()
 
         if not analyses:
-            return CombinedConnectionMap(
+            result = CombinedConnectionMap(
                 nodes=[],
                 edges=[],
                 total_analyses=0,
                 generated_at=datetime.now(timezone.utc),
             )
+            self._cached_map = result
+            self._cache_time = now
+            return result
 
         # ── Phase 1: Build canonical name registry ──
         # Maps normalized_name → { canonical_name, entity_type, sessions, properties }
@@ -116,7 +154,10 @@ class GraphAggregationService:
                 target_raw = edge.get("target", "")
                 rel_type = edge.get("relationship_type", "related")
 
-                # Resolve source and target to canonical names
+                # Resolve source and target to canonical names.
+                # Pass "UNKNOWN" as entity_type because edge endpoints
+                # may not carry type info — the node registry already
+                # has the correct types from node processing above.
                 source_canonical = self._resolve_canonical(
                     source_raw, "UNKNOWN", node_registry
                 )
@@ -189,6 +230,10 @@ class GraphAggregationService:
             generated_at=datetime.now(timezone.utc),
         )
 
+        # ── Update cache ──
+        self._cached_map = result
+        self._cache_time = now
+
         logger.info(
             "graph_aggregation_complete",
             total_analyses=len(analyses),
@@ -246,6 +291,10 @@ class GraphAggregationService:
 
         Returns all fliers, edges, and metadata for a given entity name.
         Used by the entity detail sidebar in the Connections tab.
+
+        Reuses the cached aggregate instead of rebuilding — this means
+        clicking through multiple entities in the sidebar only triggers
+        one aggregate() rebuild per TTL window.
         """
         combined = await self.aggregate()
 
@@ -284,6 +333,7 @@ class GraphAggregationService:
         """Return summary statistics for the combined connection map.
 
         Used by the stats header in the Connections tab.
+        Reuses the cached aggregate — no redundant rebuild.
         """
         combined = await self.aggregate()
 
