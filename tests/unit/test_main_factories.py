@@ -111,7 +111,7 @@ class TestBuildEmbeddingProvider:
             "src.providers.embedding.openai_embedding_provider.OpenAIEmbeddingProvider",
             return_value=mock_instance,
         ):
-            result = await _build_embedding_provider(s)
+            result, _tier_results = await _build_embedding_provider(s)
 
         assert result is mock_instance
         mock_instance.is_available.assert_called_once()
@@ -137,7 +137,7 @@ class TestBuildEmbeddingProvider:
             "src.providers.embedding.fastembed_embedding_provider.FastEmbedEmbeddingProvider",
             return_value=mock_fe,
         ):
-            result = await _build_embedding_provider(s)
+            result, _tier_results = await _build_embedding_provider(s)
 
         assert result is mock_fe
         mock_fe.is_available.assert_called_once()
@@ -164,7 +164,7 @@ class TestBuildEmbeddingProvider:
             "src.providers.embedding.fastembed_embedding_provider.FastEmbedEmbeddingProvider",
             return_value=mock_fe,
         ):
-            result = await _build_embedding_provider(s)
+            result, _tier_results = await _build_embedding_provider(s)
 
         assert result is mock_fe
 
@@ -195,7 +195,7 @@ class TestBuildEmbeddingProvider:
             "src.providers.embedding.nomic_embedding_provider.NomicEmbeddingProvider",
             return_value=mock_nomic,
         ):
-            result = await _build_embedding_provider(s)
+            result, _tier_results = await _build_embedding_provider(s)
 
         assert result is mock_nomic
 
@@ -225,7 +225,7 @@ class TestBuildEmbeddingProvider:
             "src.providers.embedding.nomic_embedding_provider.NomicEmbeddingProvider",
             return_value=mock_nomic,
         ):
-            result = await _build_embedding_provider(s)
+            result, _tier_results = await _build_embedding_provider(s)
 
         assert result is None
 
@@ -755,6 +755,7 @@ class TestBuildAll:
             "ingestion_service",
             "vector_store",
             "rag_enabled",
+            "rag_debug_info",
             "qa_service",
             "feedback_provider",
             "flier_history",
@@ -805,7 +806,7 @@ class TestBuildAll:
         mock_ingestion = MagicMock()
 
         async def _fake_build_embedding(_s):
-            return mock_embedding
+            return mock_embedding, [{"tier": "2", "provider": "fastembed", "status": "selected"}]
 
         with (
             patches["llm"],
@@ -848,7 +849,7 @@ class TestBuildAll:
         patches, _ = self._patch_all()
 
         async def _fake_build_embedding(_s):
-            return None
+            return None, [{"tier": "1", "provider": "openai", "status": "skipped", "reason": "no API key"}]
 
         with (
             patches["llm"],

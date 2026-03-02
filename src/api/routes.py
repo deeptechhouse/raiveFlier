@@ -19,7 +19,8 @@ using the ``Annotated`` pattern.
 # /api/v1/fliers/{sid}/ratings          GET     Get all ratings for session
 # /api/v1/fliers/{sid}/recommendations  GET     Artist recommendations (on-demand)
 # /api/v1/ratings/summary               GET     Aggregate rating stats
-# /api/v1/health                        GET     Health check + provider status
+# /api/v1/health                        GET     Health check + provider + RAG status
+# /api/v1/debug/rag                     GET     RAG diagnostics (tier results)
 # /api/v1/providers                     GET     List all configured providers
 # /api/v1/corpus/stats                  GET     RAG corpus statistics
 # /api/v1/corpus/search                 POST    Semantic search of RAG corpus
@@ -1026,11 +1027,63 @@ async def health_check(request: Request) -> HealthResponse:
     else:
         status = "unhealthy"
 
+    # Include RAG summary in the health response so operators can see
+    # embedding provider + chunk count without hitting a separate endpoint.
+    rag_debug = getattr(request.app.state, "rag_debug_info", {})
+    rag_summary: dict[str, Any] = {
+        "enabled": getattr(request.app.state, "rag_enabled", False),
+        "provider": rag_debug.get("embedding_provider"),
+        "chunks": providers.get("rag_chunks", 0),
+    }
+
     return HealthResponse(
         status=status,
         version="0.1.0",
         providers=providers,
+        rag=rag_summary,
     )
+
+
+# ---------------------------------------------------------------------------
+# Debug RAG endpoint — surfaces the full embedding tier fallback chain
+# outcome so operators can diagnose why RAG is or isn't working on Render.
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/debug/rag",
+    summary="RAG diagnostics — embedding tier results and vector store status",
+)
+async def debug_rag(request: Request) -> dict[str, Any]:
+    """Return detailed RAG diagnostic info for deployment troubleshooting.
+
+    Surfaces the outcome of each embedding provider tier attempted during
+    startup, the selected provider (if any), vector store availability,
+    and corpus chunk count.  This endpoint has no auth requirement because
+    it exposes no user data — only infrastructure diagnostics.
+    """
+    rag_debug: dict[str, Any] = getattr(request.app.state, "rag_debug_info", {})
+
+    # Augment with live corpus chunk count if the vector store is available.
+    corpus_chunks = 0
+    vector_store = getattr(request.app.state, "vector_store", None)
+    if vector_store is not None:
+        try:
+            stats = await vector_store.get_stats()
+            corpus_chunks = stats.total_chunks
+        except Exception:
+            corpus_chunks = -1  # signals "store exists but stats query failed"
+
+    return {
+        "rag_enabled": rag_debug.get("rag_enabled", False),
+        "rag_config_enabled": rag_debug.get("rag_config_enabled", False),
+        "embedding_provider": rag_debug.get("embedding_provider"),
+        "embedding_dimension": rag_debug.get("embedding_dimension"),
+        "vector_store_available": rag_debug.get("vector_store_available", False),
+        "corpus_chunks": corpus_chunks,
+        "chromadb_persist_dir": rag_debug.get("chromadb_persist_dir"),
+        "tier_results": rag_debug.get("tier_results", []),
+    }
 
 
 @router.get(
