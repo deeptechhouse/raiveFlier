@@ -23,7 +23,7 @@ and reliability tier (1 = published book … 6 = unverified web content).
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any  # Used for the flexible 'properties' dict on EntityNode
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -214,7 +214,10 @@ class AnalysisAnnotation(BaseModel):
 
     id: int | None = None
     flier_id: int
-    target_type: str  # "analysis", "entity", "edge"
+    # Constrained to the three valid annotation targets. Using Literal
+    # instead of str catches invalid values at Pydantic validation time
+    # rather than silently storing bad data in the database.
+    target_type: Literal["analysis", "entity", "edge"] = "analysis"
     target_key: str | None = None  # entity name or "source->target" for edges
     note: str
     created_at: datetime | None = None
