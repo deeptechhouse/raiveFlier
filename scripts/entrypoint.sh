@@ -198,7 +198,11 @@ except Exception as e:
         # must be concatenated in alphabetical order to reconstruct the
         # original tar.gz before extraction.
         echo "[entrypoint] Downloading $ASSET_COUNT corpus parts..."
-        TMPDIR=$(mktemp -d)
+        # Download parts to the persistent disk, NOT /tmp.
+        # Render limits /tmp to 2 GB, but the corpus parts total ~3.8 GB.
+        # The persistent disk at /data has enough space (20 GB).
+        TMPDIR="$PARENT_DIR/_corpus_download"
+        mkdir -p "$TMPDIR"
         ALL_PARTS_OK=true
 
         while IFS='|' read -r asset_id asset_name asset_size; do
