@@ -35,11 +35,16 @@ tests/
 .DS_Store
 Thumbs.db
 
-# Runtime data (rebuilt at runtime)
+# Runtime data (rebuilt at runtime or downloaded from GitHub release)
 data/chromadb/
+data/chroma_db/
 data/feedback.db
 uploads/
 *.log
+
+# Corpus packaging artifacts (from scripts/package_corpus.sh)
+chromadb_corpus.tar.gz
+chromadb_corpus_part_*
 
 # Documentation / non-runtime files
 next_steps/

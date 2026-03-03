@@ -14,15 +14,17 @@
 # Infrastructure:
 #   - Plan: Starter ($7/mo) — 512 MB RAM, 0.5 CPU, always-on (no spin-down)
 #   - Runtime: Docker (uses ./Dockerfile)
-#   - Persistent Disk: 1 GB mounted at /data
-#     - /data/chromadb/     — ChromaDB vector store (RAG corpus)
+#   - Persistent Disk: 20 GB mounted at /data
+#     - /data/chromadb/     — ChromaDB vector store (RAG corpus, ~8-10 GB)
 #     - /data/feedback.db   — User feedback SQLite database
 #     - /data/session_state.db — Pipeline session state SQLite database
 #   - Health Check: GET /api/v1/health (Render restarts if it fails)
 #
 # IMPORTANT: The persistent disk at /data survives redeploys. Without it,
-# the ChromaDB corpus (~154 MB) would need to be re-downloaded on every
-# deploy, and all user feedback would be lost.
+# the ChromaDB corpus would need to be re-downloaded on every deploy,
+# and all user feedback would be lost. The 20 GB disk accommodates the
+# full corpus (486K+ chunks across interviews, events, Discogs, and
+# reference material) plus SQLite databases and future growth.
 #
 # Environment Variables:
 #   - sync: false means the value is manually set in Render's dashboard
@@ -47,7 +49,7 @@ services:
     disk:
       name: raiveflier-data                    # Disk identifier in Render dashboard
       mountPath: /data                         # Mount point inside the container
-      sizeGB: 1                                # 1 GB is enough for ChromaDB + SQLite DBs
+      sizeGB: 20                               # 20 GB for full RAG corpus (~8-10 GB) + SQLite DBs + headroom
 
     envVars:
       # === LLM Provider (at least one required) ===

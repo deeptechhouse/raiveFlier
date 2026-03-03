@@ -7,6 +7,10 @@
 #
 #   Phase 1: CORPUS DOWNLOAD (optional, non-blocking)
 #     Automatically fetches the LATEST corpus release from GitHub.
+#     Supports both single-asset and multi-part releases (split archives
+#     that exceed GitHub's 2 GB per-asset limit are concatenated before
+#     extraction).
+#
 #     Downloads if:
 #       - No corpus exists locally, OR
 #       - Local corpus is small (<50 MB), OR
@@ -112,54 +116,110 @@ except Exception:
         echo "[entrypoint] No corpus found at $CHROMADB_DIR — downloading..."
     fi
 
-    # Step 3: Parse the asset ID for download.
-    ASSET_ID=$(echo "$RELEASE_JSON" | python3 -c "
+    # Step 3: Parse asset IDs for download.
+    # The corpus may be a single tarball or split into multiple parts
+    # (chromadb_corpus_part_*) when it exceeds GitHub's 2 GB per-asset limit.
+    # Both formats are handled: single-asset streams directly to tar, while
+    # multi-part downloads are concatenated before extraction.
+    ASSET_INFO=$(echo "$RELEASE_JSON" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
     assets = data.get('assets', [])
-    if assets:
-        print(assets[0]['id'])
-    else:
+    if not assets:
         print('No assets in release', file=sys.stderr)
         sys.exit(1)
+    # Sort by name so split parts (part_aa, part_ab, ...) are in order.
+    assets.sort(key=lambda a: a['name'])
+    for a in assets:
+        print(f\"{a['id']}|{a['name']}|{a['size']}\")
 except Exception as e:
     print(f'JSON parse error: {e}', file=sys.stderr)
     sys.exit(1)
 " 2>/dev/null)
 
-    if [ -z "$ASSET_ID" ] || [ "$ASSET_ID" = "None" ]; then
-        echo "[entrypoint] WARNING: Could not find corpus release asset"
+    if [ -z "$ASSET_INFO" ]; then
+        echo "[entrypoint] WARNING: Could not find corpus release assets"
         return 0
     fi
 
-    # Step 4: Download and extract the corpus tarball.
-    echo "[entrypoint] Downloading corpus $LATEST_TAG (asset $ASSET_ID)..."
-    mkdir -p "$CHROMADB_DIR"
+    ASSET_COUNT=$(echo "$ASSET_INFO" | wc -l | tr -d ' ')
+    echo "[entrypoint] Found $ASSET_COUNT release asset(s)"
 
+    # Step 4: Download and extract the corpus.
+    mkdir -p "$CHROMADB_DIR"
     PARENT_DIR=$(dirname "$CHROMADB_DIR")
     MAX_RETRIES=3
     RETRY_DELAY=5
     DOWNLOAD_OK=false
 
-    for attempt in $(seq 1 $MAX_RETRIES); do
-        echo "[entrypoint] Download attempt $attempt of $MAX_RETRIES..."
-        if curl -sL --fail \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/octet-stream" \
-            "https://api.github.com/repos/$CORPUS_REPO/releases/assets/$ASSET_ID" \
-            | tar xz -C "$PARENT_DIR"; then
-            DOWNLOAD_OK=true
-            echo "[entrypoint] Corpus downloaded and extracted to $CHROMADB_DIR"
-            break
-        else
-            echo "[entrypoint] Attempt $attempt failed"
-            if [ "$attempt" -lt "$MAX_RETRIES" ]; then
-                echo "[entrypoint] Retrying in ${RETRY_DELAY}s..."
-                sleep "$RETRY_DELAY"
+    # Helper: download a single asset by ID to a file path.
+    download_asset() {
+        local asset_id="$1"
+        local dest_path="$2"
+        local attempt
+        for attempt in $(seq 1 $MAX_RETRIES); do
+            if curl -sL --fail \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/octet-stream" \
+                "https://api.github.com/repos/$CORPUS_REPO/releases/assets/$asset_id" \
+                -o "$dest_path"; then
+                return 0
             fi
+            echo "[entrypoint] Asset $asset_id attempt $attempt failed"
+            [ "$attempt" -lt "$MAX_RETRIES" ] && sleep "$RETRY_DELAY"
+        done
+        return 1
+    }
+
+    if [ "$ASSET_COUNT" -eq 1 ]; then
+        # Single-asset release: stream directly to tar (no temp file needed).
+        ASSET_ID=$(echo "$ASSET_INFO" | head -1 | cut -d'|' -f1)
+        ASSET_NAME=$(echo "$ASSET_INFO" | head -1 | cut -d'|' -f2)
+        echo "[entrypoint] Downloading single asset: $ASSET_NAME..."
+
+        for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "[entrypoint] Download attempt $attempt of $MAX_RETRIES..."
+            if curl -sL --fail \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/octet-stream" \
+                "https://api.github.com/repos/$CORPUS_REPO/releases/assets/$ASSET_ID" \
+                | tar xz -C "$PARENT_DIR"; then
+                DOWNLOAD_OK=true
+                echo "[entrypoint] Corpus downloaded and extracted to $CHROMADB_DIR"
+                break
+            fi
+            echo "[entrypoint] Attempt $attempt failed"
+            [ "$attempt" -lt "$MAX_RETRIES" ] && sleep "$RETRY_DELAY"
+        done
+    else
+        # Multi-part release: download all parts, concatenate, then extract.
+        # Split parts are named chromadb_corpus_part_aa, part_ab, etc. and
+        # must be concatenated in alphabetical order to reconstruct the
+        # original tar.gz before extraction.
+        echo "[entrypoint] Downloading $ASSET_COUNT corpus parts..."
+        TMPDIR=$(mktemp -d)
+        ALL_PARTS_OK=true
+
+        while IFS='|' read -r asset_id asset_name asset_size; do
+            echo "[entrypoint] Downloading $asset_name ($(echo "$asset_size" | awk '{printf "%.0f MB", $1/1048576}'))..."
+            if ! download_asset "$asset_id" "$TMPDIR/$asset_name"; then
+                echo "[entrypoint] FAILED to download $asset_name after $MAX_RETRIES attempts"
+                ALL_PARTS_OK=false
+                break
+            fi
+        done <<< "$ASSET_INFO"
+
+        if [ "$ALL_PARTS_OK" = true ]; then
+            echo "[entrypoint] All parts downloaded — concatenating and extracting..."
+            # Concatenate parts in sorted order and pipe to tar.
+            cat "$TMPDIR"/chromadb_corpus_part_* | tar xz -C "$PARENT_DIR" && DOWNLOAD_OK=true
+            echo "[entrypoint] Corpus extracted to $CHROMADB_DIR"
         fi
-    done
+
+        # Clean up temporary download directory.
+        rm -rf "$TMPDIR"
+    fi
 
     # Step 5: Verify extraction and record the version.
     if [ "$DOWNLOAD_OK" = true ]; then
@@ -177,7 +237,7 @@ except Exception as e:
             echo "[entrypoint] WARNING: chroma.sqlite3 not found after extraction"
         fi
     else
-        echo "[entrypoint] WARNING: Corpus download failed after $MAX_RETRIES attempts"
+        echo "[entrypoint] WARNING: Corpus download failed — app will use auto-ingest fallback"
     fi
 }
 
