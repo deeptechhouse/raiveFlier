@@ -53,10 +53,11 @@ class TesseractOCRProvider(IOCRProvider):
     async def extract_text(self, image: FlierImage) -> OCRResult:
         """Extract text from a flier image using Tesseract with multi-pass OCR.
 
-        Passes are processed **sequentially** via :meth:`iter_ocr_passes` so
-        only one preprocessed variant is held in memory at a time.  This
-        trades thread-pool parallelism (negligible on Render's 0.5 CPU) for
-        a ~75% reduction in peak preprocessing memory.
+        Passes are **materialized** via :meth:`build_ocr_passes` so the
+        cached list is shared with EasyOCR when the OCR fallback chain
+        processes the same image.  ``build_ocr_passes`` caches by image
+        hash — zero recomputation on the second provider.  ~81 MB for
+        all 9 passes is comfortably within the 2 GB Standard plan budget.
         """
         start = time.perf_counter()
         try:
@@ -73,11 +74,9 @@ class TesseractOCRProvider(IOCRProvider):
             standard_img: Image.Image | None = None
             pass_count = 0
 
-            # Process each preprocessing variant one at a time.  The
-            # generator yields a single (name, image) pair, we run
-            # Tesseract on it, collect the result, and the image becomes
-            # eligible for GC before the next variant is created.
-            for pass_name, pass_image in self._preprocessor.iter_ocr_passes(original):
+            # Materialized list — cached by image hash so the EasyOCR
+            # fallback (or vice versa) reuses the same preprocessed images.
+            for pass_name, pass_image in self._preprocessor.build_ocr_passes(original):
                 pass_count += 1
                 result = self._run_single_pass(pass_name, pass_image, config="")
                 all_results.append(result)

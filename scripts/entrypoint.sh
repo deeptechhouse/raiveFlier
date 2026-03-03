@@ -23,7 +23,7 @@
 #     If download fails, the app starts anyway with the reference corpus.
 #
 #   Phase 2: APPLICATION START
-#     Starts FastAPI via uvicorn (single worker, 512 MB RAM constraint).
+#     Starts FastAPI via uvicorn (single worker, 2 GB RAM — Standard plan).
 #
 # Environment Variables:
 #   CHROMADB_PERSIST_DIR — ChromaDB directory (default: /data/chromadb)
@@ -298,6 +298,10 @@ fi
 # =============================================================================
 # Phase 2: Start the Application
 # =============================================================================
+# Single worker despite 2 GB RAM — EasyOCR loads PyTorch models per-worker
+# (~600 MB each). Two workers would consume ~1.2 GB for models alone, leaving
+# <800 MB for ChromaDB HNSW index + request headroom. FastAPI's async event
+# loop handles concurrency within 1 worker.
 echo "[entrypoint] Starting uvicorn on port ${PORT:-8000}..."
 exec python3 -m uvicorn src.main:app \
     --host 0.0.0.0 \

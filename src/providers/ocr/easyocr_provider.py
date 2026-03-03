@@ -30,9 +30,9 @@ class EasyOCRProvider(IOCRProvider):
     inverted, per-channel, CLAHE, denoised, saturation, Otsu) is applied
     and results are merged across all passes.
 
-    Note: EasyOCR requires PyTorch (~500MB+), which is why it's excluded
-    from the Docker production build (Render Starter has 512MB RAM total).
-    In development, it's the best traditional OCR option for stylized text.
+    EasyOCR requires PyTorch — included on the Standard plan (2 GB RAM)
+    via CPU-only PyTorch (~300 MB).  It is the best traditional OCR option
+    for the stylized typography found on rave and electronic-music fliers.
     """
 
     def __init__(self, preprocessor: ImagePreprocessor) -> None:
@@ -49,10 +49,12 @@ class EasyOCRProvider(IOCRProvider):
     async def extract_text(self, image: FlierImage) -> OCRResult:
         """Extract text from a flier image using EasyOCR with multi-pass OCR.
 
-        Passes are processed **sequentially** via :meth:`iter_ocr_passes` so
-        only one preprocessed variant is held in memory at a time.  This
-        trades thread-pool parallelism for a ~75% reduction in peak
-        preprocessing memory — critical on the 512 MB Render instance.
+        Passes are **materialized** via :meth:`build_ocr_passes` so the
+        cached list can be shared with Tesseract if EasyOCR falls back.
+        ``build_ocr_passes`` caches by image hash — when the OCR fallback
+        chain tries EasyOCR then Tesseract on the same image, the second
+        provider gets cached passes with zero recomputation.  ~81 MB for
+        all 9 passes is comfortably within the 2 GB Standard plan budget.
         """
         start = time.perf_counter()
         try:
@@ -69,11 +71,9 @@ class EasyOCRProvider(IOCRProvider):
             all_results: list[dict | None] = []
             pass_count = 0
 
-            # Process each preprocessing variant one at a time.  The
-            # generator yields a single (name, image) pair, we run
-            # EasyOCR on it, collect the result, and the image becomes
-            # eligible for GC before the next variant is created.
-            for pass_name, pass_image in self._preprocessor.iter_ocr_passes(original):
+            # Materialized list — cached by image hash so the Tesseract
+            # fallback reuses the same preprocessed images (zero recomputation).
+            for pass_name, pass_image in self._preprocessor.build_ocr_passes(original):
                 pass_count += 1
                 result = self._run_single_pass(reader, pass_name, pass_image)
                 all_results.append(result)

@@ -12,7 +12,7 @@
 #   3. Push to the `main` branch triggers auto-deploy (if configured)
 #
 # Infrastructure:
-#   - Plan: Starter ($7/mo) — 512 MB RAM, 0.5 CPU, always-on (no spin-down)
+#   - Plan: Standard ($25/mo) — 2 GB RAM, 1 CPU, always-on (no spin-down)
 #   - Runtime: Docker (uses ./Dockerfile)
 #   - Persistent Disk: 20 GB mounted at /data
 #     - /data/chromadb/     — ChromaDB vector store (RAG corpus, ~8-10 GB)
@@ -38,7 +38,7 @@ services:
     runtime: docker                            # Use Dockerfile instead of native buildpacks
     repo: https://github.com/deeptechhouse/raiveFlier  # Source repository
     branch: main                               # Branch to deploy from (auto-deploy on push)
-    plan: starter                              # Starter plan: 512 MB RAM, $7/mo, no spin-down
+    plan: standard                             # Standard plan: 2 GB RAM, $25/mo, no spin-down
     dockerfilePath: ./Dockerfile               # Path to Dockerfile relative to repo root
     healthCheckPath: /api/v1/health            # Render pings this endpoint to verify the app is alive
 

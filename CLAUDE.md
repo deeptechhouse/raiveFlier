@@ -108,14 +108,14 @@ Upload → OCR → Entity Extraction → [User Confirmation] → Research → In
 | Embeddings | FastEmbed, OpenAI, SentenceTransformers, Nomic |
 | Music DBs | Discogs, MusicBrainz, Bandcamp, Beatport |
 | Logging | structlog (JSON in prod, console in dev) |
-| Deployment | Docker on Render (512MB RAM, persistent /data disk) |
+| Deployment | Docker on Render (2GB RAM Standard, persistent /data disk) |
 | Testing | pytest |
 
 ---
 
 ## 4. Deployment Constraints
 
-- **512MB RAM** — EasyOCR and SentenceTransformers excluded from Docker build; FastEmbed used instead.
+- **2GB RAM (Standard plan)** — EasyOCR and SentenceTransformers included via CPU-only PyTorch (~300MB). FastEmbed remains the default embedding provider.
 - **Persistent disk at /data** — SQLite databases (session, feedback, flier history) and ChromaDB data survive container restarts.
-- **Single worker** — Uvicorn runs with 1 worker to stay within memory budget.
+- **Single worker** — Uvicorn runs with 1 worker; EasyOCR loads PyTorch per-worker (~600MB), so 2 workers would leave insufficient headroom.
 - **Reference corpus** — Auto-ingested from `data/reference_corpus/` on first boot (idempotent).

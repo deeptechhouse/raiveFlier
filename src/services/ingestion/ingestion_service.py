@@ -366,8 +366,8 @@ class IngestionService:
             large corpora by eliminating thousands of LLM API calls.
         concurrency:
             Maximum number of files to process concurrently.  Defaults
-            to 1 (sequential) to stay within the 512 MB RAM budget on
-            Render.  Each concurrent file holds its full text, chunks,
+            to 1 (sequential) to stay within the 2 GB RAM budget on
+            Render Standard.  Each concurrent file holds its full text, chunks,
             and embeddings in memory simultaneously.  Increase on
             machines with more memory for faster ingestion.
         default_tier:
@@ -388,7 +388,7 @@ class IngestionService:
 
         files = sorted(path.glob("*.txt")) + sorted(path.glob("*.html"))
         # Concurrency limit — defaults to 1 (sequential) to stay within
-        # the 512 MB RAM budget on Render.  max(1, ...) guards against
+        # the 2 GB RAM budget on Render Standard.  max(1, ...) guards against
         # deadlock from a zero or negative value.
         semaphore = asyncio.Semaphore(max(1, concurrency))
 
@@ -432,7 +432,7 @@ class IngestionService:
                     "interview",
                 )
 
-                # Stream-process large files to stay within 512 MB RAM:
+                # Stream-process large files to bound peak memory:
                 # chunk, embed, and store in small slices rather than
                 # accumulating all chunks in memory first.  For
                 # ra_events_london.txt (~20 MB / ~18K chunks), holding
@@ -509,15 +509,14 @@ class IngestionService:
 
         # Process files sequentially with a memory-aware governor.
         # ChromaDB's HNSW index grows in memory as vectors accumulate.
-        # On Render's 512 MB container, the index for ~25K vectors plus
-        # the app exhausts available RAM.  The governor stops ingestion
-        # before OOM, letting the container serve from the partial corpus.
-        # On next restart, skip_source_ids skips already-ingested files
-        # and ingestion resumes where it left off.
+        # The governor stops ingestion before OOM, letting the container
+        # serve from the partial corpus.  On next restart,
+        # skip_source_ids skips already-ingested files and ingestion
+        # resumes where it left off.
         # Configurable via INGESTION_RSS_CEILING_MB env var for local
         # runs on machines with more RAM (e.g. Discogs corpus ingestion).
-        # Defaults to 400 MB (80% of the 512 MB Render container limit).
-        _RSS_CEILING_MB = int(os.environ.get("INGESTION_RSS_CEILING_MB", "400"))
+        # Defaults to 1600 MB (80% of the 2 GB Render Standard container).
+        _RSS_CEILING_MB = int(os.environ.get("INGESTION_RSS_CEILING_MB", "1600"))
         results: list[IngestionResult] = []
 
         # Sort files smallest-first so high-value small files (books,
@@ -567,12 +566,11 @@ class IngestionService:
     # ------------------------------------------------------------------
 
     # Maximum number of chunks to embed and store in a single pass.
-    # On Render's 512 MB budget, holding thousands of embeddings
-    # (each 1024 floats) plus the chunk texts in memory at once can
-    # OOM-crash the container.  Processing in slices of 500 keeps
-    # peak memory bounded: ~500 chunks * ~2 KB text + ~500 * 4 KB
-    # embedding ≈ 3 MB per slice, well within budget.
-    _EMBED_STORE_BATCH = 500
+    # On Render's 2 GB Standard plan, we can afford larger batches.
+    # ~1000 chunks × ~2 KB text + ~1000 × 4 KB embedding ≈ 6 MB per
+    # slice — well within budget, and halves the per-batch overhead
+    # (fewer GC cycles during corpus ingestion).
+    _EMBED_STORE_BATCH = 1000
 
     async def _tag_embed_store(
         self,
@@ -589,7 +587,7 @@ class IngestionService:
 
         For large files (thousands of chunks), the embed and store steps
         are batched in slices of ``_EMBED_STORE_BATCH`` to keep peak
-        memory bounded on the 512 MB Render instance.
+        memory bounded on the 2 GB Render Standard instance.
         """
         if not chunks:
             return self._empty_result(title=title, source_id=source_id)
