@@ -163,14 +163,19 @@ def _build_llm_provider(app_settings: Settings) -> ILLMProvider:
     return OllamaLLMProvider(settings=app_settings)
 
 
-async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
-    """Select the first available embedding provider.
+async def _build_embedding_provider(
+    app_settings: Settings,
+) -> tuple[Any | None, list[dict[str, str]]]:
+    """Select the first available embedding provider and collect diagnostics.
 
     Priority: OpenAI/OpenAI-compatible (if API key set and reachable) ->
               FastEmbed (ONNX, lightweight) ->
               SentenceTransformer (local, PyTorch-based) ->
               Nomic/Ollama (if reachable).
-    Returns ``None`` if no embedding provider is available.
+
+    Returns a (provider, tier_results) tuple.  ``provider`` is ``None`` if
+    no embedding provider is available.  ``tier_results`` is a list of dicts
+    recording each tier's outcome for the ``/api/v1/debug/rag`` endpoint.
 
     # JUNIOR DEV NOTE — Why so many fallbacks?
     # -----------------------------------------
@@ -188,57 +193,105 @@ async def _build_embedding_provider(app_settings: Settings):  # noqa: ANN202
     """
     from src.interfaces.embedding_provider import IEmbeddingProvider
 
-    # --- Tier 1: OpenAI embedding API (best quality, costs money) ---
-    if app_settings.openai_api_key:
-        from src.providers.embedding.openai_embedding_provider import (
-            OpenAIEmbeddingProvider,
-        )
+    # Diagnostic list — records what happened at each tier so the
+    # /api/v1/debug/rag endpoint can surface the exact failure chain.
+    tier_results: list[dict[str, str]] = []
 
-        provider: IEmbeddingProvider = OpenAIEmbeddingProvider(settings=app_settings)
-        if provider.is_available():
-            try:
+    # --- Tier 1: OpenAI embedding API (best quality, costs money) ---
+    _logger.info("embedding_tier_trying", tier=1, provider="openai")
+    if app_settings.openai_api_key:
+        try:
+            from src.providers.embedding.openai_embedding_provider import (
+                OpenAIEmbeddingProvider,
+            )
+
+            provider: IEmbeddingProvider = OpenAIEmbeddingProvider(settings=app_settings)
+            if provider.is_available():
                 # Smoke-test: embed a single word to verify the API key and
                 # endpoint are actually reachable before committing to this provider.
                 await provider.embed_single("test")
-                return provider
-            except Exception as exc:
-                _logger.warning(
-                    "openai_embedding_unavailable",
-                    error=str(exc)[:200],
-                    msg="Falling back to local embedding provider.",
-                )
+                _logger.info("embedding_tier_selected", tier=1, provider="openai")
+                tier_results.append({"tier": "1", "provider": "openai", "status": "selected"})
+                return provider, tier_results
+            else:
+                reason = "is_available() returned False"
+                _logger.warning("embedding_tier_failed", tier=1, provider="openai", reason=reason)
+                tier_results.append({"tier": "1", "provider": "openai", "status": "failed", "reason": reason})
+        except Exception as exc:
+            reason = str(exc)[:200]
+            _logger.warning("embedding_tier_failed", tier=1, provider="openai", reason=reason)
+            tier_results.append({"tier": "1", "provider": "openai", "status": "failed", "reason": reason})
+    else:
+        tier_results.append({"tier": "1", "provider": "openai", "status": "skipped", "reason": "no API key"})
 
     # --- Tier 2: FastEmbed (ONNX, no PyTorch, ~50 MB) ---
     # Default for Docker production — lightweight and fast.
-    from src.providers.embedding.fastembed_embedding_provider import (
-        FastEmbedEmbeddingProvider,
-    )
+    _logger.info("embedding_tier_trying", tier=2, provider="fastembed")
+    try:
+        from src.providers.embedding.fastembed_embedding_provider import (
+            FastEmbedEmbeddingProvider,
+        )
 
-    fe_provider: IEmbeddingProvider = FastEmbedEmbeddingProvider()
-    if fe_provider.is_available():
-        return fe_provider
+        fe_provider: IEmbeddingProvider = FastEmbedEmbeddingProvider()
+        if fe_provider.is_available():
+            _logger.info("embedding_tier_selected", tier=2, provider="fastembed")
+            tier_results.append({"tier": "2", "provider": "fastembed", "status": "selected"})
+            return fe_provider, tier_results
+        else:
+            reason = "is_available() returned False"
+            _logger.warning("embedding_tier_failed", tier=2, provider="fastembed", reason=reason)
+            tier_results.append({"tier": "2", "provider": "fastembed", "status": "failed", "reason": reason})
+    except Exception as exc:
+        reason = str(exc)[:200]
+        _logger.warning("embedding_tier_failed", tier=2, provider="fastembed", reason=reason)
+        tier_results.append({"tier": "2", "provider": "fastembed", "status": "failed", "reason": reason})
 
     # --- Tier 3: SentenceTransformer (PyTorch, ~500 MB) ---
     # Better quality than FastEmbed but too heavy for Render's free tier.
-    from src.providers.embedding.sentence_transformer_embedding_provider import (
-        SentenceTransformerEmbeddingProvider,
-    )
+    _logger.info("embedding_tier_trying", tier=3, provider="sentence_transformer")
+    try:
+        from src.providers.embedding.sentence_transformer_embedding_provider import (
+            SentenceTransformerEmbeddingProvider,
+        )
 
-    st_provider: IEmbeddingProvider = SentenceTransformerEmbeddingProvider()
-    if st_provider.is_available():
-        return st_provider
+        st_provider: IEmbeddingProvider = SentenceTransformerEmbeddingProvider()
+        if st_provider.is_available():
+            _logger.info("embedding_tier_selected", tier=3, provider="sentence_transformer")
+            tier_results.append({"tier": "3", "provider": "sentence_transformer", "status": "selected"})
+            return st_provider, tier_results
+        else:
+            reason = "is_available() returned False"
+            _logger.warning("embedding_tier_failed", tier=3, provider="sentence_transformer", reason=reason)
+            tier_results.append({"tier": "3", "provider": "sentence_transformer", "status": "failed", "reason": reason})
+    except Exception as exc:
+        reason = str(exc)[:200]
+        _logger.warning("embedding_tier_failed", tier=3, provider="sentence_transformer", reason=reason)
+        tier_results.append({"tier": "3", "provider": "sentence_transformer", "status": "failed", "reason": reason})
 
     # --- Tier 4: Nomic via Ollama (free, local, requires Ollama server) ---
-    from src.providers.embedding.nomic_embedding_provider import (
-        NomicEmbeddingProvider,
-    )
+    _logger.info("embedding_tier_trying", tier=4, provider="nomic_ollama")
+    try:
+        from src.providers.embedding.nomic_embedding_provider import (
+            NomicEmbeddingProvider,
+        )
 
-    provider = NomicEmbeddingProvider(settings=app_settings)
-    if provider.is_available():
-        return provider
+        provider = NomicEmbeddingProvider(settings=app_settings)
+        if provider.is_available():
+            _logger.info("embedding_tier_selected", tier=4, provider="nomic_ollama")
+            tier_results.append({"tier": "4", "provider": "nomic_ollama", "status": "selected"})
+            return provider, tier_results
+        else:
+            reason = "is_available() returned False"
+            _logger.warning("embedding_tier_failed", tier=4, provider="nomic_ollama", reason=reason)
+            tier_results.append({"tier": "4", "provider": "nomic_ollama", "status": "failed", "reason": reason})
+    except Exception as exc:
+        reason = str(exc)[:200]
+        _logger.warning("embedding_tier_failed", tier=4, provider="nomic_ollama", reason=reason)
+        tier_results.append({"tier": "4", "provider": "nomic_ollama", "status": "failed", "reason": reason})
 
     # All providers exhausted — RAG will be disabled.
-    return None
+    _logger.warning("embedding_all_tiers_exhausted", msg="No embedding provider available. RAG will be disabled.")
+    return None, tier_results
 
 
 # ---------------------------------------------------------------------------
@@ -387,41 +440,55 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     vector_store = None
     ingestion_service = None
     embedding_provider = None
+    # Tier diagnostics collected by _build_embedding_provider() —
+    # stored on app.state for the /api/v1/debug/rag endpoint.
+    rag_tier_results: list[dict[str, str]] = []
 
     if app_settings.rag_enabled:
-        embedding_provider = await _build_embedding_provider(app_settings)
+        embedding_provider, rag_tier_results = await _build_embedding_provider(app_settings)
         if embedding_provider is not None and embedding_provider.is_available():
-            # Deferred imports — these pull in chromadb and fastembed,
-            # which we don't want to load unless RAG is actually enabled.
-            from src.providers.vector_store.chromadb_provider import ChromaDBProvider
-            from src.services.ingestion.chunker import TextChunker
-            from src.services.ingestion.ingestion_service import IngestionService
-            from src.services.ingestion.metadata_extractor import MetadataExtractor
+            try:
+                # Deferred imports — these pull in chromadb and fastembed,
+                # which we don't want to load unless RAG is actually enabled.
+                from src.providers.vector_store.chromadb_provider import ChromaDBProvider
+                from src.services.ingestion.chunker import TextChunker
+                from src.services.ingestion.ingestion_service import IngestionService
+                from src.services.ingestion.metadata_extractor import MetadataExtractor
 
-            vector_store = ChromaDBProvider(
-                embedding_provider=embedding_provider,
-                persist_directory=app_settings.chromadb_persist_dir,
-                collection_name=app_settings.chromadb_collection,
-            )
+                vector_store = ChromaDBProvider(
+                    embedding_provider=embedding_provider,
+                    persist_directory=app_settings.chromadb_persist_dir,
+                    collection_name=app_settings.chromadb_collection,
+                )
 
-            # The ingestion pipeline: text → chunks → metadata → embeddings → store
-            chunker = TextChunker()
-            metadata_extractor = MetadataExtractor(llm=primary_llm)
-            ingestion_service = IngestionService(
-                chunker=chunker,
-                metadata_extractor=metadata_extractor,
-                embedding_provider=embedding_provider,
-                vector_store=vector_store,
-                article_scraper=primary_article,
-            )
+                # The ingestion pipeline: text → chunks → metadata → embeddings → store
+                chunker = TextChunker()
+                metadata_extractor = MetadataExtractor(llm=primary_llm)
+                ingestion_service = IngestionService(
+                    chunker=chunker,
+                    metadata_extractor=metadata_extractor,
+                    embedding_provider=embedding_provider,
+                    vector_store=vector_store,
+                    article_scraper=primary_article,
+                )
 
-            _logger.info(
-                "rag_enabled",
-                embedding_provider=embedding_provider.get_provider_name(),
-                embedding_dimension=embedding_provider.get_dimension(),
-                vector_store="chromadb",
-                persist_dir=app_settings.chromadb_persist_dir,
-            )
+                _logger.info(
+                    "rag_enabled",
+                    embedding_provider=embedding_provider.get_provider_name(),
+                    embedding_dimension=embedding_provider.get_dimension(),
+                    vector_store="chromadb",
+                    persist_dir=app_settings.chromadb_persist_dir,
+                )
+            except Exception as exc:
+                # ChromaDB or IngestionService init failed — log the error
+                # and fall back to RAG-disabled mode instead of crashing.
+                _logger.error(
+                    "rag_init_failed",
+                    error=str(exc),
+                    msg="ChromaDB/IngestionService init raised an exception. RAG disabled.",
+                )
+                vector_store = None
+                ingestion_service = None
         else:
             _logger.warning(
                 "rag_enabled_but_no_embedding_provider",
@@ -601,6 +668,28 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     provider_list.append({"name": "WebScraperProvider", "type": "article", "available": True})
     provider_list.append({"name": "WaybackProvider", "type": "article", "available": True})
 
+    # Build RAG debug info dict for the /api/v1/debug/rag diagnostic endpoint.
+    # This captures the full embedding tier fallback chain outcome so operators
+    # can diagnose exactly why RAG is or isn't working on a given deployment.
+    rag_is_enabled = app_settings.rag_enabled and vector_store is not None
+    rag_debug_info: dict[str, Any] = {
+        "rag_enabled": rag_is_enabled,
+        "rag_config_enabled": app_settings.rag_enabled,
+        "embedding_provider": (
+            embedding_provider.get_provider_name()
+            if embedding_provider is not None and hasattr(embedding_provider, "get_provider_name")
+            else None
+        ),
+        "embedding_dimension": (
+            embedding_provider.get_dimension()
+            if embedding_provider is not None and hasattr(embedding_provider, "get_dimension")
+            else None
+        ),
+        "vector_store_available": vector_store is not None,
+        "chromadb_persist_dir": app_settings.chromadb_persist_dir,
+        "tier_results": rag_tier_results,
+    }
+
     return {
         "http_client": http_client,
         "pipeline": pipeline,
@@ -613,7 +702,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "primary_llm": primary_llm,
         "ingestion_service": ingestion_service,
         "vector_store": vector_store,
-        "rag_enabled": app_settings.rag_enabled and vector_store is not None,
+        "rag_enabled": rag_is_enabled,
         "qa_service": qa_service,
         "feedback_provider": feedback_provider,
         "flier_history": flier_history,
@@ -623,6 +712,9 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         # tier, which augments RAG results with live DDG web results filtered
         # for electronic music relevance.
         "web_search": primary_search,
+        # RAG diagnostic info — the /api/v1/debug/rag endpoint reads this
+        # from app.state to surface embedding tier outcomes on Render.
+        "rag_debug_info": rag_debug_info,
         # Rave Stories components — pre-built here so the stories sub-app
         # can use the same LLM, vector store, and embedding providers as
         # the main app (no duplicate provider instances).

@@ -109,11 +109,17 @@ class FlierAnalysisResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    """Application health check response."""
+    """Application health check response.
+
+    The ``rag`` field provides a quick summary of RAG availability
+    (enabled/disabled, selected embedding provider, corpus chunk count)
+    so operators can verify corpus status from the health endpoint alone.
+    """
 
     status: str
     version: str
     providers: dict[str, Any]
+    rag: dict[str, Any] = {}
 
 
 class ProvidersResponse(BaseModel):
