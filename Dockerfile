@@ -3,24 +3,24 @@
 # =============================================================================
 #
 # This Dockerfile builds the production image for the raiveFlier application.
-# It is optimized for Render.com's Starter plan ($7/mo) with strict constraints:
+# It targets Render.com's Standard plan ($25/mo) with these resources:
 #
-#   - 512 MB RAM limit (Render Starter)
-#   - 1 GB persistent disk mounted at /data (for ChromaDB corpus + SQLite)
-#   - No GPU access (all ML inference is API-based, not local)
+#   - 2 GB RAM limit (Render Standard)
+#   - 20 GB persistent disk mounted at /data (for ChromaDB corpus + SQLite)
+#   - No GPU access (all ML inference is CPU-only)
 #
 # Key Design Decisions:
 #
-#   1. EasyOCR is EXCLUDED because it depends on PyTorch (~561 MB), which
-#      alone would exceed the 512 MB RAM budget. Instead, the OCR fallback
-#      chain is: LLM Vision (API) -> Tesseract (local binary, ~20 MB).
+#   1. EasyOCR is INCLUDED — uses CPU-only PyTorch (~300 MB) which fits
+#      within the 2 GB RAM budget. The OCR fallback chain is:
+#      LLM Vision (API) -> EasyOCR (local ML) -> Tesseract (local binary).
 #
-#   2. sentence-transformers is EXCLUDED for the same reason (PyTorch dep).
-#      The fastembed library provides equivalent embedding via ONNX Runtime,
-#      which runs within the memory budget.
+#   2. sentence-transformers is INCLUDED (shared PyTorch dep with EasyOCR).
+#      FastEmbed remains the default embedding provider; SentenceTransformers
+#      is available as a fallback via the existing import guard chain.
 #
-#   3. Requirements are filtered at build time using grep to strip excluded
-#      packages, keeping a single requirements.txt source of truth.
+#   3. CPU-only PyTorch is installed via --extra-index-url to keep the image
+#      lean (~300 MB vs ~2 GB for full CUDA PyTorch).
 #
 #   4. The reference corpus (curated text files about rave history) is baked
 #      into the image under data/reference_corpus/. On first boot, the
@@ -71,14 +71,14 @@ WORKDIR /app
 # pip install is skipped, dramatically speeding up rebuilds.
 COPY requirements.txt .
 
-# Filter out heavy packages that exceed the 512 MB RAM budget:
-#   - easyocr: Pulls PyTorch (~561 MB) — replaced by LLM Vision API + Tesseract
-#   - sentence-transformers: Also pulls PyTorch — replaced by fastembed (ONNX)
-# The grep -ivE does case-insensitive, extended regex exclusion.
+# Install all Python dependencies including EasyOCR and sentence-transformers.
+# --extra-index-url pulls CPU-only PyTorch (~300 MB vs ~2 GB full CUDA build)
+# since Render has no GPU. This single flag unblocks both EasyOCR and
+# sentence-transformers which share PyTorch as a dependency.
 # --no-cache-dir prevents pip from storing downloaded wheels (saves ~100 MB).
-RUN grep -ivE 'easyocr|sentence.transformers' requirements.txt > requirements-deploy.txt \
-    && pip install --no-cache-dir -r requirements-deploy.txt \
-    && rm requirements-deploy.txt
+RUN pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    -r requirements.txt
 
 # ── Application code ─────────────────────────────────────────
 # Each COPY creates a separate layer. Order matters for cache efficiency:

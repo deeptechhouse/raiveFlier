@@ -23,13 +23,13 @@ app:
 
 # -- OCR (Optical Character Recognition) configuration --
 # The pipeline tries providers in priority order until one succeeds.
-# In production (Docker), EasyOCR is excluded because it pulls PyTorch (~2GB),
-# which exceeds the 512MB RAM limit on Render Starter. LLM Vision (API-based)
-# is the primary provider; Tesseract is the local fallback.
+# EasyOCR is included on the Standard plan (2 GB RAM) via CPU-only PyTorch.
+# It handles stylized rave flier typography better than Tesseract.
+# LLM Vision (API-based) remains the primary provider.
 ocr:
   provider_priority:
     - llm_vision           # API-based: uses the configured LLM's vision endpoint
-    - easyocr              # Local ML: requires PyTorch (dev-only, excluded in Docker)
+    - easyocr              # Local ML: CPU-only PyTorch, included on Standard plan
     - tesseract            # Local binary: lightweight, installed via apt in Docker
   min_confidence: 0.3      # Minimum confidence score to accept OCR results (0.0-1.0)
 

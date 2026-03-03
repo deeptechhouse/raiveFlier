@@ -43,6 +43,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 # ── Application layers ────────────────────────────────────────────────
 # Imports are grouped by layer: middleware → config → interfaces →
@@ -82,11 +83,10 @@ from src.providers.ocr.llm_vision_provider import LLMVisionOCRProvider
 from src.providers.ocr.tesseract_provider import TesseractOCRProvider
 
 # ── Conditional import: EasyOCR ──────────────────────────────────────
-# EasyOCR is optional — it pulls in PyTorch (~2 GB) which exceeds RAM on
-# lightweight deployments (e.g. Render free tier 512 MB).
-# The try/except "graceful import" pattern lets the app start without it;
-# the _EASYOCR_AVAILABLE flag is checked later when building the OCR
-# provider chain so EasyOCR is only added if importable.
+# EasyOCR depends on PyTorch.  On the Standard plan (2 GB RAM) with
+# CPU-only PyTorch it is included and will be the primary local OCR
+# fallback after LLM Vision.  The try/except guard remains so the app
+# starts cleanly in dev environments that don't have PyTorch installed.
 try:
     from src.providers.ocr.easyocr_provider import EasyOCRProvider
 
@@ -181,7 +181,7 @@ async def _build_embedding_provider(
     # -----------------------------------------
     # Embeddings convert text → numeric vectors for similarity search (RAG).
     # Different environments have different constraints:
-    #   - Cloud (Render 512 MB)   → FastEmbed (~50 MB) is the sweet spot
+    #   - Cloud (Render 2 GB)     → FastEmbed (~50 MB) is the sweet spot
     #   - Local with GPU           → SentenceTransformer gives best quality
     #   - API-only (no local model)→ OpenAI embedding endpoint
     #   - Ollama running locally   → Nomic via Ollama
@@ -996,7 +996,7 @@ async def _auto_ingest_reference_corpus(application: FastAPI) -> None:
        Knowledge files get tier 5 (reference); event files get tier 3.
 
     The memory governor inside ``ingest_directory`` pauses ingestion
-    before hitting the 512 MB container limit.  Each restart cycle
+    before hitting the 2 GB container limit.  Each restart cycle
     picks up where the previous one left off via ``skip_source_ids``.
     """
     ingestion_service = getattr(application.state, "ingestion_service", None)
@@ -1230,10 +1230,14 @@ def create_app() -> FastAPI:
 
     # -- Middleware (order matters: last added = first executed) --
     # Starlette processes middleware as a stack (LIFO), so:
-    #   Request  → RequestLogging → ErrorHandling → route handler
-    #   Response ← RequestLogging ← ErrorHandling ← route handler
+    #   Request  → GZip → RequestLogging → ErrorHandling → route handler
+    #   Response ← GZip ← RequestLogging ← ErrorHandling ← route handler
     application.add_middleware(ErrorHandlingMiddleware)
     application.add_middleware(RequestLoggingMiddleware)
+    # GZip compresses responses >500 bytes.  Frontend assets (~440 KB) compress
+    # to ~150 KB (60-65% reduction).  JSON API responses (research results can
+    # be 50-200 KB) also benefit.  No new deps — starlette ships with FastAPI.
+    application.add_middleware(GZipMiddleware, minimum_size=500)
 
     # In production, restrict CORS to the deployed domain only.
     # In development, allow all origins for local testing.
