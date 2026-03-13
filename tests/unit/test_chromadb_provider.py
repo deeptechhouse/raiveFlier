@@ -115,6 +115,50 @@ class TestChromaDBProvider:
         assert "Carl Cox" in results[0].chunk.text
 
     @pytest.mark.asyncio
+    async def test_chunk_id_survives_add_and_query(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """chunk_id set at add time must be present on queried results.
+
+        This is a regression test for the bug where _metadata_to_chunk()
+        tried to read chunk_id from metadata (where it was never stored),
+        resulting in every retrieved chunk having an empty chunk_id.
+        """
+        from src.providers.vector_store.chromadb_provider import ChromaDBProvider
+
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_cid"),
+            collection_name="test_chunk_id",
+        )
+
+        chunk = _make_chunk(chunk_id="my-unique-id-42", text="Unique chunk")
+        await provider.add_chunks([chunk], [[0.1] * 128])
+
+        results = await provider.query("Unique chunk", top_k=5)
+        assert len(results) >= 1
+        assert results[0].chunk.chunk_id == "my-unique-id-42"
+
+    @pytest.mark.asyncio
+    async def test_add_chunks_validates_embedding_dimension(
+        self, mock_embedding_provider, tmp_path
+    ) -> None:
+        """add_chunks raises ValueError when embedding dimension doesn't match provider."""
+        from src.providers.vector_store.chromadb_provider import ChromaDBProvider
+
+        provider = ChromaDBProvider(
+            embedding_provider=mock_embedding_provider,
+            persist_directory=str(tmp_path / "chroma_dim"),
+            collection_name="test_dim_check",
+        )
+
+        chunk = _make_chunk(chunk_id="dim1")
+        # Provider declares 128 dims but we pass 64-dim embeddings
+        wrong_dim_embedding = [[0.1] * 64]
+        with pytest.raises(ValueError, match="dimension mismatch"):
+            await provider.add_chunks([chunk], wrong_dim_embedding)
+
+    @pytest.mark.asyncio
     async def test_query_empty_store(self, mock_embedding_provider, tmp_path) -> None:
         from src.providers.vector_store.chromadb_provider import ChromaDBProvider
 
@@ -727,8 +771,13 @@ class TestStaticHelpers:
         assert "page_number" not in meta
 
     def test_metadata_to_chunk_roundtrip(self) -> None:
-        """_chunk_to_metadata -> _metadata_to_chunk preserves key fields."""
+        """_chunk_to_metadata -> _metadata_to_chunk preserves key fields.
+
+        chunk_id is NOT stored in metadata (it's ChromaDB's document ID),
+        so it must be passed explicitly via the chunk_id parameter.
+        """
         original = _make_chunk(
+            chunk_id="rt-001",
             entity_tags=["Carl Cox", "Tresor"],
             geographic_tags=["Berlin"],
             genre_tags=["techno"],
@@ -738,8 +787,12 @@ class TestStaticHelpers:
             citation_tier=1,
         )
         meta = ChromaDBProvider._chunk_to_metadata(original)
-        reconstructed = ChromaDBProvider._metadata_to_chunk(meta, original.text)
+        # Pass chunk_id explicitly — mirrors how query() now works
+        reconstructed = ChromaDBProvider._metadata_to_chunk(
+            meta, original.text, chunk_id=original.chunk_id
+        )
 
+        assert reconstructed.chunk_id == original.chunk_id
         assert reconstructed.source_id == original.source_id
         assert reconstructed.source_title == original.source_title
         assert reconstructed.source_type == original.source_type
@@ -762,7 +815,8 @@ class TestStaticHelpers:
             "geographic_tags": "",
             "genre_tags": "",
         }
-        chunk = ChromaDBProvider._metadata_to_chunk(meta, "Some text")
+        chunk = ChromaDBProvider._metadata_to_chunk(meta, "Some text", chunk_id="test-id")
+        assert chunk.chunk_id == "test-id"
         assert chunk.publication_date is None
         assert chunk.author is None
 

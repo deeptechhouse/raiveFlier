@@ -220,13 +220,19 @@ class ChromaDBProvider(IVectorStoreProvider):
             documents = results["documents"][0]
             metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(documents)
             distances = results["distances"][0] if results["distances"] else [0.0] * len(documents)
+            # Extract ChromaDB document IDs — these ARE the chunk_ids
+            # (stored at upsert time via ids=[c.chunk_id for c in batch]).
+            # Without this, every retrieved chunk has an empty chunk_id.
+            doc_ids = results["ids"][0] if results.get("ids") else [""] * len(documents)
 
             # Group by source_id, keeping top max_per_source chunks per source
             chunks_per_source: dict[str, list[RetrievedChunk]] = {}
 
-            for doc_text, meta, distance in zip(documents, metadatas, distances, strict=True):
+            for doc_id, doc_text, meta, distance in zip(
+                doc_ids, documents, metadatas, distances, strict=True
+            ):
                 similarity = max(0.0, min(1.0, 1.0 - distance))
-                chunk = self._metadata_to_chunk(meta, doc_text)
+                chunk = self._metadata_to_chunk(meta, doc_text, chunk_id=doc_id)
                 source_id = chunk.source_id
                 citation = self._format_citation(chunk, similarity)
                 rc = RetrievedChunk(
@@ -289,6 +295,19 @@ class ChromaDBProvider(IVectorStoreProvider):
             )
         if not chunks:
             return 0
+
+        # Validate embedding dimensions before writing to the store.
+        # A dimension mismatch (e.g. switching from FastEmbed 1024-dim to
+        # Nomic 768-dim) would silently corrupt the corpus if not caught.
+        expected_dim = self._embedding_provider.get_dimension()
+        first_dim = len(embeddings[0])
+        if first_dim != expected_dim:
+            raise ValueError(
+                f"Embedding dimension mismatch: first embedding has {first_dim} dims "
+                f"but provider '{self._embedding_provider.get_provider_name()}' "
+                f"declares {expected_dim} dims. All embeddings must match the "
+                f"provider's declared dimension."
+            )
 
         self._cached_stats = None  # Invalidate stats cache
 
@@ -613,16 +632,21 @@ class ChromaDBProvider(IVectorStoreProvider):
         return meta
 
     @staticmethod
-    def _metadata_to_chunk(meta: dict[str, Any], text: str) -> DocumentChunk:
+    def _metadata_to_chunk(
+        meta: dict[str, Any], text: str, chunk_id: str = ""
+    ) -> DocumentChunk:
         """Convert a ChromaDB metadata dict back to a DocumentChunk.
 
         Reverses the serialization done by :meth:`_chunk_to_metadata`.
+        The *chunk_id* parameter accepts the ChromaDB document ID directly,
+        since chunk_id is used as the ChromaDB ID at upsert time (line 306)
+        but is NOT stored redundantly in metadata.
         """
         pub_date_str = meta.get("publication_date")
         pub_date = date.fromisoformat(pub_date_str) if pub_date_str else None
 
         return DocumentChunk(
-            chunk_id=meta.get("chunk_id", ""),
+            chunk_id=chunk_id,
             text=text,
             source_id=meta.get("source_id", ""),
             source_title=meta.get("source_title", ""),
