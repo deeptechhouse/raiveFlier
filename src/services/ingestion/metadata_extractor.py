@@ -104,9 +104,13 @@ class MetadataExtractor:
                     max_tokens=500,
                 )
             return self._parse_response(response)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — intentional catch-all for graceful degradation
+            # Log the exception type for observability — helps distinguish
+            # rate-limit errors from JSON parse failures in bulk ingestion.
             logger.warning(
                 "metadata_extraction_failed",
+                exc_type=type(exc).__name__,
+                error=str(exc),
                 text_preview=chunk_text[:80],
                 msg="Returning empty tags — ingestion continues.",
             )

@@ -13,6 +13,7 @@ from datetime import date
 
 import structlog
 from duckduckgo_search import DDGS
+from duckduckgo_search.exceptions import DuckDuckGoSearchException
 
 from src.interfaces.web_search_provider import IWebSearchProvider, SearchResult
 
@@ -49,10 +50,20 @@ class DuckDuckGoSearchProvider(IWebSearchProvider):
             raw_results = await asyncio.to_thread(
                 self._sync_search, effective_query, num_results
             )
-        except Exception as exc:  # noqa: BLE001 — DDG may rate-limit or fail
+        except (DuckDuckGoSearchException, TimeoutError, OSError) as exc:
+            # Expected failure modes: rate-limits, timeouts, network errors.
             logger.warning(
                 "duckduckgo_search_failed",
                 query=effective_query,
+                exc_type=type(exc).__name__,
+                error=str(exc),
+            )
+            return []
+        except Exception as exc:  # noqa: BLE001 — unexpected errors still degrade gracefully
+            logger.error(
+                "duckduckgo_search_unexpected_error",
+                query=effective_query,
+                exc_type=type(exc).__name__,
                 error=str(exc),
             )
             return []
