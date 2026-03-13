@@ -998,7 +998,7 @@ class RecommendationService:
         it only asks for explanations.
 
         This halves the LLM calls compared to the previous two-step
-        approach (``_generate_llm_recommendations`` + ``_generate_explanations``),
+        approach (separate LLM recommendation + explanation calls),
         saving 2-5 seconds of latency.
 
         Falls back to template-based reasons if the LLM call fails.
@@ -1303,119 +1303,6 @@ class RecommendationService:
                 error=str(exc),
             )
             return []
-
-    # ------------------------------------------------------------------
-    # DEPRECATED: Step 6 — LLM fill (now handled by _generate_fill_and_explanations)
-    # Kept as fallback safety net for one release cycle.
-    # ------------------------------------------------------------------
-
-    # ------------------------------------------------------------------
-    # DEPRECATED: Step 7 — LLM explanation pass (now handled by _generate_fill_and_explanations)
-    # Kept as fallback safety net for one release cycle.
-    # ------------------------------------------------------------------
-
-    async def _generate_explanations(
-        self,
-        candidates: list[dict[str, Any]],
-        research_context: str,
-    ) -> list[RecommendedArtist]:
-        """Generate LLM explanations for all candidates.
-
-        Calls the LLM once with the full context and candidate list,
-        asking for a 2-3 sentence reason for each recommendation.
-        Falls back to source-specific reasons if the LLM call fails.
-
-        Parameters
-        ----------
-        candidates:
-            The merged candidate dicts from all tiers.
-        research_context:
-            Compiled research summary for LLM context.
-
-        Returns
-        -------
-        list[RecommendedArtist]
-            Final recommendation models with explanations.
-        """
-        candidate_names = [c["artist_name"] for c in candidates]
-
-        system_prompt = (
-            "You are a music journalist explaining artist recommendations "
-            "to a fan exploring a rave scene. Write concise, knowledgeable "
-            "explanations grounded in facts."
-        )
-
-        candidate_info = "\n".join(
-            f"- {c['artist_name']} (source: {c.get('source_tier', 'unknown')}, "
-            f"connected to: {', '.join(c.get('connected_to', []))})"
-            for c in candidates
-        )
-
-        user_prompt = (
-            "Given the following research context about a rave flier:\n\n"
-            f"{research_context}\n\n"
-            "Explain WHY each of these recommended artists would appeal to "
-            "fans of the flier artists. Write 2-3 sentences per artist.\n\n"
-            f"Artists to explain:\n{candidate_info}\n\n"
-            "Return a JSON array where each object has:\n"
-            '- "artist_name": the name exactly as given above\n'
-            '- "reason": 2-3 sentence explanation\n\n'
-            "Return ONLY the JSON array."
-        )
-
-        explanations_map: dict[str, str] = {}
-
-        try:
-            response = await self._llm.complete(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                temperature=0.4,
-                max_tokens=4000,
-            )
-            parsed = self._parse_json_array(response)
-            for item in parsed:
-                name = str(item.get("artist_name", "")).strip()
-                reason = str(item.get("reason", "")).strip()
-                if name and reason:
-                    explanations_map[name.lower()] = reason
-        except Exception as exc:
-            self._logger.warning(
-                "explanation_pass_failed",
-                error=str(exc),
-                fallback="using source-specific reasons",
-            )
-
-        # Build final RecommendedArtist models
-        recommendations: list[RecommendedArtist] = []
-        for candidate in candidates:
-            name = candidate["artist_name"]
-            source_tier = candidate.get("source_tier", "llm")
-
-            # Use LLM explanation if available, otherwise fallback
-            reason = explanations_map.get(name.lower(), "")
-            if not reason:
-                reason = self._build_fallback_reason(candidate)
-
-            connected_to = candidate.get("connected_to", [])
-            if isinstance(connected_to, set):
-                connected_to = sorted(connected_to)
-
-            recommendations.append(
-                RecommendedArtist(
-                    artist_name=name,
-                    genres=candidate.get("genres", []),
-                    reason=reason,
-                    source_tier=source_tier,
-                    connection_strength=float(
-                        candidate.get("connection_strength", 0.5)
-                    ),
-                    connected_to=connected_to,
-                    label_name=candidate.get("label_name"),
-                    event_name=candidate.get("event_name"),
-                )
-            )
-
-        return recommendations
 
     # ------------------------------------------------------------------
     # Helpers

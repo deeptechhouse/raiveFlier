@@ -48,11 +48,19 @@ class MemoryCacheProvider(ICacheProvider):
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Store *value* under *key*.
 
-        The per-item *ttl* parameter is noted but the underlying
-        ``TTLCache`` applies a uniform TTL set at construction time.
-        If a different TTL is needed, consider using a Redis-backed
-        cache provider.
+        The per-item *ttl* parameter is accepted for interface compatibility
+        but the underlying ``TTLCache`` applies a uniform TTL set at
+        construction time.  A warning is logged when a non-default TTL is
+        requested so callers are aware the value is being ignored.
+        If per-item TTL is needed, use a Redis-backed cache provider.
         """
+        if ttl is not None and ttl != self._default_ttl:
+            logger.warning(
+                "cache_ttl_ignored",
+                requested_ttl=ttl,
+                effective_ttl=self._default_ttl,
+                msg="Per-item TTL not supported by MemoryCacheProvider; using default.",
+            )
         self._cache[key] = value
         logger.debug("cache_set", key=key)
 

@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     rag_enabled: bool = False
     rag_top_k: int = 20
     rag_max_tokens: int = 30000
+    # Chunking parameters for corpus ingestion — override via env vars
+    # RAG_CHUNK_SIZE and RAG_CHUNK_OVERLAP for different content types
+    # (e.g. 300 for dense academic papers, 800 for verbose transcripts).
+    rag_chunk_size: int = 500
+    rag_chunk_overlap: int = 100
     # Corpus search defaults — overridable per-request via API params.
     # page_size controls results per "page" in Load More pagination;
     # max_results caps the total candidate pool; max_per_source limits

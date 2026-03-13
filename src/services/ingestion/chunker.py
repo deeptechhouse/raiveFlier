@@ -115,11 +115,13 @@ class TextChunker:
         raw_chunks = self._accumulate_chunks(paragraphs)
 
         chunks: list[DocumentChunk] = []
-        for chunk_text in raw_chunks:
+        # raw_chunks are (text, token_count) tuples — reuse the pre-computed
+        # count from accumulation instead of re-tokenizing each chunk.
+        for chunk_text, token_count in raw_chunks:
             chunk = DocumentChunk(
                 chunk_id=str(uuid.uuid4()),
                 text=chunk_text,
-                token_count=self._count_tokens(chunk_text),
+                token_count=token_count,
                 source_id=str(source_metadata.get("source_id", "")),
                 source_title=str(source_metadata.get("source_title", "")),
                 source_type=str(source_metadata.get("source_type", "unknown")),
@@ -212,14 +214,17 @@ class TextChunker:
     # Chunk accumulation
     # ------------------------------------------------------------------
 
-    def _accumulate_chunks(self, paragraphs: list[str]) -> list[str]:
+    def _accumulate_chunks(self, paragraphs: list[str]) -> list[tuple[str, int]]:
         """Accumulate paragraphs into chunks respecting *chunk_size* and *overlap*.
+
+        Returns (chunk_text, token_count) tuples so that callers can reuse
+        the pre-computed token count instead of re-tokenizing each chunk.
 
         This is the core chunking loop.  It greedily packs paragraphs into
         the current chunk until adding the next paragraph would exceed the
         token budget, then flushes and starts a new chunk with overlap.
         """
-        chunks: list[str] = []
+        chunks: list[tuple[str, int]] = []
         current_parts: list[tuple[str, int]] = []  # (text, token_count)
         current_tokens = 0
 
@@ -231,7 +236,7 @@ class TextChunker:
             if para_tokens > self._chunk_size:
                 # Flush anything accumulated so far before switching strategy.
                 if current_parts:
-                    chunks.append("\n\n".join(t for t, _ in current_parts))
+                    chunks.append(("\n\n".join(t for t, _ in current_parts), current_tokens))
                     current_parts = []
                     current_tokens = 0
 
@@ -242,7 +247,7 @@ class TextChunker:
             # Would adding this paragraph exceed the token budget?
             if current_tokens + para_tokens > self._chunk_size and current_parts:
                 # Flush the current chunk.
-                chunks.append("\n\n".join(t for t, _ in current_parts))
+                chunks.append(("\n\n".join(t for t, _ in current_parts), current_tokens))
 
                 # Start the next chunk with tail paragraphs from the previous
                 # chunk (up to _overlap tokens) for contextual continuity.
@@ -253,40 +258,49 @@ class TextChunker:
 
         # Flush any remaining accumulated content as the final chunk.
         if current_parts:
-            chunks.append("\n\n".join(t for t, _ in current_parts))
+            chunks.append(("\n\n".join(t for t, _ in current_parts), current_tokens))
 
         return chunks
 
-    def _chunk_long_paragraph(self, paragraph: str) -> list[str]:
-        """Split a paragraph that exceeds *chunk_size* at sentence boundaries."""
+    def _chunk_long_paragraph(self, paragraph: str) -> list[tuple[str, int]]:
+        """Split a paragraph that exceeds *chunk_size* at sentence boundaries.
+
+        Returns (chunk_text, token_count) tuples consistent with
+        :meth:`_accumulate_chunks`.
+        """
         sentences = self._split_sentences(paragraph)
-        chunks: list[str] = []
+        chunks: list[tuple[str, int]] = []
         current_parts: list[tuple[str, int]] = []
         current_tokens = 0
 
         for sentence in sentences:
             sent_tokens = self._count_tokens(sentence)
             if current_tokens + sent_tokens > self._chunk_size and current_parts:
-                chunks.append(" ".join(t for t, _ in current_parts))
+                chunks.append((" ".join(t for t, _ in current_parts), current_tokens))
                 # Overlap: keep trailing sentences.
                 current_parts, current_tokens = self._build_overlap_sentences(current_parts)
             current_parts.append((sentence, sent_tokens))
             current_tokens += sent_tokens
 
         if current_parts:
-            chunks.append(" ".join(t for t, _ in current_parts))
+            chunks.append((" ".join(t for t, _ in current_parts), current_tokens))
 
         return chunks
 
     def _build_overlap(self, parts: list[tuple[str, int]]) -> tuple[list[tuple[str, int]], int]:
-        """Return tail paragraphs from *parts* whose combined tokens <= *overlap*."""
+        """Return tail paragraphs from *parts* whose combined tokens <= *overlap*.
+
+        Collects in reverse order then reverses once — O(n) instead of
+        the previous O(n^2) from repeated list.insert(0, ...).
+        """
         overlap_parts: list[tuple[str, int]] = []
         overlap_tokens = 0
         for text, tok_count in reversed(parts):
             if overlap_tokens + tok_count > self._overlap:
                 break
-            overlap_parts.insert(0, (text, tok_count))
+            overlap_parts.append((text, tok_count))
             overlap_tokens += tok_count
+        overlap_parts.reverse()
         return overlap_parts, overlap_tokens
 
     def _build_overlap_sentences(

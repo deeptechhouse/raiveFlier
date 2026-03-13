@@ -462,7 +462,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
                 )
 
                 # The ingestion pipeline: text → chunks → metadata → embeddings → store
-                chunker = TextChunker()
+                chunker = TextChunker(
+                    chunk_size=app_settings.rag_chunk_size,
+                    overlap=app_settings.rag_chunk_overlap,
+                )
                 metadata_extractor = MetadataExtractor(llm=primary_llm)
                 ingestion_service = IngestionService(
                     chunker=chunker,
