@@ -71,6 +71,99 @@ _UNCERTAIN_TAG = "[UNCERTAIN]"
 _UNCERTAIN_CONFIDENCE_PENALTY = 0.3
 
 
+# ─── DYNAMIC PROMPT SCALING — ANALYSIS POINT DEFINITIONS ───
+#
+# The 13-point synthesis framework is the core of the interconnection prompt.
+# Previously all 13 points were always included regardless of entity count.
+# Dynamic scaling selects only the points that are meaningful given the
+# available entities, which:
+#   - Reduces prompt tokens (fewer irrelevant instructions for the LLM)
+#   - Improves output quality (LLM doesn't waste capacity on impossible
+#     analysis, e.g., "shared labels" when there's only one artist)
+#   - Preserves the full framework when entity count warrants it
+#
+# The dict is keyed by point number (1-13) so _select_analysis_points()
+# can pick a subset and _build_synthesis_prompt() can join them in order.
+# The string content of each point is EXACTLY the text from the original
+# monolithic prompt — no rewording, no additions.
+_ANALYSIS_POINTS: dict[int, str] = {
+    1: (
+        "1. SHARED LABELS: Record labels where multiple artists on "
+        "this flier have released music, with source references. Go "
+        "deeper — are these labels part of the same family or "
+        "distribution network? Does one artist run or co-run a label "
+        "that others release on?"
+    ),
+    2: (
+        "2. SHARED LINEUPS: Previous events where two or more of "
+        "these artists appeared together, with dates and sources."
+    ),
+    3: (
+        "3. PROMOTER-ARTIST LINKS: How the promoter connects to "
+        "each artist — past bookings, shared scenes, geographic ties "
+        "— citing specific events or articles."
+    ),
+    4: (
+        "4. VENUE-SCENE CONNECTIONS: The venue's role in the broader "
+        "scene — what events it is known for, cited from research. "
+        "Do any of these artists have recurring residencies or "
+        "repeated bookings at this venue or the promoter's other "
+        "venues?"
+    ),
+    5: (
+        "5. GEOGRAPHIC PATTERNS: Whether artists are from the same "
+        "city/region and how that relates to the event."
+    ),
+    6: (
+        "6. TEMPORAL PATTERNS: Where this event falls in each "
+        "artist's career timeline."
+    ),
+    7: (
+        "7. SCENE CONTEXT: What movement or subgenre this event "
+        "represents, grounded in cited facts."
+    ),
+    8: (
+        "8. RELEASE FORMAT PATTERNS: Based on release data, do these "
+        "artists primarily release on vinyl, digital, or both? Do "
+        "they share a vinyl-first or digital-first release strategy? "
+        "Are releases primarily singles/EPs or full albums? Cite "
+        "specific releases and format data."
+    ),
+    9: (
+        "9. PERFORMANCE STYLE: Based on available evidence (articles, "
+        "event listings, profiles), are these artists primarily DJs, "
+        "live performers, or hybrid live/DJ acts? Do they share a "
+        "similar performance approach? Cite sources."
+    ),
+    10: (
+        "10. TOURING & VENUE OVERLAP: Are any of these artists "
+        "playing the same club or venue chain across different "
+        "cities on their own solo tours? Do they share festival "
+        "circuits or the same booking agency ecosystem? Look for "
+        "patterns in where these artists regularly perform."
+    ),
+    11: (
+        "11. LABEL ECOSYSTEM DEPTH: Beyond simple shared labels, "
+        "are there deeper label connections? Same parent label, "
+        "sister imprints, shared A&R, label founders who also "
+        "appear on the flier? Do multiple artists have long-term "
+        "relationships with the same label vs. one-off releases?"
+    ),
+    12: (
+        "12. CAREER STAGE & TRAJECTORY: Are these artists at similar "
+        "career stages — emerging, mid-career, established, veteran? "
+        "Is there a headliner/support dynamic visible from the data? "
+        "How does each artist's output volume and recency compare?"
+    ),
+    13: (
+        "13. GENRE & STYLE ALIGNMENT: Based on release genre/style "
+        "tags, do these artists operate in the same subgenre niche "
+        "or do they represent a deliberate genre spread? Note any "
+        "stylistic evolution visible in their catalogs."
+    ),
+}
+
+
 class InterconnectionService:
     """Traces all links between entities extracted from a rave flier.
 
@@ -183,7 +276,9 @@ class InterconnectionService:
             "citations.  You never invent, embellish, or speculate.  "
             "Silence is preferable to unsourced claims."
         )
-        user_prompt = self._build_synthesis_prompt(compiled_context)
+        user_prompt = self._build_synthesis_prompt(
+            compiled_context, entities, research_results
+        )
 
         try:
             response = await self._llm.complete(
@@ -831,48 +926,152 @@ class InterconnectionService:
     # Step 2 — prompt construction
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _build_synthesis_prompt(compiled_context: str) -> str:
+    # ─── DYNAMIC ANALYSIS POINT SELECTION ───
+    #
+    # Why dynamic scaling matters:
+    #   A single-artist flier cannot have "shared labels" or "shared lineups",
+    #   so including those points wastes prompt tokens and can cause the LLM
+    #   to hallucinate connections that don't exist.  Conversely, a 6-artist
+    #   flier benefits from the full 13-point framework because the entity
+    #   graph is dense enough for ecosystem-level analysis.
+    #
+    # The tier thresholds are derived from what each analysis dimension
+    # structurally requires:
+    #   - Core (always):  geographic + scene context are meaningful even for
+    #     a solo artist performing at a venue.
+    #   - 2+ artists:  cross-entity comparisons become possible (shared labels,
+    #     shared lineups, temporal overlap, genre alignment).
+    #   - 3+ artists:  pattern recognition across a group (release strategy,
+    #     performance style, career stage spread).
+    #   - 4+ artists:  ecosystem-level insight (touring circuits, label
+    #     ecosystem depth) where network effects are visible.
+    #
+    # The LLM output JSON schema is unchanged — the LLM simply receives
+    # fewer analysis instructions, so it returns fewer (but higher-quality)
+    # relationship and pattern entries.
+
+    def _select_analysis_points(
+        self,
+        entities: ExtractedEntities,
+        research_results: list[ResearchResult],
+    ) -> list[int]:
+        """Select which synthesis analysis points to include based on entity context.
+
+        Scales the 13-point framework to match the available data:
+        - Core points (5, 7) always included -- geographic and scene context
+          are meaningful even for single-artist fliers.
+        - Artist-pair points (1, 2, 6, 13) require 2+ artists to be meaningful.
+        - Entity-conditional points (3, 4) only when promoter/venue exist.
+        - Extended points (8, 9, 12) need 3+ artists for rich pattern analysis.
+        - Deep-dive points (10, 11) need 4+ artists for ecosystem-level insight.
+
+        Parameters
+        ----------
+        entities:
+            Extracted entities from the flier (artists, venue, promoter).
+        research_results:
+            Research profiles for every entity -- currently used for
+            future extensibility (e.g., data-richness gating).
+
+        Returns
+        -------
+        list[int]
+            Sorted list of point numbers (1-13) to include in the prompt.
+        """
+        artist_count = len(entities.artists)
+
+        # Core: always included -- geographic and scene context are universally
+        # relevant, even for a single-artist flier at a specific venue.
+        points = [5, 7]
+
+        # Artist-pair: require 2+ artists for cross-entity comparison.
+        # "Shared labels" and "shared lineups" are meaningless with one artist.
+        if artist_count >= 2:
+            points.extend([1, 2, 6, 13])
+
+        # Entity-conditional: only include when the entity type exists on the
+        # flier.  Asking about "promoter-artist links" when there's no promoter
+        # would produce hallucinated connections.
+        if entities.promoter is not None:
+            points.append(3)
+        if entities.venue is not None:
+            points.append(4)
+
+        # Extended: 3+ artists provides enough data for pattern recognition
+        # across the group (release format trends, performance style clustering,
+        # career stage spread).
+        if artist_count >= 3:
+            points.extend([8, 9, 12])
+
+        # Deep-dive: 4+ artists enables ecosystem-level analysis where network
+        # effects become visible (shared touring circuits, label family trees).
+        if artist_count >= 4:
+            points.extend([10, 11])
+
+        return sorted(points)
+
+    def _build_synthesis_prompt(
+        self,
+        compiled_context: str,
+        entities: ExtractedEntities,
+        research_results: list[ResearchResult],
+    ) -> str:
         """Build the LLM user prompt for interconnection synthesis.
 
         The prompt requests a strictly fact-based chronicle with inline
-        numbered citations — no generated story or speculation.
+        numbered citations -- no generated story or speculation.
 
-        THE 13-POINT SYNTHESIS FRAMEWORK
-        ---------------------------------
-        The prompt asks the LLM to analyze 13 specific relationship
-        dimensions.  Each point targets a different axis of connection:
+        DYNAMIC PROMPT SCALING
+        ----------------------
+        Previously this method always emitted all 13 analysis points.
+        Now it calls ``_select_analysis_points()`` to choose only the
+        points that are meaningful given the entity count and available
+        data.  The point text is pulled from the module-level
+        ``_ANALYSIS_POINTS`` dict, ensuring the content is identical
+        to the original monolithic prompt -- only the inclusion decision
+        changes.
 
-         1. Shared Labels          -- Record labels where multiple flier
-                                      artists released music
-         2. Shared Lineups         -- Previous events with overlapping artists
-         3. Promoter-Artist Links  -- How the promoter connects to each act
-         4. Venue-Scene Connections -- The venue's role in the scene
-         5. Geographic Patterns    -- Same city/region alignments
-         6. Temporal Patterns      -- Career timeline positioning
-         7. Scene Context          -- Movement or subgenre classification
-         8. Release Format         -- Vinyl-first vs digital-first strategies
-         9. Performance Style      -- DJ vs live act classification
-        10. Touring & Venue Overlap -- Shared booking circuits
-        11. Label Ecosystem Depth  -- Parent labels, sister imprints, A&R
-        12. Career Stage           -- Emerging vs veteran dynamic
-        13. Genre & Style Alignment -- Niche cohesion vs deliberate spread
-
-        This breadth ensures the LLM does not fixate on one dimension
-        (e.g., only shared labels) and instead maps the full relationship
-        space.  The output is structured JSON with relationships, patterns,
-        and a narrative.
+        The preamble, STRICT RULES, and JSON output format are unchanged.
 
         Parameters
         ----------
         compiled_context:
             The compiled research context text with numbered source index.
+        entities:
+            Extracted entities from the flier, used to determine which
+            analysis points to include.
+        research_results:
+            Research profiles for every entity, passed through to
+            ``_select_analysis_points()`` for future extensibility.
 
         Returns
         -------
         str
-            Full synthesis prompt with the context embedded.
+            Full synthesis prompt with the context embedded and only
+            the relevant analysis points included.
         """
+        # Determine which of the 13 points to include based on entity
+        # count and presence of venue/promoter.  Log the selection for
+        # observability and debugging.
+        selected = self._select_analysis_points(entities, research_results)
+        self._logger.info(
+            "synthesis_points_selected",
+            total=len(selected),
+            points=selected,
+            artist_count=len(entities.artists),
+            has_venue=entities.venue is not None,
+            has_promoter=entities.promoter is not None,
+        )
+
+        # Build the ANALYSIS REQUIREMENTS section from only the selected
+        # points.  Each point string already contains its number prefix
+        # (e.g., "1. SHARED LABELS: ...") so the LLM sees a numbered
+        # list that may have gaps -- this is intentional and does not
+        # affect LLM output quality.
+        analysis_section = "\n".join(
+            _ANALYSIS_POINTS[n] for n in selected
+        )
+
         return (
             "You have been given detailed, source-indexed research on all "
             "entities connected to a single rave/electronic music event "
@@ -892,54 +1091,7 @@ class InterconnectionService:
             "[3].'  If a fact has no source number, omit it.\n"
             "\n"
             "ANALYSIS REQUIREMENTS:\n"
-            "1. SHARED LABELS: Record labels where multiple artists on "
-            "this flier have released music, with source references. Go "
-            "deeper — are these labels part of the same family or "
-            "distribution network? Does one artist run or co-run a label "
-            "that others release on?\n"
-            "2. SHARED LINEUPS: Previous events where two or more of "
-            "these artists appeared together, with dates and sources.\n"
-            "3. PROMOTER-ARTIST LINKS: How the promoter connects to "
-            "each artist — past bookings, shared scenes, geographic ties "
-            "— citing specific events or articles.\n"
-            "4. VENUE-SCENE CONNECTIONS: The venue's role in the broader "
-            "scene — what events it is known for, cited from research. "
-            "Do any of these artists have recurring residencies or "
-            "repeated bookings at this venue or the promoter's other "
-            "venues?\n"
-            "5. GEOGRAPHIC PATTERNS: Whether artists are from the same "
-            "city/region and how that relates to the event.\n"
-            "6. TEMPORAL PATTERNS: Where this event falls in each "
-            "artist's career timeline.\n"
-            "7. SCENE CONTEXT: What movement or subgenre this event "
-            "represents, grounded in cited facts.\n"
-            "8. RELEASE FORMAT PATTERNS: Based on release data, do these "
-            "artists primarily release on vinyl, digital, or both? Do "
-            "they share a vinyl-first or digital-first release strategy? "
-            "Are releases primarily singles/EPs or full albums? Cite "
-            "specific releases and format data.\n"
-            "9. PERFORMANCE STYLE: Based on available evidence (articles, "
-            "event listings, profiles), are these artists primarily DJs, "
-            "live performers, or hybrid live/DJ acts? Do they share a "
-            "similar performance approach? Cite sources.\n"
-            "10. TOURING & VENUE OVERLAP: Are any of these artists "
-            "playing the same club or venue chain across different "
-            "cities on their own solo tours? Do they share festival "
-            "circuits or the same booking agency ecosystem? Look for "
-            "patterns in where these artists regularly perform.\n"
-            "11. LABEL ECOSYSTEM DEPTH: Beyond simple shared labels, "
-            "are there deeper label connections? Same parent label, "
-            "sister imprints, shared A&R, label founders who also "
-            "appear on the flier? Do multiple artists have long-term "
-            "relationships with the same label vs. one-off releases?\n"
-            "12. CAREER STAGE & TRAJECTORY: Are these artists at similar "
-            "career stages — emerging, mid-career, established, veteran? "
-            "Is there a headliner/support dynamic visible from the data? "
-            "How does each artist's output volume and recency compare?\n"
-            "13. GENRE & STYLE ALIGNMENT: Based on release genre/style "
-            "tags, do these artists operate in the same subgenre niche "
-            "or do they represent a deliberate genre spread? Note any "
-            "stylistic evolution visible in their catalogs.\n"
+            f"{analysis_section}\n"
             "\n"
             "STRICT RULES:\n"
             "- ONLY state facts that appear in the research data above.\n"

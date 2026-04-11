@@ -50,6 +50,7 @@ import re
 from typing import Any
 
 import structlog
+from cachetools import TTLCache
 
 from src.interfaces.cache_provider import ICacheProvider
 from src.interfaces.llm_provider import ILLMProvider
@@ -183,6 +184,14 @@ class QAService:
         # web context so the LLM has something substantive to work with.
         self._web_search = web_search
 
+        # ─── QUERY REWRITE CACHE ───
+        # Cache for LLM query rewrites — avoids redundant LLM calls when the
+        # same conversational question is asked multiple times within the TTL
+        # window.  200 entries with 10-minute TTL balances memory with hit rate.
+        # Uses cachetools.TTLCache (not a plain dict) so stale entries are
+        # evicted automatically without manual cleanup.
+        self._rewrite_cache: TTLCache = TTLCache(maxsize=200, ttl=600)
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -236,6 +245,12 @@ class QAService:
             session_context, entity_type, entity_name
         )
 
+        # ENTITY NAME EXTRACTION — pulled up here (before RAG retrieval) so
+        # the query rewriter can reference all entities on the flier when
+        # expanding pronouns and adding context keywords.  The same list is
+        # reused later by _build_user_prompt() to anchor related facts.
+        entity_names = self._extract_entity_names(session_context)
+
         # RAG RETRIEVE -- query the vector store for relevant passages from
         # the indexed corpus (books, articles, prior analyses).  Returns
         # formatted text plus citation metadata for the LLM to reference.
@@ -243,7 +258,7 @@ class QAService:
         rag_citations: list[dict[str, Any]] = []
         if self._vector_store is not None:
             rag_context, rag_citations = await self._retrieve_passages(
-                question, entity_name
+                question, entity_name, entity_names=entity_names
             )
 
         if self._vector_store is not None and not rag_context:
@@ -261,10 +276,11 @@ class QAService:
         if not rag_context and self._web_search:
             web_context = await self._web_search_fallback(question, entity_name)
 
-        # Build user prompt
+        # Build user prompt — pass pre-extracted entity_names to avoid
+        # redundant re-extraction inside _build_user_prompt().
         user_prompt = self._build_user_prompt(
             question, context_summary, rag_context, entity_type, entity_name,
-            session_context, web_context,
+            session_context, web_context, entity_names=entity_names,
         )
 
         # LLM SYNTHESIS -- send context + RAG passages + question to the LLM.
@@ -391,22 +407,150 @@ class QAService:
         return "\n".join(parts)
 
     # ------------------------------------------------------------------
+    # Private helpers — RAG query rewriting
+    # ------------------------------------------------------------------
+
+    async def _rewrite_query_for_rag(
+        self,
+        question: str,
+        entity_name: str | None,
+        entity_names: list[str],
+    ) -> str:
+        """Rewrite a conversational question into an embedding-optimized query.
+
+        Conversational questions ("What else has this DJ done?") produce poor
+        cosine similarity against the factual prose in the corpus (books,
+        articles).  This rewrite step transforms them into keyword-rich
+        queries ("DJ Shadow discography releases career history") that
+        better match the embedding space of the indexed content.
+
+        Uses temperature=0.0 for deterministic output (same question always
+        produces the same rewrite) and max_tokens=100 to keep it concise.
+        Results are cached with a 10-minute TTL via cachetools.TTLCache.
+
+        Why this matters for RAG quality
+        ---------------------------------
+        Embedding models (FastEmbed, SentenceTransformers) encode semantic
+        meaning into dense vectors.  A conversational question like "tell me
+        more about them" has very different vector geometry than a factual
+        passage like "DJ Shadow released Endtroducing on Mo'Wax in 1996".
+        The rewrite bridges this gap by converting the conversational form
+        into a keyword-rich declarative form that lands closer to corpus
+        passages in embedding space.
+
+        Graceful degradation
+        --------------------
+        On any LLM error (timeout, rate limit, malformed response), the
+        method returns the original question unchanged.  This ensures RAG
+        retrieval always proceeds — just with the less-optimized query.
+        """
+        # ─── CACHE LOOKUP ───
+        # Lowercase + strip for case-insensitive deduplication.  The entity
+        # name is part of the key because the same question ("what style?")
+        # should rewrite differently for different entities.
+        cache_key = f"{question.lower().strip()}:{entity_name or ''}"
+        if cache_key in self._rewrite_cache:
+            logger.debug("qa_rewrite_cache_hit", question=question[:50])
+            return self._rewrite_cache[cache_key]
+
+        entity_context = entity_name or "general electronic music"
+        other_entities = ", ".join(entity_names) if entity_names else "none"
+
+        # ─── REWRITE PROMPTS ───
+        # The system prompt constrains the LLM to output ONLY the rewritten
+        # query with no explanation — critical because the output feeds
+        # directly into the embedding model.  The user prompt provides the
+        # entity context so the rewriter can resolve pronouns ("this DJ" ->
+        # actual name) and add relevant domain keywords.
+        system_prompt = (
+            "You rewrite user questions into search queries optimized for "
+            "semantic similarity search against a knowledge base of electronic "
+            "music books, articles, and event archives. Return ONLY the "
+            "rewritten query, no explanation."
+        )
+        user_prompt = (
+            f"Original question: {question}\n"
+            f"Entity context: {entity_context}\n"
+            f"Other entities on this flier: {other_entities}\n\n"
+            "Rewrite this into a factual search query that would match "
+            "relevant passages in books about electronic music, rave culture, "
+            "DJs, labels, and venues. Replace pronouns with entity names. "
+            "Expand abbreviations. Add relevant keywords. "
+            "Keep it under 40 words."
+        )
+
+        try:
+            # temperature=0.0 for deterministic rewrites — the same question
+            # should always produce the same search query.  max_tokens=100
+            # keeps the rewrite concise (corpus-matching queries should be
+            # short and keyword-dense, not verbose).
+            rewritten = await self._llm.complete(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.0,
+                max_tokens=100,
+            )
+            result = rewritten.strip() if rewritten else question
+        except Exception as exc:
+            # Graceful degradation — any LLM failure falls back to the
+            # original question.  RAG retrieval still proceeds, just with
+            # a less-optimized query.  This prevents query rewriting from
+            # being a single point of failure in the Q&A pipeline.
+            logger.warning(
+                "qa_query_rewrite_failed",
+                question=question[:80],
+                error=str(exc),
+            )
+            result = question
+
+        # Cache the result (including fallback-to-original) to avoid
+        # retrying a failing rewrite on repeated questions.
+        self._rewrite_cache[cache_key] = result
+
+        if result != question:
+            logger.debug(
+                "qa_query_rewritten",
+                original=question[:80],
+                rewritten=result[:80],
+            )
+
+        return result
+
+    # ------------------------------------------------------------------
     # Private helpers — RAG retrieval
     # ------------------------------------------------------------------
 
     async def _retrieve_passages(
-        self, question: str, entity_name: str | None
+        self,
+        question: str,
+        entity_name: str | None,
+        entity_names: list[str] | None = None,
     ) -> tuple[str, list[dict[str, Any]]]:
         """Query the vector store for relevant passages.
 
-        Returns a ``(rag_text, citations)`` tuple.
+        Returns a ``(rag_text, citations)`` tuple.  Before querying, the
+        conversational question is rewritten into an embedding-optimized
+        search query via ``_rewrite_query_for_rag()`` — this dramatically
+        improves recall for vague or pronoun-heavy questions like "What
+        else has this DJ done?" by expanding them into keyword-rich queries
+        that better match the factual prose in the indexed corpus.
         """
         if not self._vector_store:
             return "", []
 
-        query = question
-        if entity_name:
-            query = f"{entity_name}: {question}"
+        # ─── QUERY REWRITE ───
+        # Transform conversational question into embedding-optimized query.
+        # Gracefully degrades to the original question on any failure.
+        rewritten = await self._rewrite_query_for_rag(
+            question, entity_name, entity_names or []
+        )
+
+        query = rewritten
+        # Ensure entity name is prepended if the rewriter didn't already
+        # include it — entity-scoped queries consistently score higher in
+        # cosine similarity against entity-tagged corpus chunks.
+        if entity_name and entity_name.lower() not in rewritten.lower():
+            query = f"{entity_name}: {rewritten}"
 
         filters: dict[str, Any] = {}
         if entity_name:
@@ -537,6 +681,7 @@ class QAService:
         entity_name: str | None,
         session_context: dict[str, Any] | None = None,
         web_context: str = "",
+        entity_names: list[str] | None = None,
     ) -> str:
         """Assemble the full user prompt for the LLM."""
         parts: list[str] = []
@@ -573,7 +718,9 @@ class QAService:
         # Provide an explicit list of entity names so the LLM anchors its
         # "related facts" to actual flier content.  Without this constraint,
         # the LLM tends to invent facts about unrelated artists/venues.
-        entity_names = self._extract_entity_names(session_context)
+        # Uses pre-extracted names when available to avoid redundant extraction.
+        if entity_names is None:
+            entity_names = self._extract_entity_names(session_context)
         if entity_names:
             parts.append(
                 "\n## Entities on this flier (use ONLY these for related facts)\n"
