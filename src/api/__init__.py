@@ -16,13 +16,14 @@ from src.api.schemas import (
     PipelineStatusResponse,
     ProvidersResponse,
 )
-from src.api.websocket import websocket_progress
+from src.api.websocket import websocket_interconnection_stream, websocket_progress
 
 __all__ = [
     "ErrorHandlingMiddleware",
     "RequestLoggingMiddleware",
     "configure_cors",
     "router",
+    "websocket_interconnection_stream",
     "websocket_progress",
     "ConfirmEntitiesRequest",
     "ConfirmResponse",

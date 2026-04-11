@@ -1,7 +1,8 @@
 """Anthropic LLM provider adapter.
 
 Wraps the ``anthropic`` async client to implement :class:`ILLMProvider`.
-Supports both text completion and vision analysis via the Claude Messages API.
+Supports text completion, vision analysis, and streaming completions via
+the Claude Messages API.
 
 Key differences from OpenAI adapter:
     - Uses Anthropic's Messages API (not chat.completions)
@@ -10,11 +11,21 @@ Key differences from OpenAI adapter:
     - Response content is a list of blocks (may include text + tool_use),
       so we filter for text blocks and join them
     - Claude always supports vision — no capability flag needed
+
+Streaming
+---------
+``stream_complete()`` uses ``self._client.messages.stream()`` which
+returns an async context manager providing a ``text_stream`` async
+iterator.  Each iteration yields the next token(s).  This enables
+progressive rendering of the interconnection narrative.
 """
 
 from __future__ import annotations
 
 import base64
+
+# AsyncGenerator type used for the stream_complete() return annotation.
+from collections.abc import AsyncGenerator
 
 # The official Anthropic Python SDK (async version).
 import anthropic
@@ -102,6 +113,47 @@ class AnthropicLLMProvider(ILLMProvider):
         except anthropic.APIError as exc:
             raise LLMError(
                 message=f"Anthropic API error: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
+    async def stream_complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.3,
+        max_tokens: int = 4000,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a text completion token-by-token via the Anthropic streaming API.
+
+        Uses ``self._client.messages.stream()`` — an async context manager
+        that provides a ``text_stream`` async iterator yielding text chunks.
+        This differs from OpenAI's approach: Anthropic wraps the stream in
+        a context manager for automatic cleanup, while OpenAI returns a raw
+        async iterator.
+
+        The streaming API doesn't provide usage stats per-chunk, so we log
+        only the model name on completion.
+        """
+        try:
+            # messages.stream() returns an async context manager.  The
+            # ``async with`` ensures the HTTP connection is cleaned up
+            # even if the consumer stops reading early.
+            async with self._client.messages.stream(
+                model=self._model,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield text
+            logger.info(
+                "anthropic_stream_complete",
+                model=self._model,
+            )
+        except anthropic.APIError as exc:
+            raise LLMError(
+                message=f"Anthropic stream API error: {exc}",
                 provider_name=self.get_provider_name(),
             ) from exc
 

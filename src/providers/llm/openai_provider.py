@@ -1,14 +1,22 @@
 """OpenAI-compatible LLM provider adapter.
 
 Wraps the ``openai`` async client to implement :class:`ILLMProvider`.
-Supports both text completion and vision analysis.  When a custom
-``openai_base_url`` is configured (e.g. TogetherAI, Anyscale, Fireworks),
-the client points at that URL instead of the default OpenAI endpoint.
+Supports both text completion, vision analysis, and streaming completions.
+When a custom ``openai_base_url`` is configured (e.g. TogetherAI, Anyscale,
+Fireworks), the client points at that URL instead of the default OpenAI
+endpoint.
 
 This is the most versatile LLM adapter because many third-party LLM
 providers (TogetherAI, Anyscale, Fireworks, Groq) expose OpenAI-compatible
 REST APIs. By pointing the openai client at a different base_url, this
 single adapter can talk to dozens of different model providers.
+
+Streaming
+---------
+``stream_complete()`` uses ``stream=True`` on the chat completions API to
+yield tokens as they arrive from the model.  This enables progressive
+rendering of the interconnection narrative on the frontend, replacing the
+10-20 second blank wait with a typewriter effect.
 """
 
 from __future__ import annotations
@@ -17,17 +25,23 @@ from __future__ import annotations
 # The OpenAI vision endpoint requires images as base64 data URIs.
 import base64
 
+# AsyncGenerator type used for the stream_complete() return annotation.
+from collections.abc import AsyncGenerator
+
 # The official OpenAI Python SDK (async version). Provides type-safe access
 # to the chat completions, models, and other endpoints.
 import openai
+
 # structlog provides structured JSON logging (see src/utils/logging.py).
 # Every log entry includes context like model name and token usage.
 import structlog
 
 # Settings is the Pydantic Settings class that loads env vars and config.
 from src.config.settings import Settings
+
 # ILLMProvider is the abstract interface this class implements.
 from src.interfaces.llm_provider import ILLMProvider
+
 # LLMError is a custom exception that wraps provider-specific errors with
 # a consistent interface for the rest of the codebase to catch.
 from src.utils.errors import LLMError
@@ -162,6 +176,61 @@ class OpenAILLMProvider(ILLMProvider):
             # "from exc" preserves the original stack trace for debugging.
             raise LLMError(
                 message=f"{self._provider_label} API error: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
+    async def stream_complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.3,
+        max_tokens: int = 4000,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a text completion token-by-token via the OpenAI streaming API.
+
+        Uses ``stream=True`` on chat.completions.create() which returns an
+        async iterator of ``ChatCompletionChunk`` objects.  Each chunk's
+        ``delta.content`` field contains the next token(s).  This override
+        replaces the default ILLMProvider fallback (which yields the full
+        response at once) with true incremental delivery.
+
+        The streaming API does not return usage stats, so we log only the
+        model name — no token counts.
+        """
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        try:
+            # stream=True makes the API return an async iterator instead of
+            # waiting for the full completion.  Each chunk contains a small
+            # delta with the next token(s).
+            response = await self._client.chat.completions.create(
+                model=self._text_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            async for chunk in response:
+                # Each chunk may have empty content (e.g. the final chunk
+                # with finish_reason="stop").  Only yield non-empty deltas.
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
+            logger.info(
+                "openai_stream_complete",
+                model=self._text_model,
+                provider=self._provider_label,
+            )
+        except openai.APITimeoutError as exc:
+            raise LLMError(
+                message=f"{self._provider_label} stream timed out after 25s",
+                provider_name=self.get_provider_name(),
+            ) from exc
+        except openai.APIError as exc:
+            raise LLMError(
+                message=f"{self._provider_label} stream API error: {exc}",
                 provider_name=self.get_provider_name(),
             ) from exc
 

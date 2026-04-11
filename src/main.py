@@ -56,7 +56,7 @@ from src.api.middleware import (
     configure_cors,
 )
 from src.api.routes import router as api_router
-from src.api.websocket import websocket_progress
+from src.api.websocket import websocket_interconnection_stream, websocket_progress
 from src.config.loader import load_config
 from src.config.settings import Settings
 from src.interfaces.llm_provider import ILLMProvider
@@ -696,6 +696,9 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "confirmation_gate": confirmation_gate,
         "progress_tracker": progress_tracker,
         "session_states": session_store,
+        # Exposed so the streaming WebSocket endpoint (/ws/interconnection/)
+        # can call analyze_streaming() directly.
+        "interconnection_service": interconnection_service,
         "provider_registry": provider_registry,
         "provider_list": provider_list,
         "primary_llm_name": primary_llm.get_provider_name(),
@@ -1259,6 +1262,13 @@ def create_app() -> FastAPI:
     @application.websocket("/ws/progress/{session_id}")
     async def ws_progress(websocket: WebSocket, session_id: str) -> None:
         await websocket_progress(websocket, session_id)
+
+    # Streaming interconnection analysis: pushes LLM tokens as they arrive
+    # so the frontend can render the narrative with a typewriter effect
+    # instead of waiting 10-20s for the full response.
+    @application.websocket("/ws/interconnection/{session_id}")
+    async def ws_interconnection(websocket: WebSocket, session_id: str) -> None:
+        await websocket_interconnection_stream(websocket, session_id)
 
     # -- raiveFeeder sub-app --
     # Mount the raiveFeeder companion app at /feeder/ so both apps share

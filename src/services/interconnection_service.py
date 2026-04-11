@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
 from src.interfaces.llm_provider import ILLMProvider
@@ -262,6 +263,126 @@ class InterconnectionService:
             has_narrative=imap.narrative is not None,
         )
         return imap
+
+    async def analyze_streaming(
+        self,
+        research_results: list[ResearchResult],
+        entities: ExtractedEntities,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Stream the interconnection analysis, yielding progress updates.
+
+        This is the streaming companion to :meth:`analyze`.  Steps 1-1.5
+        (context compilation, RAG retrieval, RA event discovery) run
+        identically to ``analyze()``.  Step 2 differs: instead of calling
+        ``complete()``, it calls ``stream_complete()`` and yields each
+        chunk as a ``narrative_chunk`` dict so the frontend can render
+        the narrative progressively.
+
+        Once all chunks are received, steps 3-4 (parse, validate, enrich)
+        run identically to ``analyze()``.  The final result is yielded as
+        an ``analysis_complete`` dict.
+
+        The non-streaming ``analyze()`` method remains the primary code
+        path.  This method is an ADDITIONAL path used only when the
+        frontend connects via the streaming WebSocket endpoint.
+
+        Yields
+        ------
+        dict[str, Any]
+            Progress updates in two shapes:
+            - ``{"type": "narrative_chunk", "text": "<chunk>"}`` — incremental
+              narrative text as it arrives from the LLM.
+            - ``{"type": "analysis_complete", "interconnection_map": {...}}``
+              — the final parsed and validated InterconnectionMap.
+        """
+        self._logger.info(
+            "interconnection_streaming_start",
+            research_count=len(research_results),
+            artist_count=len(entities.artists),
+        )
+
+        # Steps 1-1.5: identical to analyze() — compile all context
+        compiled_context = self._compile_research_context(research_results)
+
+        rag_context = await self._retrieve_cross_entity_context(entities)
+        if rag_context:
+            compiled_context += "\n\n=== CORPUS CONTEXT (from indexed books/articles) ===\n"
+            compiled_context += rag_context
+
+        shared_ra_events = await self._discover_shared_ra_events(entities)
+        if shared_ra_events:
+            ra_context = self._compile_shared_event_context(shared_ra_events)
+            compiled_context += "\n\n" + ra_context
+
+        # Step 2 — streaming LLM analysis.  Instead of waiting for the
+        # entire response, yield each chunk as it arrives so the frontend
+        # can render the narrative with a typewriter effect.
+        system_prompt = (
+            "You are a factual music research analyst.  You report only "
+            "verified facts from the data provided, with inline source "
+            "citations.  You never invent, embellish, or speculate.  "
+            "Silence is preferable to unsourced claims."
+        )
+        user_prompt = self._build_synthesis_prompt(compiled_context)
+
+        accumulated = ""
+        try:
+            async for chunk in self._llm.stream_complete(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.1,
+                max_tokens=8000,
+            ):
+                accumulated += chunk
+                yield {"type": "narrative_chunk", "text": chunk}
+        except Exception as exc:
+            self._logger.error(
+                "llm_streaming_analysis_failed",
+                error=str(exc),
+                provider=self._llm.get_provider_name(),
+            )
+            raise LLMError(
+                message=f"Interconnection streaming LLM call failed: {exc}",
+                provider_name=self._llm.get_provider_name(),
+            ) from exc
+
+        # Steps 3-4: parse, validate, enrich — identical to analyze().
+        # These require the full response text (accumulated above).
+        parsed = self._parse_analysis_response(accumulated)
+
+        raw_relationships = parsed.get("relationships", [])
+        validated_relationships = self._validate_citations(
+            raw_relationships, research_results, shared_ra_events=shared_ra_events
+        )
+
+        edges = self._build_edges(validated_relationships)
+        patterns = self._build_patterns(parsed.get("patterns", []))
+        nodes = self._build_nodes(research_results, entities)
+        narrative: str | None = parsed.get("narrative")
+
+        edges = self._penalise_uncertain(edges)
+        edges = self._boost_ra_backed_edges(edges, shared_ra_events)
+        edges = self._penalise_geographic_mismatch(edges, research_results)
+        edges = [e for e in edges if e.confidence >= 0.15]
+
+        all_citations = self._collect_all_citations(edges, patterns)
+
+        imap = InterconnectionMap(
+            nodes=nodes,
+            edges=edges,
+            patterns=patterns,
+            narrative=narrative,
+            citations=all_citations,
+        )
+
+        self._logger.info(
+            "interconnection_streaming_complete",
+            edges=len(imap.edges),
+            patterns=len(imap.patterns),
+            has_narrative=imap.narrative is not None,
+        )
+
+        yield {"type": "analysis_complete", "interconnection_map": imap.model_dump()}
 
     # ------------------------------------------------------------------
     # Step 1 — context compilation

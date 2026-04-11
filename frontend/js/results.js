@@ -1523,9 +1523,104 @@ const Results = (() => {
     }
   }
 
+  // ------------------------------------------------------------------
+  // Streaming narrative support
+  // ------------------------------------------------------------------
+
+  /**
+   * Accumulated raw narrative text from streaming chunks.
+   * Kept separate from the formatted display so we can re-format
+   * the full narrative once streaming completes.
+   * @type {string}
+   */
+  let _streamedNarrative = "";
+
+  /**
+   * Prepare the interconnections section DOM for streaming narrative.
+   * Creates the narrative-prose container (empty) so appendNarrativeChunk()
+   * has a target element.  Called by the Progress module when the pipeline
+   * enters the INTERCONNECTION phase and a streaming WebSocket is opened.
+   *
+   * If the #results-interconnections section doesn't exist yet (results
+   * view hasn't loaded), this creates a minimal placeholder section.
+   */
+  function initStreamingNarrative() {
+    _streamedNarrative = "";
+
+    // Try to find or create the narrative container
+    let section = document.getElementById("results-interconnections");
+    if (!section) {
+      // Create a minimal interconnections section if results aren't
+      // rendered yet — this happens when streaming starts during the
+      // progress view, before full results are loaded.
+      const resultsView = document.getElementById("results-view");
+      if (!resultsView) return;
+      section = document.createElement("div");
+      section.className = "results-section";
+      section.id = "results-interconnections";
+      section.innerHTML = '<h2 class="results-section__title text-heading">Interconnections</h2>';
+      resultsView.appendChild(section);
+    }
+
+    // Create the narrative prose container if it doesn't exist
+    let prose = section.querySelector(".narrative-prose");
+    if (!prose) {
+      prose = document.createElement("div");
+      prose.className = "narrative-prose";
+      // Insert after the section title
+      const title = section.querySelector(".results-section__title");
+      if (title && title.nextSibling) {
+        section.insertBefore(prose, title.nextSibling);
+      } else {
+        section.appendChild(prose);
+      }
+    }
+    // Clear any existing narrative content for a fresh stream
+    prose.innerHTML = "";
+  }
+
+  /**
+   * Append a chunk of streaming narrative text to the display.
+   *
+   * Called by the interconnection WebSocket handler each time a
+   * ``narrative_chunk`` message arrives.  Text is HTML-escaped and
+   * appended to the narrative-prose container.  Double newlines are
+   * converted to paragraph breaks for readability.
+   *
+   * @param {string} text — raw text chunk from the LLM stream
+   */
+  function appendNarrativeChunk(text) {
+    _streamedNarrative += text;
+
+    const prose = document.querySelector(
+      "#results-interconnections .narrative-prose"
+    );
+    if (!prose) return;
+
+    // Re-render the full accumulated narrative each time — this is
+    // simpler than trying to incrementally update paragraphs and
+    // handles the case where a paragraph boundary arrives mid-chunk.
+    // Performance is fine because the narrative is typically <5KB.
+    const safe = _esc(_streamedNarrative);
+    // Strip [n] citation refs from display (they live in the citation log)
+    const cleaned = safe.replace(/\s*\[\d+\]/g, "").replace(/ {2,}/g, " ");
+    // Split into paragraphs on double newlines
+    const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
+    if (paragraphs.length <= 1) {
+      prose.innerHTML = `<p>${cleaned}</p>`;
+    } else {
+      prose.innerHTML = paragraphs.map((p) => `<p>${p.trim()}</p>`).join("\n");
+    }
+
+    // Auto-scroll to keep the latest text visible
+    prose.scrollTop = prose.scrollHeight;
+  }
+
   return {
     fetchAndDisplayResults,
     renderResults,
     renderRelationshipGraph,
+    initStreamingNarrative,
+    appendNarrativeChunk,
   };
 })();
