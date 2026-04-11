@@ -763,6 +763,8 @@ class TestBuildAll:
             "web_search",
             "graph_aggregation",
             "story_components",
+            "bm25_provider",
+            "interconnection_service",
         }
         assert set(result.keys()) == expected_keys
 

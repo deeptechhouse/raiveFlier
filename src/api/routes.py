@@ -1400,42 +1400,71 @@ async def _expand_query(llm: Any, query: str) -> str:
     return result
 
 
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors using numpy.
+
+    Returns a value in [-1, 1].  Used by _semantic_dedup when embedding
+    vectors are available for more accurate duplicate detection than
+    word-level Jaccard overlap.
+    """
+    import numpy as np
+
+    a_arr, b_arr = np.array(a), np.array(b)
+    norm_product = np.linalg.norm(a_arr) * np.linalg.norm(b_arr)
+    if norm_product < 1e-10:
+        return 0.0
+    return float(np.dot(a_arr, b_arr) / norm_product)
+
+
 def _semantic_dedup(
     results: list[CorpusSearchChunk],
     threshold: float = 0.85,
 ) -> list[CorpusSearchChunk]:
-    """Remove near-duplicate chunks based on word-level Jaccard similarity.
+    """Remove near-duplicate chunks using cosine similarity or Jaccard fallback.
 
-    Compares each candidate against already-kept results.  If the token
-    overlap exceeds *threshold*, the candidate is dropped (the kept result
-    already covers the same content and has a better score/tier).
+    When chunks carry embedding vectors (from include_embeddings=True),
+    cosine similarity (threshold 0.93) catches paraphrased duplicates
+    that word-overlap misses.  Falls back to Jaccard for chunks without
+    embeddings.
 
     Parameters
     ----------
     results:
         Chunks pre-sorted by score (best first).
     threshold:
-        Jaccard similarity above which two chunks are considered duplicates.
+        Jaccard similarity threshold (used when embeddings absent).
     """
+    _COSINE_THRESHOLD = 0.93
+
     if len(results) <= 1:
         return results
 
     kept: list[CorpusSearchChunk] = [results[0]]
     for candidate in results[1:]:
-        c_tokens = set(candidate.text.lower().split())
-        if not c_tokens:
-            kept.append(candidate)
-            continue
         is_dup = False
+        c_emb = getattr(candidate, "embedding", None)
+
         for existing in kept:
-            e_tokens = set(existing.text.lower().split())
-            if not e_tokens:
-                continue
-            intersection = len(c_tokens & e_tokens)
-            union = len(c_tokens | e_tokens)
-            if union > 0 and intersection / union > threshold:
-                is_dup = True
-                break
+            e_emb = getattr(existing, "embedding", None)
+
+            # Prefer cosine similarity when both have embeddings
+            if c_emb and e_emb:
+                sim = _cosine_similarity(c_emb, e_emb)
+                if sim > _COSINE_THRESHOLD:
+                    is_dup = True
+                    break
+            else:
+                # Jaccard word-overlap fallback
+                c_tokens = set(candidate.text.lower().split())
+                e_tokens = set(existing.text.lower().split())
+                if not c_tokens or not e_tokens:
+                    continue
+                intersection = len(c_tokens & e_tokens)
+                union = len(c_tokens | e_tokens)
+                if union > 0 and intersection / union > threshold:
+                    is_dup = True
+                    break
+
         if not is_dup:
             kept.append(candidate)
     return kept
