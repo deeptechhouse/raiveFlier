@@ -129,7 +129,8 @@ class TestQAServiceBasic:
         service = QAService(llm=mock_llm, vector_store=mock_vector_store, cache=mock_cache)
         await service.ask("What genre is this?", sample_session_context)
 
-        mock_llm.complete.assert_called_once()
+        # 2 calls: query rewrite (temp=0.0) + answer generation (temp=0.3)
+        assert mock_llm.complete.call_count == 2
 
 
 # ── RAG Disabled (No Vector Store) ────────────────────────
@@ -232,7 +233,8 @@ class TestQAServiceErrors:
 
         # Should still return an answer (LLM-only fallback)
         assert isinstance(result, QAResponse)
-        mock_llm.complete.assert_called_once()
+        # 2 calls: query rewrite + answer generation
+        assert mock_llm.complete.call_count == 2
 
     @pytest.mark.asyncio()
     async def test_malformed_llm_json_uses_raw_text(
