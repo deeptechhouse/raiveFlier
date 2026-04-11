@@ -181,12 +181,24 @@ class ChromaDBProvider(IVectorStoreProvider):
     # IVectorStoreProvider implementation
     # ------------------------------------------------------------------
 
+    async def embed_query(self, text: str) -> list[float]:
+        """Delegate query embedding to the injected embedding provider.
+
+        Exposes the embedding step so callers (e.g. _tiered_corpus_query)
+        can pre-compute a vector once and pass it to multiple concurrent
+        query() calls via the query_embedding parameter, avoiding
+        redundant embedding API calls.
+        """
+        return await self._embedding_provider.embed_single(text)
+
     async def query(
         self,
         query_text: str,
         top_k: int = 20,
         filters: dict[str, Any] | None = None,
         max_per_source: int = 3,
+        query_embedding: list[float] | None = None,
+        include_embeddings: bool = False,
     ) -> list[RetrievedChunk]:
         """Perform semantic search against the ChromaDB collection.
 
@@ -194,9 +206,23 @@ class ChromaDBProvider(IVectorStoreProvider):
         the same source document match, only the top *max_per_source* chunks
         are kept.  To compensate, ChromaDB is asked for up to ``3 * top_k``
         raw results before dedup and trimming.
+
+        When *query_embedding* is provided, the internal embed_single() call
+        is skipped — the caller has already pre-computed the vector.  This
+        eliminates redundant embedding API calls when the same query text is
+        used across multiple concurrent tier queries.
+
+        When *include_embeddings* is True, each returned RetrievedChunk
+        carries the stored embedding vector from ChromaDB.  Used by
+        embedding-based deduplication to compute cosine similarity without
+        re-embedding.
         """
         try:
-            query_embedding = await self._embedding_provider.embed_single(query_text)
+            # Use pre-computed embedding when available, otherwise embed now.
+            # Pre-computation eliminates 3 redundant embed_single() calls in
+            # the 4-tier parallel query pattern used by _tiered_corpus_query().
+            if query_embedding is None:
+                query_embedding = await self._embedding_provider.embed_single(query_text)
             where_clause = self._translate_filters(filters) if filters else None
 
             # Over-fetch to have enough results after per-source limiting
@@ -211,6 +237,12 @@ class ChromaDBProvider(IVectorStoreProvider):
             }
             if where_clause:
                 kwargs["where"] = where_clause
+            # Include stored embeddings in ChromaDB results when requested.
+            # By default ChromaDB only returns documents, metadatas, and
+            # distances.  Adding "embeddings" to the include list pulls back
+            # the stored vectors for downstream cosine dedup.
+            if include_embeddings:
+                kwargs["include"] = ["documents", "metadatas", "distances", "embeddings"]
 
             results = self._collection.query(**kwargs)
 
@@ -220,19 +252,33 @@ class ChromaDBProvider(IVectorStoreProvider):
             documents = results["documents"][0]
             metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(documents)
             distances = results["distances"][0] if results["distances"] else [0.0] * len(documents)
+            # Extract stored embeddings when requested; fall back to None per-chunk.
+            raw_embeddings: list[list[float]] | None = None
+            if include_embeddings and results.get("embeddings"):
+                raw_embeddings = results["embeddings"][0]
 
             # Group by source_id, keeping top max_per_source chunks per source
             chunks_per_source: dict[str, list[RetrievedChunk]] = {}
 
-            for doc_text, meta, distance in zip(documents, metadatas, distances, strict=True):
+            for idx, (doc_text, meta, distance) in enumerate(
+                zip(documents, metadatas, distances, strict=True)
+            ):
                 similarity = max(0.0, min(1.0, 1.0 - distance))
                 chunk = self._metadata_to_chunk(meta, doc_text)
                 source_id = chunk.source_id
                 citation = self._format_citation(chunk, similarity)
+                # Attach stored embedding when available — used by
+                # _semantic_dedup for cosine-based deduplication.
+                chunk_embedding = (
+                    raw_embeddings[idx]
+                    if raw_embeddings is not None and idx < len(raw_embeddings)
+                    else None
+                )
                 rc = RetrievedChunk(
                     chunk=chunk,
                     similarity_score=similarity,
                     formatted_citation=citation,
+                    embedding=chunk_embedding,
                 )
                 chunks_per_source.setdefault(source_id, []).append(rc)
 

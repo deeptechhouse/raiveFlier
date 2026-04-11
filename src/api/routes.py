@@ -1386,42 +1386,91 @@ async def _expand_query(llm: Any, query: str) -> str:
     return result
 
 
+# ─── EMBEDDING-BASED DEDUPLICATION (Optimization F) ───
+# Replaces the word-level Jaccard similarity approach with cosine similarity
+# computed directly from stored embedding vectors.  Embedding-based dedup
+# is more accurate because it captures SEMANTIC overlap (e.g., paraphrases)
+# that word-level Jaccard misses.
+#
+# When chunks carry stored embeddings (populated by include_embeddings=True
+# in the tier queries), cosine similarity is used with a 0.93 threshold.
+# When embeddings are absent (legacy callers, non-tier queries), the
+# function falls back to word-level Jaccard with a 0.85 threshold.
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two embedding vectors.
+
+    Uses numpy for efficient dot-product and norm computation.
+    The epsilon (1e-10) prevents division by zero when a vector
+    has near-zero magnitude (shouldn't happen with real embeddings
+    but defensive against edge cases).
+    """
+    import numpy as np
+
+    a_arr, b_arr = np.asarray(a, dtype=np.float32), np.asarray(b, dtype=np.float32)
+    return float(np.dot(a_arr, b_arr) / (np.linalg.norm(a_arr) * np.linalg.norm(b_arr) + 1e-10))
+
+
 def _semantic_dedup(
     results: list[CorpusSearchChunk],
     threshold: float = 0.85,
+    cosine_threshold: float = 0.93,
 ) -> list[CorpusSearchChunk]:
-    """Remove near-duplicate chunks based on word-level Jaccard similarity.
+    """Remove near-duplicate chunks using embedding cosine similarity.
 
-    Compares each candidate against already-kept results.  If the token
-    overlap exceeds *threshold*, the candidate is dropped (the kept result
-    already covers the same content and has a better score/tier).
+    When chunks carry embedding vectors (populated from ChromaDB via
+    include_embeddings=True), cosine similarity is used for dedup.
+    This captures semantic overlap that word-level Jaccard misses
+    (e.g., paraphrased passages from the same source).
+
+    Falls back to word-level Jaccard similarity when embeddings are
+    absent, preserving backward compatibility with non-tier callers.
 
     Parameters
     ----------
     results:
         Chunks pre-sorted by score (best first).
     threshold:
-        Jaccard similarity above which two chunks are considered duplicates.
+        Jaccard similarity above which two chunks are considered duplicates
+        (used as fallback when embeddings are unavailable).
+    cosine_threshold:
+        Cosine similarity above which two chunks are considered duplicates
+        (used when both chunks have embeddings).  Set higher than the
+        Jaccard threshold because cosine similarity on dense embeddings
+        produces systematically higher values for related-but-distinct text.
     """
     if len(results) <= 1:
         return results
 
     kept: list[CorpusSearchChunk] = [results[0]]
     for candidate in results[1:]:
-        c_tokens = set(candidate.text.lower().split())
-        if not c_tokens:
-            kept.append(candidate)
-            continue
         is_dup = False
+        # Prefer cosine similarity when both candidate and existing have embeddings
+        candidate_emb = getattr(candidate, "embedding", None)
         for existing in kept:
-            e_tokens = set(existing.text.lower().split())
-            if not e_tokens:
-                continue
-            intersection = len(c_tokens & e_tokens)
-            union = len(c_tokens | e_tokens)
-            if union > 0 and intersection / union > threshold:
-                is_dup = True
-                break
+            existing_emb = getattr(existing, "embedding", None)
+
+            if candidate_emb is not None and existing_emb is not None:
+                # Cosine path: compare embedding vectors directly
+                sim = _cosine_similarity(candidate_emb, existing_emb)
+                if sim > cosine_threshold:
+                    is_dup = True
+                    break
+            else:
+                # Jaccard fallback: word-level token overlap
+                c_tokens = set(candidate.text.lower().split())
+                if not c_tokens:
+                    break  # empty text → keep it
+                e_tokens = set(existing.text.lower().split())
+                if not e_tokens:
+                    continue
+                intersection = len(c_tokens & e_tokens)
+                union = len(c_tokens | e_tokens)
+                if union > 0 and intersection / union > threshold:
+                    is_dup = True
+                    break
+
         if not is_dup:
             kept.append(candidate)
     return kept
@@ -1478,10 +1527,11 @@ def _compute_facets(chunks: list[CorpusSearchChunk]) -> FacetCounts:
 
 
 # ---------------------------------------------------------------------------
-# Tiered corpus query — priority-ordered ChromaDB retrieval
+# Tiered corpus query — parallel priority-ordered ChromaDB retrieval
 # ---------------------------------------------------------------------------
-# The tiered strategy queries ChromaDB four times in sequence, each time
-# targeting a different source priority:
+# The tiered strategy queries ChromaDB four times, each targeting a
+# different source priority.  All four queries run CONCURRENTLY via
+# asyncio.gather() to minimize wall-clock latency:
 #   Tier 1: RA Exchange podcast transcripts (source_type="interview",
 #           source_title starts with "EX.")
 #   Tier 2: Books (source_type="book")
@@ -1490,8 +1540,19 @@ def _compute_facets(chunks: list[CorpusSearchChunk]) -> FacetCounts:
 #            crowd out other sources in the catch-all tier.
 #   Tier 3b: Catch-all — everything not already captured by T1/T2/T3a,
 #            including reference docs and any future source types.
-# Chunks are deduped across tiers via a seen_ids set so the same
-# source never appears in two tiers.
+#
+# Performance optimization (Opt E): The query embedding is pre-computed
+# ONCE before launching the parallel queries, then passed to each call
+# via query_embedding.  This eliminates 3 redundant embedding API calls
+# (4 sequential → 1 pre-computed + 4 parallel DB queries).
+#
+# Embedding inclusion (Opt F): include_embeddings=True is passed so
+# retrieved chunks carry their stored vectors for cosine-based dedup
+# in _semantic_dedup(), replacing the slower word-level Jaccard method.
+#
+# Cross-tier dedup uses seen_ids applied in tier priority order AFTER
+# all queries complete.  This preserves the same dedup semantics as
+# the previous sequential approach.
 #
 # Returns (all_chunks, chunk_tier_map, tiers_used) where chunk_tier_map
 # maps id(chunk) → tier number for downstream provenance labeling.
@@ -1501,8 +1562,13 @@ async def _tiered_corpus_query(
     vector_store: Any,
     query_text: str,
     user_filters: dict[str, Any] | None,
+    query_embedding: list[float] | None = None,
 ) -> tuple[list[Any], dict[int, int], list[int]]:
     """Execute priority-ordered ChromaDB queries across four sub-tiers.
+
+    All tier queries run concurrently via asyncio.gather().  The query
+    embedding is pre-computed once and shared across all tier calls to
+    eliminate redundant embedding API calls.
 
     The query budget is split so that the 69K event chunks
     (79% of the corpus) cannot crowd out smaller but higher-authority
@@ -1518,7 +1584,7 @@ async def _tiered_corpus_query(
     Parameters
     ----------
     vector_store:
-        The ChromaDB vector store instance.
+        The ChromaDB vector store instance (implements IVectorStoreProvider).
     query_text:
         The (possibly expanded) search query text.
     user_filters:
@@ -1526,6 +1592,11 @@ async def _tiered_corpus_query(
         etc.) to be merged into each tier's query.  When the user's
         source_type filter excludes a tier's designated type, that tier
         is skipped entirely.
+    query_embedding:
+        Pre-computed embedding vector for query_text.  When provided,
+        each tier query skips its internal embed_single() call.  When
+        None, the embedding is computed once here before launching
+        parallel queries.
 
     Returns
     -------
@@ -1534,6 +1605,12 @@ async def _tiered_corpus_query(
         - chunk_tier_map: ``{id(chunk): tier_number}`` for provenance
         - tiers_used: list of tier numbers that produced results
     """
+    # ─── PRE-COMPUTE EMBEDDING ONCE ───
+    # Embed the query text a single time, then pass the vector to all
+    # tier queries.  Saves 3 redundant embedding API calls per search.
+    if query_embedding is None:
+        query_embedding = await vector_store.embed_query(query_text)
+
     all_chunks: list[Any] = []
     chunk_tier_map: dict[int, int] = {}
     seen_ids: set[str] = set()
@@ -1587,102 +1664,77 @@ async def _tiered_corpus_query(
 
         return merged if merged else None
 
-    # --- Tier 1: RA Exchange interviews ---
-    # ChromaDB query filtered to source_type="interview"; post-filter to
-    # source_title starting with "EX." (the RA Exchange episode prefix).
-    # _merge_filters returns None when the user's source_type filter
-    # excludes this tier's type — skip the query entirely in that case.
+    # ─── BUILD TIER FILTER DICTS (synchronous) ───
     t1_filters = _merge_filters({"source_type": "interview"})
-    if t1_filters is not None:
-        try:
-            t1_raw = await vector_store.query(
-                query_text=query_text, top_k=25, filters=t1_filters,
-            )
-            # Post-filter: only keep RA Exchange episodes (source_title starts with "EX.")
-            t1_chunks = [
-                c for c in t1_raw
-                if getattr(c.chunk, "source_title", "").startswith("EX.")
-                and c.chunk.source_id not in seen_ids
-            ][:10]
-            for c in t1_chunks:
-                seen_ids.add(c.chunk.source_id)
-                chunk_tier_map[id(c)] = 1
-            all_chunks.extend(t1_chunks)
-            if t1_chunks:
-                tiers_used.append(1)
-        except Exception:
-            _logger.debug("tiered_query_tier1_failed")
-
-    # --- Tier 2: Books ---
     t2_filters = _merge_filters({"source_type": "book"})
-    if t2_filters is not None:
-        try:
-            t2_raw = await vector_store.query(
-                query_text=query_text, top_k=20, filters=t2_filters,
-            )
-            t2_chunks = [
-                c for c in t2_raw
-                if c.chunk.source_id not in seen_ids
-            ][:10]
-            for c in t2_chunks:
-                seen_ids.add(c.chunk.source_id)
-                chunk_tier_map[id(c)] = 2
-            all_chunks.extend(t2_chunks)
-            if t2_chunks:
-                tiers_used.append(2)
-        except Exception:
-            _logger.debug("tiered_query_tier2_failed")
-
-    # --- Tier 3a: Event listings (dedicated budget) ---
-    # Event listings comprise ~69K chunks (79% of corpus).  Without a
-    # dedicated query, they dominate the unfiltered catch-all and crowd
-    # out reference docs, analysis, and other smaller source types.
-    # Giving them their own tier with a capped budget (keep 10) ensures
-    # relevant event data surfaces without monopolising results.
     t3a_filters = _merge_filters({"source_type": "event"})
-    if t3a_filters is not None:
-        try:
-            t3a_raw = await vector_store.query(
-                query_text=query_text, top_k=25, filters=t3a_filters,
-            )
-            t3a_chunks = [
-                c for c in t3a_raw
-                if c.chunk.source_id not in seen_ids
-            ][:10]
-            for c in t3a_chunks:
-                seen_ids.add(c.chunk.source_id)
-                chunk_tier_map[id(c)] = 3
-            all_chunks.extend(t3a_chunks)
-            if t3a_chunks:
-                tiers_used.append(3)
-        except Exception:
-            _logger.debug("tiered_query_tier3a_event_failed")
-
-    # --- Tier 3b: Catch-all (everything not in T1/T2/T3a) ---
-    # Covers reference docs, analysis, and any future source types.
-    # Uses $nin to exclude types already handled by dedicated tiers,
-    # preventing duplicate retrieval of interview/book/event
-    # chunks that would just be deduped away by seen_ids.
     t3b_base: dict[str, Any] = {
         "source_type": {"$nin": ["interview", "book", "event"]},
     }
     t3b_filters = _merge_filters(t3b_base)
-    if t3b_filters is not None:
-        try:
-            t3b_raw = await vector_store.query(
-                query_text=query_text, top_k=25, filters=t3b_filters,
+
+    # ─── LAUNCH ALL TIER QUERIES CONCURRENTLY ───
+    # Each tier that passes the filter-merge check gets a concurrent task.
+    # Tier definitions: (label, tier_number, filters, top_k, keep_limit)
+    _TIER_DEFS: list[tuple[str, int, dict[str, Any] | None, int, int]] = [
+        ("t1", 1, t1_filters, 25, 10),
+        ("t2", 2, t2_filters, 20, 10),
+        ("t3a", 3, t3a_filters, 25, 10),
+        ("t3b", 3, t3b_filters, 25, 12),
+    ]
+
+    tier_tasks: list[asyncio.Task[list[Any]]] = []
+    tier_meta: list[tuple[str, int, int]] = []  # (label, tier_number, keep_limit)
+
+    for label, tier_num, filters, top_k, keep_limit in _TIER_DEFS:
+        if filters is not None:
+            task = asyncio.create_task(
+                vector_store.query(
+                    query_text=query_text,
+                    top_k=top_k,
+                    filters=filters,
+                    query_embedding=query_embedding,
+                    include_embeddings=True,
+                )
             )
-            t3b_chunks = [
-                c for c in t3b_raw
-                if c.chunk.source_id not in seen_ids
-            ][:12]
-            for c in t3b_chunks:
-                seen_ids.add(c.chunk.source_id)
-                chunk_tier_map[id(c)] = 3
-            all_chunks.extend(t3b_chunks)
-            # T3b shares tier number 3 with T3a — no separate tiers_used entry
-        except Exception:
-            _logger.debug("tiered_query_tier3b_catchall_failed")
+            tier_tasks.append(task)
+            tier_meta.append((label, tier_num, keep_limit))
+
+    # Await all tier queries concurrently.  return_exceptions=True ensures
+    # one failing tier doesn't cancel the others — failed tiers simply
+    # contribute zero results (matching the previous try/except behavior).
+    all_results = await asyncio.gather(*tier_tasks, return_exceptions=True)
+
+    # ─── POST-PROCESS IN TIER PRIORITY ORDER ───
+    # Apply seen_ids dedup in label order (t1 → t2 → t3a → t3b) so
+    # higher-priority tiers claim chunks before lower tiers.
+    for idx, (label, tier_num, keep_limit) in enumerate(tier_meta):
+        result = all_results[idx]
+        if isinstance(result, BaseException):
+            _logger.debug(f"tiered_query_{label}_failed")
+            continue
+
+        raw_chunks: list[Any] = result
+
+        # Tier 1 post-filter: only keep RA Exchange episodes
+        if label == "t1":
+            raw_chunks = [
+                c for c in raw_chunks
+                if getattr(c.chunk, "source_title", "").startswith("EX.")
+            ]
+
+        # Cross-tier dedup: skip chunks already claimed by a higher tier
+        tier_chunks = [
+            c for c in raw_chunks
+            if c.chunk.source_id not in seen_ids
+        ][:keep_limit]
+
+        for c in tier_chunks:
+            seen_ids.add(c.chunk.source_id)
+            chunk_tier_map[id(c)] = tier_num
+        all_chunks.extend(tier_chunks)
+        if tier_chunks and tier_num not in tiers_used:
+            tiers_used.append(tier_num)
 
     return all_chunks, chunk_tier_map, tiers_used
 
@@ -2045,6 +2097,12 @@ async def corpus_search(
     raw_query = query_text
     query_text = await _expand_query(llm, query_text)
 
+    # ─── PRE-COMPUTE QUERY EMBEDDING (Optimization E) ───
+    # Embed the final query text once, then reuse the vector across the
+    # synthesis query, all 4 tiered queries, and the recall supplement.
+    # This eliminates up to 6 redundant embedding API calls per search.
+    query_embedding = await vector_store.embed_query(query_text)
+
     # --- Launch unified synthesis query in parallel with tiered query ---
     # The unified query ignores source_type partitioning so the LLM gets
     # the globally most relevant chunks for NL synthesis, while the tiered
@@ -2057,24 +2115,29 @@ async def corpus_search(
                 query_text=query_text,
                 top_k=_SYNTHESIS_UNIFIED_TOP_K,
                 filters=filters if filters else None,
+                query_embedding=query_embedding,
             )
         )
 
-    # --- Tiered corpus retrieval ---
+    # --- Tiered corpus retrieval (parallel, Optimization E) ---
     tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
         vector_store, query_text, filters if filters else None,
+        query_embedding=query_embedding,
     )
 
     # Fallback: if tiered query returned nothing and expanded query differs,
-    # retry with the raw query.
+    # retry with the raw query.  Raw query needs its own embedding since
+    # the text differs from the expanded query.
     if not tiered_chunks and query_text != raw_query:
         _logger.debug(
             "tiered_query_empty_fallback_to_raw",
             expanded=query_text[:80],
             raw=raw_query[:80],
         )
+        raw_embedding = await vector_store.embed_query(raw_query)
         tiered_chunks, chunk_tier_map, tiers_used = await _tiered_corpus_query(
             vector_store, raw_query, filters if filters else None,
+            query_embedding=raw_embedding,
         )
 
     # Recall safety net: if tiered approach returned some but too few
@@ -2093,10 +2156,13 @@ async def corpus_search(
             threshold=_MIN_TIERED_RECALL,
         )
         seen_chunk_ids = {c.chunk.source_id for c in tiered_chunks}
+        # Reuse pre-computed embedding for the supplement query
         supplement = await vector_store.query(
             query_text=query_text,
             top_k=body.top_k,
             filters=filters if filters else None,
+            query_embedding=query_embedding,
+            include_embeddings=True,
         )
         for c in supplement:
             if c.chunk.source_id not in seen_chunk_ids:
@@ -2138,6 +2204,10 @@ async def corpus_search(
 
     for c in chunks:
         sid = c.chunk.source_id
+        # Carry the stored embedding through to CorpusSearchChunk so
+        # _semantic_dedup can use cosine similarity instead of Jaccard.
+        # The embedding field is excluded from JSON serialization (exclude=True)
+        # so it never reaches the frontend — it's internal dedup data only.
         candidate = CorpusSearchChunk(
             text=c.chunk.text,
             source_title=c.chunk.source_title,
@@ -2152,6 +2222,7 @@ async def corpus_search(
             geographic_tags=c.chunk.geographic_tags,
             genre_tags=c.chunk.genre_tags,
             time_period=c.chunk.time_period,
+            embedding=getattr(c, "embedding", None),
         )
         source_chunks.setdefault(sid, []).append(candidate)
         # Resolve label from source_type first (reliable), then fall

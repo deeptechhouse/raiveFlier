@@ -328,6 +328,15 @@ class CorpusSearchChunk(BaseModel):
     geographic_tags: list[str] = Field(default_factory=list)
     genre_tags: list[str] = Field(default_factory=list)
     time_period: str | None = None
+    # Stored embedding vector carried through from ChromaDB for internal
+    # dedup logic (_semantic_dedup).  Excluded from JSON serialization —
+    # embedding vectors are large (~384-1536 floats) and meaningless to
+    # the frontend.
+    embedding: list[float] | None = Field(
+        default=None,
+        exclude=True,
+        description="Stored embedding vector (internal only, excluded from serialization).",
+    )
 
 
 class WebSearchResult(BaseModel):

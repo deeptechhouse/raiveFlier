@@ -138,6 +138,16 @@ class RetrievedChunk(BaseModel):
             '"Energy Flash, Simon Reynolds, p.142, Faber & Faber, 1998 [Tier 1]".'
         ),
     )
+    # Stored embedding vector from the vector database.  Populated only
+    # when the caller passes include_embeddings=True to query().  Used by
+    # embedding-based deduplication (_semantic_dedup) to compute cosine
+    # similarity without re-embedding.  Excluded from JSON serialization
+    # to keep API responses compact — embeddings are internal-only data.
+    embedding: list[float] | None = Field(
+        default=None,
+        exclude=True,
+        description="Stored embedding vector (internal only, excluded from serialization).",
+    )
 
 
 # ---------------------------------------------------------------------------

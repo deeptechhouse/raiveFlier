@@ -43,6 +43,31 @@ class IVectorStoreProvider(ABC):
     backend-specific query language.
     """
 
+    # ─── QUERY EMBEDDING PRE-COMPUTATION ───
+    # embed_query() exposes the embedding step so callers can pre-compute
+    # a query vector once and reuse it across multiple query() calls.
+    # This is critical for _tiered_corpus_query() which fires 4 parallel
+    # tier queries against the same query text — without pre-computation,
+    # each call would redundantly invoke the embedding API (4x cost/latency).
+    @abstractmethod
+    async def embed_query(self, text: str) -> list[float]:
+        """Pre-compute an embedding vector for a query string.
+
+        Callers can pass the result to :meth:`query` via the
+        ``query_embedding`` parameter to avoid redundant embedding calls
+        when the same query is used across multiple searches.
+
+        Parameters
+        ----------
+        text:
+            The natural-language query to embed.
+
+        Returns
+        -------
+        list[float]
+            The embedding vector for the query text.
+        """
+
     @abstractmethod
     async def query(
         self,
@@ -50,6 +75,8 @@ class IVectorStoreProvider(ABC):
         top_k: int = 20,
         filters: dict[str, Any] | None = None,
         max_per_source: int = 3,
+        query_embedding: list[float] | None = None,
+        include_embeddings: bool = False,
     ) -> list[RetrievedChunk]:
         """Perform a semantic search against the vector store.
 
@@ -66,6 +93,16 @@ class IVectorStoreProvider(ABC):
             Maximum number of chunks from any single source document.
             Prevents one long document from dominating results while
             still allowing multiple relevant passages.
+        query_embedding:
+            Pre-computed embedding vector for *query_text*.  When provided,
+            the provider skips its internal ``embed_single()`` call and uses
+            this vector directly.  Enables the caller to embed once and
+            reuse across multiple concurrent tier queries.
+        include_embeddings:
+            When ``True``, populate each :class:`RetrievedChunk`'s
+            ``embedding`` field with the stored vector from the database.
+            Used by embedding-based deduplication to avoid re-embedding
+            retrieved chunks.  Default ``False`` to save memory.
 
         Returns
         -------
