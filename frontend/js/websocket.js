@@ -342,9 +342,100 @@ const Progress = (() => {
     }
   }
 
+  // ------------------------------------------------------------------
+  // Interconnection streaming WebSocket
+  // ------------------------------------------------------------------
+
+  /**
+   * Active interconnection stream WebSocket.  Kept separate from the
+   * progress WebSocket because they serve different purposes and may
+   * be open simultaneously during the INTERCONNECTION phase.
+   * @type {WebSocket|null}
+   */
+  let _icSocket = null;
+
+  /**
+   * Build the WebSocket URL for the interconnection stream endpoint.
+   * @param {string} sessionId
+   * @returns {string}
+   */
+  function _getICWSUrl(sessionId) {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/ws/interconnection/${encodeURIComponent(sessionId)}`;
+  }
+
+  /**
+   * Open a WebSocket to stream interconnection analysis results.
+   *
+   * The backend yields two message types:
+   *   - { type: "narrative_chunk", text: "..." } — LLM tokens as they arrive.
+   *     Each chunk is forwarded to `onChunk(text)` for progressive rendering.
+   *   - { type: "analysis_complete", interconnection_map: {...} } — the final
+   *     validated result.  Forwarded to `onComplete(data)`.
+   *   - { type: "error", message: "..." } — analysis failure.  Forwarded to
+   *     `onError(message)` if provided, otherwise logged.
+   *
+   * @param {string} sessionId — the pipeline session to stream
+   * @param {function(string): void} onChunk — called with each narrative text chunk
+   * @param {function(object): void} onComplete — called with the final analysis_complete payload
+   * @param {function(string): void} [onError] — optional error handler
+   */
+  function connectInterconnectionStream(sessionId, onChunk, onComplete, onError) {
+    // Clean up any existing connection before opening a new one.
+    disconnectInterconnectionStream();
+
+    const url = _getICWSUrl(sessionId);
+
+    try {
+      _icSocket = new WebSocket(url);
+    } catch (err) {
+      if (onError) onError("Failed to open interconnection WebSocket");
+      return;
+    }
+
+    _icSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "narrative_chunk" && onChunk) {
+          onChunk(data.text);
+        } else if (data.type === "analysis_complete" && onComplete) {
+          onComplete(data);
+        } else if (data.type === "error" && onError) {
+          onError(data.message);
+        }
+      } catch (err) {
+        // Ignore non-JSON messages (keep-alive pings)
+      }
+    };
+
+    _icSocket.onerror = () => {
+      if (onError) onError("Interconnection WebSocket connection error");
+    };
+
+    _icSocket.onclose = () => {
+      _icSocket = null;
+    };
+  }
+
+  /**
+   * Cleanly close the interconnection stream WebSocket.
+   * Safe to call even if no connection is open.
+   */
+  function disconnectInterconnectionStream() {
+    if (_icSocket) {
+      _icSocket.onclose = null;
+      _icSocket.onerror = null;
+      _icSocket.close();
+      _icSocket = null;
+    }
+  }
+
   return {
     connectProgress,
     updateProgressUI,
     disconnectProgress,
+    connectInterconnectionStream,
+    disconnectInterconnectionStream,
   };
 })();

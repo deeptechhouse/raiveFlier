@@ -10,11 +10,21 @@ cloud models (GPT-4o, Claude) for entity extraction and analysis.
 
 Setup: Install Ollama (https://ollama.ai), then ``ollama pull llama3.1``
 and ``ollama pull llava`` for vision. Set OLLAMA_BASE_URL=http://localhost:11434
+
+Streaming
+---------
+``stream_complete()`` reuses the OpenAI streaming protocol (``stream=True``)
+because Ollama's ``/v1`` endpoint is OpenAI-compatible.  This means the
+same ``ChatCompletionChunk`` delta iteration works for both cloud OpenAI
+and local Ollama with no code duplication.
 """
 
 from __future__ import annotations
 
 import base64
+
+# AsyncGenerator type used for the stream_complete() return annotation.
+from collections.abc import AsyncGenerator
 
 # httpx is an async HTTP client (like requests but async-native).
 # Used here only for validate_credentials() to check if Ollama is running.
@@ -103,6 +113,41 @@ class OllamaLLMProvider(ILLMProvider):
         except openai.APIError as exc:
             raise LLMError(
                 message=f"Ollama API error: {exc}",
+                provider_name=self.get_provider_name(),
+            ) from exc
+
+    async def stream_complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.3,
+        max_tokens: int = 4000,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a text completion via Ollama's OpenAI-compatible streaming API.
+
+        Identical to OpenAI's streaming pattern because Ollama exposes the
+        same ``/v1/chat/completions`` protocol with ``stream=True``.
+        """
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._text_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            async for chunk in response:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
+            logger.info("ollama_stream_complete", model=self._text_model)
+        except openai.APIError as exc:
+            raise LLMError(
+                message=f"Ollama stream API error: {exc}",
                 provider_name=self.get_provider_name(),
             ) from exc
 
