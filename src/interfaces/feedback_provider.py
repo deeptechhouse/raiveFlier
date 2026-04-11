@@ -112,6 +112,63 @@ class IFeedbackProvider(ABC):
             Set of full ``item_key`` strings that have net-negative ratings.
         """
 
+    # -- Calibration data collection -------------------------------------------
+    # These methods support progressive confidence calibration (Optimization I).
+    # The confirmation gate records how often LLM-reported confidence scores
+    # correspond to correct entity extractions (user kept vs removed).  Over
+    # time this data trains a lookup-table calibrator that maps raw scores to
+    # empirical accuracy — e.g. "an LLM score of 0.85 actually means 0.62
+    # probability of being correct."
+
+    @abstractmethod
+    async def store_calibration_sample(
+        self,
+        score_type: str,
+        predicted_score: float,
+        ground_truth: int,
+        entity_type: str,
+        session_id: str,
+    ) -> None:
+        """Record a calibration observation (predicted vs actual).
+
+        Called by ConfirmationGate after the user confirms/edits entities.
+
+        Parameters
+        ----------
+        score_type:
+            Category of score being calibrated (e.g. ``"entity_confidence"``
+            for LLM extraction scores, ``"fuzzy_match"`` for database match
+            scores).
+        predicted_score:
+            The raw confidence score the model/algorithm reported.
+        ground_truth:
+            ``1`` if the entity was correct (user kept it), ``0`` if the
+            user removed or corrected it.
+        entity_type:
+            The kind of entity (``"ARTIST"``, ``"VENUE"``, etc.) for
+            per-type calibration analysis.
+        session_id:
+            Pipeline session UUID for traceability.
+        """
+
+    @abstractmethod
+    async def get_calibration_data(self, score_type: str) -> list[dict]:
+        """Return all (predicted_score, ground_truth) pairs for a score type.
+
+        Used to fit a ConfidenceCalibrator on startup or periodically.
+
+        Parameters
+        ----------
+        score_type:
+            The category of calibration data to retrieve.
+
+        Returns
+        -------
+        list[dict]
+            Each dict contains ``predicted_score`` (float) and
+            ``ground_truth`` (int).
+        """
+
     @abstractmethod
     async def initialize(self) -> None:
         """Create tables/indices if they don't exist.  Called at startup."""

@@ -66,6 +66,10 @@ from src.utils.errors import PipelineError
 from src.utils.logging import get_logger
 
 if TYPE_CHECKING:
+    # GraphBuilderService builds pre-computed relationship edges after
+    # pipeline completion (Optimization H).  TYPE_CHECKING guard avoids
+    # importing the service module at runtime.
+    from src.services.graph_builder_service import GraphBuilderService
     # IngestionService is only imported for type hints to avoid a circular
     # dependency — the ingestion service depends on models that the pipeline
     # also depends on.
@@ -97,6 +101,7 @@ class FlierAnalysisPipeline:
         citation_service: CitationService,
         progress_tracker: ProgressTracker,
         ingestion_service: IngestionService | None = None,
+        graph_builder: GraphBuilderService | None = None,
     ) -> None:
         # All services are injected — the orchestrator never creates them.
         # This makes testing easy: inject mocks for any service.
@@ -107,6 +112,10 @@ class FlierAnalysisPipeline:
         self._citation_service = citation_service       # Phase 4: citation verification
         self._progress_tracker = progress_tracker       # WebSocket broadcast
         self._ingestion_service = ingestion_service     # Phase 5: RAG feedback (optional)
+        # Optimization H: pre-compute relationship edges after pipeline
+        # completion so the recommendation service can use cached data
+        # instead of live API calls (eliminates the 1-req/sec Discogs bottleneck).
+        self._graph_builder = graph_builder
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # ------------------------------------------------------------------
@@ -488,6 +497,21 @@ class FlierAnalysisPipeline:
                         recoverable=True,
                     )
                 )
+
+        # --- Optimization H: Pre-compute relationship graph edges ---
+        # After all pipeline phases complete, materialise label-mate,
+        # co-billing, and venue-artist edges so the recommendation service
+        # can read pre-computed data instead of making live API calls.
+        # Wrapped in try/except so graph builder failures never crash
+        # the pipeline — the core analysis is already complete at this point.
+        if self._graph_builder is not None:
+            try:
+                edge_count = await self._graph_builder.build_edges_from_research(
+                    state.research_results, state.confirmed_entities
+                )
+                self._logger.info("relationship_edges_built", edges=edge_count)
+            except Exception as exc:
+                self._logger.warning("graph_builder_failed", error=str(exc))
 
         # --- Finalise ---
         state = state.model_copy(

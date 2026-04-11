@@ -382,9 +382,11 @@ class RecommendationService:
     ) -> list[dict[str, Any]]:
         """Find artists who share a label with flier artists via music DBs.
 
-        For each artist with Discogs label IDs, queries the first available
-        music-database provider for label releases and extracts other artist
-        names.
+        Optimization H: checks pre-computed relationship edges first.
+        If the flier history provider has cached label-mate edges from
+        prior pipeline runs, those are returned directly — eliminating
+        the 1-req/sec Discogs API bottleneck entirely.  Falls back to
+        the live API path only when pre-computed data is empty.
 
         Parameters
         ----------
@@ -400,6 +402,39 @@ class RecommendationService:
             ``source_tier``, ``connection_strength``, sorted by shared
             label count descending.
         """
+        # ── Optimization H: try pre-computed edges first ──
+        # If the flier history provider supports get_label_mates(), query
+        # the pre-computed relationship graph.  This avoids the slow
+        # Discogs API entirely when edges were already built by a prior
+        # pipeline run's GraphBuilderService.
+        if self._flier_history is not None and hasattr(self._flier_history, "get_label_mates"):
+            try:
+                artist_names = [
+                    r.artist.name for r in research_results
+                    if r.artist is not None
+                ]
+                if artist_names:
+                    precomputed = await self._flier_history.get_label_mates(artist_names)
+                    if precomputed:
+                        # Convert pre-computed edges to the same dict format
+                        # that the live Discogs path returns, so downstream
+                        # merge/dedup logic works unchanged.
+                        results = self._convert_precomputed_label_mates(
+                            precomputed, exclusion_set,
+                        )
+                        if results:
+                            self._logger.info(
+                                "label_mates_from_precomputed",
+                                candidates=len(results),
+                            )
+                            return results
+            except Exception as exc:
+                # Pre-computed lookup failed — fall through to live API.
+                self._logger.debug(
+                    "precomputed_label_mates_failed",
+                    error=str(exc),
+                )
+
         if not self._music_dbs:
             self._logger.debug("label_mate_discovery_skipped", reason="no music DB providers")
             return []
@@ -535,6 +570,68 @@ class RecommendationService:
             if artist_part:
                 return artist_part
         return None
+
+    @staticmethod
+    def _convert_precomputed_label_mates(
+        precomputed: list[dict[str, Any]],
+        exclusion_set: set[str],
+    ) -> list[dict[str, Any]]:
+        """Convert pre-computed label-mate edges to recommendation format.
+
+        Transforms edges from the relationship_edges table into the same
+        dict format that the live Discogs API path produces, so the
+        downstream merge/dedup logic in _merge_tier1_candidates() works
+        without modification.
+
+        Parameters
+        ----------
+        precomputed:
+            Edge dicts from ``get_label_mates()``, each containing
+            ``source_entity``, ``target_entity``, ``evidence``,
+            and ``strength``.
+        exclusion_set:
+            Lowercase names to exclude (artists already on the flier).
+
+        Returns
+        -------
+        list[dict]
+            Dicts matching the live Discogs path format.
+        """
+        results: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        for edge in precomputed:
+            source = edge.get("source_entity", "")
+            target = edge.get("target_entity", "")
+            evidence = edge.get("evidence", {})
+            strength = edge.get("strength", 1.0)
+
+            # Both the source and target could be the "recommended" artist;
+            # we add whichever is NOT in the exclusion set.
+            for candidate, connected in [(target, source), (source, target)]:
+                normalized = candidate.strip().lower()
+                if normalized in exclusion_set or normalized in seen:
+                    continue
+
+                shared_labels = evidence.get("shared_labels", [])
+                label_str = ", ".join(shared_labels) if shared_labels else ""
+
+                # Convert strength from the cumulative edge value to the
+                # 0-1 connection_strength scale used by the merge logic.
+                # Cap at 1.0 to match the live path's formula.
+                connection_strength = min(1.0, strength * 0.3 + 0.2)
+
+                results.append({
+                    "artist_name": candidate.strip(),
+                    "label_name": label_str,
+                    "connected_to": [connected.strip()],
+                    "source_tier": "label_mate",
+                    "connection_strength": connection_strength,
+                })
+                seen.add(normalized)
+
+        results.sort(key=lambda x: x["connection_strength"], reverse=True)
+        return results
 
     # ------------------------------------------------------------------
     # Step 3 — Tier 1b: shared-flier artists

@@ -59,6 +59,40 @@ GROUP BY item_key
 HAVING SUM(rating) < 0;
 """
 
+# -- Calibration sample table (Optimization I) ----------------------------
+# Stores (predicted_score, ground_truth) observations collected from the
+# entity confirmation gate.  The ConfidenceCalibrator reads these on
+# startup to learn how raw LLM/fuzzy-match scores map to real accuracy.
+
+_CREATE_CALIBRATION_TABLE_SQL = """\
+CREATE TABLE IF NOT EXISTS calibration_samples (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    score_type      TEXT    NOT NULL,
+    predicted_score REAL    NOT NULL,
+    ground_truth    INTEGER NOT NULL,
+    entity_type     TEXT,
+    session_id      TEXT,
+    created_at      TEXT    DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+_CREATE_CALIBRATION_INDEX_SQL = (
+    "CREATE INDEX IF NOT EXISTS idx_calibration_score_type "
+    "ON calibration_samples(score_type);"
+)
+
+_INSERT_CALIBRATION_SQL = """\
+INSERT INTO calibration_samples
+    (score_type, predicted_score, ground_truth, entity_type, session_id)
+VALUES (?, ?, ?, ?, ?);
+"""
+
+_SELECT_CALIBRATION_SQL = """\
+SELECT predicted_score, ground_truth
+FROM calibration_samples
+WHERE score_type = ?;
+"""
+
 
 class SQLiteFeedbackProvider(IFeedbackProvider):
     """SQLite-backed feedback persistence."""
@@ -67,12 +101,16 @@ class SQLiteFeedbackProvider(IFeedbackProvider):
         self._db_path = Path(db_path)
 
     async def initialize(self) -> None:
-        """Create the ratings table and indices if they don't exist."""
+        """Create the ratings and calibration_samples tables if they don't exist."""
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(str(self._db_path)) as db:
             await db.execute(_CREATE_TABLE_SQL)
             for idx_sql in _CREATE_INDICES_SQL:
                 await db.execute(idx_sql)
+            # Calibration samples table stores (predicted_score, ground_truth)
+            # pairs used to train the ConfidenceCalibrator (Optimization I).
+            await db.execute(_CREATE_CALIBRATION_TABLE_SQL)
+            await db.execute(_CREATE_CALIBRATION_INDEX_SQL)
             await db.commit()
         logger.info("feedback_db_initialized", path=str(self._db_path))
 
@@ -183,6 +221,43 @@ class SQLiteFeedbackProvider(IFeedbackProvider):
             )
             rows = await cursor.fetchall()
         return {row["item_key"] for row in rows}
+
+    # -- Calibration data methods (Optimization I) -----------------------------
+    # These persist the ground-truth observations that the ConfidenceCalibrator
+    # uses to learn the mapping from raw LLM/fuzzy-match scores to empirical
+    # accuracy.  Called by ConfirmationGate after each user confirmation.
+
+    async def store_calibration_sample(
+        self,
+        score_type: str,
+        predicted_score: float,
+        ground_truth: int,
+        entity_type: str,
+        session_id: str,
+    ) -> None:
+        """Persist a single calibration observation."""
+        async with aiosqlite.connect(str(self._db_path)) as db:
+            await db.execute(
+                _INSERT_CALIBRATION_SQL,
+                (score_type, predicted_score, ground_truth, entity_type, session_id),
+            )
+            await db.commit()
+        logger.debug(
+            "calibration_sample_stored",
+            score_type=score_type,
+            predicted_score=predicted_score,
+            ground_truth=ground_truth,
+            entity_type=entity_type,
+            session_id=session_id,
+        )
+
+    async def get_calibration_data(self, score_type: str) -> list[dict]:
+        """Load all calibration observations for the given score type."""
+        async with aiosqlite.connect(str(self._db_path)) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(_SELECT_CALIBRATION_SQL, (score_type,))
+            rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
 
     def get_provider_name(self) -> str:
         """Return a human-readable identifier for this provider."""

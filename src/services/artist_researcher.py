@@ -61,8 +61,9 @@ from src.models.entities import (
     Release,
 )
 from src.models.research import ResearchResult
-from src.utils.confidence import calculate_confidence
+from src.utils.calibration import ConfidenceCalibrator
 from src.utils.concurrency import throttled_gather
+from src.utils.confidence import calculate_confidence
 from src.utils.errors import RateLimitError, ResearchError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import fuzzy_match, normalize_artist_name
@@ -82,7 +83,11 @@ _CACHE_TTL_SECONDS = 3600  # 1 hour — balances freshness vs. API quota
 # ---------------------------------------------------------------------------
 from src.utils.music_relevance import (
     MUSIC_DOMAINS as _MUSIC_DOMAINS,
+)
+from src.utils.music_relevance import (
     MUSIC_RELEVANCE_TERMS as _MUSIC_RELEVANCE_TERMS,
+)
+from src.utils.music_relevance import (
     is_music_relevant as _is_music_relevant_fn,
 )
 
@@ -139,6 +144,7 @@ class ArtistResearcher:
         cache: ICacheProvider | None = None,        # Optional caching layer (Redis, SQLite, etc.)
         vector_store: IVectorStoreProvider | None = None,  # Optional RAG corpus
         feedback: IFeedbackProvider | None = None,  # Optional cross-session feedback store
+        calibrator: ConfidenceCalibrator | None = None,  # Optional score calibrator
     ) -> None:
         self._music_dbs = list(music_dbs)
         self._web_search = web_search
@@ -147,6 +153,9 @@ class ArtistResearcher:
         self._cache = cache
         self._vector_store = vector_store
         self._feedback = feedback
+        # Calibrator adjusts fuzzy-match confidence scores based on
+        # historical accuracy data.  None = no calibration (cold start).
+        self._calibrator = calibrator
         self._logger: structlog.BoundLogger = get_logger(__name__)
 
     # -- Public API -----------------------------------------------------------
@@ -408,6 +417,12 @@ class ArtistResearcher:
                 providers=list(provider_ids.keys()),
                 bonus=bonus,
             )
+
+        # Apply calibration after all raw score adjustments (cross-reference
+        # bonus, etc.) so the calibrator maps the final composite score to
+        # empirical accuracy.
+        if self._calibrator:
+            best_confidence = self._calibrator.calibrate(best_confidence)
 
         await self._cache_set(
             f"artist_search:{name}",

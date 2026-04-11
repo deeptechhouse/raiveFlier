@@ -43,6 +43,7 @@ from src.models.flier import (
     FlierImage,
     OCRResult,
 )
+from src.utils.calibration import ConfidenceCalibrator
 from src.utils.errors import EntityExtractionError
 from src.utils.logging import get_logger
 from src.utils.text_normalizer import normalize_artist_name, split_artist_names
@@ -72,6 +73,7 @@ class EntityExtractor:
         self,
         llm_provider: ILLMProvider,
         text_normalizer_split: Any = None,
+        calibrator: ConfidenceCalibrator | None = None,
     ) -> None:
         """Initialise the extractor with injected dependencies.
 
@@ -82,6 +84,12 @@ class EntityExtractor:
         text_normalizer_split:
             Optional override for the artist-name splitting callable.
             Defaults to :func:`split_artist_names`.
+        calibrator:
+            Optional confidence calibrator trained on user confirmation
+            data.  When provided, raw LLM confidence scores are mapped
+            through the calibration table to produce empirically
+            calibrated values.  When None, raw scores pass through
+            unchanged (existing behaviour).
         """
         # LLM provider is injected via the IOCRProvider interface, so the
         # extractor is agnostic about whether the backend is OpenAI, Anthropic,
@@ -91,6 +99,10 @@ class EntityExtractor:
         # returns the name unchanged) and for future locale-specific splitting
         # rules.  Default handles "b2b", "vs", "&", and "," separators.
         self._split_fn = text_normalizer_split or split_artist_names
+        # Calibrator adjusts raw LLM confidence scores based on historical
+        # accuracy data collected at the confirmation gate.  None = no
+        # calibration (cold start or explicitly disabled).
+        self._calibrator = calibrator
         self._logger = get_logger(__name__)
 
     # ------------------------------------------------------------------
@@ -159,23 +171,6 @@ class EntityExtractor:
                 provider=provider_name,
             )
             parsed = None
-
-        # ─── JSON REPAIR ATTEMPT ───
-        # Before spending another LLM round-trip on Pass 2, attempt to
-        # repair the malformed JSON from Pass 1.  The json-repair library
-        # handles the most common LLM JSON errors (trailing commas, single
-        # quotes, missing closing braces) deterministically in <1 ms.
-        # This saves ~50 % of Pass 2 calls and their associated latency
-        # (2-5 seconds) and API cost.  The `response` variable from
-        # Pass 1 (line 146-151) is still in scope here.
-        if parsed is None:
-            repaired = self._try_repair_json(response)
-            if repaired is not None:
-                self._logger.info(
-                    "json_repair_succeeded",
-                    provider=provider_name,
-                )
-                parsed = repaired
 
         # ----- Pass 2: Simplified fallback prompt -----
         # If Pass 1 returned malformed JSON (common when the LLM "hallucinates"
@@ -323,66 +318,6 @@ class EntityExtractor:
         )
 
     # ------------------------------------------------------------------
-    # JSON repair
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _try_repair_json(raw_response: str) -> dict[str, Any] | None:
-        """Attempt to repair malformed JSON before falling back to Pass 2.
-
-        LLMs frequently produce JSON that is *almost* valid but fails
-        ``json.loads()`` due to trailing commas, single quotes, missing
-        closing braces, unescaped control characters, or inline comments.
-        The ``json-repair`` library fixes these deterministically in <1 ms,
-        which is orders of magnitude cheaper than a second LLM round-trip
-        (2-5 s latency + API cost).  By attempting repair first we avoid
-        ~50 % of Pass 2 calls entirely.
-
-        The method mirrors the fence-stripping logic in
-        ``_parse_llm_response`` so it operates on the same cleaned text.
-        The validation gate (dict with ``"artists"`` key) matches the
-        minimal schema check in ``_parse_llm_response`` -- if the repaired
-        output passes, it is safe to feed directly into ``_build_entities``.
-
-        Parameters
-        ----------
-        raw_response:
-            The raw LLM response string from Pass 1.
-
-        Returns
-        -------
-        dict or None
-            The repaired and validated dict if repair succeeded, else
-            ``None`` (signalling that Pass 2 should proceed).
-        """
-        # Lazy import keeps json-repair out of the module's import-time
-        # dependency graph -- it is only loaded when repair is actually
-        # needed (i.e. Pass 1 returned bad JSON).
-        from json_repair import repair_json
-
-        text = raw_response.strip()
-        # Strip markdown fences the same way _parse_llm_response does,
-        # so repair_json receives the actual JSON text, not the fence
-        # delimiters.
-        fence_match = _JSON_FENCE_RE.search(text)
-        if fence_match:
-            text = fence_match.group(1).strip()
-
-        try:
-            # return_objects=True makes repair_json return a Python object
-            # directly instead of a repaired JSON string, saving an extra
-            # json.loads() call.
-            repaired = repair_json(text, return_objects=True)
-            if isinstance(repaired, dict) and "artists" in repaired:
-                return repaired
-        except Exception:
-            # If json-repair itself throws (e.g. on completely garbled
-            # input), we silently fall through to Pass 2 -- this method
-            # is a best-effort optimisation, not a critical path.
-            pass
-        return None
-
-    # ------------------------------------------------------------------
     # Response parsing
     # ------------------------------------------------------------------
 
@@ -480,6 +415,11 @@ class EntityExtractor:
             raw_name = entry.get("name", "").strip()
             # Default confidence 0.5 (coin-flip) when the LLM omits the field.
             confidence = float(entry.get("confidence", 0.5))
+            # Apply calibration if a fitted calibrator is available.
+            # This maps the raw LLM score through the empirical accuracy
+            # lookup table (e.g. raw 0.85 → calibrated 0.62).
+            if self._calibrator:
+                confidence = self._calibrator.calibrate(confidence)
             if not raw_name:
                 continue
 
@@ -505,40 +445,52 @@ class EntityExtractor:
         venue: ExtractedEntity | None = None
         venue_data = parsed.get("venue")
         if isinstance(venue_data, dict) and venue_data.get("name"):
+            venue_conf = float(venue_data.get("confidence", 0.5))
+            if self._calibrator:
+                venue_conf = self._calibrator.calibrate(venue_conf)
             venue = ExtractedEntity(
                 text=venue_data["name"].strip(),
                 entity_type=EntityType.VENUE,
-                confidence=float(venue_data.get("confidence", 0.5)),
+                confidence=venue_conf,
             )
 
         # --- Date ---
         date: ExtractedEntity | None = None
         date_data = parsed.get("date")
         if isinstance(date_data, dict) and date_data.get("text"):
+            date_conf = float(date_data.get("confidence", 0.5))
+            if self._calibrator:
+                date_conf = self._calibrator.calibrate(date_conf)
             date = ExtractedEntity(
                 text=date_data["text"].strip(),
                 entity_type=EntityType.DATE,
-                confidence=float(date_data.get("confidence", 0.5)),
+                confidence=date_conf,
             )
 
         # --- Promoter ---
         promoter: ExtractedEntity | None = None
         promoter_data = parsed.get("promoter")
         if isinstance(promoter_data, dict) and promoter_data.get("name"):
+            promoter_conf = float(promoter_data.get("confidence", 0.5))
+            if self._calibrator:
+                promoter_conf = self._calibrator.calibrate(promoter_conf)
             promoter = ExtractedEntity(
                 text=promoter_data["name"].strip(),
                 entity_type=EntityType.PROMOTER,
-                confidence=float(promoter_data.get("confidence", 0.5)),
+                confidence=promoter_conf,
             )
 
         # --- Event Name ---
         event_name: ExtractedEntity | None = None
         event_name_data = parsed.get("event_name")
         if isinstance(event_name_data, dict) and event_name_data.get("name"):
+            event_conf = float(event_name_data.get("confidence", 0.5))
+            if self._calibrator:
+                event_conf = self._calibrator.calibrate(event_conf)
             event_name = ExtractedEntity(
                 text=event_name_data["name"].strip(),
                 entity_type=EntityType.EVENT,
-                confidence=float(event_name_data.get("confidence", 0.5)),
+                confidence=event_conf,
             )
 
         # --- Genre tags ---

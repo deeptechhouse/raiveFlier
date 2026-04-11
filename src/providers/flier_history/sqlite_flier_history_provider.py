@@ -15,6 +15,7 @@ import aiosqlite
 import structlog
 
 from src.interfaces.flier_history_provider import IFlierHistoryProvider
+from src.utils.text_normalizer import normalize_artist_name
 
 logger = structlog.get_logger(logger_name=__name__)
 
@@ -89,6 +90,27 @@ CREATE TABLE IF NOT EXISTS analysis_annotations (
 );
 """
 
+# ── Optimization H: pre-computed relationship graph edges ────────────
+# Materialised during pipeline completion by the GraphBuilderService.
+# The UNIQUE constraint on (source_normalized, target_normalized,
+# relationship_type) enables UPSERT semantics — repeated evidence
+# increments strength instead of creating duplicates.
+_CREATE_RELATIONSHIP_EDGES_TABLE_SQL = """\
+CREATE TABLE IF NOT EXISTS relationship_edges (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_entity       TEXT    NOT NULL,
+    target_entity       TEXT    NOT NULL,
+    source_normalized   TEXT    NOT NULL,
+    target_normalized   TEXT    NOT NULL,
+    relationship_type   TEXT    NOT NULL,
+    evidence_json       TEXT    DEFAULT '{}',
+    strength            REAL   DEFAULT 1.0,
+    created_at          TEXT    DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TEXT    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_normalized, target_normalized, relationship_type)
+);
+"""
+
 _CREATE_INDICES_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_flier_artists_normalized ON flier_artists(artist_name_normalized);",
     "CREATE INDEX IF NOT EXISTS idx_flier_artists_flier ON flier_artists(flier_id);",
@@ -99,6 +121,12 @@ _CREATE_INDICES_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_analysis_snapshots_active ON analysis_snapshots(is_active);",
     "CREATE INDEX IF NOT EXISTS idx_edge_dismissals_flier ON edge_dismissals(flier_id);",
     "CREATE INDEX IF NOT EXISTS idx_analysis_annotations_flier ON analysis_annotations(flier_id);",
+    # Indices for the pre-computed relationship graph (Optimization H).
+    # Covering indices on normalized names + type enable fast lookups by
+    # the recommendation service without full table scans.
+    "CREATE INDEX IF NOT EXISTS idx_rel_edges_source ON relationship_edges(source_normalized);",
+    "CREATE INDEX IF NOT EXISTS idx_rel_edges_target ON relationship_edges(target_normalized);",
+    "CREATE INDEX IF NOT EXISTS idx_rel_edges_type ON relationship_edges(relationship_type);",
 ]
 
 _INSERT_FLIER_SQL = """\
@@ -158,6 +186,7 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
             await db.execute(_CREATE_ANALYSIS_SNAPSHOTS_TABLE_SQL)
             await db.execute(_CREATE_EDGE_DISMISSALS_TABLE_SQL)
             await db.execute(_CREATE_ANALYSIS_ANNOTATIONS_TABLE_SQL)
+            await db.execute(_CREATE_RELATIONSHIP_EDGES_TABLE_SQL)
             for idx_sql in _CREATE_INDICES_SQL:
                 await db.execute(idx_sql)
             await db.commit()
@@ -685,6 +714,166 @@ class SQLiteFlierHistoryProvider(IFlierHistoryProvider):
                     r["dismissals"] = dismissals_by_flier.get(r["flier_id"], [])
 
         return results
+
+    # --- Pre-computed relationship graph methods (Optimization H) ---
+    #
+    # These methods support the pre-computed relationship graph that
+    # eliminates live API calls from the recommendation service.
+    # store_relationship_edges() uses INSERT OR REPLACE with conflict
+    # handling to implement UPSERT semantics — new evidence merges
+    # into existing edges and strength accumulates.
+
+    async def store_relationship_edges(self, edges: list[dict]) -> int:
+        """Store pre-computed relationship edges with UPSERT semantics.
+
+        On conflict (same source, target, and relationship type), the
+        existing row's strength is incremented and evidence_json is
+        merged with the new evidence dict.
+        """
+        if not edges:
+            return 0
+
+        stored = 0
+        async with aiosqlite.connect(str(self._db_path)) as db:
+            for edge in edges:
+                source = edge.get("source_entity", "")
+                target = edge.get("target_entity", "")
+                rel_type = edge.get("relationship_type", "")
+                evidence = edge.get("evidence", {})
+                strength = edge.get("strength", 1.0)
+
+                # Normalize names for consistent deduplication.
+                # normalize_artist_name strips DJ prefixes, normalizes
+                # case, and removes excess whitespace.
+                src_norm = normalize_artist_name(source)
+                tgt_norm = normalize_artist_name(target)
+                evidence_str = json.dumps(evidence)
+
+                # Check if an edge already exists for this triple
+                cursor = await db.execute(
+                    """SELECT id, evidence_json, strength
+                       FROM relationship_edges
+                       WHERE source_normalized = ?
+                         AND target_normalized = ?
+                         AND relationship_type = ?;""",
+                    (src_norm, tgt_norm, rel_type),
+                )
+                existing = await cursor.fetchone()
+
+                if existing is not None:
+                    # UPSERT: merge evidence and increment strength.
+                    # Evidence merging concatenates list values for the
+                    # same key, preserving the full provenance trail.
+                    existing_evidence = json.loads(existing[1]) if existing[1] else {}
+                    merged_evidence = self._merge_evidence(existing_evidence, evidence)
+                    new_strength = existing[2] + strength
+
+                    await db.execute(
+                        """UPDATE relationship_edges
+                           SET evidence_json = ?,
+                               strength = ?,
+                               updated_at = CURRENT_TIMESTAMP
+                           WHERE id = ?;""",
+                        (json.dumps(merged_evidence), new_strength, existing[0]),
+                    )
+                else:
+                    # INSERT: new edge
+                    await db.execute(
+                        """INSERT INTO relationship_edges
+                           (source_entity, target_entity, source_normalized,
+                            target_normalized, relationship_type, evidence_json,
+                            strength)
+                           VALUES (?, ?, ?, ?, ?, ?, ?);""",
+                        (source, target, src_norm, tgt_norm, rel_type,
+                         evidence_str, strength),
+                    )
+
+                stored += 1
+
+            await db.commit()
+
+        logger.info(
+            "relationship_edges_stored",
+            count=stored,
+        )
+        return stored
+
+    async def get_label_mates(self, artist_names: list[str]) -> list[dict]:
+        """Retrieve label-mate edges involving any of the given artists.
+
+        Searches both source and target normalized columns so edges
+        are found regardless of which direction they were originally stored.
+        """
+        return await self._get_edges_by_type(artist_names, "label_mate")
+
+    async def get_co_billing_edges(self, artist_names: list[str]) -> list[dict]:
+        """Retrieve co-billing edges involving any of the given artists."""
+        return await self._get_edges_by_type(artist_names, "co_billing")
+
+    async def _get_edges_by_type(
+        self,
+        artist_names: list[str],
+        relationship_type: str,
+    ) -> list[dict]:
+        """Shared lookup logic for edges by type and artist names.
+
+        Normalizes the input names and queries both source_normalized
+        and target_normalized to find edges in either direction.
+        """
+        if not artist_names:
+            return []
+
+        normalized = [normalize_artist_name(name) for name in artist_names]
+        placeholders = ", ".join("?" for _ in normalized)
+
+        query = f"""
+            SELECT source_entity, target_entity, relationship_type,
+                   evidence_json, strength, created_at, updated_at
+            FROM relationship_edges
+            WHERE relationship_type = ?
+              AND (source_normalized IN ({placeholders})
+                   OR target_normalized IN ({placeholders}))
+            ORDER BY strength DESC;
+        """
+        # Parameters: relationship_type, then normalized names twice
+        # (once for source IN, once for target IN)
+        params: list[str] = [relationship_type, *normalized, *normalized]
+
+        async with aiosqlite.connect(str(self._db_path)) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+
+        results: list[dict] = []
+        for row in rows:
+            result = dict(row)
+            # Parse evidence_json back to a dict for callers
+            raw_evidence = result.pop("evidence_json", "{}")
+            result["evidence"] = json.loads(raw_evidence) if raw_evidence else {}
+            results.append(result)
+
+        return results
+
+    @staticmethod
+    def _merge_evidence(existing: dict, new: dict) -> dict:
+        """Merge two evidence dicts, concatenating list values.
+
+        For list-valued keys (e.g. ``shared_labels``), values from the
+        new dict are appended to the existing list (with deduplication).
+        For scalar keys, the new value overwrites the existing one.
+        """
+        merged = dict(existing)
+        for key, value in new.items():
+            if key in merged and isinstance(merged[key], list) and isinstance(value, list):
+                # Deduplicate while preserving order
+                seen = set(merged[key])
+                for item in value:
+                    if item not in seen:
+                        merged[key].append(item)
+                        seen.add(item)
+            else:
+                merged[key] = value
+        return merged
 
     def get_provider_name(self) -> str:
         """Return a human-readable identifier for this provider."""

@@ -20,7 +20,12 @@ Available utility modules (all re-exported here for convenience):
   and result merging shared by the EasyOCR and Tesseract providers.
 """
 
+# -- Progressive confidence calibration (Optimization I) -------------------
 # -- Confidence scoring utilities ------------------------------------------
+from src.utils.calibration import ConfidenceCalibrator
+
+# -- Async concurrency helpers ---------------------------------------------
+from src.utils.concurrency import parallel_search, throttled_gather
 from src.utils.confidence import (
     ConfidenceLevel,
     calculate_confidence,
@@ -43,9 +48,6 @@ from src.utils.errors import (
 # -- Image preprocessing for OCR -------------------------------------------
 from src.utils.image_preprocessor import ImagePreprocessor
 
-# -- Async concurrency helpers ---------------------------------------------
-from src.utils.concurrency import parallel_search, throttled_gather
-
 # -- Structured logging setup ----------------------------------------------
 from src.utils.logging import configure_logging, get_logger
 
@@ -53,6 +55,7 @@ from src.utils.logging import configure_logging, get_logger
 from src.utils.text_normalizer import fuzzy_match, normalize_artist_name, split_artist_names
 
 __all__ = [
+    "ConfidenceCalibrator",
     "ConfidenceLevel",
     "ConfigurationError",
     "EntityExtractionError",

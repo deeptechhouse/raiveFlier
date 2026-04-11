@@ -217,6 +217,72 @@ class IFlierHistoryProvider(ABC):
     async def get_all_active_analyses(self) -> list[dict[str, Any]]:
         """Get all active analysis snapshots for aggregation."""
 
+    # --- Pre-computed relationship graph methods ---
+    #
+    # These methods support Optimization H: pre-computed relationship
+    # graphs.  The graph builder service writes edges after pipeline
+    # completion; the recommendation service reads them to avoid slow
+    # live API calls (particularly the 1-req/sec Discogs throttle).
+
+    @abstractmethod
+    async def store_relationship_edges(self, edges: list[dict]) -> int:
+        """Store pre-computed relationship edges with UPSERT semantics.
+
+        When an edge with the same (source_normalized, target_normalized,
+        relationship_type) already exists, its strength is incremented
+        and evidence_json is merged with the new evidence.
+
+        Parameters
+        ----------
+        edges:
+            List of edge dicts, each containing ``source_entity``,
+            ``target_entity``, ``relationship_type``, ``evidence``,
+            and ``strength``.
+
+        Returns
+        -------
+        int
+            Number of edges stored (inserted + updated).
+        """
+
+    @abstractmethod
+    async def get_label_mates(self, artist_names: list[str]) -> list[dict]:
+        """Retrieve label-mate edges involving any of the given artists.
+
+        Searches both ``source_normalized`` and ``target_normalized``
+        columns so edges are found regardless of direction.
+
+        Parameters
+        ----------
+        artist_names:
+            Artist names to look up (will be normalized internally).
+
+        Returns
+        -------
+        list[dict]
+            Edge dicts with ``source_entity``, ``target_entity``,
+            ``evidence_json``, ``strength``, ``created_at``, and
+            ``updated_at``.
+        """
+
+    @abstractmethod
+    async def get_co_billing_edges(self, artist_names: list[str]) -> list[dict]:
+        """Retrieve co-billing edges involving any of the given artists.
+
+        Same lookup semantics as ``get_label_mates`` but filtered to
+        ``relationship_type='co_billing'``.
+
+        Parameters
+        ----------
+        artist_names:
+            Artist names to look up (will be normalized internally).
+
+        Returns
+        -------
+        list[dict]
+            Edge dicts with the same schema as ``get_label_mates``.
+        """
+
     @abstractmethod
     async def initialize(self) -> None:
         """Create tables/indices if they don't exist.  Called at startup."""

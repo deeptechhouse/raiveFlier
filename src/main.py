@@ -444,22 +444,55 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     # stored on app.state for the /api/v1/debug/rag endpoint.
     rag_tier_results: list[dict[str, str]] = []
 
+    # BM25 provider for hybrid retrieval — initialized alongside ChromaDB.
+    # Lives outside the try/except so it remains accessible even if ChromaDB
+    # init fails (in which case it's simply None / unused).
+    bm25_provider = None
+
     if app_settings.rag_enabled:
         embedding_provider, rag_tier_results = await _build_embedding_provider(app_settings)
         if embedding_provider is not None and embedding_provider.is_available():
             try:
                 # Deferred imports — these pull in chromadb and fastembed,
                 # which we don't want to load unless RAG is actually enabled.
+                from src.providers.vector_store.bm25_provider import BM25Provider
                 from src.providers.vector_store.chromadb_provider import ChromaDBProvider
                 from src.services.ingestion.chunker import TextChunker
                 from src.services.ingestion.ingestion_service import IngestionService
                 from src.services.ingestion.metadata_extractor import MetadataExtractor
 
+                # Initialize the BM25 keyword index for hybrid retrieval.
+                # Uses the same /data directory as other SQLite databases
+                # so it persists across container restarts on Render.
+                bm25_provider = BM25Provider(
+                    db_path=str(Path(app_settings.chromadb_persist_dir).parent / "bm25_index.db"),
+                )
+                await bm25_provider.initialize()
+
+                # Inject BM25 provider into ChromaDB so add_chunks() and
+                # delete_by_source() automatically mirror writes to the
+                # FTS5 index, keeping the two stores in sync.
                 vector_store = ChromaDBProvider(
                     embedding_provider=embedding_provider,
                     persist_directory=app_settings.chromadb_persist_dir,
                     collection_name=app_settings.chromadb_collection,
+                    bm25_provider=bm25_provider,
                 )
+
+                # If BM25 index is empty but ChromaDB has data, run a
+                # one-time migration to populate the keyword index from
+                # existing corpus chunks.  This enables hybrid retrieval
+                # without requiring a full re-ingestion of the corpus.
+                bm25_count = await bm25_provider.get_count()
+                chromadb_count = vector_store._collection.count()
+                if bm25_count == 0 and chromadb_count > 0:
+                    _logger.info(
+                        "bm25_rebuild_triggered",
+                        chromadb_count=chromadb_count,
+                        msg="BM25 index empty, rebuilding from ChromaDB corpus.",
+                    )
+                    rebuilt = await bm25_provider.rebuild_from_chromadb(vector_store)
+                    _logger.info("bm25_rebuild_complete", chunks_indexed=rebuilt)
 
                 # The ingestion pipeline: text → chunks → metadata → embeddings → store
                 chunker = TextChunker()
@@ -477,6 +510,8 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
                     embedding_provider=embedding_provider.get_provider_name(),
                     embedding_dimension=embedding_provider.get_dimension(),
                     vector_store="chromadb",
+                    bm25_available=bm25_provider is not None,
+                    bm25_chunks=bm25_count if bm25_provider else 0,
                     persist_dir=app_settings.chromadb_persist_dir,
                 )
             except Exception as exc:
@@ -489,6 +524,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
                 )
                 vector_store = None
                 ingestion_service = None
+                bm25_provider = None
         else:
             _logger.warning(
                 "rag_enabled_but_no_embedding_provider",
@@ -520,6 +556,14 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     from src.services.graph_aggregation_service import GraphAggregationService
 
     graph_aggregation = GraphAggregationService(flier_history=flier_history)
+
+    # -- Graph builder service (Optimization H) --
+    # Pre-computes label-mate, co-billing, and venue-artist relationship
+    # edges after each pipeline run.  The recommendation service reads
+    # these cached edges instead of making slow live Discogs API calls.
+    from src.services.graph_builder_service import GraphBuilderService
+
+    graph_builder = GraphBuilderService(flier_history=flier_history)
 
     # -- Services --
     # Services are the business-logic layer.  Each service receives its
@@ -641,6 +685,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         citation_service=citation_service,
         progress_tracker=progress_tracker,
         ingestion_service=ingestion_service,
+        graph_builder=graph_builder,
     )
 
     # -- Provider registry for /health --
@@ -686,6 +731,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
             else None
         ),
         "vector_store_available": vector_store is not None,
+        "bm25_available": bm25_provider is not None,
         "chromadb_persist_dir": app_settings.chromadb_persist_dir,
         "tier_results": rag_tier_results,
     }
@@ -702,6 +748,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         "primary_llm": primary_llm,
         "ingestion_service": ingestion_service,
         "vector_store": vector_store,
+        # BM25 keyword search provider for hybrid retrieval.  Exposed on
+        # app.state so corpus_search() can run parallel BM25 + semantic
+        # queries and merge via reciprocal rank fusion.
+        "bm25_provider": bm25_provider,
         "rag_enabled": rag_is_enabled,
         "qa_service": qa_service,
         "feedback_provider": feedback_provider,
