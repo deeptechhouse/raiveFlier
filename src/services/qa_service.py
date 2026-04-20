@@ -567,7 +567,7 @@ class QAService:
             # Without this cap, a single long book could dominate the entire
             # RAG context, crowding out other sources.  3 chunks per source
             # is a balance between depth and breadth.
-            _MAX_PER_SOURCE = 3
+            max_per_source = 3
             source_chunks: dict[str, list[tuple[float, str, dict[str, Any]]]] = {}
 
             for chunk in chunks:
@@ -592,7 +592,7 @@ class QAService:
             deduped: list[tuple[float, str, dict[str, Any]]] = []
             for entries in source_chunks.values():
                 entries.sort(key=lambda t: t[0], reverse=True)
-                deduped.extend(entries[:_MAX_PER_SOURCE])
+                deduped.extend(entries[:max_per_source])
 
             ordered = sorted(deduped, key=lambda t: t[0], reverse=True)
             passages = [p for _, p, _ in ordered]
@@ -657,7 +657,7 @@ class QAService:
             )
             return web_text
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("qa_web_search_timeout", query=search_query[:80])
             return ""
         except Exception as exc:  # noqa: BLE001
@@ -810,13 +810,11 @@ class QAService:
             # to avoid showing the same citation twice in the UI.
             all_citations = list(rag_citations)
             for citation in llm_citations:
-                if isinstance(citation, dict) and citation.get("text"):
-                    # Avoid duplicates
-                    if not any(
-                        existing.get("text") == citation["text"]
-                        for existing in all_citations
-                    ):
-                        all_citations.append(citation)
+                if isinstance(citation, dict) and citation.get("text") and not any(
+                    existing.get("text") == citation["text"]
+                    for existing in all_citations
+                ):
+                    all_citations.append(citation)
 
             return QAResponse(
                 answer=answer,

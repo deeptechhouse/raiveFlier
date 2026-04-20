@@ -546,6 +546,30 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     # -- Feedback provider (SQLite-backed ratings persistence) --
     feedback_provider = SQLiteFeedbackProvider(db_path=app_settings.feedback_db_path)
 
+    # -- Confidence calibrators (Optimization I) --
+    # Load calibration data from the feedback DB on startup.  Returns
+    # identity-function calibrators when < 30 samples have accumulated
+    # (cold-start safe).  Two calibrators: one for entity extraction
+    # confidence, one for fuzzy-match scores during artist research.
+    from src.utils.calibration import ConfidenceCalibrator
+
+    entity_calibrator: ConfidenceCalibrator | None = None
+    fuzzy_match_calibrator: ConfidenceCalibrator | None = None
+    try:
+        entity_samples = await feedback_provider.get_calibration_data("entity_confidence")
+        entity_calibrator = ConfidenceCalibrator.from_db_samples(entity_samples)
+        fuzzy_samples = await feedback_provider.get_calibration_data("fuzzy_match")
+        fuzzy_match_calibrator = ConfidenceCalibrator.from_db_samples(fuzzy_samples)
+        _logger.info(
+            "calibrators_loaded",
+            entity_samples=len(entity_samples),
+            fuzzy_samples=len(fuzzy_samples),
+            entity_calibrated=entity_calibrator.is_calibrated,
+            fuzzy_calibrated=fuzzy_match_calibrator.is_calibrated,
+        )
+    except Exception as exc:
+        _logger.debug("calibrator_load_skipped", error=str(exc))
+
     # -- Flier history provider (SQLite-backed flier data persistence) --
     from src.providers.flier_history.sqlite_flier_history_provider import SQLiteFlierHistoryProvider
 
@@ -577,7 +601,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
 
     # Entity Extraction: uses the LLM to parse OCR text into structured
     # entities (artists, venue, promoter, date, event name).
-    entity_extractor = EntityExtractor(llm_provider=primary_llm)
+    entity_extractor = EntityExtractor(
+        llm_provider=primary_llm,
+        calibrator=entity_calibrator,
+    )
 
     # --- Researchers: one per entity type ---
     # Each researcher uses web search + article scraping + music DBs + LLM
@@ -591,6 +618,7 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
         cache=cache,
         vector_store=vector_store,
         feedback=feedback_provider,
+        calibrator=fuzzy_match_calibrator,
     )
     venue_researcher = VenueResearcher(
         web_search=primary_search,
@@ -674,7 +702,10 @@ async def _build_all(app_settings: Settings) -> dict[str, Any]:
     progress_tracker = ProgressTracker()
     # ConfirmationGate manages the human-in-the-loop pause point between
     # Phase 1 (OCR + extraction) and Phase 2 (research).
-    confirmation_gate = ConfirmationGate(pending_store=pending_store)
+    confirmation_gate = ConfirmationGate(
+        pending_store=pending_store,
+        feedback_provider=feedback_provider,
+    )
 
     # The pipeline orchestrator runs the 5 analysis phases in order.
     pipeline = FlierAnalysisPipeline(

@@ -894,7 +894,7 @@ class InterconnectionService:
         # Build per-artist event index.  Key = artist name (lower), value =
         # list of parsed events with their chunk source_title for citation.
         artist_events: dict[str, list[dict[str, Any]]] = {}
-        for artist_name, chunks in zip(artist_names, all_results):
+        for artist_name, chunks in zip(artist_names, all_results, strict=True):
             events_for_artist: list[dict[str, Any]] = []
             for chunk in chunks:
                 parsed = self._parse_ra_event_chunk_text(chunk.chunk.text)
@@ -1758,11 +1758,11 @@ class InterconnectionService:
         if not shared_ra_events:
             return edges
 
-        _RA_MIN_CONFIDENCE = 0.6
+        ra_min_confidence = 0.6
 
         boosted: list[RelationshipEdge] = []
         for edge in edges:
-            if edge.relationship_type == "shared_lineup" and edge.confidence < _RA_MIN_CONFIDENCE:
+            if edge.relationship_type == "shared_lineup" and edge.confidence < ra_min_confidence:
                 # Check if any citation references RA
                 is_ra_backed = any(
                     "ra" in (c.source_name or "").lower()
@@ -1771,7 +1771,7 @@ class InterconnectionService:
                     for c in edge.citations
                 )
                 if is_ra_backed:
-                    edge = edge.model_copy(update={"confidence": _RA_MIN_CONFIDENCE})
+                    edge = edge.model_copy(update={"confidence": ra_min_confidence})
             boosted.append(edge)
 
         return boosted
