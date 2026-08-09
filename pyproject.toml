@@ -2,7 +2,13 @@
 name = "raiveflier"
 version = "0.1.0"
 description = "Analyze rave flier images to research the people, places, and history behind underground music events"
-requires-python = ">=3.12"
+# Upper bound is load-bearing, not cautious guesswork: fastembed >= 0.7.0
+# requires numpy >= 2.1.0 on Python 3.13+ (and >= 2.3.0 on 3.14+), while
+# requirements.txt pins numpy < 2.0 for the 2 GB Render deployment. Those
+# constraints are contradictory above 3.12, so an install on 3.13 fails to
+# resolve at all. Declaring the ceiling makes that real limit explicit and
+# lets `uv pip compile --universal` produce a lockfile.
+requires-python = ">=3.12,<3.13"
 
 [tool.black]
 line-length = 100
