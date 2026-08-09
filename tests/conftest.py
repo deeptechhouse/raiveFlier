@@ -350,17 +350,32 @@ class MockVectorStore(IVectorStoreProvider):
         self._store: dict[str, tuple[DocumentChunk, list[float]]] = {}
         self._embedding = MockEmbeddingProvider()
 
+    # Mirrors ChromaDBProvider.embed_query() so the mock satisfies the same
+    # IVectorStoreProvider contract — without this the class stays abstract
+    # and cannot be instantiated at all.
+    async def embed_query(self, text: str) -> list[float]:
+        return await self._embedding.embed_single(text)
+
     async def query(
         self,
         query_text: str,
         top_k: int = 20,
         filters: dict[str, Any] | None = None,
+        max_per_source: int = 3,
+        query_embedding: list[float] | None = None,
+        include_embeddings: bool = False,
     ) -> list[RetrievedChunk]:
         if not self._store:
             return []
 
-        query_vec = await self._embedding.embed_single(query_text)
-        scored: list[tuple[float, DocumentChunk]] = []
+        # Same pre-computed-vector bypass as the real provider, so tests
+        # exercising the parallel-tier path behave the same against the mock.
+        query_vec = (
+            query_embedding
+            if query_embedding is not None
+            else await self._embedding.embed_single(query_text)
+        )
+        scored: list[tuple[float, DocumentChunk, list[float]]] = []
 
         query_lower = query_text.lower()
         for chunk, vec in self._store.values():
@@ -376,17 +391,27 @@ class MockVectorStore(IVectorStoreProvider):
                     similarity = min(1.0, similarity + 0.35)
                     break
 
-            scored.append((similarity, chunk))
+            scored.append((similarity, chunk, vec))
 
         scored.sort(key=lambda x: x[0], reverse=True)
 
+        # Cap chunks per source before trimming to top_k, mirroring the real
+        # provider so one long document cannot monopolise the result set.
+        per_source: dict[str, int] = {}
         results: list[RetrievedChunk] = []
-        for sim, chunk in scored[:top_k]:
+        for sim, chunk, vec in scored:
+            if len(results) >= top_k:
+                break
+            seen = per_source.get(chunk.source_id, 0)
+            if seen >= max_per_source:
+                continue
+            per_source[chunk.source_id] = seen + 1
             results.append(
                 RetrievedChunk(
                     chunk=chunk,
                     similarity_score=sim,
                     formatted_citation=f"{chunk.source_title} [Tier {chunk.citation_tier}]",
+                    embedding=list(vec) if include_embeddings else None,
                 )
             )
         return results

@@ -188,12 +188,40 @@ class ChromaDBProvider(IVectorStoreProvider):
     # IVectorStoreProvider implementation
     # ------------------------------------------------------------------
 
+    # ─── QUERY EMBEDDING PRE-COMPUTATION ───
+    # Thin delegation to the injected IEmbeddingProvider.  It exists as a
+    # method on the *vector store* (rather than callers reaching for the
+    # embedding provider directly) so that callers depend only on the
+    # IVectorStoreProvider port — the embedding backend stays an internal
+    # implementation detail that can be swapped without touching callers.
+    #
+    # The payoff is in _tiered_corpus_query(), which fires four tier queries
+    # against the same text: embedding once here and passing the vector into
+    # each query() call turns 4 embedding round-trips into 1.
+    async def embed_query(self, text: str) -> list[float]:
+        """Pre-compute an embedding vector for a query string.
+
+        Parameters
+        ----------
+        text:
+            The natural-language query to embed.
+
+        Returns
+        -------
+        list[float]
+            The embedding vector, exactly as returned by the injected
+            embedding provider.
+        """
+        return await self._embedding_provider.embed_single(text)
+
     async def query(
         self,
         query_text: str,
         top_k: int = 20,
         filters: dict[str, Any] | None = None,
         max_per_source: int = 3,
+        query_embedding: list[float] | None = None,
+        include_embeddings: bool = False,
     ) -> list[RetrievedChunk]:
         """Perform semantic search against the ChromaDB collection.
 
@@ -201,9 +229,25 @@ class ChromaDBProvider(IVectorStoreProvider):
         the same source document match, only the top *max_per_source* chunks
         are kept.  To compensate, ChromaDB is asked for up to ``3 * top_k``
         raw results before dedup and trimming.
+
+        Parameters
+        ----------
+        query_embedding:
+            Pre-computed vector for *query_text* (see :meth:`embed_query`).
+            When supplied the internal ``embed_single()`` call is skipped
+            entirely, which is what makes parallel tiered queries cheap.
+        include_embeddings:
+            When ``True``, ask ChromaDB to return the stored vectors and
+            attach them to each :class:`RetrievedChunk`.  Off by default
+            because embeddings are large and most callers never read them;
+            embedding-based dedup turns it on to avoid re-embedding results.
         """
         try:
-            query_embedding = await self._embedding_provider.embed_single(query_text)
+            # Only embed when the caller has not already done it for us.
+            # Note the parameter shadows what used to be a local variable —
+            # `None` means "no pre-computed vector supplied", not "empty".
+            if query_embedding is None:
+                query_embedding = await self._embedding_provider.embed_single(query_text)
             where_clause = self._translate_filters(filters) if filters else None
 
             # Over-fetch to have enough results after per-source limiting
@@ -218,6 +262,12 @@ class ChromaDBProvider(IVectorStoreProvider):
             }
             if where_clause:
                 kwargs["where"] = where_clause
+            # ChromaDB omits embeddings from results unless explicitly asked.
+            # Naming the other fields too is required: `include` replaces the
+            # default set rather than adding to it, so leaving them out would
+            # silently drop documents/metadatas/distances.
+            if include_embeddings:
+                kwargs["include"] = ["documents", "metadatas", "distances", "embeddings"]
 
             results = self._collection.query(**kwargs)
 
@@ -227,19 +277,34 @@ class ChromaDBProvider(IVectorStoreProvider):
             documents = results["documents"][0]
             metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(documents)
             distances = results["distances"][0] if results["distances"] else [0.0] * len(documents)
+            # Placeholder Nones keep this list the same length as `documents`
+            # so the strict zip below stays valid whether or not embeddings
+            # were requested.
+            raw_embeddings = (
+                results["embeddings"][0]
+                if include_embeddings and results.get("embeddings") is not None
+                else [None] * len(documents)
+            )
 
             # Group by source_id, keeping top max_per_source chunks per source
             chunks_per_source: dict[str, list[RetrievedChunk]] = {}
 
-            for doc_text, meta, distance in zip(documents, metadatas, distances, strict=True):
+            for doc_text, meta, distance, raw_emb in zip(
+                documents, metadatas, distances, raw_embeddings, strict=True
+            ):
                 similarity = max(0.0, min(1.0, 1.0 - distance))
                 chunk = self._metadata_to_chunk(meta, doc_text)
                 source_id = chunk.source_id
                 citation = self._format_citation(chunk, similarity)
+                # ChromaDB hands back numpy arrays rather than plain lists;
+                # coerce so Pydantic validation of `list[float]` succeeds.
+                # `is not None` (not truthiness) because numpy arrays raise
+                # on bool() and an all-zero vector is still a valid vector.
                 rc = RetrievedChunk(
                     chunk=chunk,
                     similarity_score=similarity,
                     formatted_citation=citation,
+                    embedding=list(raw_emb) if raw_emb is not None else None,
                 )
                 chunks_per_source.setdefault(source_id, []).append(rc)
 
