@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -354,6 +355,32 @@ class TestBuildPipeline:
 # ======================================================================
 
 
+def _collect_route_paths(routes: Any) -> list[str]:
+    """Flatten the URL paths reachable from a Starlette/FastAPI route list.
+
+    Reading ``route.path`` directly off ``app.routes`` used to be enough, but
+    FastAPI >= 0.140 wraps anything registered via ``include_router()`` in a
+    private ``_IncludedRouter`` object that exposes **no** ``.path`` — the real
+    routes hang off its ``.original_router``.  Iterating naively therefore
+    raises ``AttributeError``, and merely skipping attribute-less entries would
+    be worse: the assertions would quietly stop seeing the API routes and pass
+    for the wrong reason.
+
+    Walking both shapes keeps these tests honest across FastAPI versions and
+    stops them being coupled to a private class name.
+    """
+    paths: list[str] = []
+    for route in routes:
+        path = getattr(route, "path", None)
+        if isinstance(path, str):
+            paths.append(path)
+        # Descend into an included router when present (new-style wrapper).
+        included = getattr(route, "original_router", None)
+        if included is not None:
+            paths.extend(_collect_route_paths(getattr(included, "routes", [])))
+    return paths
+
+
 class TestCreateApp:
     """Tests for the create_app FastAPI application factory."""
 
@@ -384,7 +411,7 @@ class TestCreateApp:
 
         application = create_app()
         # Collect all route paths defined on the app
-        paths = [route.path for route in application.routes]
+        paths = _collect_route_paths(application.routes)
         # The API router should contribute at least /upload and /health
         assert any("/upload" in p for p in paths), f"Expected /upload route in {paths}"
         assert any("/health" in p for p in paths), f"Expected /health route in {paths}"
@@ -394,7 +421,7 @@ class TestCreateApp:
         from src.main import create_app
 
         application = create_app()
-        paths = [route.path for route in application.routes]
+        paths = _collect_route_paths(application.routes)
         assert any("ws" in p and "progress" in p for p in paths), (
             f"Expected WebSocket progress route in {paths}"
         )
